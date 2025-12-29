@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'Comprobante-' + ${venta.serie} + '-' + ${venta.numero}"></title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px; }
+        
+        /* Cabecera */
+        .header { width: 100%; overflow: hidden; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .company-info { float: left; width: 60%; }
+        .company-info h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+        .company-info p { margin: 2px 0; }
+        
+        .invoice-box { float: right; width: 35%; border: 1px solid #333; padding: 10px; text-align: center; border-radius: 8px; }
+        .invoice-box h3 { margin: 0; font-size: 18px; }
+        .invoice-box h2 { margin: 10px 0; font-size: 20px; color: #d9534f; }
+        
+        /* Datos Cliente */
+        .client-info { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .label { font-weight: bold; width: 120px; display: inline-block; }
+
+        /* Tabla Items */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #333; color: white; text-align: center; }
+        td.num { text-align: right; }
+
+        /* Totales */
+        .totals { float: right; width: 300px; }
+        .totals table { border: none; }
+        .totals th { background: none; color: #333; text-align: right; border: none; }
+        .totals td { border: none; border-bottom: 1px solid #ddd; text-align: right; }
+        .grand-total { font-size: 18px; font-weight: bold; }
+
+        /* Solo para pantalla */
+        .no-print { text-align: center; margin-bottom: 20px; }
+        .btn-print { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
+
+        /* Reglas de Impresión */
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+            @page { margin: 1cm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR COMPROBANTE</button>
+        <button class="btn-print" style="background:#6c757d; margin-left:10px;" onclick="window.close()">CERRAR</button>
+    </div>
+
+    <div class="header">
+        <div class="company-info">
+            <h1>LIBRERÍA ERP</h1>
+            <p>Av. Principal 123, Lima - Perú</p>
+            <p>Teléfono: (01) 555-0909</p>
+            <p>Email: ventas@libreria.com</p>
+        </div>
+        <div class="invoice-box">
+            <h3>R.U.C. 20100000001</h3>
+            <h2 th:text="${venta.tipoComprobante}"></h2>
+            <p th:text="${venta.serie} + ' - ' + ${#numbers.formatInteger(venta.numero, 6)}"></p>
+        </div>
+    </div>
+
+    <div class="client-info">
+        <div class="row">
+            <div><span class="label">Cliente:</span> <span th:text="${venta.clienteDenominacion}"></span></div>
+            <div><span class="label">Fecha:</span> <span th:text="${venta.fechaEmision}"></span></div>
+        </div>
+        <div class="row">
+            <div><span class="label">Documento:</span> <span th:text="${venta.clienteNumeroDocumento}"></span></div>
+            <div><span class="label">Moneda:</span> SOLES (PEN)</div>
+        </div>
+        <div class="row">
+            <div><span class="label">Dirección:</span> <span th:text="${venta.clienteDireccion}"></span></div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="5%">Cant.</th>
+                <th>Descripción</th>
+                <th width="15%">P. Unit</th>
+                <th width="15%">Importe</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${venta.items}">
+                <td class="num" th:text="${item.cantidad}"></td>
+                <td th:text="${item.descripcion}"></td>
+                <td class="num" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
+                <td class="num" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <table>
+            <tr>
+                <th>Op. Gravada:</th>
+                <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalGravada, 1, 'COMMA', 2, 'POINT')}"></td>
+            </tr>
+            <tr>
+                <th>IGV (18%):</th>
+                <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalIgv, 1, 'COMMA', 2, 'POINT')}"></td>
+            </tr>
+            <tr>
+                <th class="grand-total">TOTAL:</th>
+                <td class="grand-total" th:text="'S/ ' + ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}"></td>
+            </tr>
+        </table>
+    </div>
+    
+    <div style="margin-top: 50px; font-size: 12px; text-align: center; border-top: 1px dashed #999; padding-top: 10px;">
+        Gracias por su compra. Conserve este documento para cualquier reclamo.<br>
+        Emitido por Sistema ERP Librería.
+    </div>
+
+    <script>
+        // window.onload = function() { window.print(); } 
+    </script>
+</body>
+</html>

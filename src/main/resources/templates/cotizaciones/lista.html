@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Cotizaciones</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
+    </nav>
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/ventas/nueva" class="nav-link"><i class="nav-icon fas fa-cash-register"></i><p>Punto de Venta</p></a></li>
+                    <li class="nav-item"><a href="/cotizaciones/lista" class="nav-link active"><i class="nav-icon fas fa-list"></i><p>Listado</p></a></li>
+                    <li class="nav-item"><a href="/cotizaciones/nueva" class="nav-link"><i class="nav-icon fas fa-plus-circle"></i><p>Nueva Cotización</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1>Cotizaciones Emitidas</h1></div>
+        </section>
+        <section class="content">
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Teléfono</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${cotizaciones.content}">
+                                <td th:text="${c.serie} + '-' + ${c.numero}"></td>
+                                <td th:text="${c.fechaEmision}"></td>
+                                <td th:text="${c.clienteNombre}"></td>
+                                <td th:text="${c.clienteTelefono}"></td>
+                                <td th:text="'S/ ' + ${c.total}"></td>
+                                <td>
+                                    <span th:if="${c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDO</span>
+                                    <span th:if="${c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-success">VENDIDO</span>
+                                </td>
+                                <td>
+                                    <a th:if="${c.estado == 'EMITIDO'}" th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-sm" title="Editar Lista">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <button class="btn btn-success btn-sm" 
+                                            th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
+                                            title="WhatsApp">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </button>
+
+                                    <button th:if="${c.estado == 'EMITIDO'}" class="btn btn-warning btn-sm" th:onclick="confirmarVenta([[${c.id}]])" title="Convertir a Venta">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </button>
+
+                                    <button class="btn btn-default btn-sm" th:onclick="abrirPdf([[${c.id}]])" title="Imprimir">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="p-3" th:if="${cotizaciones.totalPages > 0}">
+                        <nav>
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item" th:classappend="${cotizaciones.first} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1})}">Anterior</a>
+                                </li>
+                                <li class="page-item" th:each="p : ${pageNumbers}" th:classappend="${p == currentPage + 1} ? 'active'">
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${p - 1})}" th:text="${p}"></a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Función PDF en Popup
+    function abrirPdf(id) {
+        window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
+    }
+
+    function enviarWhatsapp(nombre, serie, numero, total, telefono) {
+        let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
+        mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
+        mensaje += `Quedamos atentos a su confirmación.`;
+
+        // Lógica Inteligente
+        if (telefono && telefono !== "null" && telefono.trim() !== "") {
+            // Si tiene numero, abrir directo
+            let url = `https://web.whatsapp.com/send?phone=51${telefono}&text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        } else {
+            // Si no tiene, pedirlo
+            Swal.fire({
+                title: 'Ingresar Número de WhatsApp',
+                input: 'text',
+                inputLabel: 'El cliente no tiene número registrado. Ingrese uno:',
+                inputPlaceholder: 'Ej: 999888777',
+                showCancelButton: true,
+                confirmButtonText: 'Enviar'
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    let num = result.value;
+                    let url = `https://web.whatsapp.com/send?phone=51${num}&text=${encodeURIComponent(mensaje)}`;
+                    window.open(url, '_blank');
+                }
+            });
+        }
+    }
+
+    function confirmarVenta(id) {
+        Swal.fire({
+            title: 'Convertir a Venta',
+            text: "¿Generar Boleta o Factura?",
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: 'BOLETA',
+            denyButtonText: 'FACTURA',
+            confirmButtonColor: '#28a745',
+            denyButtonColor: '#17a2b8'
+        }).then((result) => {
+            if (result.isConfirmed || result.isDenied) {
+                let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+                
+                $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                    Swal.fire('¡Vendido!', `Se generó la venta ID: ${resp.ventaId}`, 'success')
+                        .then(() => location.reload());
+                }).fail(function(err) {
+                    Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Punto de Venta</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .total-display { font-size: 2.5rem; font-weight: bold; color: #28a745; text-align: right; }
+        .table-vta th, .table-vta td { vertical-align: middle; }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+<div class="wrapper">
+
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
+    </nav>
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a href="/productos" class="nav-link"><i class="nav-icon fas fa-box"></i><p>Inventario</p></a></li>
+                    <li class="nav-item"><a href="/ventas/nueva" class="nav-link active"><i class="nav-icon fas fa-cash-register"></i><p>Punto de Venta</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <section class="content p-3">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+    <div class="input-group mb-3">
+        <div class="input-group-prepend">
+            <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+        </div>
+        <input type="text" id="inputScan" class="form-control form-control-lg" placeholder="Escanear Código de Barras (ENTER)" autofocus>
+    </div>
+
+    <div class="form-group">
+        <label>Búsqueda Manual (Nombre / Categoría)</label>
+        <div class="input-group">
+            <select id="selectProducto" class="form-control" style="width: 85%;"></select>
+            <div class="input-group-append">
+                <button class="btn btn-success" type="button" onclick="agregarSeleccionado()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+                        <div class="card-body table-responsive p-0" style="height: 400px;">
+                            <table class="table table-head-fixed text-nowrap table-vta">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th width="100">Precio</th>
+                                        <th width="100">Cant.</th>
+                                        <th width="100">Subtotal</th>
+                                        <th width="50"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaVentas">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-navy">
+                            <h3 class="card-title">Datos del Comprobante</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Tipo Comprobante</label>
+                                <select id="tipoComprobante" class="form-control">
+                                    <option value="BOLETA">BOLETA DE VENTA</option>
+                                    <option value="FACTURA">FACTURA ELECTRÓNICA</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cliente (DNI / RUC)</label>
+                                <div class="input-group">
+                                    <input type="text" id="clienteDoc" class="form-control" placeholder="Número Documento">
+                                    <span class="input-group-append">
+                                        <button type="button" class="btn btn-info btn-flat"><i class="fas fa-search"></i></button>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="clienteNombre" class="form-control" placeholder="Nombre / Razón Social">
+                            </div>
+                             <div class="form-group">
+                                <input type="text" id="clienteDireccion" class="form-control" placeholder="Dirección (Solo Factura)">
+                            </div>
+                            
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span>Op. Gravada:</span>
+                                <span id="lblGravada">S/ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>IGV (18%):</span>
+                                <span id="lblIgv">S/ 0.00</span>
+                            </div>
+                            <div class="total-display mt-2" id="lblTotal">
+                                S/ 0.00
+                            </div>
+                            
+                            <button class="btn btn-success btn-block btn-lg mt-3" id="btnProcesar" onclick="procesarVenta()">
+                                <i class="fas fa-money-bill-wave"></i> COBRAR (F10)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script src="/js/ventas.js"></script>
+
+</body>
+</html>

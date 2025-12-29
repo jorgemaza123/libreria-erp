@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Gestión Cotización</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+</head>
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+<div class="wrapper">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
+    </nav>
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/ventas/nueva" class="nav-link"><i class="nav-icon fas fa-cash-register"></i><p>Punto de Venta</p></a></li>
+                    <li class="nav-item"><a href="/cotizaciones/lista" class="nav-link"><i class="nav-icon fas fa-file-invoice"></i><p>Cotizaciones</p></a></li>
+                    <li class="nav-item"><a href="/cotizaciones/nueva" class="nav-link active"><i class="nav-icon fas fa-plus-circle"></i><p>Nueva Cotización</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <section class="content p-3">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card card-warning card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-edit"></i> 
+                                <span th:text="${cotizacionEdicion != null ? 'Editando Cotización ' + cotizacionEdicion.serie + '-' + cotizacionEdicion.numero : 'Nueva Cotización'}"></span>
+                            </h3>
+                            <input type="hidden" id="idEdicion" th:value="${cotizacionEdicion != null ? cotizacionEdicion.id : ''}">
+                        </div>
+                        <div class="card-body">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-7">
+                                    <label>Agregar Producto</label>
+                                    <div class="input-group">
+                                        <select id="selectProducto" class="form-control" style="width: 85%;"></select>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-success" type="button" onclick="agregarSeleccionado()"><i class="fas fa-plus"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label>O Servicios / Mano de Obra</label>
+                                    <button class="btn btn-info btn-block" onclick="agregarServicioManual()">
+                                        <i class="fas fa-tools"></i> AGREGAR SERVICIO
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table class="table table-bordered">
+                                <thead class="bg-navy">
+                                    <tr>
+                                        <th width="40%">Descripción / Producto</th>
+                                        <th width="15%">Precio Unit.</th>
+                                        <th width="10%">Cant.</th>
+                                        <th width="15%">Subtotal</th>
+                                        <th width="5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaVentas"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-header">Datos del Cliente</div>
+                        <div class="card-body">
+                            <input type="text" id="clienteDoc" class="form-control mb-2" placeholder="DNI / RUC" 
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteDocumento : ''}">
+                            <input type="text" id="clienteNombre" class="form-control mb-2" placeholder="Nombre Cliente" 
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteNombre : 'CLIENTE VARIOS'}">
+                            
+                            <input type="text" id="clienteTelefono" class="form-control mb-2" placeholder="WhatsApp (Opcional)" 
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteTelefono : ''}">
+
+                            <hr>
+                            <h2 class="text-right" id="lblTotal">S/ 0.00</h2>
+                            
+                            <button class="btn btn-primary btn-block btn-lg mb-2" onclick="guardarCotizacion(true)">
+                                <i class="fas fa-save"></i> <span th:text="${cotizacionEdicion != null ? 'GUARDAR CAMBIOS' : 'GUARDAR'}"></span>
+                            </button>
+                            
+                            <button th:if="${cotizacionEdicion != null}" class="btn btn-warning btn-block btn-lg" onclick="convertirDirecto()">
+                                <i class="fas fa-exchange-alt"></i> ACTUALIZAR Y VENDER
+                            </button>
+
+                            <button th:if="${cotizacionEdicion != null}" class="btn btn-default btn-block mt-2" 
+                                    th:onclick="abrirPdf([[${cotizacionEdicion.id}]])">
+                                <i class="fas fa-print"></i> VISTA PREVIA PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script th:inline="javascript">
+    let carrito = [];
+    let productosCache = [];
+    let ID_SERVICIO_GENERAL = null;
+
+    $(document).ready(function() {
+        $.get('/ventas/api/productos-activos', function(data) {
+            productosCache = data;
+            let serv = data.find(p => p.codigoInterno === 'SERV-001');
+            if(serv) ID_SERVICIO_GENERAL = serv.id;
+
+            let opciones = data.map(p => ({ 
+                id: p.id, text: `${p.nombre} - S/ ${p.precioVenta}`, producto: p 
+            }));
+            
+            $('#selectProducto').select2({ data: opciones, placeholder: "Buscar producto...", allowClear: true });
+
+            /*[+
+            let cotiEdit = [[${cotizacionEdicion}]];
+            if(cotiEdit) {
+                cotiEdit.items.forEach(item => {
+                    carrito.push({
+                        productoId: item.producto.id,
+                        nombre: item.descripcion || item.producto.nombre,
+                        precio: item.precioUnitario,
+                        cantidad: item.cantidad,
+                        esServicio: (item.producto.codigoInterno === 'SERV-001')
+                    });
+                });
+                renderizarTablaCoti();
+            }
+            +]*/
+        });
+
+        $('#selectProducto').on('select2:select', function (e) {
+            let idProd = e.params.data.id;
+            agregarAlCarrito(idProd);
+            $('#selectProducto').val(null).trigger('change');
+        });
+    });
+
+    function agregarSeleccionado() {
+        let id = $('#selectProducto').val();
+        if(id) agregarAlCarrito(id);
+    }
+
+    function agregarAlCarrito(id) {
+        let prod = productosCache.find(p => p.id == id);
+        if(!prod) return;
+        
+        let existente = carrito.find(i => i.productoId == id);
+        if(existente) existente.cantidad++;
+        else {
+            carrito.push({
+                productoId: prod.id,
+                nombre: prod.nombre,
+                precio: prod.precioVenta,
+                cantidad: 1,
+                esServicio: false
+            });
+        }
+        renderizarTablaCoti();
+    }
+
+    function agregarServicioManual() {
+        if(!ID_SERVICIO_GENERAL) {
+            Swal.fire('Error', 'Reinicie el sistema para cargar servicios', 'error');
+            return;
+        }
+        carrito.push({
+            productoId: ID_SERVICIO_GENERAL,
+            nombre: "SERVICIO: DETALLE...", 
+            precio: 0.00,
+            cantidad: 1,
+            esServicio: true
+        });
+        renderizarTablaCoti();
+    }
+
+    function renderizarTablaCoti() {
+        let html = '';
+        let total = 0;
+        carrito.forEach((item, index) => {
+            let subtotal = item.cantidad * item.precio;
+            total += subtotal;
+            let inputNombre = item.esServicio 
+                ? `<input type="text" class="form-control" value="${item.nombre}" oninput="actualizarItem(${index}, 'nombre', this.value)">`
+                : item.nombre;
+
+            html += `<tr>
+                <td>${inputNombre}</td>
+                <td><input type="number" class="form-control" value="${item.precio}" oninput="actualizarItem(${index}, 'precio', this.value)"></td>
+                <td><input type="number" class="form-control" value="${item.cantidad}" oninput="actualizarItem(${index}, 'cant', this.value)"></td>
+                <td class="font-weight-bold">S/ ${subtotal.toFixed(2)}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">X</button></td>
+            </tr>`;
+        });
+        $('#tablaVentas').html(html);
+        $('#lblTotal').text(`S/ ${total.toFixed(2)}`);
+    }
+
+    function actualizarItem(index, campo, valor) {
+        if(campo === 'nombre') carrito[index].nombre = valor;
+        if(campo === 'precio') carrito[index].precio = parseFloat(valor) || 0;
+        if(campo === 'cant') carrito[index].cantidad = parseFloat(valor) || 1;
+        renderizarTablaCoti();
+    }
+
+    function eliminarItem(index) {
+        carrito.splice(index, 1);
+        renderizarTablaCoti();
+    }
+
+    // --- FUNCION PARA ABRIR PDF EN POPUP ---
+    function abrirPdf(id) {
+        window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
+    }
+
+    // --- FUNCIÓN GUARDAR (Retorna Promesa para encadenar) ---
+    function guardarCotizacion(redireccionar = true) {
+        return new Promise((resolve, reject) => {
+            if(carrito.length === 0) {
+                Swal.fire('Error', 'Carrito vacío', 'warning');
+                reject('vacío');
+                return;
+            }
+            
+            let dto = { 
+                clienteDoc: $('#clienteDoc').val(), 
+                clienteNombre: $('#clienteNombre').val(), 
+                clienteTelefono: $('#clienteTelefono').val(),
+                items: carrito 
+            };
+            
+            let idEdicion = $('#idEdicion').val();
+            let url = idEdicion ? '/cotizaciones/api/actualizar/' + idEdicion : '/cotizaciones/api/guardar';
+            let method = idEdicion ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url, type: method, contentType: 'application/json', data: JSON.stringify(dto),
+                success: function(resp) {
+                    if(redireccionar) {
+                        Swal.fire('Guardado', 'Correcto', 'success').then(() => {
+                            if(idEdicion) location.reload(); else window.location.href = '/cotizaciones/lista';
+                        });
+                    }
+                    resolve(resp);
+                },
+                error: function(err) { 
+                    if(redireccionar) Swal.fire('Error', 'Fallo al guardar', 'error');
+                    reject(err);
+                }
+            });
+        });
+    }
+
+    // --- FLUJO: PRIMERO GUARDA -> LUEGO VENDE ---
+    function convertirDirecto() {
+        let id = $('#idEdicion').val();
+        
+        guardarCotizacion(false)
+            .then(() => {
+                Swal.fire({
+                    title: 'Generar Venta',
+                    text: "¿Boleta o Factura?",
+                    icon: 'question',
+                    showDenyButton: true,
+                    confirmButtonText: 'BOLETA',
+                    denyButtonText: 'FACTURA',
+                    confirmButtonColor: '#28a745',
+                    denyButtonColor: '#17a2b8'
+                }).then((result) => {
+                    if (result.isConfirmed || result.isDenied) {
+                        let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+                        
+                        $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                            Swal.fire('¡Vendido!', `Venta ID: ${resp.ventaId}`, 'success')
+                                .then(() => window.location.href = '/ventas/lista');
+                        }).fail(function(err) {
+                            Swal.fire('Error', err.responseJSON.error, 'error');
+                        });
+                    }
+                });
+            })
+            .catch((err) => {
+                console.error(err);
+                Swal.fire('Error', 'No se pudieron guardar los cambios antes de vender', 'error');
+            });
+    }
+</script>
+</body>
+</html>
