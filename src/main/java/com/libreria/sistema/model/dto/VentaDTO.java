@@ -21,6 +21,7 @@ public class VentaDTO {
     public static class ItemDTO {
         private Long productoId;
         private BigDecimal cantidad;
-        private BigDecimal precio; 
+        private BigDecimal precio;
+        private String nombre;
     }
 }

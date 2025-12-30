@@ -27,6 +27,8 @@ public class Cotizacion {
     private String clienteDocumento;
     private String clienteNombre;
     private String clienteTelefono; // <--- NUEVO CAMPO
+    @Column(columnDefinition = "TEXT") // Para texto largo (Diagnóstico/Falla)
+    private String observaciones;
 
     // Totales
     @Column(precision = 10, scale = 2)

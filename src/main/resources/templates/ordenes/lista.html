@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Listado de Servicios</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+    <style>
+        .sidebar-overlay{display:none!important} body{overflow:auto!important}
+        .btn-action { margin-right: 5px; }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
+    </nav>
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column">
+                    <li class="nav-item"><a href="/" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a href="/ordenes/nueva" class="nav-link"><i class="nav-icon fas fa-plus-circle"></i><p>Nueva Orden</p></a></li>
+                    <li class="nav-item"><a href="/ordenes/lista" class="nav-link active"><i class="nav-icon fas fa-list"></i><p>Listado Ordenes</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1>Gestión de Servicios y Proyectos</h1></div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-body">
+                        <table id="tablaOrdenes" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Cliente</th>
+                                    <th>Trabajo</th>
+                                    <th>Estado</th>
+                                    <th>Saldo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="o : ${ordenes}">
+                                    <td th:text="${o.id}"></td>
+                                    <td>
+                                        <div class="font-weight-bold" th:text="${o.clienteNombre}"></div>
+                                        <small th:text="${o.clienteTelefono}"></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info" th:text="${o.tipoServicio}"></span><br>
+                                        <span th:text="${o.tituloTrabajo}"></span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${o.estado == 'PENDIENTE'}" class="badge badge-warning">PENDIENTE</span>
+                                        <span th:if="${o.estado == 'ENTREGADO'}" class="badge badge-success">ENTREGADO</span>
+                                        <span th:if="${o.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
+                                    </td>
+                                    <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
+                                    
+                                    <td>
+                                        <button class="btn btn-sm btn-default btn-action" 
+                                                th:onclick="abrirPdf([[${o.id}]])"
+                                                title="Imprimir Recibo">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+
+                                        <button class="btn btn-sm btn-success btn-action" 
+                                                th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])"
+                                                title="Enviar WhatsApp">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </button>
+
+                                        <button th:if="${o.estado != 'ENTREGADO'}" 
+                                                class="btn btn-sm btn-primary btn-action"
+                                                th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])"
+                                                title="Finalizar y Cobrar">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function () {
+        $("#tablaOrdenes").DataTable({
+            "responsive": true, "autoWidth": false,
+            "order": [ [ 0, "desc" ] ], 
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+        });
+    });
+
+    // --- FUNCIÓN PARA ABRIR PDF EN VENTANA NUEVA ---
+    function abrirPdf(id) {
+        // Abre una ventana emergente limpia de 800x600
+        window.open('/ordenes/pdf/' + id, '_blank', 'height=600,width=800,scrollbars=yes,status=yes');
+    }
+
+    // --- WHATSAPP ---
+    async function abrirWhatsapp(telefono, nombre, trabajo) {
+        const { value: nuevoNumero } = await Swal.fire({
+            title: 'Enviar WhatsApp',
+            text: 'Confirma o ingresa el número:',
+            input: 'text',
+            inputValue: telefono || '',
+            showCancelButton: true,
+            confirmButtonText: 'Abrir Chat',
+            confirmButtonColor: '#25D366'
+        });
+
+        if (nuevoNumero) {
+            let mensaje = `Hola ${nombre}, su servicio de "${trabajo}" está en proceso/listo.`;
+            let url = `https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        }
+    }
+
+    // --- FINALIZAR ---
+    function finalizarOrden(id, saldo) {
+        let msg = "Esto marcará la orden como ENTREGADA.";
+        let inputCobro = false;
+
+        if(saldo > 0) {
+            msg += `<br><strong>Hay un saldo pendiente de S/ ${saldo}</strong>.<br>¿Desea registrar este ingreso en Caja ahora?`;
+            inputCobro = true;
+        }
+
+        Swal.fire({
+            title: '¿Finalizar Servicio?',
+            html: msg,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: inputCobro ? 'Sí, Cobrar y Finalizar' : 'Sí, Finalizar',
+            cancelButtonText: 'Cancelar',
+            showDenyButton: inputCobro, 
+            denyButtonText: 'Finalizar SIN Cobrar'
+        }).then((result) => {
+            if (result.isConfirmed) enviarFinalizacion(id, true);
+            else if (result.isDenied) enviarFinalizacion(id, false);
+        });
+    }
+
+    function enviarFinalizacion(id, cobrar) {
+        $.post(`/ordenes/api/finalizar/${id}?cobrarSaldo=${cobrar}`, function(resp) {
+            Swal.fire('Listo', resp, 'success').then(() => location.reload());
+        }).fail(function() {
+            Swal.fire('Error', 'No se pudo actualizar', 'error');
+        });
+    }
+</script>
+</body>
+</html>

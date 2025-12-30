@@ -76,7 +76,11 @@ public class CotizacionService {
             DetalleCotizacion det = new DetalleCotizacion();
             det.setCotizacion(c);
             det.setProducto(p);
-            det.setDescripcion(p.getNombre());
+            if (item.getNombre() != null && !item.getNombre().isEmpty()) {
+                det.setDescripcion(item.getNombre());
+            } else {
+                det.setDescripcion(p.getNombre());
+            }
             det.setCantidad(item.getCantidad());
             det.setPrecioUnitario(item.getPrecio());
             det.setSubtotal(item.getCantidad().multiply(item.getPrecio()));
