@@ -1,5 +1,6 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -14,19 +15,15 @@ public class DetalleCompra {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "compra_id", nullable = false)
+    @JoinColumn(name = "compra_id")
+    @JsonIgnore
     private Compra compra;
 
     @ManyToOne
-    @JoinColumn(name = "producto_id", nullable = false)
+    @JoinColumn(name = "producto_id")
     private Producto producto;
 
-    private BigDecimal cantidad;
-
-    // Costos
-    @Column(precision = 10, scale = 2)
-    private BigDecimal costoUnitario; // Sin IGV
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal subtotal; // cantidad * costoUnitario
+    private Integer cantidad;
+    private BigDecimal precioUnitario; // Costo al que compramos
+    private BigDecimal subtotal;
 }

@@ -1,9 +1,16 @@
 package com.libreria.sistema.repository;
+
 import com.libreria.sistema.model.Kardex;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.List;
 
 public interface KardexRepository extends JpaRepository<Kardex, Long> {
-    // Para ver el historial de UN producto específico
-    List<Kardex> findByProductoIdOrderByFechaDesc(Long productoId);
+
+    @EntityGraph(attributePaths = {"producto"})
+    Page<Kardex> findAll(Pageable pageable);
+
+    // NUEVOS MÉTODOS DE CONTEO RÁPIDO
+    long countByTipo(String tipo); // Cuenta cuántos "ENTRADA" o "SALIDA" hay
 }

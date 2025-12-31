@@ -2,27 +2,20 @@ package com.libreria.sistema.model.dto;
 
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 @Data
 public class CompraDTO {
-    // Cabecera
+    private Long proveedorId;
     private String tipoComprobante;
-    private String serie;
-    private String numero;
-    private LocalDate fechaEmision;
-    
-    private String proveedorRuc;
-    private String proveedorRazon;
-    
-    // Items
-    private List<ItemCompraDTO> items;
+    private String numeroComprobante;
+    private String observaciones;
+    private List<DetalleDTO> items;
 
     @Data
-    public static class ItemCompraDTO {
+    public static class DetalleDTO {
         private Long productoId;
-        private BigDecimal cantidad;
-        private BigDecimal costoUnitario; // El usuario ingresa el costo unitario
+        private Integer cantidad;
+        private BigDecimal costo;
     }
 }

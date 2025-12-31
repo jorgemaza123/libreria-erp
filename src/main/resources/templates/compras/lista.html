@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='compras')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6"><h1>Historial de Compras</h1></div>
+                    <div class="col-sm-6 text-right">
+                        <a href="/compras/nueva" class="btn btn-navy"><i class="fas fa-plus"></i> Registrar Compra</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-body">
+                        <table id="tablaCompras" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Proveedor</th>
+                                    <th>Documento</th>
+                                    <th>Total</th>
+                                    <th>Obs</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${compras}">
+                                    <td th:text="${c.fecha != null ? #temporals.format(c.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                                    
+                                    <td th:text="${c.proveedor != null ? c.proveedor.razonSocial : 'PROVEEDOR ELIMINADO'}"></td>
+                                    
+                                    <td th:text="${c.tipoComprobante} + ' ' + ${c.numeroComprobante}"></td>
+                                    <td class="font-weight-bold" th:text="'S/ ' + ${c.total}"></td>
+                                    <td th:text="${c.observaciones}"></td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" 
+                                                th:onclick="verDetalle([[${c.id}]])"
+                                                title="Ver Detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-navy">
+                        <h5 class="modal-title">Detalle de Compra</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Proveedor:</strong> <span id="lblProveedor"></span>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <strong>Documento:</strong> <span id="lblDocumento"></span>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th class="text-right">Costo U.</th>
+                                    <th class="text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyDetalle">
+                                </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-right">TOTAL:</th>
+                                    <th class="text-right" id="lblTotal"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    $(document).ready(function () {
+        $("#tablaCompras").DataTable({
+            "responsive": true, "autoWidth": false, "order": [[ 0, "desc" ]],
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+        });
+    });
+
+    // FUNCIÓN QUE DA VIDA AL BOTÓN
+    function verDetalle(id) {
+        // Limpiar modal antes de mostrar
+        $("#tbodyDetalle").html('<tr><td colspan="4" class="text-center">Cargando...</td></tr>');
+        $("#modalDetalle").modal("show");
+
+        // Pedir datos al servidor
+        $.get("/compras/api/detalle/" + id, function(data) {
+            
+            // Llenar cabecera
+            $("#lblProveedor").text(data.proveedor);
+            $("#lblDocumento").text(data.documento);
+            $("#lblTotal").text('S/ ' + data.total.toFixed(2));
+
+            // Llenar tabla
+            let html = "";
+            data.items.forEach(item => {
+                html += `<tr>
+                    <td>${item.producto}</td>
+                    <td class="text-center">${item.cantidad}</td>
+                    <td class="text-right">S/ ${item.precio.toFixed(2)}</td>
+                    <td class="text-right">S/ ${item.subtotal.toFixed(2)}</td>
+                </tr>`;
+            });
+            $("#tbodyDetalle").html(html);
+
+        }).fail(function() {
+            $("#tbodyDetalle").html('<tr><td colspan="4" class="text-danger text-center">Error al cargar datos</td></tr>');
+        });
+    }
+</script>
+</body>
+</html>
