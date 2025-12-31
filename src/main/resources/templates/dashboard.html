@@ -58,7 +58,7 @@
 
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="card card-primary">
+                        <div class="card card-primary card-outline">
                             <div class="card-header"><h3 class="card-title">Ventas Últimos 7 Días</h3></div>
                             <div class="card-body">
                                 <canvas id="chartVentas" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
@@ -66,7 +66,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card card-success">
+                        <div class="card card-success card-outline">
                             <div class="card-header"><h3 class="card-title">Top 5 Productos Más Vendidos</h3></div>
                             <div class="card-body">
                                 <canvas id="chartTop" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
@@ -80,13 +80,16 @@
                         <div class="card card-warning card-outline">
                             <div class="card-header"><h3 class="card-title">Stock Crítico (Reponer)</h3></div>
                             <div class="card-body table-responsive p-0" style="height: 300px;">
-                                <table class="table table-head-fixed text-nowrap">
+                                <table class="table table-head-fixed text-nowrap table-striped">
                                     <thead><tr><th>Producto</th><th>Actual</th><th>Mínimo</th></tr></thead>
                                     <tbody>
                                         <tr th:each="p : ${stats['stockCritico']}">
                                             <td th:text="${p.nombre}"></td>
                                             <td class="text-danger font-weight-bold" th:text="${p.stockActual}"></td>
                                             <td th:text="${p.stockMinimo}"></td>
+                                        </tr>
+                                        <tr th:if="${stats['stockCritico'].empty}">
+                                            <td colspan="3" class="text-center text-muted">Todo en orden</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -97,13 +100,16 @@
                         <div class="card card-danger card-outline">
                             <div class="card-header"><h3 class="card-title">Sin Movimiento (30d)</h3></div>
                             <div class="card-body table-responsive p-0" style="height: 300px;">
-                                <table class="table table-head-fixed text-nowrap">
+                                <table class="table table-head-fixed text-nowrap table-striped">
                                     <thead><tr><th>Producto</th><th>Stock</th><th>Precio</th></tr></thead>
                                     <tbody>
                                         <tr th:each="p : ${stats['sinMovimiento']}">
                                             <td th:text="${p.nombre}"></td>
                                             <td th:text="${p.stockActual}"></td>
                                             <td th:text="'S/ ' + ${p.precioVenta}"></td>
+                                        </tr>
+                                        <tr th:if="${stats['sinMovimiento'].empty}">
+                                            <td colspan="3" class="text-center text-muted">No hay productos estancados</td>
                                         </tr>
                                     </tbody>
                                 </table>

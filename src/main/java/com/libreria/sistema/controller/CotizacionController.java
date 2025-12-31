@@ -104,10 +104,12 @@ public class CotizacionController {
     }
 
     // NUEVO: Endpoint para el Modal de Detalle (Igual que en Ventas)
+    // Endpoint para el Modal de Detalle
     @GetMapping("/detalle/{id}")
     public String verDetalle(@PathVariable Long id, Model model) {
         Cotizacion cotizacion = cotizacionService.obtenerPorId(id);
         model.addAttribute("cotizacion", cotizacion);
-        return "cotizaciones/modal_detalle :: contenido";
+        // IMPORTANTE: Debe coincidir con la ubicación real del archivo HTML
+        return "cotizaciones/modal_detalle :: contenido"; 
     }
 }

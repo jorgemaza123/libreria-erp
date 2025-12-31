@@ -1,68 +1,189 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<body>
-    <div th:fragment="contenido">
-        <div class="row invoice-info">
-            <div class="col-sm-6 invoice-col">
-                <b class="text-primary">COTIZACIÓN</b><br>
-                <b th:text="${cotizacion.serie} + '-' + ${cotizacion.numero}"></b><br>
-                Fecha: <span th:text="${cotizacion.fechaEmision}"></span>
-            </div>
-            <div class="col-sm-6 invoice-col text-right">
-                Cliente: <strong th:text="${cotizacion.clienteNombre}"></strong><br>
-                Doc: <span th:text="${cotizacion.clienteDocumento}"></span><br>
-                Tel: <span th:text="${cotizacion.clienteTelefono}"></span>
-            </div>
-        </div>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
 
-        <div class="row mt-3">
-            <div class="col-12 table-responsive">
-                <table class="table table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th>Cant.</th>
-                            <th>Descripción</th>
-                            <th class="text-right">Precio</th>
-                            <th class="text-right">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="item : ${cotizacion.items}">
-                            <td th:text="${#numbers.formatDecimal(item.cantidad, 1, 0)}"></td>
-                            <td th:text="${item.descripcion}"></td>
-                            <td class="text-right" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 2)}"></td>
-                            <td class="text-right" th:text="${#numbers.formatDecimal(item.subtotal, 1, 2)}"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    
+    <aside th:replace="~{fragments/layout :: sidebar(active='cotizaciones')}"></aside>
 
-        <div class="row">
-            <div class="col-6"></div>
-            <div class="col-6">
-                <div class="table-responsive">
-                    <table class="table">
-                        <tr>
-                            <th>Total:</th>
-                            <td class="font-weight-bold text-success" style="font-size: 1.2em;" 
-                                th:text="'S/ ' + ${#numbers.formatDecimal(cotizacion.total, 1, 2)}"></td>
-                        </tr>
-                    </table>
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1>Cotizaciones Emitidas</h1></div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-navy card-outline">
+                    <div class="card-body p-0">
+                        <table class="table table-striped projects">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Teléfono</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th class="text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${cotizaciones.content}">
+                                    <td class="font-weight-bold" th:text="${c.serie} + '-' + ${c.numero}"></td>
+                                    <td th:text="${#temporals.format(c.fechaEmision, 'dd/MM/yyyy')}"></td>
+                                    <td>
+                                        <span th:text="${c.clienteNombre}"></span><br/>
+                                        <small th:text="${c.clienteDocumento}"></small>
+                                    </td>
+                                    <td th:text="${c.clienteTelefono}"></td>
+                                    <td class="font-weight-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>
+                                    <td>
+                                        <span th:if="${c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDO</span>
+                                        <span th:if="${c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-success">VENDIDO</span>
+                                    </td>
+                                    <td class="text-right">
+                                        <button class="btn btn-info btn-sm btn-detalle" th:data-id="${c.id}" title="Ver Detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+
+                                        <a th:if="${c.estado == 'EMITIDO'}" th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-sm" title="Editar">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </a>
+
+                                        <button class="btn btn-success btn-sm" 
+                                                th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
+                                                title="WhatsApp">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </button>
+
+                                        <button th:if="${c.estado == 'EMITIDO'}" class="btn btn-warning btn-sm" th:onclick="confirmarVenta([[${c.id}]])" title="Vender">
+                                            <i class="fas fa-cash-register"></i>
+                                        </button>
+
+                                        <button class="btn btn-default btn-sm" th:onclick="abrirPdf([[${c.id}]])" title="Imprimir">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="p-3" th:if="${cotizaciones.totalPages > 0}">
+                            <nav>
+                                <ul class="pagination justify-content-center m-0">
+                                    <li class="page-item" th:classappend="${cotizaciones.first} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1})}">Anterior</a>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <span class="page-link" th:text="'Pág ' + (${currentPage + 1})"></span>
+                                    </li>
+                                    <li class="page-item" th:classappend="${cotizaciones.last} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage + 1})}">Siguiente</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal fade" id="modalDetalleCoti">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-navy">
+                    <h4 class="modal-title">Detalle de Cotización</h4>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body" id="modalCotiBody">
+                    <div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
-
-        <div class="text-right mt-2">
-            <button class="btn btn-success btn-sm" 
-                    th:onclick="enviarWhatsappDesdeModal([[${cotizacion.clienteNombre}]], [[${cotizacion.serie}]], [[${cotizacion.numero}]], [[${cotizacion.total}]], [[${cotizacion.clienteTelefono}]])">
-                <i class="fab fa-whatsapp"></i> Enviar
-            </button>
-            
-            <a th:href="@{/cotizaciones/imprimir/{id}(id=${cotizacion.id})}" target="_blank" class="btn btn-default btn-sm">
-                <i class="fas fa-print"></i> PDF
-            </a>
-        </div>
     </div>
+
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+    // Lógica para abrir el Modal de Detalle
+    $(document).ready(function() {
+        $(".btn-detalle").click(function() {
+            var id = $(this).data("id");
+            $("#modalCotiBody").load("/cotizaciones/detalle/" + id);
+            $("#modalDetalleCoti").modal("show");
+        });
+    });
+
+    // Función PDF en Popup
+    function abrirPdf(id) {
+        window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
+    }
+
+    // Función WhatsApp (Usada tanto en la tabla como en el modal)
+    function enviarWhatsapp(nombre, serie, numero, total, telefono) {
+        enviarWhatsappDesdeModal(nombre, serie, numero, total, telefono);
+    }
+
+    // Función unificada (para que el modal no falle)
+    function enviarWhatsappDesdeModal(nombre, serie, numero, total, telefono) {
+        let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
+        mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
+        mensaje += `Quedamos atentos a su confirmación.`;
+
+        if (telefono && telefono !== "null" && telefono.trim() !== "") {
+            let url = `https://web.whatsapp.com/send?phone=51${telefono}&text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        } else {
+            Swal.fire({
+                title: 'Ingresar Número de WhatsApp',
+                input: 'text',
+                inputLabel: 'El cliente no tiene número. Ingrese uno:',
+                inputPlaceholder: '999888777',
+                showCancelButton: true,
+                confirmButtonText: 'Enviar'
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    let num = result.value;
+                    let url = `https://web.whatsapp.com/send?phone=51${num}&text=${encodeURIComponent(mensaje)}`;
+                    window.open(url, '_blank');
+                }
+            });
+        }
+    }
+
+    function confirmarVenta(id) {
+        Swal.fire({
+            title: 'Convertir a Venta',
+            text: "¿Generar Boleta o Factura?",
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: 'BOLETA',
+            denyButtonText: 'FACTURA',
+            confirmButtonColor: '#28a745',
+            denyButtonColor: '#17a2b8'
+        }).then((result) => {
+            if (result.isConfirmed || result.isDenied) {
+                let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+                
+                $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                    Swal.fire('¡Vendido!', `Se generó la venta ID: ${resp.ventaId}`, 'success')
+                        .then(() => location.reload());
+                }).fail(function(err) {
+                    Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+                });
+            }
+        });
+    }
+</script>
 </body>
 </html>

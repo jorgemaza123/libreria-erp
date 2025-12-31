@@ -1,140 +1,300 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Punto de Venta</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <style>
-        .total-display { font-size: 2.5rem; font-weight: bold; color: #28a745; text-align: right; }
-        .table-vta th, .table-vta td { vertical-align: middle; }
-    </style>
-</head>
-<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
-<div class="wrapper">
-
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
-    </nav>
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="/productos" class="nav-link"><i class="nav-icon fas fa-box"></i><p>Inventario</p></a></li>
-                    <li class="nav-item"><a href="/ventas/nueva" class="nav-link active"><i class="nav-icon fas fa-cash-register"></i><p>Punto de Venta</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse"> <div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='pos')}"></aside>
 
     <div class="content-wrapper">
-        <section class="content p-3">
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="card card-primary card-outline">
-                        <div class="card-header">
-    <div class="input-group mb-3">
-        <div class="input-group-prepend">
-            <span class="input-group-text"><i class="fas fa-barcode"></i></span>
-        </div>
-        <input type="text" id="inputScan" class="form-control form-control-lg" placeholder="Escanear Código de Barras (ENTER)" autofocus>
-    </div>
+        <section class="content-header">
+            <div class="container-fluid"><h1>Punto de Venta (POS)</h1></div>
+        </section>
 
-    <div class="form-group">
-        <label>Búsqueda Manual (Nombre / Categoría)</label>
-        <div class="input-group">
-            <select id="selectProducto" class="form-control" style="width: 85%;"></select>
-            <div class="input-group-append">
-                <button class="btn btn-success" type="button" onclick="agregarSeleccionado()">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-                        <div class="card-body table-responsive p-0" style="height: 400px;">
-                            <table class="table table-head-fixed text-nowrap table-vta">
-                                <thead>
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th width="100">Precio</th>
-                                        <th width="100">Cant.</th>
-                                        <th width="100">Subtotal</th>
-                                        <th width="50"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaVentas">
-                                    </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header bg-navy">
-                            <h3 class="card-title">Datos del Comprobante</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label>Tipo Comprobante</label>
-                                <select id="tipoComprobante" class="form-control">
-                                    <option value="BOLETA">BOLETA DE VENTA</option>
-                                    <option value="FACTURA">FACTURA ELECTRÓNICA</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Cliente (DNI / RUC)</label>
-                                <div class="input-group">
-                                    <input type="text" id="clienteDoc" class="form-control" placeholder="Número Documento">
-                                    <span class="input-group-append">
-                                        <button type="button" class="btn btn-info btn-flat"><i class="fas fa-search"></i></button>
-                                    </span>
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row">
+                    
+                    <div class="col-md-8">
+                        <div class="card card-primary card-outline" style="height: 100%;">
+                            <div class="card-header border-0">
+                                <div class="row">
+                                    <div class="col-8">
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>
+                                            <input type="text" id="busqueda" class="form-control form-control-lg" list="listaProd" placeholder="Escanear código o escribir nombre..." autofocus>
+                                            <datalist id="listaProd">
+                                                <option th:each="p : ${productos}" 
+                                                        th:value="${p.codigoBarra} + ' - ' + ${p.nombre}" 
+                                                        th:data-id="${p.id}"></option>
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 text-right">
+                                        <h3 class="m-0 font-weight-bold text-success" id="totalPantalla">S/ 0.00</h3>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <input type="text" id="clienteNombre" class="form-control" placeholder="Nombre / Razón Social">
-                            </div>
-                             <div class="form-group">
-                                <input type="text" id="clienteDireccion" class="form-control" placeholder="Dirección (Solo Factura)">
-                            </div>
                             
-                            <hr>
-                            <div class="d-flex justify-content-between">
-                                <span>Op. Gravada:</span>
-                                <span id="lblGravada">S/ 0.00</span>
+                            <div class="card-body table-responsive p-0">
+                                <table class="table table-striped table-valign-middle">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th class="text-center" width="10%">Cant.</th>
+                                            <th class="text-right" width="20%">Precio</th>
+                                            <th class="text-right" width="20%">Subtotal</th>
+                                            <th width="5%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyCarrito">
+                                        </tbody>
+                                </table>
                             </div>
-                            <div class="d-flex justify-content-between">
-                                <span>IGV (18%):</span>
-                                <span id="lblIgv">S/ 0.00</span>
+
+                            <div class="card-footer">
+                                <div class="row">
+    <div class="col-md-4">
+        <select id="tipoComprobante" class="form-control">
+            <option value="BOLETA">BOLETA</option>
+            <option value="FACTURA">FACTURA</option>
+            <option value="NOTA_VENTA">NOTA VENTA</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <input type="text" id="clienteDoc" class="form-control" placeholder="DNI / RUC">
+    </div>
+    <div class="col-md-4">
+        <input type="text" id="cliente" class="form-control" placeholder="Nombre Cliente">
+    </div>
+</div>
+<div class="row mt-2">
+    <div class="col-12 text-right">
+        <button class="btn btn-app bg-success" onclick="procesarVenta()">
+            <i class="fas fa-cash-register"></i> COBRAR
+        </button>
+        <button class="btn btn-app bg-danger" onclick="limpiar()">
+            <i class="fas fa-trash"></i> LIMPIAR
+        </button>
+    </div>
+</div>
                             </div>
-                            <div class="total-display mt-2" id="lblTotal">
-                                S/ 0.00
-                            </div>
-                            
-                            <button class="btn btn-success btn-block btn-lg mt-3" id="btnProcesar" onclick="procesarVenta()">
-                                <i class="fas fa-money-bill-wave"></i> COBRAR (F10)
-                            </button>
                         </div>
                     </div>
+
+                    <div class="col-md-4">
+                        <div class="card card-widget widget-user">
+                            <div class="widget-user-header bg-info">
+                                <h5 class="widget-user-username" id="visorNombre">Seleccione un producto</h5>
+                                <h6 class="widget-user-desc" id="visorMarca">-</h6>
+                            </div>
+                            <div class="widget-user-image">
+                                <img class="img-circle elevation-2" id="visorImagen" src="https://via.placeholder.com/128?text=Libreria" alt="User Avatar" style="width: 90px; height: 90px; object-fit: cover; background: white;">
+                            </div>
+                            <div class="card-footer p-0">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item">
+                                        <a href="#" class="nav-link">
+                                            Precio Público <span class="float-right badge bg-primary" id="visorPrecio">S/ 0.00</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a href="#" class="nav-link">
+                                            Stock Disponible <span class="float-right badge bg-success" id="visorStock">0</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a href="#" class="nav-link">
+                                            Ubicación <span class="float-right text-muted" id="visorUbicacion">-</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                                <div class="p-3">
+                                    <label>Cantidad a Vender:</label>
+                                    <div class="input-group mb-3">
+                                        <input type="number" id="inputCantidad" class="form-control form-control-lg text-center" value="1" min="1">
+                                        <div class="input-group-append">
+                                            <button class="btn btn-success" type="button" onclick="agregarAlCarrito()">
+                                                <i class="fas fa-plus"></i> AGREGAR
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-danger" id="msgStock"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </section>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    let productoActual = null;
+    let carrito = [];
 
-<script src="/js/ventas.js"></script>
+    // 1. DETECTAR SELECCIÓN EN BUSCADOR
+    document.getElementById('busqueda').addEventListener('input', function(e) {
+        let val = this.value;
+        let opts = document.getElementById('listaProd').childNodes;
+        for (let i = 0; i < opts.length; i++) {
+            if (opts[i].value === val) {
+                cargarProducto(opts[i].getAttribute('data-id'));
+                this.value = ''; // Limpiar barra
+                break;
+            }
+        }
+    });
 
+    // 2. CARGAR DATOS EN EL VISOR DERECHO
+    function cargarProducto(id) {
+        $.get("/ventas/api/producto/" + id, function(data) {
+            productoActual = data;
+            
+            // Llenar tarjeta visual
+            $("#visorNombre").text(data.nombre);
+            $("#visorMarca").text(data.marca || 'Genérico');
+            $("#visorPrecio").text('S/ ' + data.precio.toFixed(2));
+            $("#visorStock").text(data.stock);
+            $("#visorUbicacion").text(data.ubicacion);
+            
+            // Imagen
+            if(data.imagen) {
+                $("#visorImagen").attr("src", "/images/" + data.imagen);
+            } else {
+                $("#visorImagen").attr("src", "https://via.placeholder.com/128?text=Sin+Foto");
+            }
+
+            // Foco en cantidad para venta rápida
+            $("#inputCantidad").val(1).focus().select();
+        });
+    }
+
+    // 3. AGREGAR AL CARRITO (CON LÓGICA DE PRECIO)
+    function agregarAlCarrito() {
+        if(!productoActual) return;
+
+        let cant = parseInt($("#inputCantidad").val());
+        if(cant > productoActual.stock) {
+            Swal.fire('Stock Insuficiente', 'Solo quedan ' + productoActual.stock + ' unidades', 'warning');
+            return;
+        }
+
+        // Buscar si ya existe
+        let existente = carrito.find(i => i.id === productoActual.id);
+        if(existente) {
+            existente.cantidad += cant;
+        } else {
+            carrito.push({
+                id: productoActual.id,
+                nombre: productoActual.nombre,
+                precio: productoActual.precio,
+                precioMin: productoActual.precioMinimo, // Guardamos el mínimo permitido
+                cantidad: cant
+            });
+        }
+        dibujarCarrito();
+        $("#busqueda").focus(); // Volver al buscador
+    }
+
+    // 4. DIBUJAR TABLA Y CONTROLAR CAMBIO DE PRECIO
+    function dibujarCarrito() {
+        let html = '';
+        let total = 0;
+        
+        carrito.forEach((item, index) => {
+            let subtotal = item.precio * item.cantidad;
+            total += subtotal;
+            
+            html += `<tr>
+                <td>${item.nombre}</td>
+                <td class="text-center">${item.cantidad}</td>
+                <td class="text-right">
+                    <input type="number" step="0.10" class="form-control form-control-sm text-right" 
+                           value="${item.precio.toFixed(2)}" 
+                           onchange="cambiarPrecio(${index}, this.value)">
+                </td>
+                <td class="text-right font-weight-bold">S/ ${subtotal.toFixed(2)}</td>
+                <td><button class="btn btn-xs btn-danger" onclick="eliminar(${index})"><i class="fas fa-times"></i></button></td>
+            </tr>`;
+        });
+
+        $("#tbodyCarrito").html(html);
+        $("#totalPantalla").text('S/ ' + total.toFixed(2));
+    }
+
+    // 5. LÓGICA DE SEGURIDAD (PRECIO MÍNIMO)
+    async function cambiarPrecio(index, nuevoPrecio) {
+        let item = carrito[index];
+        let precio = parseFloat(nuevoPrecio);
+
+        // Si el precio es menor al mínimo permitido (10% descuento por defecto)
+        if(precio < item.precioMin) {
+            const { value: pass } = await Swal.fire({
+                title: 'AUTORIZACIÓN REQUERIDA',
+                text: 'El precio está por debajo del mínimo permitido. Ingrese clave de Supervisor:',
+                input: 'password',
+                icon: 'warning',
+                showCancelButton: true
+            });
+
+            if (pass === '1234') { // CLAVE QUEMADA POR AHORA (FASE 5 la pondrá en BD)
+                Swal.fire('Autorizado', 'Precio modificado', 'success');
+                item.precio = precio;
+            } else {
+                Swal.fire('Denegado', 'Clave incorrecta. Se restablece el precio.', 'error');
+                item.precio = item.precio; // Restaurar
+            }
+        } else {
+            item.precio = precio;
+        }
+        dibujarCarrito();
+    }
+
+    function eliminar(index) {
+        carrito.splice(index, 1);
+        dibujarCarrito();
+    }
+
+    function limpiar() {
+        carrito = [];
+        dibujarCarrito();
+        $("#cliente").val('');
+    }
+
+    // 6. PROCESAR VENTA FINAL
+    function procesarVenta() {
+        if(carrito.length === 0) return Swal.fire('Error', 'Carrito vacío', 'warning');
+
+        let dto = {
+            clienteNombre: $("#cliente").val() || 'CLIENTE VARIOS',
+            clienteDocumento: $("#clienteDoc").val() || '00000000',
+            tipoComprobante: $("#tipoComprobante").val(),
+            items: carrito.map(i => ({ 
+                productoId: i.id, 
+                cantidad: i.cantidad, 
+                precioVenta: i.precio 
+            }))
+        };
+
+        $.ajax({
+            url: '/ventas/api/guardar',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(dto),
+            success: function(resp) {
+                Swal.fire('¡Venta Exitosa!', 'Comprobante generado', 'success').then(() => {
+                    // Aquí luego pondremos la URL para descargar el XML/PDF SUNAT
+                    limpiar();
+                });
+            },
+            error: function(err) {
+                Swal.fire('Error', err.responseText, 'error');
+            }
+        });
+    }
+</script>
 </body>
 </html>

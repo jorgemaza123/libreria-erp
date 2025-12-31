@@ -25,6 +25,8 @@ public class CajaController {
     public String index(Model model) {
         model.addAttribute("movimientos", cajaService.listarMovimientosHoy());
         model.addAttribute("balance", cajaService.obtenerBalanceHoy());
+        // Pasamos el saldo real acumulado
+        model.addAttribute("saldoTotal", cajaService.calcularSaldoTotal());
         return "caja/index";
     }
 

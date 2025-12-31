@@ -243,10 +243,14 @@
             }
             
             let dto = { 
-                clienteDoc: $('#clienteDoc').val(), 
+                clienteDocumento: $('#clienteDoc').val(), // Antes clienteDoc
                 clienteNombre: $('#clienteNombre').val(), 
                 clienteTelefono: $('#clienteTelefono').val(),
-                items: carrito 
+                items: carrito.map(i => ({
+                    productoId: i.productoId,
+                    cantidad: i.cantidad,
+                    precioVenta: i.precio // <--- AQUÍ ESTABA EL ERROR (El DTO espera precioVenta)
+                }))
             };
             
             let idEdicion = $('#idEdicion').val();

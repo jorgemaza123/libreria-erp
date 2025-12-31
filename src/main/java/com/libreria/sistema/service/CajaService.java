@@ -31,15 +31,34 @@ public class CajaService {
 
     public Map<String, BigDecimal> obtenerBalanceHoy() {
         LocalDateTime inicioDia = LocalDate.now().atStartOfDay();
+        // Usamos COALESCE en SQL o manejamos nulls aquí para evitar errores si no hay movs
         BigDecimal ingresos = cajaRepository.sumarIngresos(inicioDia);
         BigDecimal egresos = cajaRepository.sumarEgresos(inicioDia);
-        BigDecimal saldo = ingresos.subtract(egresos);
+        
+        if (ingresos == null) ingresos = BigDecimal.ZERO;
+        if (egresos == null) egresos = BigDecimal.ZERO;
+        
+        BigDecimal saldoHoy = ingresos.subtract(egresos);
 
         return Map.of(
             "ingresos", ingresos,
             "egresos", egresos,
-            "saldo", saldo
+            "saldoHoy", saldoHoy // Saldo solo de hoy
         );
+    }
+
+    // --- NUEVO: SALDO REAL EN CAJÓN (HISTÓRICO) ---
+    public BigDecimal calcularSaldoTotal() {
+        List<MovimientoCaja> todos = cajaRepository.findAll();
+        BigDecimal saldo = BigDecimal.ZERO;
+        for (MovimientoCaja m : todos) {
+            if ("INGRESO".equals(m.getTipo())) {
+                saldo = saldo.add(m.getMonto());
+            } else {
+                saldo = saldo.subtract(m.getMonto());
+            }
+        }
+        return saldo;
     }
 
     @Transactional
@@ -49,8 +68,12 @@ public class CajaService {
         mov.setConcepto(concepto.toUpperCase());
         mov.setMonto(monto);
         
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        usuarioRepository.findByUsername(username).ifPresent(mov::setUsuario);
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            usuarioRepository.findByUsername(username).ifPresent(mov::setUsuario);
+        } catch (Exception e) {
+            // Usuario null si es automático
+        }
 
         cajaRepository.save(mov);
     }

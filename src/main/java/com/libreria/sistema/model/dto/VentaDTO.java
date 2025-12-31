@@ -6,22 +6,21 @@ import java.util.List;
 
 @Data
 public class VentaDTO {
-    // Cabecera
-    private String tipoComprobante;
-    private String clienteDoc;     
+    // Datos básicos que vienen del POS
     private String clienteNombre;
-    private String clienteTelefono; // <--- NUEVO CAMPO
-    private String clienteDireccion;
-    private String clienteTipoDoc; 
+    private String clienteDocumento; // DNI o RUC
+    private String tipoComprobante;  // BOLETA, FACTURA
     
-    // Lista de productos
-    private List<ItemDTO> items;
+    // FALTABA ESTE CAMPO (Causa del error 1)
+    private String clienteTelefono; 
+    
+    // Lista de productos del carrito
+    private List<DetalleDTO> items;
 
     @Data
-    public static class ItemDTO {
+    public static class DetalleDTO {
         private Long productoId;
         private BigDecimal cantidad;
-        private BigDecimal precio;
-        private String nombre;
+        private BigDecimal precioVenta; // Precio Final (Con IGV)
     }
 }

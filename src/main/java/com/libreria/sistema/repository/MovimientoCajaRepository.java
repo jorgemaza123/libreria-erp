@@ -3,20 +3,23 @@ package com.libreria.sistema.repository;
 import com.libreria.sistema.model.MovimientoCaja;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, Long> {
 
-    // Listar movimientos del día (desde las 00:00 hasta ahora)
-    List<MovimientoCaja> findByFechaAfterOrderByFechaDesc(LocalDateTime inicioDia);
+    // Listar movimientos desde una fecha (para ver los de hoy)
+    List<MovimientoCaja> findByFechaAfterOrderByFechaDesc(LocalDateTime fecha);
 
-    // Sumar Ingresos
-    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'INGRESO' AND m.fecha >= :inicio")
-    BigDecimal sumarIngresos(LocalDateTime inicio);
+    // CONSULTA 1: Sumar todos los INGRESOS desde una fecha
+    // COALESCE sirve para que si no hay nada, devuelva 0 en vez de null
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'INGRESO' AND m.fecha >= :fecha")
+    BigDecimal sumarIngresos(@Param("fecha") LocalDateTime fecha);
 
-    // Sumar Egresos
-    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'EGRESO' AND m.fecha >= :inicio")
-    BigDecimal sumarEgresos(LocalDateTime inicio);
+    // CONSULTA 2: Sumar todos los EGRESOS desde una fecha
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'EGRESO' AND m.fecha >= :fecha")
+    BigDecimal sumarEgresos(@Param("fecha") LocalDateTime fecha);
 }

@@ -109,15 +109,10 @@
               </a>
             </li>
             <li class="nav-item">
-              <a
-                href="/cotizaciones/historial"
-                class="nav-link"
-                th:classappend="${active == 'historial_ventas' ? 'active' : ''}"
-              >
-                <i class="nav-icon fas fa-history"></i>
-                <p>Historial Ventas</p>
-              </a>
-            </li>
+    <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'historial_ventas' ? 'active' : ''}">
+        <i class="nav-icon fas fa-history"></i><p>Historial Ventas</p>
+    </a>
+</li>
 
             <li class="nav-header">LOGÍSTICA</li>
             <li class="nav-item">
@@ -163,11 +158,10 @@
 
             <li class="nav-header">FINANZAS</li>
             <li class="nav-item">
-              <a href="#" class="nav-link">
-                <i class="nav-icon fas fa-wallet"></i>
-                <p>Caja Chica / Gastos</p>
-              </a>
-            </li>
+    <a href="/caja" class="nav-link" th:classappend="${active == 'caja' ? 'active' : ''}">
+        <i class="nav-icon fas fa-cash-register"></i><p>Caja Chica / Gastos</p>
+    </a>
+</li>
             <li class="nav-item">
               <a
                 href="/reportes"

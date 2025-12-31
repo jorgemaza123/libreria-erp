@@ -2,11 +2,7 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.VentaDTO;
-import com.libreria.sistema.repository.CorrelativoRepository;
-import com.libreria.sistema.repository.CotizacionRepository;
-import com.libreria.sistema.repository.ProductoRepository;
-import com.libreria.sistema.repository.UsuarioRepository;
-import com.libreria.sistema.repository.VentaRepository;
+import com.libreria.sistema.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,29 +11,34 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 public class CotizacionService {
 
     private final CotizacionRepository cotizacionRepository;
     private final ProductoRepository productoRepository;
-    private final CorrelativoRepository correlativoRepository;
-    private final UsuarioRepository usuarioRepository;
     private final VentaRepository ventaRepository;
-    private final CajaService cajaService;
+    private final CajaRepository cajaRepository;
+    private final KardexRepository kardexRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final CorrelativoRepository correlativoRepository;
 
-    public CotizacionService(CotizacionRepository cotizacionRepository, 
+    public CotizacionService(CotizacionRepository cotizacionRepository,
                              ProductoRepository productoRepository,
-                             CorrelativoRepository correlativoRepository, 
-                             UsuarioRepository usuarioRepository,
                              VentaRepository ventaRepository,
-                             CajaService cajaService) {
+                             CajaRepository cajaRepository,
+                             KardexRepository kardexRepository,
+                             UsuarioRepository usuarioRepository,
+                             CorrelativoRepository correlativoRepository) {
         this.cotizacionRepository = cotizacionRepository;
         this.productoRepository = productoRepository;
-        this.correlativoRepository = correlativoRepository;
-        this.usuarioRepository = usuarioRepository;
         this.ventaRepository = ventaRepository;
-        this.cajaService = cajaService;
+        this.cajaRepository = cajaRepository;
+        this.kardexRepository = kardexRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.correlativoRepository = correlativoRepository;
     }
 
     public Page<Cotizacion> listar(Pageable pageable) {
@@ -52,15 +53,19 @@ public class CotizacionService {
     public Cotizacion crearCotizacion(VentaDTO dto) throws Exception {
         Cotizacion c = new Cotizacion();
         
+        // --- CORRELATIVO PARA COTIZACIÓN ---
         Correlativo correlativo = correlativoRepository.findByCodigoAndSerie("COTIZACION", "C001")
-                .orElseThrow(() -> new Exception("No existe serie C001 configurada"));
-        
-        c.setSerie("C001");
-        c.setNumero(correlativo.getUltimoNumero() + 1);
-        correlativo.setUltimoNumero(c.getNumero());
+                .orElse(new Correlativo("COTIZACION", "C001", 0));
+
+        Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
+        correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
-        c.setClienteDocumento(dto.getClienteDoc());
+        c.setSerie("C001");
+        c.setNumero(nuevoNumero);
+        // -----------------------------------
+
+        c.setClienteDocumento(dto.getClienteDocumento());
         c.setClienteNombre(dto.getClienteNombre());
         c.setClienteTelefono(dto.getClienteTelefono());
         
@@ -69,21 +74,20 @@ public class CotizacionService {
 
         BigDecimal total = BigDecimal.ZERO;
 
-        for (VentaDTO.ItemDTO item : dto.getItems()) {
+        for (VentaDTO.DetalleDTO item : dto.getItems()) {
             Producto p = productoRepository.findById(item.getProductoId())
                     .orElseThrow(() -> new Exception("Producto no encontrado"));
 
             DetalleCotizacion det = new DetalleCotizacion();
             det.setCotizacion(c);
             det.setProducto(p);
-            if (item.getNombre() != null && !item.getNombre().isEmpty()) {
-                det.setDescripcion(item.getNombre());
-            } else {
-                det.setDescripcion(p.getNombre());
-            }
-            det.setCantidad(item.getCantidad());
-            det.setPrecioUnitario(item.getPrecio());
-            det.setSubtotal(item.getCantidad().multiply(item.getPrecio()));
+            det.setDescripcion(p.getNombre());
+            
+            // Asignación directa BigDecimal
+            det.setCantidad(item.getCantidad()); 
+            det.setPrecioUnitario(item.getPrecioVenta());
+            
+            det.setSubtotal(det.getCantidad().multiply(det.getPrecioUnitario()));
 
             c.getItems().add(det);
             total = total.add(det.getSubtotal());
@@ -99,32 +103,27 @@ public class CotizacionService {
                 .orElseThrow(() -> new Exception("Cotización no encontrada"));
 
         if (!"EMITIDO".equals(c.getEstado())) {
-            throw new Exception("No se puede editar una cotización ya vendida o anulada.");
+            throw new Exception("No se puede editar una cotización ya procesada.");
         }
 
-        c.setClienteDocumento(dto.getClienteDoc());
+        c.setClienteDocumento(dto.getClienteDocumento());
         c.setClienteNombre(dto.getClienteNombre());
         c.setClienteTelefono(dto.getClienteTelefono());
         c.getItems().clear();
 
         BigDecimal total = BigDecimal.ZERO;
         
-        for (VentaDTO.ItemDTO item : dto.getItems()) {
+        for (VentaDTO.DetalleDTO item : dto.getItems()) {
             Producto p = productoRepository.findById(item.getProductoId())
-                    .orElseThrow(() -> new Exception("Producto no encontrado ID: " + item.getProductoId()));
+                    .orElseThrow(() -> new Exception("Producto no encontrado"));
 
             DetalleCotizacion det = new DetalleCotizacion();
             det.setCotizacion(c);
             det.setProducto(p);
-            
-            String desc = (item.getProductoId() != null && p.getCodigoInterno().equals("SERV-001")) 
-                          ? "SERVICIO MANUAL" 
-                          : p.getNombre();
-            
-            det.setDescripcion(desc);
+            det.setDescripcion(p.getNombre());
             det.setCantidad(item.getCantidad());
-            det.setPrecioUnitario(item.getPrecio());
-            det.setSubtotal(item.getCantidad().multiply(item.getPrecio()));
+            det.setPrecioUnitario(item.getPrecioVenta());
+            det.setSubtotal(item.getCantidad().multiply(item.getPrecioVenta()));
 
             c.getItems().add(det);
             total = total.add(det.getSubtotal());
@@ -140,7 +139,7 @@ public class CotizacionService {
                 .orElseThrow(() -> new Exception("Cotización no encontrada"));
 
         if (!"EMITIDO".equals(c.getEstado())) {
-            throw new Exception("Esta cotización ya fue procesada o vencida.");
+            throw new Exception("Esta cotización ya fue procesada.");
         }
 
         Venta v = new Venta();
@@ -148,65 +147,99 @@ public class CotizacionService {
         v.setClienteDenominacion(c.getClienteNombre());
         v.setClienteTipoDocumento(tipoComprobante.equals("FACTURA") ? "6" : "1");
         
+        // --- CORRELATIVO PARA VENTA DESDE COTIZACIÓN ---
         String serie = tipoComprobante.equals("FACTURA") ? "F001" : "B001";
-        Correlativo corr = correlativoRepository.findByCodigoAndSerie(tipoComprobante, serie)
-                .orElseThrow(() -> new Exception("Serie no configurada"));
         
+        Correlativo correlativo = correlativoRepository.findByCodigoAndSerie(tipoComprobante, serie)
+                .orElse(new Correlativo(tipoComprobante, serie, 0));
+
+        Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
+        correlativo.setUltimoNumero(nuevoNumero);
+        correlativoRepository.save(correlativo);
+
         v.setTipoComprobante(tipoComprobante);
         v.setSerie(serie);
-        v.setNumero(corr.getUltimoNumero() + 1);
-        corr.setUltimoNumero(v.getNumero());
-        correlativoRepository.save(corr);
+        v.setNumero(nuevoNumero);
+        // -----------------------------------------------
 
+        v.setFechaEmision(LocalDate.now());
+        v.setFechaVencimiento(LocalDate.now());
+        v.setMoneda("PEN");
+        v.setTipoOperacion("0101");
+        v.setEstado("EMITIDO");
         v.setUsuario(c.getUsuario());
 
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal totalVenta = BigDecimal.ZERO;
+        BigDecimal totalGravada = BigDecimal.ZERO;
+        BigDecimal totalIgv = BigDecimal.ZERO;
 
         for (DetalleCotizacion itemCoti : c.getItems()) {
             Producto p = itemCoti.getProducto();
 
-            if (!"SERV-001".equals(p.getCodigoInterno())) {
-                if (p.getStockActual() < itemCoti.getCantidad().intValue()) {
-                    throw new Exception("Stock insuficiente para convertir: " + p.getNombre());
-                }
-                p.setStockActual(p.getStockActual() - itemCoti.getCantidad().intValue());
-                productoRepository.save(p);
+            // Validar stock
+            if (p.getStockActual() < itemCoti.getCantidad().intValue()) {
+                throw new Exception("Stock insuficiente: " + p.getNombre());
             }
+            
+            // Bajar Stock
+            p.setStockActual(p.getStockActual() - itemCoti.getCantidad().intValue());
+            productoRepository.save(p);
 
+            // Registrar Kardex
+            Kardex k = new Kardex();
+            k.setProducto(p);
+            k.setTipo("SALIDA");
+            k.setMotivo("VENTA COTIZ. " + v.getSerie() + "-" + v.getNumero());
+            k.setCantidad(itemCoti.getCantidad().intValue());
+            k.setStockAnterior(p.getStockActual() + itemCoti.getCantidad().intValue());
+            k.setStockActual(p.getStockActual());
+            kardexRepository.save(k);
+
+            // Crear Detalle Venta
             DetalleVenta dv = new DetalleVenta();
             dv.setVenta(v);
             dv.setProducto(p);
             dv.setDescripcion(itemCoti.getDescripcion()); 
-            dv.setCantidad(itemCoti.getCantidad());
-            dv.setPrecioUnitario(itemCoti.getPrecioUnitario());
-            
-            BigDecimal valorUnitario = itemCoti.getPrecioUnitario().divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            dv.setCantidad(itemCoti.getCantidad()); 
+            dv.setUnidadMedida("NIU");
+
+            BigDecimal precioFinal = itemCoti.getPrecioUnitario();
+            BigDecimal cantidad = itemCoti.getCantidad();
+            BigDecimal subtotal = precioFinal.multiply(cantidad);
+
+            BigDecimal valorUnitario = precioFinal.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            BigDecimal valorVentaItem = valorUnitario.multiply(cantidad);
+            BigDecimal igvItem = subtotal.subtract(valorVentaItem);
+
+            dv.setPrecioUnitario(precioFinal);
             dv.setValorUnitario(valorUnitario);
-            dv.setSubtotal(itemCoti.getSubtotal());
+            dv.setSubtotal(subtotal);
+            dv.setPorcentajeIgv(new BigDecimal("18.00"));
+            dv.setCodigoTipoAfectacionIgv("10");
 
             v.getItems().add(dv);
-            total = total.add(dv.getSubtotal());
+            
+            totalVenta = totalVenta.add(subtotal);
+            totalGravada = totalGravada.add(valorVentaItem);
+            totalIgv = totalIgv.add(igvItem);
         }
 
-        BigDecimal gravada = total.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP);
-        v.setTotal(total);
-        v.setTotalGravada(gravada);
-        v.setTotalIgv(total.subtract(gravada));
+        v.setTotal(totalVenta);
+        v.setTotalGravada(totalGravada);
+        v.setTotalIgv(totalIgv);
 
         ventaRepository.save(v);
         
         c.setEstado("CONVERTIDO_VENTA");
         cotizacionRepository.save(c);
 
-        cajaService.registrarMovimiento(
-            "INGRESO", 
-            "VENTA (Desde Cotiz.): " + v.getTipoComprobante() + " " + v.getSerie() + "-" + v.getNumero(), 
-            v.getTotal()
-        );
+        MovimientoCaja caja = new MovimientoCaja();
+        caja.setFecha(LocalDateTime.now());
+        caja.setTipo("INGRESO");
+        caja.setConcepto("VENTA COTIZ. " + v.getSerie() + "-" + v.getNumero());
+        caja.setMonto(totalVenta);
+        cajaRepository.save(caja);
 
         return v.getId();
     }
-
-    
-
 }
