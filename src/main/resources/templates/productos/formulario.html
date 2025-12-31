@@ -1,29 +1,12 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Producto | Mantenimiento</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-</head>
+<head th:replace="~{fragments/layout :: head}"></head>
+
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
     
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a></li></ul>
-    </nav>
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/productos" class="nav-link active"><i class="nav-icon fas fa-box"></i><p>Volver a Lista</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='inventario')}"></aside>
 
     <div class="content-wrapper">
         <section class="content-header">
@@ -32,106 +15,207 @@
 
         <section class="content">
             <div class="container-fluid">
-                <div class="card card-primary">
-                    <div class="card-header"><h3 class="card-title">Datos del Producto</h3></div>
+                <div class="card card-primary card-outline">
                     
-                    <form th:action="@{/productos/guardar}" th:object="${producto}" method="post">
+                    <form th:action="@{/productos/guardar}" th:object="${producto}" method="post" enctype="multipart/form-data">
                         <input type="hidden" th:field="*{id}" />
                         <input type="hidden" th:field="*{activo}" />
-
                         <div class="card-body">
                             
                             <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Cód. Barras (Scan) *</label>
-                                        <input type="text" class="form-control" th:field="*{codigoBarra}"  placeholder="Escanea aquí...">
+                                <div class="col-md-3 text-center">
+                                    <label>Imagen del Producto</label>
+                                    <div class="mt-2 mb-3 border rounded p-2 bg-light">
+                                        <img th:if="${producto.imagen != null}" th:src="@{'/images/' + ${producto.imagen}}" 
+                                             class="img-fluid" style="max-height: 180px; object-fit: contain;">
+                                        <img th:unless="${producto.imagen != null}" src="https://via.placeholder.com/150?text=Sin+Foto" 
+                                             class="img-fluid" style="max-height: 180px; opacity: 0.5;">
+                                    </div>
+                                    <div class="custom-file text-left">
+                                        <input type="file" name="file" class="custom-file-input" id="customFile" accept="image/*">
+                                        <label class="custom-file-label" for="customFile" data-browse="Buscar">Subir Foto...</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Cód. Interno</label>
-                                        <input type="text" class="form-control" th:field="*{codigoInterno}" placeholder="Opcional">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Nombre del Producto *</label>
-                                        <input type="text" class="form-control" th:field="*{nombre}" required style="text-transform: uppercase;">
+                                
+                                <div class="col-md-9">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Cód. Barras (Scan)</label>
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div>
+                                                    <input type="text" class="form-control" th:field="*{codigoBarra}" placeholder="Escanea aquí...">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Cód. Interno (SKU)</label>
+                                                <input type="text" class="form-control" th:field="*{codigoInterno}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label>Categoría</label>
+                                                <input type="text" class="form-control" th:field="*{categoria}" list="listaCategorias">
+                                                <datalist id="listaCategorias">
+                                                    <option value="UTILES ESCOLARES"><option value="OFICINA">
+                                                    <option value="PAPELERÍA"><option value="TECNOLOGÍA">
+                                                    <option value="ARTE Y DISEÑO"><option value="REGALOS">
+                                                </datalist>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Nombre del Producto *</label>
+                                                <input type="text" class="form-control form-control-lg font-weight-bold" th:field="*{nombre}" required style="text-transform: uppercase;">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label>Descripción Extendida</label>
+                                                <textarea class="form-control" th:field="*{descripcion}" rows="2" placeholder="Detalles adicionales..."></textarea>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="row bg-light p-2 mb-3 rounded">
-                                <div class="col-md-4">
+                            <hr>
+
+                            <h5 class="text-info"><i class="fas fa-info-circle"></i> Especificaciones</h5>
+                            <div class="row bg-light p-3 rounded mb-3">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="text-primary">Precio Compra</label>
-                                        <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}">
+                                        <label>Marca</label>
+                                        <input type="text" class="form-control" th:field="*{marca}" placeholder="Ej: Faber Castell">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="text-success">Precio Venta *</label>
-                                        <input type="number" step="0.01" class="form-control" th:field="*{precioVenta}" required>
+                                        <label>Modelo</label>
+                                        <input type="text" class="form-control" th:field="*{modelo}">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-2">
                                     <div class="form-group">
-                                        <label class="text-info">Categoría</label>
-                                        <input type="text" class="form-control" th:field="*{categoria}" list="listaCategorias">
-                                        <datalist id="listaCategorias">
-                                            <option value="UTILES ESCOLARES"><option value="OFICINA">
-                                            <option value="PAPELERIA"><option value="LIBROS">
-                                        </datalist>
+                                        <label>Color</label>
+                                        <input type="text" class="form-control" th:field="*{color}">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Generación</label>
+                                        <input type="text" class="form-control" th:field="*{generacion}">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Tipo</label>
+                                        <select class="form-control" th:field="*{tipo}">
+                                            <option value="ESTANDAR">Estándar</option>
+                                            <option value="PREMIUM">Premium</option>
+                                            <option value="ECONOMICO">Económico</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
 
+                            <h5 class="text-success"><i class="fas fa-coins"></i> Precios y Stock</h5>
                             <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="text-secondary">Precio Compra</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="text-success font-weight-bold">Precio Venta (Público) *</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="text-primary">Precio Mayorista</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" step="0.01" class="form-control" th:field="*{precioMayorista}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Afectación IGV</label>
+                                        <select class="form-control" th:field="*{tipoAfectacionIgv}">
+                                            <option value="GRAVADO">GRAVADO (18%)</option>
+                                            <option value="EXONERADO">EXONERADO</option>
+                                            <option value="INAFECTO">INAFECTO</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-2">
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>Stock Actual</label>
                                         <input type="number" class="form-control" th:field="*{stockActual}" required>
                                     </div>
                                 </div>
-                                
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label class="text-danger">Stock Mínimo</label>
-                                        <input type="number" class="form-control border-danger" th:field="*{stockMinimo}" required>
+                                        <input type="number" class="form-control" th:field="*{stockMinimo}">
                                     </div>
                                 </div>
-
                                 <div class="col-md-3">
                                     <div class="form-group">
-                                        <label>Unidad</label>
+                                        <label>Unidad Medida</label>
                                         <select class="form-control" th:field="*{unidadMedida}">
                                             <option value="UNIDAD">UNIDAD</option>
                                             <option value="PAQUETE">PAQUETE</option>
                                             <option value="CAJA">CAJA</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Afectación</label>
-                                        <select class="form-control" th:field="*{tipoAfectacionIgv}">
-                                            <option value="GRAVADO">GRAVADO</option>
-                                            <option value="EXONERADO">EXONERADO</option>
+                                            <option value="METRO">METRO</option>
+                                            <option value="LITRO">LITRO</option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="form-group">
-                                <label>Descripción</label>
-                                <textarea class="form-control" th:field="*{descripcion}" rows="2"></textarea>
+                            <hr>
+                            <h6 class="text-muted">Ubicación Física en Almacén</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-layer-group"></i> Estante</span></div>
+                                        <input type="text" class="form-control" th:field="*{ubicacionEstante}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-ellipsis-h"></i> Fila</span></div>
+                                        <input type="text" class="form-control" th:field="*{ubicacionFila}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-columns"></i> Columna</span></div>
+                                        <input type="text" class="form-control" th:field="*{ubicacionColumna}">
+                                    </div>
+                                </div>
                             </div>
 
                         </div>
                         <div class="card-footer text-right">
                             <a href="/productos" class="btn btn-default">Cancelar</a>
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Producto</button>
                         </div>
                     </form>
                 </div>
@@ -140,9 +224,12 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-<script src="/js/ux-teclado.js"></script>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.min.js"></script>
+<script>
+    $(document).ready(function () {
+        bsCustomFileInput.init();
+    });
+</script>
 </body>
 </html>

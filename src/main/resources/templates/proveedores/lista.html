@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='proveedores')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6"><h1>Proveedores</h1></div>
+                    <div class="col-sm-6 text-right">
+                        <a href="/proveedores/nuevo" class="btn btn-navy"><i class="fas fa-plus"></i> Nuevo Proveedor</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <span th:text="${success}"></span>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <table id="tablaProveedores" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>RUC</th>
+                                    <th>Razón Social</th>
+                                    <th>Teléfono</th>
+                                    <th>Contacto</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="p : ${proveedores}">
+                                    <td th:text="${p.ruc}"></td>
+                                    <td th:text="${p.razonSocial}"></td>
+                                    <td th:text="${p.telefono}"></td>
+                                    <td th:text="${p.contacto}"></td>
+                                    <td>
+                                        <a th:href="@{/proveedores/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                                        <a th:href="@{/proveedores/eliminar/{id}(id=${p.id})}" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')"><i class="fas fa-trash"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    $(document).ready(function () {
+        $("#tablaProveedores").DataTable({
+            "responsive": true, "autoWidth": false,
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+        });
+    });
+</script>
+</body>
+</html>

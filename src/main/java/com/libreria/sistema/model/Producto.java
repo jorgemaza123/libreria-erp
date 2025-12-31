@@ -14,7 +14,7 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // YA NO ES OBLIGATORIO (nullable = true por defecto)
+    // --- TUS CAMPOS ORIGINALES ---
     @Column(unique = true) 
     private String codigoBarra;
 
@@ -36,7 +36,7 @@ public class Producto {
     private BigDecimal precioVenta;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal precioMayorista;
+    private BigDecimal precioMayorista; // Mantenido
 
     private Integer stockActual;
     private Integer stockMinimo;
@@ -46,18 +46,25 @@ public class Producto {
     private String ubicacionColumna;
     private String ubicacionEstante;
 
-    private String tipoAfectacionIgv; 
+    private String tipoAfectacionIgv; // Mantenido
     private boolean activo = true;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
+
+    // --- NUEVOS CAMPOS (FASE 2) ---
+    private String marca;
+    private String modelo;
+    private String color;
+    private String generacion; 
+    private String tipo;       
+    private String imagen; // Para la foto
 
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
         if (this.stockActual == null) this.stockActual = 0;
-        if (this.stockMinimo == null) this.stockMinimo = 0;
+        if (this.stockMinimo == null) this.stockMinimo = 5; // Tu valor por defecto
         if (this.tipoAfectacionIgv == null) this.tipoAfectacionIgv = "GRAVADO";
-        if(stockMinimo == null) stockMinimo = 5;
     }
 
     @PreUpdate
