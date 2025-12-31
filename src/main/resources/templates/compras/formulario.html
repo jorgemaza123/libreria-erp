@@ -1,210 +1,230 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}"></head>
+
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
+    
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
     <aside th:replace="~{fragments/layout :: sidebar(active='compras')}"></aside>
 
     <div class="content-wrapper">
         <section class="content-header">
-            <div class="container-fluid"><h1>Registro de Compras (Ingreso)</h1></div>
+            <div class="container-fluid"><h1>Registrar Ingreso de Mercadería</h1></div>
         </section>
 
         <section class="content">
             <div class="container-fluid">
-                <div class="card card-navy">
-                    <div class="card-header"><h3 class="card-title">Datos del Documento</h3></div>
-                    <div class="card-body">
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Proveedor</label>
-                                    <select id="proveedor" class="form-control">
-                                        <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.razonSocial}"></option>
+                <form id="formCompra">
+                    <div class="card card-navy">
+                        <div class="card-header"><h3 class="card-title">Datos del Proveedor y Comprobante</h3></div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Proveedor</label>
+                                        <div class="input-group">
+                                            <select class="form-control select2" id="proveedor" required>
+                                                <option value="">Seleccione...</option>
+                                                <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
+                                            </select>
+                                            <div class="input-group-append">
+                                                <a href="/proveedores/nuevo" class="btn btn-success" title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Tipo Doc.</label>
+                                        <select class="form-control" id="tipoDoc">
+                                            <option value="FACTURA">FACTURA</option>
+                                            <option value="BOLETA">BOLETA</option>
+                                            <option value="GUIA">GUÍA REMISIÓN</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Nro. Comprobante</label>
+                                        <input type="text" class="form-control" id="nroDoc" placeholder="Ej: F001-4520" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Observaciones</label>
+                                        <input type="text" class="form-control" id="obs" placeholder="Opcional">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-navy card-outline">
+                        <div class="card-header"><h3 class="card-title">Detalle de Productos</h3></div>
+                        <div class="card-body">
+                            <div class="row mb-3 align-items-end">
+                                <div class="col-md-6">
+                                    <label>Buscar Producto</label>
+                                    <select class="form-control select2" id="productoSelect">
+                                        <option value="">Buscar por nombre o código...</option>
+                                        <option th:each="prod : ${productos}" 
+                                                th:value="${prod.id}" 
+                                                th:data-costo="${prod.precioCompra}"
+                                                th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Tipo Doc.</label>
-                                    <select id="tipoDoc" class="form-control">
-                                        <option value="FACTURA">FACTURA</option>
-                                        <option value="BOLETA">BOLETA</option>
-                                        <option value="GUIA">GUÍA REMISIÓN</option>
-                                    </select>
+                                <div class="col-md-2">
+                                    <label>Costo Unit. (S/)</label>
+                                    <input type="number" step="0.01" class="form-control" id="costoInput" placeholder="0.00">
+                                </div>
+                                <div class="col-md-2">
+                                    <label>Cantidad</label>
+                                    <input type="number" class="form-control" id="cantInput" value="1" min="1">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-success btn-block" onclick="agregarItem()">
+                                        <i class="fas fa-plus"></i> Agregar
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Nº Documento</label>
-                                    <input type="text" id="numDoc" class="form-control" placeholder="Ej: F001-456">
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>Fecha</label>
-                                    <input type="date" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" disabled>
-                                </div>
-                            </div>
+
+                            <table class="table table-bordered table-striped">
+                                <thead class="bg-navy">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th width="100">Cantidad</th>
+                                        <th width="150">Costo Unit.</th>
+                                        <th width="150">Subtotal</th>
+                                        <th width="50"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaItems"></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
+                                        <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span id="totalVenta">0.00</span></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
-
-                        <hr>
-
-                        <div class="row bg-light p-3 rounded">
-                            <div class="col-md-5">
-                                <label>Producto</label>
-                                <input type="text" id="busquedaProducto" class="form-control" list="listaProductos" placeholder="Buscar por nombre o código...">
-                                <datalist id="listaProductos">
-                                    <option th:each="prod : ${productos}" 
-                                            th:value="${prod.codigoInterno} + ' - ' + ${prod.nombre}" 
-                                            th:data-id="${prod.id}"></option>
-                                </datalist>
-                                <input type="hidden" id="productoIdSeleccionado">
-                            </div>
-                            <div class="col-md-2">
-                                <label>Cantidad</label>
-                                <input type="number" id="cantidad" class="form-control" value="1" min="1">
-                            </div>
-                            <div class="col-md-2">
-                                <label>Costo Unit. (S/)</label>
-                                <input type="number" id="costo" class="form-control" step="0.01">
-                            </div>
-                            <div class="col-md-3 d-flex align-items-end">
-                                <button class="btn btn-success btn-block" onclick="agregarItem()">
-                                    <i class="fas fa-plus"></i> Agregar
-                                </button>
-                            </div>
+                        <div class="card-footer text-right">
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> REGISTRAR COMPRA</button>
                         </div>
-
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <table class="table table-bordered table-striped">
-                                    <thead class="bg-navy">
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th class="text-center">Cant.</th>
-                                            <th class="text-right">Costo Unit.</th>
-                                            <th class="text-right">Subtotal</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyItems"></tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <th colspan="3" class="text-right">TOTAL COMPRA:</th>
-                                            <th class="text-right"><h4 class="font-weight-bold" id="totalGeneral">S/ 0.00</h4></th>
-                                            <th></th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Observaciones</label>
-                            <textarea id="observaciones" class="form-control" rows="2"></textarea>
-                        </div>
-
                     </div>
-                    <div class="card-footer text-right">
-                        <button class="btn btn-navy btn-lg" onclick="guardarCompra()">
-                            <i class="fas fa-save"></i> PROCESAR COMPRA E INGRESO
-                        </button>
-                    </div>
-                </div>
+                </form>
             </div>
         </section>
     </div>
 </div>
 
 <div th:replace="~{fragments/layout :: scripts}"></div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-    // Detección de selección en datalist
-    document.getElementById('busquedaProducto').addEventListener('input', function(e) {
-        let val = this.value;
-        let opts = document.getElementById('listaProductos').childNodes;
-        for (let i = 0; i < opts.length; i++) {
-            if (opts[i].value === val) {
-                document.getElementById('productoIdSeleccionado').value = opts[i].getAttribute('data-id');
-                break;
-            }
-        }
+    let carrito = [];
+
+    $(document).ready(function() {
+        $('.select2').select2({ theme: 'bootstrap4' });
+        
+        // Al seleccionar producto, cargar su último costo
+        $('#productoSelect').on('change', function() {
+            let costo = $(this).find(':selected').data('costo');
+            $('#costoInput').val(costo || '');
+            $('#cantInput').focus();
+        });
     });
 
-    let items = [];
-
     function agregarItem() {
-        let id = $('#productoIdSeleccionado').val();
-        let nombre = $('#busquedaProducto').val();
-        let cant = parseFloat($('#cantidad').val());
-        let costo = parseFloat($('#costo').val());
+        let id = $('#productoSelect').val();
+        let nombre = $('#productoSelect option:selected').text();
+        let cantidad = parseInt($('#cantInput').val());
+        let costo = parseFloat($('#costoInput').val());
 
-        if(!id || !nombre) return Swal.fire('Error', 'Seleccione un producto válido', 'error');
-        if(isNaN(cant) || cant <= 0) return Swal.fire('Error', 'Cantidad inválida', 'warning');
-        if(isNaN(costo) || costo < 0) return Swal.fire('Error', 'Costo inválido', 'warning');
+        if (!id || !cantidad || !costo) {
+            Swal.fire('Error', 'Complete todos los campos del producto', 'warning');
+            return;
+        }
 
-        items.push({ id: id, nombre: nombre, cantidad: cant, costo: costo, subtotal: cant * costo });
-        dibujarTabla();
-        
-        // Limpiar inputs
-        $('#busquedaProducto').val('');
-        $('#productoIdSeleccionado').val('');
-        $('#cantidad').val(1);
-        $('#costo').val('');
-        $('#busquedaProducto').focus();
+        // Verificar si ya existe en carrito
+        let existe = carrito.find(i => i.productoId == id);
+        if (existe) {
+            existe.cantidad += cantidad;
+            existe.costo = costo; // Actualizamos al nuevo costo
+        } else {
+            carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo });
+        }
+
+        renderizarTabla();
+        $('#productoSelect').val('').trigger('change');
+        $('#costoInput').val('');
+        $('#cantInput').val(1);
     }
 
-    function dibujarTabla() {
+    function renderizarTabla() {
         let html = '';
         let total = 0;
-        items.forEach((item, index) => {
+
+        carrito.forEach((item, index) => {
+            let subtotal = item.cantidad * item.costo;
+            total += subtotal;
             html += `<tr>
                 <td>${item.nombre}</td>
                 <td class="text-center">${item.cantidad}</td>
                 <td class="text-right">S/ ${item.costo.toFixed(2)}</td>
-                <td class="text-right">S/ ${item.subtotal.toFixed(2)}</td>
-                <td class="text-center"><button class="btn btn-danger btn-xs" onclick="eliminar(${index})"><i class="fas fa-trash"></i></button></td>
+                <td class="text-right">S/ ${subtotal.toFixed(2)}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(${index})"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>`;
-            total += item.subtotal;
         });
-        $('#tbodyItems').html(html);
-        $('#totalGeneral').text('S/ ' + total.toFixed(2));
+
+        $('#tablaItems').html(html);
+        $('#totalVenta').text(total.toFixed(2));
     }
 
-    function eliminar(index) {
-        items.splice(index, 1);
-        dibujarTabla();
+    function eliminarItem(index) {
+        carrito.splice(index, 1);
+        renderizarTabla();
     }
 
-    function guardarCompra() {
-        if(items.length === 0) return Swal.fire('Vacío', 'Agregue productos a la compra', 'warning');
-        if(!$('#proveedor').val()) return Swal.fire('Falta Proveedor', 'Seleccione un proveedor', 'warning');
+    $('#formCompra').submit(function(e) {
+        e.preventDefault();
+        
+        if (carrito.length === 0) {
+            Swal.fire('Error', 'Agregue al menos un producto a la compra', 'warning');
+            return;
+        }
 
-        let dto = {
+        let data = {
             proveedorId: $('#proveedor').val(),
             tipoComprobante: $('#tipoDoc').val(),
-            numeroComprobante: $('#numDoc').val(),
-            observaciones: $('#observaciones').val(),
-            items: items.map(i => ({ productoId: i.id, cantidad: i.cantidad, costo: i.costo }))
+            numeroComprobante: $('#nroDoc').val(),
+            observaciones: $('#obs').val(),
+            items: carrito
         };
+
+        Swal.fire({
+            title: 'Procesando Compra',
+            text: 'Registrando ingreso de mercadería...',
+            didOpen: () => Swal.showLoading()
+        });
 
         $.ajax({
             url: '/compras/api/guardar',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify(dto),
+            data: JSON.stringify(data),
             success: function(resp) {
-                Swal.fire('Éxito', 'Compra registrada. Stock actualizado.', 'success').then(() => {
-                    window.location.href = '/compras/lista';
-                });
+                Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
+                    .then(() => window.location.href = '/compras/lista');
             },
             error: function(err) {
-                Swal.fire('Error', 'No se pudo guardar la compra', 'error');
+                Swal.fire('Error', err.responseText || 'Ocurrió un error al guardar', 'error');
             }
         });
-    }
+    });
 </script>
 </body>
 </html>
