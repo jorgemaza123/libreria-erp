@@ -142,6 +142,12 @@
                   </a>
                 </li>
                 <li class="nav-item">
+    <a href="/gastos" class="nav-link" th:classappend="${active == 'gastos' ? 'active' : ''}">
+        <i class="nav-icon fas fa-file-invoice-dollar"></i>
+        <p>Gastos / Egresos</p>
+    </a>
+</li>
+                <li class="nav-item">
                   <a href="/reportes" class="nav-link" th:classappend="${active == 'reportes' ? 'active' : ''}">
                     <i class="fas fa-file-excel nav-icon"></i><p>Reportes</p>
                   </a>

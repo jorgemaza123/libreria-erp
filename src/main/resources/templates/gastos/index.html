@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='gastos')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1><i class="fas fa-hand-holding-usd"></i> Gastos Administrativos</h1></div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card card-danger">
+                            <div class="card-header">
+                                <h3 class="card-title">Registrar Salida de Dinero</h3>
+                            </div>
+                            <form action="/gastos/guardar" method="post">
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Concepto / Motivo *</label>
+                                        <input type="text" name="concepto" class="form-control" placeholder="Ej: Pago de Luz, Alquiler, Limpieza..." required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Monto (S/) *</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" step="0.01" name="monto" class="form-control font-weight-bold" placeholder="0.00" required>
+                                        </div>
+                                        <small class="text-muted">Este dinero se descontará de la caja actual.</small>
+                                    </div>
+                                </div>
+                                <div class="card-footer text-right">
+                                    <button type="submit" class="btn btn-danger btn-block font-weight-bold">
+                                        <i class="fas fa-save"></i> REGISTRAR GASTO
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card card-outline card-danger">
+                            <div class="card-header">
+                                <h3 class="card-title">Historial de Gastos</h3>
+                            </div>
+                            <div class="card-body table-responsive p-0" style="max-height: 500px;">
+                                <table class="table table-hover text-nowrap">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Concepto</th>
+                                            <th>Usuario</th>
+                                            <th class="text-right">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="g : ${gastos}">
+                                            <td th:text="${#temporals.format(g.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+                                            <td th:text="${g.concepto}"></td>
+                                            <td th:text="${g.usuario != null ? g.usuario.username : '-'}"></td>
+                                            <td class="text-right text-danger font-weight-bold" th:text="'- S/ ' + ${g.monto}"></td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(gastos)}">
+                                            <td colspan="4" class="text-center text-muted">No hay gastos registrados recientemente.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script th:if="${success}"> Swal.fire('Registrado', '[[${success}]]', 'success'); </script>
+<script th:if="${error}"> Swal.fire('Error', '[[${error}]]', 'error'); </script>
+</body>
+</html>
