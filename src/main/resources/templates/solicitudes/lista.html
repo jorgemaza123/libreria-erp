@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='solicitudes')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <h1><i class="fas fa-bullhorn"></i> Demanda Insatisfecha / Pedidos Clientes</h1>
+                <small>Lista de productos que los clientes han pedido y no teníamos en stock.</small>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-danger card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Ranking de Solicitudes</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="tablaSolicitudes" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Producto Solicitado</th>
+                                    <th class="text-center">Veces Pedido</th>
+                                    <th>Última Solicitud</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="s : ${solicitudes}">
+                                    <td class="font-weight-bold text-uppercase" th:text="${s.nombreProducto}"></td>
+                                    
+                                    <td class="text-center">
+                                        <span class="badge badge-danger" style="font-size: 1.2em;" th:text="${s.contador}"></span>
+                                    </td>
+                                    
+                                    <td th:text="${#temporals.format(s.ultimaSolicitud, 'dd/MM/yyyy HH:mm')}"></td>
+                                    
+                                    <td class="text-center">
+                                        <form th:action="@{/solicitudes/atender/{id}(id=${s.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-success btn-sm" title="Marcar como Comprado / Atendido">
+                                                <i class="fas fa-check"></i> Ya se compró
+                                            </button>
+                                        </form>
+                                        
+                                        <a th:href="@{/solicitudes/eliminar/{id}(id=${s.id})}" class="btn btn-default btn-sm" title="Eliminar" onclick="return confirm('¿Eliminar?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div th:if="${#lists.isEmpty(solicitudes)}" class="alert alert-info text-center mt-3">
+                            No hay solicitudes pendientes. ¡Estamos bien de stock!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    $(document).ready(function () {
+        $("#tablaSolicitudes").DataTable({
+            "responsive": true, 
+            "autoWidth": false, 
+            "order": [ [ 1, "desc" ] ], // Ordenar por cantidad de pedidos (columna 1) descendente
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+        });
+    });
+</script>
+</body>
+</html>

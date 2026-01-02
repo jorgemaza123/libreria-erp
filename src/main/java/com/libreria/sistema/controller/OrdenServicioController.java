@@ -1,11 +1,14 @@
 package com.libreria.sistema.controller;
 
+import com.libreria.sistema.model.Configuracion;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.OrdenItem;
 import com.libreria.sistema.model.OrdenServicio;
 import com.libreria.sistema.model.dto.OrdenDTO;
 import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.repository.OrdenServicioRepository;
+import com.libreria.sistema.service.ConfiguracionService; // IMPORTANTE
+
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,15 +30,22 @@ public class OrdenServicioController {
 
     private final OrdenServicioRepository ordenRepository;
     private final CajaRepository cajaRepository;
+    private final ConfiguracionService configuracionService; // Inyectado
 
-    public OrdenServicioController(OrdenServicioRepository ordenRepository, CajaRepository cajaRepository) {
+    public OrdenServicioController(OrdenServicioRepository ordenRepository, 
+                                   CajaRepository cajaRepository,
+                                   ConfiguracionService configuracionService) {
         this.ordenRepository = ordenRepository;
         this.cajaRepository = cajaRepository;
+        this.configuracionService = configuracionService;
     }
 
-    // VISTAS
     @GetMapping("/nueva")
-    public String nuevaOrden(Model model) { return "ordenes/formulario"; }
+public String nuevaOrden(Model model) { 
+    // ESTA LÍNEA ES VITAL PARA QUE EL DATALIST FUNCIONE
+    model.addAttribute("tipos", ordenRepository.findTiposServicio()); 
+    return "ordenes/formulario"; 
+}
 
     @GetMapping("/lista")
     public String listaOrdenes(Model model) {
@@ -43,7 +53,7 @@ public class OrdenServicioController {
         return "ordenes/lista";
     }
 
-    // API GUARDAR (Igual que antes)
+    // API GUARDAR
     @PostMapping("/api/guardar")
     public ResponseEntity<?> guardarOrden(@RequestBody OrdenDTO dto) {
         try {
@@ -83,7 +93,7 @@ public class OrdenServicioController {
         }
     }
 
-    // API FINALIZAR (Igual que antes)
+    // API FINALIZAR
     @PostMapping("/api/finalizar/{id}")
     public ResponseEntity<?> finalizarOrden(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean cobrarSaldo) {
         return ordenRepository.findById(id).map(orden -> {
@@ -99,34 +109,46 @@ public class OrdenServicioController {
     }
 
     // ==========================================
-    //        GENERADOR PDF PROFESIONAL
+    //        GENERADOR PDF (CON LOGO)
     // ==========================================
     @GetMapping("/pdf/{id}")
     public void descargarPdf(@PathVariable Long id, HttpServletResponse response) throws IOException, DocumentException {
         OrdenServicio orden = ordenRepository.findById(id).orElse(null);
         if(orden == null) return;
 
+        Configuracion config = configuracionService.obtenerConfiguracion(); // DATOS EMPRESA
+
         response.setContentType("application/pdf");
-        // 'inline' hace que se abra en el navegador en lugar de descargar
         response.setHeader("Content-Disposition", "inline; filename=Orden_" + id + ".pdf");
 
-        // Usamos A4 Vertical para que parezca documento formal
         Document document = new Document(PageSize.A4, 30, 30, 30, 30);
         PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
-        // 1. CABECERA TIPO SUNAT (Logo Izq, RUC Der)
+        // 1. CABECERA
         PdfPTable headerTable = new PdfPTable(3);
         headerTable.setWidthPercentage(100);
         headerTable.setWidths(new float[]{5, 1, 3});
 
-        // Datos Empresa
+        // Logo y Datos Empresa
         PdfPCell cellEmpresa = new PdfPCell();
         cellEmpresa.setBorder(Rectangle.NO_BORDER);
+        
+        // Intentar poner logo si existe
+        if (config.getLogoBase64() != null && !config.getLogoBase64().isEmpty()) {
+            try {
+                byte[] imageBytes = java.util.Base64.getDecoder().decode(config.getLogoBase64());
+                Image logo = Image.getInstance(imageBytes);
+                logo.scaleToFit(120, 60);
+                logo.setAlignment(Element.ALIGN_LEFT);
+                cellEmpresa.addElement(logo);
+            } catch (Exception e) { /* Ignorar error de logo */ }
+        }
+
         Font fontEmpresa = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
-        cellEmpresa.addElement(new Paragraph("LIBRERÍA & SERVICIOS ERP", fontEmpresa));
-        cellEmpresa.addElement(new Paragraph("Av. Principal 123 - Lima", FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        cellEmpresa.addElement(new Paragraph("Telf: (01) 555-0909", FontFactory.getFont(FontFactory.HELVETICA, 9)));
+        cellEmpresa.addElement(new Paragraph(config.getNombreEmpresa(), fontEmpresa));
+        cellEmpresa.addElement(new Paragraph(config.getDireccion(), FontFactory.getFont(FontFactory.HELVETICA, 9)));
+        cellEmpresa.addElement(new Paragraph("Telf: " + config.getTelefono(), FontFactory.getFont(FontFactory.HELVETICA, 9)));
         headerTable.addCell(cellEmpresa);
 
         // Espacio
@@ -134,13 +156,13 @@ public class OrdenServicioController {
         cellVacia.setBorder(Rectangle.NO_BORDER);
         headerTable.addCell(cellVacia);
 
-        // Cuadro RUC / Orden
+        // Cuadro RUC
         PdfPCell cellRuc = new PdfPCell();
         cellRuc.setBorder(Rectangle.BOX);
         cellRuc.setBorderWidth(1.5f);
         cellRuc.setPadding(8);
         
-        Paragraph pRuc = new Paragraph("R.U.C. 20100000001", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12));
+        Paragraph pRuc = new Paragraph("R.U.C. " + config.getRuc(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12));
         pRuc.setAlignment(Element.ALIGN_CENTER);
         cellRuc.addElement(pRuc);
         
@@ -156,12 +178,12 @@ public class OrdenServicioController {
         headerTable.addCell(cellRuc);
         document.add(headerTable);
 
-        document.add(new Paragraph(" ")); // Separador
+        document.add(new Paragraph(" "));
 
-        // 2. DATOS DEL CLIENTE Y TRABAJO
+        // 2. DATOS CLIENTE
         PdfPTable infoTable = new PdfPTable(2);
         infoTable.setWidthPercentage(100);
-        infoTable.setWidths(new float[]{1, 1}); // 50% - 50%
+        infoTable.setWidths(new float[]{1, 1});
 
         PdfPCell cellInfoIzq = new PdfPCell();
         cellInfoIzq.setBorder(Rectangle.NO_BORDER);
@@ -181,12 +203,11 @@ public class OrdenServicioController {
         document.add(new Paragraph("TRABAJO: " + orden.getTituloTrabajo(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11)));
         document.add(new Paragraph(" "));
 
-        // 3. TABLA DE ITEMS (PROFESIONAL)
+        // 3. TABLA ITEMS
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{4, 1}); // 80% Desc, 20% Precio
+        table.setWidths(new float[]{4, 1});
 
-        // Cabecera Tabla
         Font fontHeader = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
         PdfPCell c1 = new PdfPCell(new Phrase("DESCRIPCIÓN / SERVICIO / FALLA", fontHeader));
         c1.setBackgroundColor(Color.DARK_GRAY);
@@ -200,14 +221,13 @@ public class OrdenServicioController {
         c2.setPadding(5);
         table.addCell(c2);
 
-        // Datos Tabla
         Font fontData = FontFactory.getFont(FontFactory.HELVETICA, 10);
         for(OrdenItem item : orden.getItems()) {
             PdfPCell cellDesc = new PdfPCell(new Phrase(item.getDescripcion(), fontData));
             cellDesc.setPadding(5);
             table.addCell(cellDesc);
 
-            PdfPCell cellMonto = new PdfPCell(new Phrase("S/ " + item.getCosto(), fontData));
+            PdfPCell cellMonto = new PdfPCell(new Phrase(config.getMoneda() + " " + item.getCosto(), fontData));
             cellMonto.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cellMonto.setPadding(5);
             table.addCell(cellMonto);
@@ -217,16 +237,15 @@ public class OrdenServicioController {
         // 4. TOTALES
         document.add(new Paragraph(" "));
         PdfPTable totalTable = new PdfPTable(2);
-        totalTable.setWidthPercentage(40); // Tabla pequeña a la derecha
+        totalTable.setWidthPercentage(40);
         totalTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
         
-        agregarFilaTotal(totalTable, "TOTAL:", orden.getTotal(), true);
-        agregarFilaTotal(totalTable, "A CUENTA:", orden.getACuenta(), false);
-        agregarFilaTotal(totalTable, "SALDO:", orden.getSaldo(), true);
+        agregarFilaTotal(totalTable, "TOTAL:", orden.getTotal(), true, config.getMoneda());
+        agregarFilaTotal(totalTable, "A CUENTA:", orden.getACuenta(), false, config.getMoneda());
+        agregarFilaTotal(totalTable, "SALDO:", orden.getSaldo(), true, config.getMoneda());
         
         document.add(totalTable);
 
-        // Pie de página
         document.add(new Paragraph(" "));
         document.add(new Paragraph("OBSERVACIONES: " + (orden.getObservaciones() != null ? orden.getObservaciones() : "Ninguna"), FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9)));
         document.add(new Paragraph("---------------------------------------------------------------------------------------------------"));
@@ -235,14 +254,14 @@ public class OrdenServicioController {
         document.close();
     }
 
-    private void agregarFilaTotal(PdfPTable table, String label, BigDecimal valor, boolean bold) {
+    private void agregarFilaTotal(PdfPTable table, String label, BigDecimal valor, boolean bold, String moneda) {
         Font f = bold ? FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10) : FontFactory.getFont(FontFactory.HELVETICA, 10);
         PdfPCell cLabel = new PdfPCell(new Phrase(label, f));
         cLabel.setBorder(Rectangle.NO_BORDER);
         cLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(cLabel);
 
-        PdfPCell cVal = new PdfPCell(new Phrase("S/ " + valor, f));
+        PdfPCell cVal = new PdfPCell(new Phrase(moneda + " " + valor, f));
         cVal.setBorder(Rectangle.BOX);
         cVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(cVal);
@@ -256,4 +275,15 @@ public class OrdenServicioController {
         mov.setMonto(monto);
         cajaRepository.save(mov);
     }
+
+    @GetMapping("/editar/{id}")
+public String editarOrden(@PathVariable Long id, Model model) {
+    OrdenServicio orden = ordenRepository.findById(id).orElse(null);
+    if(orden == null) return "redirect:/ordenes/lista";
+    
+    model.addAttribute("ordenEdicion", orden);
+    // AQUÍ TAMBIÉN:
+    model.addAttribute("tipos", ordenRepository.findTiposServicio()); 
+    return "ordenes/formulario";
+}
 }

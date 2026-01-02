@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}"></head>
-<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse"> <div class="wrapper">
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+<div class="wrapper">
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
     <aside th:replace="~{fragments/layout :: sidebar(active='pos')}"></aside>
 
@@ -13,23 +14,14 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-                    
                     <div class="col-md-8">
                         <div class="card card-primary card-outline" style="height: 100%;">
                             <div class="card-header border-0">
                                 <div class="row">
-                                    <div class="col-8">
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>
-                                            <input type="text" id="busqueda" class="form-control form-control-lg" list="listaProd" placeholder="Escanear código o escribir nombre..." autofocus>
-                                            <datalist id="listaProd">
-                                                <option th:each="p : ${productos}" 
-                                                        th:value="${p.codigoBarra} + ' - ' + ${p.nombre}" 
-                                                        th:data-id="${p.id}"></option>
-                                            </datalist>
-                                        </div>
+                                    <div class="col-md-8">
+                                        <select id="busquedaAjax" class="form-control select2" style="width: 100%;"></select>
                                     </div>
-                                    <div class="col-4 text-right">
+                                    <div class="col-md-4 text-right">
                                         <h3 class="m-0 font-weight-bold text-success" id="totalPantalla">S/ 0.00</h3>
                                     </div>
                                 </div>
@@ -40,43 +32,42 @@
                                     <thead class="bg-light">
                                         <tr>
                                             <th>Producto</th>
-                                            <th class="text-center" width="10%">Cant.</th>
+                                            <th class="text-center" width="15%">Cant.</th>
                                             <th class="text-right" width="20%">Precio</th>
                                             <th class="text-right" width="20%">Subtotal</th>
                                             <th width="5%"></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="tbodyCarrito">
-                                        </tbody>
+                                    <tbody id="tbodyCarrito"></tbody>
                                 </table>
                             </div>
 
                             <div class="card-footer">
                                 <div class="row">
-    <div class="col-md-4">
-        <select id="tipoComprobante" class="form-control">
-            <option value="BOLETA">BOLETA</option>
-            <option value="FACTURA">FACTURA</option>
-            <option value="NOTA_VENTA">NOTA VENTA</option>
-        </select>
-    </div>
-    <div class="col-md-4">
-        <input type="text" id="clienteDoc" class="form-control" placeholder="DNI / RUC">
-    </div>
-    <div class="col-md-4">
-        <input type="text" id="cliente" class="form-control" placeholder="Nombre Cliente">
-    </div>
-</div>
-<div class="row mt-2">
-    <div class="col-12 text-right">
-        <button class="btn btn-app bg-success" onclick="procesarVenta()">
-            <i class="fas fa-cash-register"></i> COBRAR
-        </button>
-        <button class="btn btn-app bg-danger" onclick="limpiar()">
-            <i class="fas fa-trash"></i> LIMPIAR
-        </button>
-    </div>
-</div>
+                                    <div class="col-md-4">
+                                        <select id="tipoComprobante" class="form-control">
+                                            <option value="BOLETA">BOLETA</option>
+                                            <option value="FACTURA">FACTURA</option>
+                                            <option value="NOTA_VENTA">NOTA VENTA</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" id="clienteDoc" class="form-control" placeholder="DNI / RUC">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" id="cliente" class="form-control" placeholder="Nombre Cliente">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-12 text-right">
+                                        <button class="btn btn-app bg-success" onclick="procesarVenta()">
+                                            <i class="fas fa-cash-register"></i> COBRAR
+                                        </button>
+                                        <button class="btn btn-app bg-danger" onclick="limpiar()">
+                                            <i class="fas fa-trash"></i> LIMPIAR
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -88,24 +79,20 @@
                                 <h6 class="widget-user-desc" id="visorMarca">-</h6>
                             </div>
                             <div class="widget-user-image">
-                                <img class="img-circle elevation-2" id="visorImagen" src="https://via.placeholder.com/128?text=Libreria" alt="User Avatar" style="width: 90px; height: 90px; object-fit: cover; background: white;">
+                                <img class="img-circle elevation-2" id="visorImagen" 
+                                     src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0PSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGR5PSIuM2VtIiBmaWxsPSIjNTU1IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MSUI8L3RleHQ+PC9zdmc+" 
+                                     alt="Img" style="width: 90px; height: 90px; object-fit: cover; background: white;">
                             </div>
                             <div class="card-footer p-0">
                                 <ul class="nav flex-column">
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link">
-                                            Precio Público <span class="float-right badge bg-primary" id="visorPrecio">S/ 0.00</span>
-                                        </a>
+                                        <a class="nav-link">Precio Público <span class="float-right badge bg-primary" id="visorPrecio">S/ 0.00</span></a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link">
-                                            Stock Disponible <span class="float-right badge bg-success" id="visorStock">0</span>
-                                        </a>
+                                        <a class="nav-link">Stock Disponible <span class="float-right badge bg-success" id="visorStock">0</span></a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link">
-                                            Ubicación <span class="float-right text-muted" id="visorUbicacion">-</span>
-                                        </a>
+                                        <a class="nav-link">Ubicación <span class="float-right text-muted" id="visorUbicacion">-</span></a>
                                     </li>
                                 </ul>
                                 <div class="p-3">
@@ -113,17 +100,15 @@
                                     <div class="input-group mb-3">
                                         <input type="number" id="inputCantidad" class="form-control form-control-lg text-center" value="1" min="1">
                                         <div class="input-group-append">
-                                            <button class="btn btn-success" type="button" onclick="agregarAlCarrito()">
+                                            <button class="btn btn-success" type="button" onclick="agregarDesdeVisor()">
                                                 <i class="fas fa-plus"></i> AGREGAR
                                             </button>
                                         </div>
                                     </div>
-                                    <small class="text-danger" id="msgStock"></small>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </section>
@@ -132,74 +117,72 @@
 
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script>
-    let productoActual = null;
     let carrito = [];
+    let productoActual = null;
 
-    // 1. DETECTAR SELECCIÓN EN BUSCADOR
-    document.getElementById('busqueda').addEventListener('input', function(e) {
-        let val = this.value;
-        let opts = document.getElementById('listaProd').childNodes;
-        for (let i = 0; i < opts.length; i++) {
-            if (opts[i].value === val) {
-                cargarProducto(opts[i].getAttribute('data-id'));
-                this.value = ''; // Limpiar barra
-                break;
+    // IMAGEN POR DEFECTO EN BASE64 (Para no depender de internet)
+    const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0PSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGR5PSIuM2VtIiBmaWxsPSIjNTU1IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5OTzwvdGV4dD48L3N2Zz4=";
+
+    $(document).ready(function() {
+        $('#busquedaAjax').select2({
+            theme: 'bootstrap4',
+            placeholder: 'Escanear código o buscar...',
+            minimumInputLength: 2, 
+            ajax: {
+                url: '/ventas/api/buscar-productos',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) { return { term: params.term }; },
+                processResults: function (data) { return { results: data }; },
+                cache: true
             }
-        }
+        });
+
+        $('#busquedaAjax').on('select2:select', function (e) {
+            let data = e.params.data;
+            cargarVisor(data);
+            $(this).val(null).trigger('change');
+        });
     });
 
-    // 2. CARGAR DATOS EN EL VISOR DERECHO
-    function cargarProducto(id) {
-        $.get("/ventas/api/producto/" + id, function(data) {
-            productoActual = data;
-            
-            // Llenar tarjeta visual
-            $("#visorNombre").text(data.nombre);
-            $("#visorMarca").text(data.marca || 'Genérico');
-            $("#visorPrecio").text('S/ ' + data.precio.toFixed(2));
-            $("#visorStock").text(data.stock);
-            $("#visorUbicacion").text(data.ubicacion);
-            
-            // Imagen
-            if(data.imagen) {
-                $("#visorImagen").attr("src", "/images/" + data.imagen);
-            } else {
-                $("#visorImagen").attr("src", "https://via.placeholder.com/128?text=Sin+Foto");
-            }
+    function cargarVisor(data) {
+        productoActual = data;
+        $("#visorNombre").text(data.nombre);
+        $("#visorMarca").text(data.marca || 'Genérico');
+        $("#visorPrecio").text('S/ ' + parseFloat(data.precio).toFixed(2));
+        $("#visorStock").text(data.stock);
+        $("#visorUbicacion").text(data.ubicacion);
+        
+        // USO DE IMAGEN LOCAL O BASE64
+        if(data.imagen) $("#visorImagen").attr("src", "/images/" + data.imagen);
+        else $("#visorImagen").attr("src", IMG_PLACEHOLDER);
 
-            // Foco en cantidad para venta rápida
-            $("#inputCantidad").val(1).focus().select();
-        });
+        $("#inputCantidad").val(1).focus().select();
     }
 
-    // 3. AGREGAR AL CARRITO (CON LÓGICA DE PRECIO)
-    function agregarAlCarrito() {
+    function agregarDesdeVisor() {
         if(!productoActual) return;
-
         let cant = parseInt($("#inputCantidad").val());
+        
         if(cant > productoActual.stock) {
-            Swal.fire('Stock Insuficiente', 'Solo quedan ' + productoActual.stock + ' unidades', 'warning');
+            Swal.fire('Stock Insuficiente', 'Solo quedan ' + productoActual.stock, 'warning');
             return;
         }
 
-        // Buscar si ya existe
         let existente = carrito.find(i => i.id === productoActual.id);
-        if(existente) {
-            existente.cantidad += cant;
-        } else {
+        if(existente) existente.cantidad += cant;
+        else {
             carrito.push({
                 id: productoActual.id,
                 nombre: productoActual.nombre,
-                precio: productoActual.precio,
-                precioMin: productoActual.precioMinimo, // Guardamos el mínimo permitido
+                precio: parseFloat(productoActual.precio),
+                precioMin: parseFloat(productoActual.precioMin),
                 cantidad: cant
             });
         }
         dibujarCarrito();
-        $("#busqueda").focus(); // Volver al buscador
     }
 
-    // 4. DIBUJAR TABLA Y CONTROLAR CAMBIO DE PRECIO
     function dibujarCarrito() {
         let html = '';
         let total = 0;
@@ -210,8 +193,10 @@
             
             html += `<tr>
                 <td>${item.nombre}</td>
-                <td class="text-center">${item.cantidad}</td>
-                <td class="text-right">
+                <td>
+                    <input type="number" class="form-control form-control-sm text-center" value="${item.cantidad}" onchange="cambiarCantidad(${index}, this.value)">
+                </td>
+                <td>
                     <input type="number" step="0.10" class="form-control form-control-sm text-right" 
                            value="${item.precio.toFixed(2)}" 
                            onchange="cambiarPrecio(${index}, this.value)">
@@ -225,27 +210,31 @@
         $("#totalPantalla").text('S/ ' + total.toFixed(2));
     }
 
-    // 5. LÓGICA DE SEGURIDAD (PRECIO MÍNIMO)
+    function cambiarCantidad(index, val) {
+        let cant = parseInt(val);
+        if(cant < 1) cant = 1;
+        carrito[index].cantidad = cant;
+        dibujarCarrito();
+    }
+
     async function cambiarPrecio(index, nuevoPrecio) {
         let item = carrito[index];
         let precio = parseFloat(nuevoPrecio);
 
-        // Si el precio es menor al mínimo permitido (10% descuento por defecto)
         if(precio < item.precioMin) {
             const { value: pass } = await Swal.fire({
                 title: 'AUTORIZACIÓN REQUERIDA',
-                text: 'El precio está por debajo del mínimo permitido. Ingrese clave de Supervisor:',
+                text: `El precio mínimo es S/ ${item.precioMin.toFixed(2)}. Ingrese clave de Supervisor:`,
                 input: 'password',
                 icon: 'warning',
                 showCancelButton: true
             });
 
-            if (pass === '1234') { // CLAVE QUEMADA POR AHORA (FASE 5 la pondrá en BD)
+            if (pass === '1234') { 
                 Swal.fire('Autorizado', 'Precio modificado', 'success');
                 item.precio = precio;
             } else {
                 Swal.fire('Denegado', 'Clave incorrecta. Se restablece el precio.', 'error');
-                item.precio = item.precio; // Restaurar
             }
         } else {
             item.precio = precio;
@@ -262,9 +251,9 @@
         carrito = [];
         dibujarCarrito();
         $("#cliente").val('');
+        $("#clienteDoc").val('');
     }
 
-    // 6. PROCESAR VENTA FINAL
     function procesarVenta() {
         if(carrito.length === 0) return Swal.fire('Error', 'Carrito vacío', 'warning');
 
@@ -286,12 +275,28 @@
             data: JSON.stringify(dto),
             success: function(resp) {
                 Swal.fire('¡Venta Exitosa!', 'Comprobante generado', 'success').then(() => {
-                    // Aquí luego pondremos la URL para descargar el XML/PDF SUNAT
+                    window.open('/ventas/imprimir/' + resp.id, '_blank');
                     limpiar();
                 });
             },
             error: function(err) {
                 Swal.fire('Error', err.responseText, 'error');
+            }
+        });
+    }
+
+    function reportarSinStock() {
+        Swal.fire({
+            title: 'Reportar Falta de Stock',
+            text: '¿Qué producto solicitó el cliente y no tenemos?',
+            input: 'text',
+            showCancelButton: true,
+            confirmButtonText: 'Registrar Demanda'
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                $.post('/ventas/api/solicitar-stock', { producto: result.value }, function(resp) {
+                    Swal.fire('Registrado', resp, 'success');
+                });
             }
         });
     }

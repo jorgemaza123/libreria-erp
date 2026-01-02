@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import com.libreria.sistema.service.ConfiguracionService; // NUEVO
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,9 +23,11 @@ import java.util.List;
 public class CotizacionController {
 
     private final CotizacionService cotizacionService;
+    private final ConfiguracionService configuracionService; // NUEVO
 
-    public CotizacionController(CotizacionService cotizacionService) {
+    public CotizacionController(CotizacionService cotizacionService, ConfiguracionService configuracionService) {
         this.cotizacionService = cotizacionService;
+        this.configuracionService = configuracionService;
     }
 
     @GetMapping("/nueva")
@@ -100,6 +103,8 @@ public class CotizacionController {
     @GetMapping("/imprimir/{id}")
     public String imprimir(@PathVariable Long id, Model model) {
         model.addAttribute("cotizacion", cotizacionService.obtenerPorId(id));
+        // ENVIAMOS LA CONFIGURACIÓN
+        model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "cotizaciones/impresion";
     }
 

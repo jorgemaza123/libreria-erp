@@ -23,7 +23,7 @@ public class DataInitializer {
     CommandLineRunner initData(UsuarioRepository usuarioRepo, 
                                RolRepository rolRepo, 
                                CorrelativoRepository correlativoRepo,
-                               ProductoRepository productoRepo, // <--- ESTO FALTABA
+                               ProductoRepository productoRepo,
                                PasswordEncoder passwordEncoder) {
         return args -> {
             
@@ -31,7 +31,8 @@ public class DataInitializer {
             Rol rolAdmin = rolRepo.findByNombre("ROLE_ADMIN").orElseGet(() -> rolRepo.save(new Rol("ROLE_ADMIN")));
             Rol rolVendedor = rolRepo.findByNombre("ROLE_VENDEDOR").orElseGet(() -> rolRepo.save(new Rol("ROLE_VENDEDOR")));
 
-            // 2. Usuario Admin
+            // 2. Usuarios
+            // ADMIN
             if (usuarioRepo.findByUsername("admin").isEmpty()) {
                 Usuario admin = new Usuario();
                 admin.setUsername("admin");
@@ -43,6 +44,18 @@ public class DataInitializer {
                 System.out.println(">>> USUARIO ADMIN CREADO");
             }
 
+            // VENDEDOR (ESTO FALTABA)
+            if (usuarioRepo.findByUsername("vendedor").isEmpty()) {
+                Usuario vend = new Usuario();
+                vend.setUsername("vendedor");
+                vend.setPassword(passwordEncoder.encode("1234"));
+                vend.setNombreCompleto("Vendedor de Tienda");
+                vend.setRoles(Set.of(rolVendedor));
+                vend.setActivo(true);
+                usuarioRepo.save(vend);
+                System.out.println(">>> USUARIO VENDEDOR CREADO (User: vendedor / Pass: 1234)");
+            }
+
             // 3. Correlativos
             if(correlativoRepo.findByCodigoAndSerie("BOLETA", "B001").isEmpty()) {
                 correlativoRepo.save(new Correlativo("BOLETA", "B001", 0));
@@ -52,10 +65,9 @@ public class DataInitializer {
             }
             if(correlativoRepo.findByCodigoAndSerie("COTIZACION", "C001").isEmpty()) {
                 correlativoRepo.save(new Correlativo("COTIZACION", "C001", 0));
-                System.out.println(">>> SERIE C001 (COTIZACIONES) CREADA");
             }
 
-            // 4. Crear Producto Comodín para Servicios
+            // 4. Producto Servicio
             if(productoRepo.findByCodigoInterno("SERV-001").isEmpty()) {
                 Producto servicio = new Producto();
                 servicio.setCodigoInterno("SERV-001");
@@ -69,7 +81,6 @@ public class DataInitializer {
                 servicio.setTipoAfectacionIgv("GRAVADO");
                 servicio.setActivo(true);
                 productoRepo.save(servicio);
-                System.out.println(">>> PRODUCTO 'SERVICIO GENERAL' CREADO");
             }
         };
     }

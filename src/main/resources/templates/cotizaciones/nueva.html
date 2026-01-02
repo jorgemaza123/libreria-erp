@@ -1,32 +1,18 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <title>Gestión Cotización</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-</head>
+<head th:replace="~{fragments/layout :: head}"></head>
+
 <body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
 <div class="wrapper">
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
-    </nav>
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/ventas/nueva" class="nav-link"><i class="nav-icon fas fa-cash-register"></i><p>Punto de Venta</p></a></li>
-                    <li class="nav-item"><a href="/cotizaciones/lista" class="nav-link"><i class="nav-icon fas fa-file-invoice"></i><p>Cotizaciones</p></a></li>
-                    <li class="nav-item"><a href="/cotizaciones/nueva" class="nav-link active"><i class="nav-icon fas fa-plus-circle"></i><p>Nueva Cotización</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='nueva_cotizacion')}"></aside>
 
     <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1>Gestión de Cotización</h1></div>
+        </section>
+
         <section class="content p-3">
             <div class="row">
                 <div class="col-md-8">
@@ -39,14 +25,15 @@
                             <input type="hidden" id="idEdicion" th:value="${cotizacionEdicion != null ? cotizacionEdicion.id : ''}">
                         </div>
                         <div class="card-body">
-                            
                             <div class="row mb-3">
                                 <div class="col-md-7">
                                     <label>Agregar Producto</label>
                                     <div class="input-group">
-                                        <select id="selectProducto" class="form-control" style="width: 85%;"></select>
+                                        <select id="selectProducto" class="form-control select2" style="width: 85%;"></select>
                                         <div class="input-group-append">
-                                            <button class="btn btn-success" type="button" onclick="agregarSeleccionado()"><i class="fas fa-plus"></i></button>
+                                            <button class="btn btn-success" type="button" onclick="agregarSeleccionado()">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -58,7 +45,7 @@
                                 </div>
                             </div>
 
-                            <table class="table table-bordered">
+                            <table class="table table-bordered table-striped">
                                 <thead class="bg-navy">
                                     <tr>
                                         <th width="40%">Descripción / Producto</th>
@@ -82,12 +69,11 @@
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteDocumento : ''}">
                             <input type="text" id="clienteNombre" class="form-control mb-2" placeholder="Nombre Cliente" 
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteNombre : 'CLIENTE VARIOS'}">
-                            
                             <input type="text" id="clienteTelefono" class="form-control mb-2" placeholder="WhatsApp (Opcional)" 
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteTelefono : ''}">
 
                             <hr>
-                            <h2 class="text-right" id="lblTotal">S/ 0.00</h2>
+                            <h2 class="text-right font-weight-bold" id="lblTotal">S/ 0.00</h2>
                             
                             <button class="btn btn-primary btn-block btn-lg mb-2" onclick="guardarCotizacion(true)">
                                 <i class="fas fa-save"></i> <span th:text="${cotizacionEdicion != null ? 'GUARDAR CAMBIOS' : 'GUARDAR'}"></span>
@@ -109,69 +95,85 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div th:replace="~{fragments/layout :: scripts}"></div>
 
 <script th:inline="javascript">
     let carrito = [];
-    let productosCache = [];
-    let ID_SERVICIO_GENERAL = null;
+    // ID genérico para servicios si no se encuentra en BD
+    let ID_SERVICIO_GENERAL = 1; 
 
     $(document).ready(function() {
-        $.get('/ventas/api/productos-activos', function(data) {
-            productosCache = data;
-            let serv = data.find(p => p.codigoInterno === 'SERV-001');
-            if(serv) ID_SERVICIO_GENERAL = serv.id;
-
-            let opciones = data.map(p => ({ 
-                id: p.id, text: `${p.nombre} - S/ ${p.precioVenta}`, producto: p 
-            }));
-            
-            $('#selectProducto').select2({ data: opciones, placeholder: "Buscar producto...", allowClear: true });
-
-            /*[+
-            let cotiEdit = [[${cotizacionEdicion}]];
-            if(cotiEdit) {
-                cotiEdit.items.forEach(item => {
-                    carrito.push({
-                        productoId: item.producto.id,
-                        nombre: item.descripcion || item.producto.nombre,
-                        precio: item.precioUnitario,
-                        cantidad: item.cantidad,
-                        esServicio: (item.producto.codigoInterno === 'SERV-001')
-                    });
-                });
-                renderizarTablaCoti();
+        // Inicializar Select2 con AJAX (Velocidad)
+        $('#selectProducto').select2({
+            theme: 'bootstrap4',
+            placeholder: "Buscar producto...",
+            allowClear: true,
+            ajax: {
+                url: '/ventas/api/buscar-productos',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) { return { term: params.term }; },
+                processResults: function (data) { 
+                    // Mapeamos para que Select2 entienda
+                    return { 
+                        results: data.map(p => ({
+                            id: p.id,
+                            text: p.text,
+                            producto: p // Guardamos todo el objeto para usarlo luego
+                        })) 
+                    }; 
+                },
+                cache: true
             }
-            +]*/
         });
 
+        // Evento: Al seleccionar, guardamos temporalmente el dato pero NO agregamos hasta dar click al botón (si así lo prefieres)
+        // Opcional: Si quieres agregar directo al seleccionar, descomenta la línea 'agregarAlCarrito'
         $('#selectProducto').on('select2:select', function (e) {
-            let idProd = e.params.data.id;
-            agregarAlCarrito(idProd);
-            $('#selectProducto').val(null).trigger('change');
+            // let data = e.params.data.producto;
+            // agregarAlCarrito(data); 
+            // $('#selectProducto').val(null).trigger('change');
         });
+
+        /*[+
+        // Cargar datos si estamos editando
+        let cotiEdit = [[${cotizacionEdicion}]];
+        if(cotiEdit) {
+            cotiEdit.items.forEach(item => {
+                carrito.push({
+                    id: item.producto.id,
+                    nombre: item.descripcion || item.producto.nombre,
+                    precio: item.precioUnitario,
+                    cantidad: item.cantidad,
+                    esServicio: (item.producto.codigoInterno === 'SERV-001')
+                });
+            });
+            renderizarTablaCoti();
+        }
+        +]*/
     });
 
+    // RECUPERADO: Función del botón "+"
     function agregarSeleccionado() {
-        let id = $('#selectProducto').val();
-        if(id) agregarAlCarrito(id);
+        let data = $('#selectProducto').select2('data');
+        if(data && data.length > 0) {
+            let prod = data[0].producto;
+            agregarAlCarrito(prod);
+            $('#selectProducto').val(null).trigger('change');
+        } else {
+            Swal.fire('Atención', 'Busque y seleccione un producto primero', 'warning');
+        }
     }
 
-    function agregarAlCarrito(id) {
-        let prod = productosCache.find(p => p.id == id);
-        if(!prod) return;
-        
-        let existente = carrito.find(i => i.productoId == id);
+    function agregarAlCarrito(prod) {
+        let existente = carrito.find(i => i.id == prod.id);
         if(existente) existente.cantidad++;
         else {
             carrito.push({
-                productoId: prod.id,
-                nombre: prod.nombre,
-                precio: prod.precioVenta,
+                id: prod.id,
+                // Limpiamos el texto que viene del select2 (ej: "COD - Nombre (Stock)")
+                nombre: prod.nombre, 
+                precio: prod.precio,
                 cantidad: 1,
                 esServicio: false
             });
@@ -180,18 +182,19 @@
     }
 
     function agregarServicioManual() {
-        if(!ID_SERVICIO_GENERAL) {
-            Swal.fire('Error', 'Reinicie el sistema para cargar servicios', 'error');
-            return;
-        }
-        carrito.push({
-            productoId: ID_SERVICIO_GENERAL,
-            nombre: "SERVICIO: DETALLE...", 
-            precio: 0.00,
-            cantidad: 1,
-            esServicio: true
+        // Intentamos buscar el ID del servicio si existe en backend, sino usamos default
+        $.get('/ventas/api/buscar-productos?term=SERV-001', function(data) {
+            let idServ = (data && data.length > 0) ? data[0].id : ID_SERVICIO_GENERAL;
+            
+            carrito.push({
+                id: idServ,
+                nombre: "SERVICIO: ...", 
+                precio: 0.00,
+                cantidad: 1,
+                esServicio: true
+            });
+            renderizarTablaCoti();
         });
-        renderizarTablaCoti();
     }
 
     function renderizarTablaCoti() {
@@ -200,16 +203,18 @@
         carrito.forEach((item, index) => {
             let subtotal = item.cantidad * item.precio;
             total += subtotal;
+            
+            // RECUPERADO: Input para editar nombre si es servicio
             let inputNombre = item.esServicio 
-                ? `<input type="text" class="form-control" value="${item.nombre}" oninput="actualizarItem(${index}, 'nombre', this.value)">`
+                ? `<input type="text" class="form-control form-control-sm" value="${item.nombre}" onchange="actualizarItem(${index}, 'nombre', this.value)">`
                 : item.nombre;
 
             html += `<tr>
                 <td>${inputNombre}</td>
-                <td><input type="number" class="form-control" value="${item.precio}" oninput="actualizarItem(${index}, 'precio', this.value)"></td>
-                <td><input type="number" class="form-control" value="${item.cantidad}" oninput="actualizarItem(${index}, 'cant', this.value)"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm" value="${item.precio}" onchange="actualizarItem(${index}, 'precio', this.value)"></td>
+                <td><input type="number" class="form-control form-control-sm" value="${item.cantidad}" onchange="actualizarItem(${index}, 'cant', this.value)"></td>
                 <td class="font-weight-bold">S/ ${subtotal.toFixed(2)}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">X</button></td>
+                <td><button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})"><i class="fas fa-times"></i></button></td>
             </tr>`;
         });
         $('#tablaVentas').html(html);
@@ -228,85 +233,64 @@
         renderizarTablaCoti();
     }
 
-    // --- FUNCION PARA ABRIR PDF EN POPUP ---
     function abrirPdf(id) {
         window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
     }
 
-    // --- FUNCIÓN GUARDAR (Retorna Promesa para encadenar) ---
     function guardarCotizacion(redireccionar = true) {
-        return new Promise((resolve, reject) => {
-            if(carrito.length === 0) {
-                Swal.fire('Error', 'Carrito vacío', 'warning');
-                reject('vacío');
-                return;
-            }
-            
-            let dto = { 
-                clienteDocumento: $('#clienteDoc').val(), // Antes clienteDoc
-                clienteNombre: $('#clienteNombre').val(), 
-                clienteTelefono: $('#clienteTelefono').val(),
-                items: carrito.map(i => ({
-                    productoId: i.productoId,
-                    cantidad: i.cantidad,
-                    precioVenta: i.precio // <--- AQUÍ ESTABA EL ERROR (El DTO espera precioVenta)
-                }))
-            };
-            
-            let idEdicion = $('#idEdicion').val();
-            let url = idEdicion ? '/cotizaciones/api/actualizar/' + idEdicion : '/cotizaciones/api/guardar';
-            let method = idEdicion ? 'PUT' : 'POST';
+        if(carrito.length === 0) return Swal.fire('Error', 'Carrito vacío', 'warning');
+        
+        let dto = { 
+            clienteDocumento: $('#clienteDoc').val(),
+            clienteNombre: $('#clienteNombre').val(), 
+            clienteTelefono: $('#clienteTelefono').val(),
+            items: carrito.map(i => ({
+                productoId: i.id,
+                cantidad: i.cantidad,
+                precioVenta: i.precio, // RECUPERADO: Usar precioVenta como espera el DTO
+                descripcion: i.esServicio ? i.nombre : null 
+            }))
+        };
+        
+        let idEdicion = $('#idEdicion').val();
+        let url = idEdicion ? '/cotizaciones/api/actualizar/' + idEdicion : '/cotizaciones/api/guardar';
+        let method = idEdicion ? 'PUT' : 'POST';
 
-            $.ajax({
-                url: url, type: method, contentType: 'application/json', data: JSON.stringify(dto),
-                success: function(resp) {
-                    if(redireccionar) {
-                        Swal.fire('Guardado', 'Correcto', 'success').then(() => {
-                            if(idEdicion) location.reload(); else window.location.href = '/cotizaciones/lista';
-                        });
-                    }
-                    resolve(resp);
-                },
-                error: function(err) { 
-                    if(redireccionar) Swal.fire('Error', 'Fallo al guardar', 'error');
-                    reject(err);
+        $.ajax({
+            url: url, type: method, contentType: 'application/json', data: JSON.stringify(dto),
+            success: function(resp) {
+                if(redireccionar) {
+                    Swal.fire('Guardado', 'Correcto', 'success').then(() => {
+                        if(idEdicion) location.reload(); 
+                        else window.location.href = '/cotizaciones/lista';
+                    });
                 }
-            });
+            },
+            error: function(err) { Swal.fire('Error', 'Fallo al guardar', 'error'); }
         });
     }
-
-    // --- FLUJO: PRIMERO GUARDA -> LUEGO VENDE ---
+    
+    // Función para convertir desde edición
     function convertirDirecto() {
         let id = $('#idEdicion').val();
+        guardarCotizacion(false); // Guardar cambios primero silenciosamente
         
-        guardarCotizacion(false)
-            .then(() => {
-                Swal.fire({
-                    title: 'Generar Venta',
-                    text: "¿Boleta o Factura?",
-                    icon: 'question',
-                    showDenyButton: true,
-                    confirmButtonText: 'BOLETA',
-                    denyButtonText: 'FACTURA',
-                    confirmButtonColor: '#28a745',
-                    denyButtonColor: '#17a2b8'
-                }).then((result) => {
-                    if (result.isConfirmed || result.isDenied) {
-                        let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
-                        
-                        $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
-                            Swal.fire('¡Vendido!', `Venta ID: ${resp.ventaId}`, 'success')
-                                .then(() => window.location.href = '/ventas/lista');
-                        }).fail(function(err) {
-                            Swal.fire('Error', err.responseJSON.error, 'error');
-                        });
-                    }
+        Swal.fire({
+            title: 'Generar Venta',
+            text: "¿Boleta o Factura?",
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: 'BOLETA',
+            denyButtonText: 'FACTURA'
+        }).then((result) => {
+            if (result.isConfirmed || result.isDenied) {
+                let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+                $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                    Swal.fire('¡Vendido!', `Venta ID: ${resp.ventaId}`, 'success')
+                        .then(() => window.location.href = '/ventas/lista');
                 });
-            })
-            .catch((err) => {
-                console.error(err);
-                Swal.fire('Error', 'No se pudieron guardar los cambios antes de vender', 'error');
-            });
+            }
+        });
     }
 </script>
 </body>

@@ -6,34 +6,32 @@
     <style>
         body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px; }
         
-        /* Cabecera */
         .header { width: 100%; overflow: hidden; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
         .company-info { float: left; width: 60%; }
+        
+        .logo-img { max-height: 80px; max-width: 250px; margin-bottom: 5px; display: block; object-fit: contain; }
+
         .company-info h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
         
         .invoice-box { float: right; width: 35%; border: 1px solid #333; padding: 10px; text-align: center; border-radius: 8px; }
         .invoice-box h3 { margin: 0; font-size: 18px; }
-        .invoice-box h2 { margin: 10px 0; font-size: 20px; color: #dc3545; } /* Rojo para Venta */
+        .invoice-box h2 { margin: 10px 0; font-size: 20px; color: #dc3545; } 
         
-        /* Cliente */
         .client-info { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
         .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .label { font-weight: bold; width: 120px; display: inline-block; }
 
-        /* Tabla */
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #333; color: white; text-align: center; }
         td.num { text-align: right; }
 
-        /* Totales */
         .totals { float: right; width: 300px; }
         .totals table { border: none; }
         .totals th { background: none; color: #333; text-align: right; border: none; }
         .totals td { border: none; border-bottom: 1px solid #ddd; text-align: right; }
         .grand-total { font-size: 18px; font-weight: bold; }
 
-        /* Botones */
         .no-print { text-align: center; margin-bottom: 20px; }
         .btn-print { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
 
@@ -53,12 +51,19 @@
 
     <div class="header">
         <div class="company-info">
-            <h1>LIBRERÍA ERP</h1>
-            <p>Av. Principal 123, Lima - Perú</p>
-            <p>RUC: 20100000001</p>
+            <img th:if="${config.logoBase64 != null}" 
+                 th:src="'data:image/png;base64,' + ${config.logoBase64}" 
+                 class="logo-img" alt="Logo">
+            
+            <h1 th:if="${config.logoBase64 == null}" th:text="${config.nombreEmpresa}">NOMBRE EMPRESA</h1>
+            <h2 th:if="${config.logoBase64 != null}" th:text="${config.nombreEmpresa}" style="margin:0; font-size:1.2em;">NOMBRE EMPRESA</h2>
+            
+            <p th:text="${config.direccion}">Dirección de la empresa</p>
+            <p th:text="'Tel: ' + ${config.telefono} + ' | Email: ' + ${config.email}">Contacto</p>
         </div>
         <div class="invoice-box">
-            <h3>R.U.C. 20100000001</h3>
+            <h3 th:text="'R.U.C. ' + ${config.ruc}">R.U.C. XXXXXXXXXXX</h3>
+            
             <h2 th:text="${venta.tipoComprobante}"></h2> 
             <p th:text="${venta.serie} + ' - ' + ${#numbers.formatInteger(venta.numero, 6)}"></p>
         </div>

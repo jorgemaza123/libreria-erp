@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket</title>
+    <style>
+        /* Formato para impresora térmica 80mm */
+        @page { size: 80mm auto; margin: 0; }
+        body { width: 78mm; margin: 0 auto; padding: 2mm; font-family: 'Courier New', monospace; font-size: 12px; color: #000; }
+        
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        
+        /* Logo pequeño para ticket */
+        .logo-ticket { max-width: 60mm; max-height: 25mm; display: block; margin: 0 auto 5px auto; object-fit: contain; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { border-bottom: 1px dashed #000; text-align: left; font-size: 11px; }
+        td { font-size: 11px; vertical-align: top; padding-top: 2px; }
+        
+        .divider { border-top: 1px dashed #000; margin: 5px 0; }
+        
+        .no-print { margin-bottom: 10px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+        
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="no-print">
+        <button onclick="window.print()">🖨️ IMPRIMIR</button>
+        <button onclick="window.close()">CERRAR</button>
+    </div>
+
+    <div class="center">
+        <img th:if="${config.logoBase64 != null}" 
+             th:src="'data:image/png;base64,' + ${config.logoBase64}" 
+             class="logo-ticket">
+             
+        <div class="bold" style="font-size: 14px;" th:text="${config.nombreEmpresa}">EMPRESA</div>
+        <div th:text="'RUC: ' + ${config.ruc}">RUC</div>
+        <div th:text="${config.direccion}">Dirección</div>
+        <br>
+        <div class="bold" th:text="${venta.tipoComprobante} + ' DE VENTA'">BOLETA</div>
+        <div th:text="${venta.serie} + '-' + ${#numbers.formatInteger(venta.numero, 6)}">B001-000001</div>
+        <div th:text="${#temporals.format(venta.fechaEmision, 'dd/MM/yyyy')}"></div>
+    </div>
+
+    <div class="divider"></div>
+    <div>CLIENTE: <span th:text="${venta.clienteDenominacion}"></span></div>
+    <div>DOC: <span th:text="${venta.clienteNumeroDocumento}"></span></div>
+    <div class="divider"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="50%">DESC</th>
+                <th width="15%" class="right">CNT</th>
+                <th width="35%" class="right">IMPORTE</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${venta.items}">
+                <td th:text="${item.descripcion}">Producto</td>
+                <td class="right" th:text="${item.cantidad}">1</td>
+                <td class="right" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}">10.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="divider"></div>
+
+    <div class="right">
+        <div class="bold">TOTAL: S/ <span th:text="${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+    </div>
+
+    <br>
+    <div class="center">
+        Gracias por su compra<br>
+        Vuelva pronto
+    </div>
+
+</body>
+</html>

@@ -33,7 +33,12 @@
                                     <td th:text="${o.id}"></td>
                                     <td>
                                         <div class="font-weight-bold" th:text="${o.clienteNombre}"></div>
-                                        <small th:text="${o.clienteTelefono}"></small>
+                                        <small class="d-block text-muted">
+                                            <i class="fas fa-id-card"></i> <span th:text="${o.clienteDocumento}"></span>
+                                        </small>
+                                        <small>
+                                            <i class="fas fa-phone"></i> <span th:text="${o.clienteTelefono}"></span>
+                                        </small>
                                     </td>
                                     <td>
                                         <span class="badge badge-info" th:text="${o.tipoServicio}"></span><br>
@@ -47,9 +52,17 @@
                                     <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
                                     
                                     <td>
-                                        <button class="btn btn-sm btn-default btn-action" th:onclick="abrirPdf([[${o.id}]])" title="Imprimir"><i class="fas fa-print"></i></button>
-                                        <button class="btn btn-sm btn-success btn-action" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
-                                        <button th:if="${o.estado != 'ENTREGADO'}" class="btn btn-sm btn-primary btn-action" th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])" title="Finalizar"><i class="fas fa-check"></i></button>
+                                        <button class="btn btn-sm btn-default" th:onclick="abrirPdf([[${o.id}]])" title="Imprimir"><i class="fas fa-print"></i></button>
+                                        
+                                        <button class="btn btn-sm btn-success" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])"><i class="fab fa-whatsapp"></i></button>
+                                        
+                                        <a th:if="${o.estado != 'ENTREGADO'}" th:href="@{/ordenes/editar/{id}(id=${o.id})}" class="btn btn-sm btn-warning" title="Editar / Ajustar Costos">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <button th:if="${o.estado != 'ENTREGADO'}" class="btn btn-sm btn-primary" th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])" title="Finalizar y Cobrar">
+                                            <i class="fas fa-check-double"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>

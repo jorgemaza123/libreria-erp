@@ -1,102 +1,66 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <title>Nueva Orden de Servicio</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
-    <style>
-        .sidebar-overlay { display: none !important; }
-        body { overflow: auto !important; }
-        .input-transparent { border: none; background: transparent; width: 100%; }
-        .input-transparent:focus { outline: none; border-bottom: 1px solid blue; }
-        .table-items td { padding: 0.5rem; vertical-align: middle; }
-    </style>
-</head>
+<head th:replace="~{fragments/layout :: head}"></head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li></ul>
-    </nav>
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="/" class="brand-link"><span class="brand-text font-weight-light">Librería ERP</span></a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column">
-                    <li class="nav-item"><a href="/" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="/ordenes/lista" class="nav-link"><i class="nav-icon fas fa-list"></i><p>Listado Ordenes</p></a></li>
-                    <li class="nav-item"><a href="/ordenes/nueva" class="nav-link active"><i class="nav-icon fas fa-plus-circle"></i><p>Nueva Orden</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='servicios')}"></aside>
 
     <div class="content-wrapper">
         <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6"><h1>Nueva Orden de Servicio / Proyecto</h1></div>
-                </div>
-            </div>
+            <div class="container-fluid"><h1>Nueva Orden de Servicio / Proyecto</h1></div>
         </section>
 
         <section class="content">
             <div class="container-fluid">
-                <div class="card card-primary card-outline">
+                <div class="card card-navy card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Datos del Proyecto</h3>
+                    </div>
                     <div class="card-body">
-                        
                         <div class="row">
                             <div class="col-md-3">
-                                <div class="form-group">
-    <label>Tipo de Servicio</label>
-    <input type="text" id="tipoServicio" class="form-control" list="listaServicios" placeholder="Seleccione o escriba uno nuevo...">
-    <datalist id="listaServicios">
-        <option value="SOPORTE TÉCNICO">
-        <option value="SUBLIMACIÓN">
-        <option value="DESARROLLO SOFTWARE">
-        <option value="IMPRESIÓN 3D">
-        <option value="MANTENIMIENTO">
-        <option value="INSTALACIÓN CÁMARAS">
-    </datalist>
-</div>
+                                <label>Tipo Servicio</label>
+                                <input type="text" id="tipoServicio" class="form-control" list="listaServicios" placeholder="Ej: REPARACIÓN PC">
+                                <datalist id="listaServicios">
+    <option th:each="tipo : ${tipos}" th:value="${tipo}"></option>
+</datalist>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Título del Trabajo / Equipo</label>
-                                    <input type="text" id="tituloTrabajo" class="form-control" placeholder="Ej: Laptop HP, 50 Polos Blancos, Sistema Ventas">
-                                </div>
+                                <label>Título del Trabajo</label>
+                                <input type="text" id="tituloTrabajo" class="form-control" placeholder="Ej: Formateo Laptop HP + Office">
                             </div>
                             <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Fecha Entrega Estimada</label>
-                                    <input type="date" id="fechaEntrega" class="form-control">
-                                </div>
+                                <label>Entrega Estimada</label>
+                                <input type="date" id="fechaEntrega" class="form-control">
                             </div>
                         </div>
 
-                        <div class="row bg-light p-2 rounded mb-3">
+                        <div class="row mt-3 bg-light p-2 rounded">
                             <div class="col-md-5">
-                                <input type="text" id="clienteNombre" class="form-control" placeholder="Nombre Cliente">
+                                <label>Cliente</label>
+                                <input type="text" id="clienteNombre" class="form-control" placeholder="Nombre Completo">
                             </div>
                             <div class="col-md-3">
-                                <input type="text" id="clienteDoc" class="form-control" placeholder="DNI / RUC">
+                                <label>DNI / RUC</label>
+                                <input type="text" id="clienteDoc" class="form-control" placeholder="Documento">
                             </div>
                             <div class="col-md-4">
-                                <input type="text" id="clienteTel" class="form-control" placeholder="Teléfono / WhatsApp">
+                                <label>Teléfono</label>
+                                <input type="text" id="clienteTel" class="form-control" placeholder="Para avisar por WhatsApp">
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row mt-4">
                             <div class="col-12">
-                                <label>Detalle de Tareas / Fallas / Servicios</label>
-                                <table class="table table-bordered table-items" id="tablaItems">
+                                <label>Desglose de Costos (Materiales, Mano de obra, etc.)</label>
+                                <table class="table table-bordered table-sm">
                                     <thead class="bg-navy">
                                         <tr>
-                                            <th>Descripción (Falla, Servicio, Item)</th>
-                                            <th style="width: 150px;">Costo (S/)</th>
-                                            <th style="width: 50px;"></th>
+                                            <th>Descripción de la Tarea / Insumo</th>
+                                            <th width="150">Costo (S/)</th>
+                                            <th width="50"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbodyItems">
@@ -105,7 +69,7 @@
                                         <tr>
                                             <td colspan="3">
                                                 <button class="btn btn-outline-primary btn-sm" onclick="agregarFila()">
-                                                    <i class="fas fa-plus"></i> Agregar Fila
+                                                    <i class="fas fa-plus"></i> Agregar Tarea/Item
                                                 </button>
                                             </td>
                                         </tr>
@@ -114,36 +78,34 @@
                             </div>
                         </div>
 
-                        <div class="row justify-content-end">
+                        <div class="row justify-content-end mt-3">
                             <div class="col-md-4">
-                                <table class="table table-sm">
+                                <table class="table table-borderless">
                                     <tr>
-                                        <th>Total:</th>
-                                        <td class="text-right"><input type="number" id="total" class="form-control text-right font-weight-bold" readonly value="0.00"></td>
+                                        <th class="text-right">TOTAL PRESUPUESTO:</th>
+                                        <td><input type="number" id="total" class="form-control text-right font-weight-bold" readonly value="0.00"></td>
                                     </tr>
                                     <tr>
-                                        <th class="text-success">Adelanto (A Caja):</th>
-                                        <td class="text-right"><input type="number" id="aCuenta" class="form-control text-right border-success" value="0.00" oninput="calcularTotales()"></td>
+                                        <th class="text-right text-success">A CUENTA (Adelanto):</th>
+                                        <td><input type="number" id="aCuenta" class="form-control text-right border-success" value="0.00" oninput="calcularTotales()"></td>
                                     </tr>
                                     <tr>
-                                        <th class="text-danger">Saldo Pendiente:</th>
-                                        <td class="text-right"><h3 class="text-danger font-weight-bold" id="saldo">S/ 0.00</h3></td>
+                                        <th class="text-right text-danger">SALDO PENDIENTE:</th>
+                                        <td class="text-right"><h3 class="text-danger m-0" id="saldo">S/ 0.00</h3></td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-12">
-                                <label>Observaciones Internas</label>
-                                <textarea id="observaciones" class="form-control" rows="2"></textarea>
-                            </div>
+                        <div class="form-group">
+                            <label>Observaciones Internas</label>
+                            <textarea id="observaciones" class="form-control" rows="2" placeholder="Detalles técnicos, contraseñas, estado del equipo..."></textarea>
                         </div>
-
                     </div>
+                    
                     <div class="card-footer text-right">
                         <button class="btn btn-app bg-success" onclick="guardarOrden()">
-                            <i class="fas fa-save"></i> Guardar Orden
+                            <i class="fas fa-save"></i> GUARDAR ORDEN
                         </button>
                     </div>
                 </div>
@@ -152,56 +114,50 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div th:replace="~{fragments/layout :: scripts}"></div>
 
 <script>
-    // 1. FUNCIÓN PARA AGREGAR FILAS DINÁMICAMENTE
+    // Iniciar con una fila
+    $(document).ready(function() { agregarFila(); });
+
     function agregarFila() {
         let html = `
             <tr>
-                <td><input type="text" class="form-control item-desc" placeholder="Describa la tarea, falla o servicio..."></td>
-                <td><input type="number" class="form-control item-costo" value="0.00" oninput="calcularTotales()"></td>
+                <td><input type="text" class="form-control item-desc" placeholder="Ej: Mano de obra instalación..."></td>
+                <td><input type="number" class="form-control item-costo" value="0.00" step="0.50" oninput="calcularTotales()"></td>
                 <td class="text-center"><button class="btn btn-danger btn-sm" onclick="$(this).closest('tr').remove(); calcularTotales();"><i class="fas fa-trash"></i></button></td>
-            </tr>
-        `;
+            </tr>`;
         $('#tbodyItems').append(html);
     }
 
-    // 2. CALCULAR TOTALES EN VIVO
     function calcularTotales() {
         let total = 0;
-        $('.item-costo').each(function() {
-            total += parseFloat($(this).val()) || 0;
-        });
+        $('.item-costo').each(function() { total += parseFloat($(this).val()) || 0; });
         
         let aCuenta = parseFloat($('#aCuenta').val()) || 0;
-        let saldo = total - aCuenta;
+        
+        // Validación visual: Adelanto no puede ser mayor al total
+        if(aCuenta > total) {
+            $('#aCuenta').addClass('is-invalid');
+        } else {
+            $('#aCuenta').removeClass('is-invalid');
+        }
 
+        let saldo = total - aCuenta;
+        
         $('#total').val(total.toFixed(2));
         $('#saldo').text("S/ " + saldo.toFixed(2));
     }
 
-    // 3. GUARDAR (CONSTRUIR JSON Y ENVIAR)
     function guardarOrden() {
         let items = [];
-        let error = false;
-
-        // Recorrer tabla
         $('#tbodyItems tr').each(function() {
             let desc = $(this).find('.item-desc').val();
-            let costo = $(this).find('.item-costo').val();
-            if(desc.trim() !== "") {
-                items.push({ descripcion: desc, costo: parseFloat(costo) || 0 });
-            }
+            let costo = parseFloat($(this).find('.item-costo').val()) || 0;
+            if(desc.trim() !== "") items.push({ descripcion: desc, costo: costo });
         });
 
-        if(items.length === 0) {
-            Swal.fire('Atención', 'Agregue al menos un ítem al detalle', 'warning');
-            return;
-        }
+        if(items.length === 0) return Swal.fire('Error', 'Debe agregar al menos una tarea o costo', 'warning');
 
         let dto = {
             tipoServicio: $('#tipoServicio').val(),
@@ -221,20 +177,48 @@
             contentType: 'application/json',
             data: JSON.stringify(dto),
             success: function(resp) {
-                Swal.fire('Éxito', 'Orden #' + resp.id + ' Registrada. Adelanto en Caja.', 'success').then(() => {
+                Swal.fire('¡Registrado!', `Orden #${resp.id} creada.`, 'success').then(() => {
+                    // Opcional: Imprimir ticket de recepción
+                    // window.open('/ordenes/pdf/' + resp.id, '_blank');
                     window.location.href = '/ordenes/lista';
                 });
             },
-            error: function(err) {
-                Swal.fire('Error', 'No se pudo guardar', 'error');
-            }
+            error: function(err) { Swal.fire('Error', 'No se pudo guardar la orden', 'error'); }
         });
     }
 
-    // Inicializar con una fila
-    $(document).ready(function() {
-        agregarFila();
-    });
+    /*[+
+    let ordenEdit = [[${ordenEdicion}]];
+    if(ordenEdit) {
+        // Limpiar tabla vacía
+        $('#tbodyItems').empty();
+        
+        // Llenar campos cabecera
+        $('#tipoServicio').val(ordenEdit.tipoServicio);
+        $('#tituloTrabajo').val(ordenEdit.tituloTrabajo);
+        $('#fechaEntrega').val(ordenEdit.fechaEntregaEstimada);
+        $('#clienteNombre').val(ordenEdit.clienteNombre);
+        $('#clienteDoc').val(ordenEdit.clienteDocumento);
+        $('#clienteTel').val(ordenEdit.clienteTelefono);
+        $('#aCuenta').val(ordenEdit.aCuenta);
+        $('#observaciones').val(ordenEdit.observaciones);
+        
+        // Agregar ID oculto para saber que es update (necesitas agregar un input hidden en el HTML)
+        // <input type="hidden" id="idOrden" th:value="${ordenEdicion?.id}">
+        
+        // Llenar filas
+        ordenEdit.items.forEach(item => {
+            let html = `
+            <tr>
+                <td><input type="text" class="form-control item-desc" value="${item.descripcion}"></td>
+                <td><input type="number" class="form-control item-costo" value="${item.costo}" oninput="calcularTotales()"></td>
+                <td class="text-center"><button class="btn btn-danger btn-sm" onclick="$(this).closest('tr').remove(); calcularTotales();"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+            $('#tbodyItems').append(html);
+        });
+        calcularTotales();
+    }
++]*/
 </script>
 </body>
 </html>
