@@ -6,12 +6,13 @@
 <div class="wrapper">
 
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
     <aside th:replace="~{fragments/layout :: sidebar(active='dashboard')}"></aside>
 
     <div class="content-wrapper">
         <div class="content-header">
-            <div class="container-fluid"><h1 class="m-0">Panel de Control</h1></div>
+            <div class="container-fluid">
+                <h1 class="m-0 text-dark">Panel de Control Financiero</h1>
+            </div>
         </div>
 
         <section class="content">
@@ -21,95 +22,107 @@
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-info">
                             <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(balance['ingresos'], 1, 2)}"></h3>
-                                <p>Ventas Hoy</p>
+                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiVentasMes, 1, 2)}"></h3>
+                                <p>Ventas del Mes</p>
                             </div>
-                            <div class="icon"><i class="fas fa-shopping-cart"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-success">
-                            <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(balance['saldo'], 1, 2)}"></h3>
-                                <p>Dinero en Caja</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-wallet"></i></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <div class="small-box bg-warning">
-                            <div class="inner">
-                                <h3 th:text="${stats['stockCritico'].size()}"></h3>
-                                <p>Alertas Stock Bajo</p>
-                            </div>
-                            <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="icon"><i class="fas fa-cash-register"></i></div>
+                            <a href="/ventas/lista" class="small-box-footer">Ver detalles <i class="fas fa-arrow-circle-right"></i></a>
                         </div>
                     </div>
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-danger">
                             <div class="inner">
-                                <h3 th:text="${stats['sinMovimiento'].size()}"></h3>
-                                <p>Productos Estancados</p>
+                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiCreditos, 1, 2)}"></h3>
+                                <p>Cuentas por Cobrar</p>
                             </div>
-                            <div class="icon"><i class="fas fa-skull-crossbones"></i></div>
+                            <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+                            <a href="/cobranzas" class="small-box-footer">Gestionar Cobros <i class="fas fa-arrow-circle-right"></i></a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiInventario, 1, 2)}"></h3>
+                                <p>Valor del Inventario</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-boxes"></i></div>
+                            <a href="/reportes" class="small-box-footer">Ver reporte <i class="fas fa-arrow-circle-right"></i></a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-secondary">
+                            <div class="inner">
+                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiGastos, 1, 2)}"></h3>
+                                <p>Gastos/Compras Mes</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                            <a href="/gastos" class="small-box-footer">Ver gastos <i class="fas fa-arrow-circle-right"></i></a>
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="card card-primary card-outline">
-                            <div class="card-header"><h3 class="card-title">Ventas Últimos 7 Días</h3></div>
+                    <div class="col-md-8">
+                        <div class="card card-navy card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Balance: Ingresos vs Egresos (6 Meses)</h3>
+                            </div>
                             <div class="card-body">
-                                <canvas id="chartVentas" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                                <canvas id="chartBalance" style="min-height: 300px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+
+                    <div class="col-md-4">
                         <div class="card card-success card-outline">
-                            <div class="card-header"><h3 class="card-title">Top 5 Productos Más Vendidos</h3></div>
+                            <div class="card-header">
+                                <h3 class="card-title">Top Productos</h3>
+                            </div>
                             <div class="card-body">
-                                <canvas id="chartTop" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                                <canvas id="chartTop" style="min-height: 300px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="card card-warning card-outline">
-                            <div class="card-header"><h3 class="card-title">Stock Crítico (Reponer)</h3></div>
-                            <div class="card-body table-responsive p-0" style="height: 300px;">
+                    <div class="col-md-4">
+                        <div class="card card-info card-outline">
+                            <div class="card-header"><h3 class="card-title">Modalidad de Venta (Global)</h3></div>
+                            <div class="card-body">
+                                <canvas id="chartModalidad" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card card-danger card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Alerta de Stock Bajo</h3>
+                            </div>
+                            <div class="card-body table-responsive p-0" style="height: 250px;">
                                 <table class="table table-head-fixed text-nowrap table-striped">
-                                    <thead><tr><th>Producto</th><th>Actual</th><th>Mínimo</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Categoría</th>
+                                            <th>Stock Actual</th>
+                                            <th>Mínimo</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
-                                        <tr th:each="p : ${stats['stockCritico']}">
+                                        <tr th:each="p : ${stockCritico}">
                                             <td th:text="${p.nombre}"></td>
+                                            <td th:text="${p.categoria}"></td>
                                             <td class="text-danger font-weight-bold" th:text="${p.stockActual}"></td>
                                             <td th:text="${p.stockMinimo}"></td>
+                                            <td>
+                                                <a href="/compras/nueva" class="btn btn-xs btn-primary">Reponer</a>
+                                            </td>
                                         </tr>
-                                        <tr th:if="${stats['stockCritico'].empty}">
-                                            <td colspan="3" class="text-center text-muted">Todo en orden</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card card-danger card-outline">
-                            <div class="card-header"><h3 class="card-title">Sin Movimiento (30d)</h3></div>
-                            <div class="card-body table-responsive p-0" style="height: 300px;">
-                                <table class="table table-head-fixed text-nowrap table-striped">
-                                    <thead><tr><th>Producto</th><th>Stock</th><th>Precio</th></tr></thead>
-                                    <tbody>
-                                        <tr th:each="p : ${stats['sinMovimiento']}">
-                                            <td th:text="${p.nombre}"></td>
-                                            <td th:text="${p.stockActual}"></td>
-                                            <td th:text="'S/ ' + ${p.precioVenta}"></td>
-                                        </tr>
-                                        <tr th:if="${stats['sinMovimiento'].empty}">
-                                            <td colspan="3" class="text-center text-muted">No hay productos estancados</td>
+                                        <tr th:if="${stockCritico.empty}">
+                                            <td colspan="5" class="text-center text-muted">¡Excelente! No hay productos con stock crítico.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -127,42 +140,76 @@
 
 <script th:inline="javascript">
     /*<![CDATA[*/
-    const dataVentas = /*[[${stats['ventasSemana']}]]*/ [];
-    const dataTop = /*[[${stats['topProductos']}]]*/ [];
+    
+    // 1. DATOS COMPARATIVA
+    const rawComparativa = /*[[${comparativa}]]*/ {};
+    const labelsComp = Object.keys(rawComparativa);
+    const dataIngresos = labelsComp.map(k => rawComparativa[k].ingreso);
+    const dataEgresos = labelsComp.map(k => rawComparativa[k].egreso);
+
+    // 2. DATOS TOP
+    const rawTop = /*[[${topProductos}]]*/ [];
+    
+    // 3. DATOS MODALIDAD
+    const rawPie = /*[[${pieCredito}]]*/ {};
 
     $(document).ready(function() {
-        if(dataVentas && dataVentas.length > 0) {
-            const ctxVentas = document.getElementById('chartVentas').getContext('2d');
-            new Chart(ctxVentas, {
-                type: 'line',
-                data: {
-                    labels: dataVentas.map(d => d.etiqueta),
-                    datasets: [{
-                        label: 'Ventas (S/)',
-                        data: dataVentas.map(d => d.valor),
-                        backgroundColor: 'rgba(60,141,188,0.9)',
-                        borderColor: 'rgba(60,141,188,0.8)',
-                        fill: false
-                    }]
+        
+        // GRÁFICO 1: BALANCE (BARRAS)
+        new Chart(document.getElementById('chartBalance').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labelsComp,
+                datasets: [
+                    {
+                        label: 'Ingresos (Ventas)',
+                        backgroundColor: '#28a745', // Verde
+                        data: dataIngresos
+                    },
+                    {
+                        label: 'Egresos (Gastos/Compras)',
+                        backgroundColor: '#dc3545', // Rojo
+                        data: dataEgresos
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{ ticks: { beginAtZero: true, callback: function(value) { return 'S/ ' + value; } } }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
+                tooltips: {
+                    callbacks: { label: function(item) { return 'S/ ' + item.yLabel.toFixed(2); } }
+                }
+            }
+        });
 
-        if(dataTop && dataTop.length > 0) {
-            const ctxTop = document.getElementById('chartTop').getContext('2d');
-            new Chart(ctxTop, {
-                type: 'doughnut',
-                data: {
-                    labels: dataTop.map(d => d.etiqueta),
-                    datasets: [{
-                        data: dataTop.map(d => d.valor),
-                        backgroundColor: ['#f56954', '#00a65a', '#f39c12', '#00c0ef', '#3c8dbc'],
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
+        // GRÁFICO 2: TOP PRODUCTOS (DONUT)
+        new Chart(document.getElementById('chartTop').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: rawTop.map(d => d.etiqueta),
+                datasets: [{
+                    data: rawTop.map(d => d.valor),
+                    backgroundColor: ['#f56954', '#00a65a', '#f39c12', '#00c0ef', '#3c8dbc'],
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, legend: { position: 'right' } }
+        });
+
+        // GRÁFICO 3: MODALIDAD (PIE)
+        new Chart(document.getElementById('chartModalidad').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: ['Contado', 'Crédito'],
+                datasets: [{
+                    data: [rawPie.contado, rawPie.credito],
+                    backgroundColor: ['#17a2b8', '#ffc107']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
     });
     /*]]>*/
 </script>

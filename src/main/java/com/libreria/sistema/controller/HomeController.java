@@ -1,6 +1,5 @@
 package com.libreria.sistema.controller;
 
-import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.DashboardService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,11 +13,9 @@ import java.util.Map;
 public class HomeController {
 
     private final DashboardService dashboardService;
-    private final CajaService cajaService;
 
-    public HomeController(DashboardService dashboardService, CajaService cajaService) {
+    public HomeController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
-        this.cajaService = cajaService;
     }
 
     @GetMapping("/")
@@ -31,18 +28,20 @@ public class HomeController {
         }
         
         // Si es ADMIN -> Mostrar Dashboard con Gráficos
-        // Cargar datos para el dashboard.html
-        Map<String, java.math.BigDecimal> balance = cajaService.obtenerBalanceHoy();
-        model.addAttribute("balance", balance);
+        
+        // 1. Obtenemos el mapa con TODOS los datos (KPIs, Gráficos, Tablas)
+        Map<String, Object> datos = dashboardService.obtenerDatosDashboard();
 
-        Map<String, Object> stats = dashboardService.obtenerDatosDashboard();
-        model.addAttribute("stats", stats);
+        // 2. TRUCO IMPORTANTE: Usamos addAllAttributes
+        // Esto "desempaqueta" el mapa. 
+        // Así en el HTML puedes usar directamente ${kpiVentasMes} en vez de ${stats.kpiVentasMes}
+        model.addAllAttributes(datos);
 
-        return "dashboard"; // <--- AQUÍ ESTABA EL ERROR (Antes decía "index")
+        return "dashboard"; 
     }
 
     @GetMapping("/vendedor/dashboard")
     public String dashboardVendedor() {
-        return "vendedor_home"; // Panel de botones grandes
+        return "vendedor_home"; // Panel de botones grandes para el POS
     }
 }
