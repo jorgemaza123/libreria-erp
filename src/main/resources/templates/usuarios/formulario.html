@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='usuarios')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid"><h1 th:text="${titulo}">Usuario</h1></div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-primary">
+                    <form th:action="@{/usuarios/guardar}" th:object="${usuario}" method="post">
+                        <input type="hidden" th:field="*{id}">
+                        
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Nombre Completo *</label>
+                                        <input type="text" class="form-control" th:field="*{nombreCompleto}" required placeholder="Ej: Juan Pérez">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Username (Login) *</label>
+                                        <input type="text" class="form-control" th:field="*{username}" required placeholder="Ej: jperez" autocomplete="off">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Contraseña</label>
+                                        <input type="password" class="form-control" th:field="*{password}" placeholder="Dejar vacío para no cambiar" autocomplete="new-password">
+                                        <small class="form-text text-muted" th:if="${usuario.id != null}">Solo llene si desea cambiar la clave actual.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Estado</label>
+                                        <select class="form-control" th:field="*{activo}">
+                                            <option value="true">ACTIVO (Puede Ingresar)</option>
+                                            <option value="false">INACTIVO (Acceso Bloqueado)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+                            <div class="form-group">
+                                <label>Roles / Permisos</label>
+                                <div class="row">
+                                    <div class="col-sm-4" th:each="rol : ${rolesDisponibles}">
+                                        <div class="icheck-primary d-inline">
+                                            <input type="checkbox" name="rolesIds" th:value="${rol.id}" 
+                                                   th:id="${'rol-' + rol.id}"
+                                                   th:checked="${#lists.contains(usuario.roles, rol)}">
+                                            <label th:for="${'rol-' + rol.id}" th:text="${rol.nombre}">Rol</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer text-right">
+                            <a href="/usuarios" class="btn btn-default">Cancelar</a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Usuario</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

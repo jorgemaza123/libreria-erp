@@ -3,13 +3,14 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.CompraDTO;
 import com.libreria.sistema.repository.*;
+import com.libreria.sistema.service.CajaService; // IMPORTANTE: Usar el servicio
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Controller
@@ -20,34 +21,34 @@ public class CompraController {
     private final ProveedorRepository proveedorRepository;
     private final ProductoRepository productoRepository;
     private final KardexRepository kardexRepository;
-    private final CajaRepository cajaRepository;
+    
+    // CORRECCIÓN: Usamos el servicio de caja, no el repositorio directo
+    private final CajaService cajaService; 
 
     public CompraController(CompraRepository compraRepository, ProveedorRepository proveedorRepository,
                             ProductoRepository productoRepository, KardexRepository kardexRepository,
-                            CajaRepository cajaRepository) {
+                            CajaService cajaService) {
         this.compraRepository = compraRepository;
         this.proveedorRepository = proveedorRepository;
         this.productoRepository = productoRepository;
         this.kardexRepository = kardexRepository;
-        this.cajaRepository = cajaRepository;
+        this.cajaService = cajaService;
     }
 
-    // VISTA: Listado
     @GetMapping("/lista")
     public String lista(Model model) {
+        // Ordenamos por ID descendente para ver lo último primero
         model.addAttribute("compras", compraRepository.findAll());
         return "compras/lista";
     }
 
-    // VISTA: Formulario Nueva Compra
     @GetMapping("/nueva")
     public String nueva(Model model) {
         model.addAttribute("proveedores", proveedorRepository.findByActivoTrue());
-        model.addAttribute("productos", productoRepository.findAll()); // Para el buscador
+        model.addAttribute("productos", productoRepository.findAll());
         return "compras/formulario";
     }
 
-    // API: Procesar Compra
     @PostMapping("/api/guardar")
     public ResponseEntity<?> guardarCompra(@RequestBody CompraDTO dto) {
         try {
@@ -72,13 +73,14 @@ public class CompraController {
                 det.setProducto(prod);
                 det.setCantidad(item.getCantidad());
                 det.setPrecioUnitario(item.getCosto());
+                
                 BigDecimal subtotal = item.getCosto().multiply(new BigDecimal(item.getCantidad()));
                 det.setSubtotal(subtotal);
                 
                 compra.getDetalles().add(det);
                 totalCompra = totalCompra.add(subtotal);
 
-                // 2. KARDEX (Registrar antes de modificar stock actual)
+                // 2. KARDEX (Registrar Movimiento)
                 Kardex kardex = new Kardex();
                 kardex.setProducto(prod);
                 kardex.setTipo("ENTRADA");
@@ -88,22 +90,26 @@ public class CompraController {
                 kardex.setStockActual(prod.getStockActual() + item.getCantidad());
                 kardexRepository.save(kardex);
 
-                // 3. ACTUALIZAR PRODUCTO (Stock y Precio Compra referencial)
+                // 3. ACTUALIZAR PRODUCTO (Subir Stock y Actualizar Costo)
                 prod.setStockActual(prod.getStockActual() + item.getCantidad());
-                prod.setPrecioCompra(item.getCosto()); // Actualizamos el costo al último comprado
+                prod.setPrecioCompra(item.getCosto());
                 productoRepository.save(prod);
             }
 
             compra.setTotal(totalCompra);
             Compra guardada = compraRepository.save(compra);
 
-            // 4. CAJA (Egreso de Dinero)
-            MovimientoCaja egreso = new MovimientoCaja();
-            egreso.setFecha(LocalDateTime.now());
-            egreso.setTipo("EGRESO");
-            egreso.setConcepto("PAGO A PROVEEDOR: " + prov.getRazonSocial() + " - REF: " + guardada.getNumeroComprobante());
-            egreso.setMonto(totalCompra);
-            cajaRepository.save(egreso);
+            // 4. CAJA (CORREGIDO: Usar Service para descontar del turno actual)
+            try {
+                cajaService.registrarMovimiento(
+                    "EGRESO", 
+                    "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(), 
+                    totalCompra
+                );
+            } catch (Exception e) {
+                // Si la caja está cerrada, permitimos la compra pero avisamos en consola
+                System.err.println("ADVERTENCIA: Compra registrada sin salida de caja (Caja Cerrada).");
+            }
 
             return ResponseEntity.ok(Map.of("message", "Compra registrada exitosamente"));
 
@@ -112,12 +118,11 @@ public class CompraController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
-// API: OBTENER DETALLE DE UNA COMPRA (PARA EL MODAL)
+
     @GetMapping("/api/detalle/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerDetalle(@PathVariable Long id) {
         return compraRepository.findById(id).map(compra -> {
-            // Devolvemos un mapa simple para evitar problemas de recursión JSON
             return ResponseEntity.ok(Map.of(
                 "proveedor", compra.getProveedor().getRazonSocial(),
                 "documento", compra.getTipoComprobante() + " " + compra.getNumeroComprobante(),

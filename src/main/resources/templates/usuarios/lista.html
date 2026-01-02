@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='usuarios')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6"><h1>Gestión de Usuarios</h1></div>
+                    <div class="col-sm-6 text-right">
+                        <a href="/usuarios/nuevo" class="btn btn-primary"><i class="fas fa-user-plus"></i> Nuevo Usuario</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-outline card-primary">
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuario</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Roles</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="u : ${usuarios}">
+                                    <td th:text="${u.id}"></td>
+                                    <td class="font-weight-bold" th:text="${u.username}"></td>
+                                    <td th:text="${u.nombreCompleto}"></td>
+                                    <td>
+                                        <span th:each="rol : ${u.roles}" class="badge badge-info mr-1" th:text="${rol.nombre}"></span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${u.activo}" class="badge badge-success">ACTIVO</span>
+                                        <span th:unless="${u.activo}" class="badge badge-danger">INACTIVO</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/usuarios/editar/{id}(id=${u.id})}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                                        <a th:if="${u.username != 'admin'}" 
+                                           th:href="@{/usuarios/eliminar/{id}(id=${u.id})}" 
+                                           class="btn btn-danger btn-sm" 
+                                           onclick="return confirm('¿Desactivar este usuario?')"><i class="fas fa-ban"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>
