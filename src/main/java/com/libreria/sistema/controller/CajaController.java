@@ -3,10 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.service.CajaService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
@@ -23,23 +20,67 @@ public class CajaController {
 
     @GetMapping
     public String index(Model model) {
-        model.addAttribute("movimientos", cajaService.listarMovimientosHoy());
-        model.addAttribute("balance", cajaService.obtenerBalanceHoy());
-        // Pasamos el saldo real acumulado
-        model.addAttribute("saldoTotal", cajaService.calcularSaldoTotal());
+        // Si no hay caja abierta, mandar a abrir
+        if (cajaService.obtenerSesionActiva().isEmpty()) {
+            return "redirect:/caja/apertura";
+        }
+
+        model.addAttribute("movimientos", cajaService.listarMovimientosSesion());
+        model.addAttribute("balance", cajaService.obtenerBalanceSesion());
         return "caja/index";
     }
 
-    @PostMapping("/guardar")
-    public String guardar(@RequestParam String tipo, 
-                          @RequestParam String concepto, 
-                          @RequestParam BigDecimal monto,
-                          RedirectAttributes attributes) {
+    @GetMapping("/apertura")
+    public String vistaApertura() {
+        if (cajaService.obtenerSesionActiva().isPresent()) {
+            return "redirect:/caja";
+        }
+        return "caja/apertura";
+    }
+
+    @PostMapping("/abrir")
+    public String abrir(@RequestParam BigDecimal montoInicial, RedirectAttributes attr) {
+        try {
+            cajaService.abrirCaja(montoInicial);
+            attr.addFlashAttribute("success", "Caja abierta correctamente");
+            return "redirect:/caja";
+        } catch (Exception e) {
+            attr.addFlashAttribute("error", e.getMessage());
+            return "redirect:/caja/apertura";
+        }
+    }
+
+    @GetMapping("/cierre")
+    public String vistaCierre(Model model) {
+        if (cajaService.obtenerSesionActiva().isEmpty()) return "redirect:/caja/apertura";
+        
+        model.addAttribute("balance", cajaService.obtenerBalanceSesion());
+        return "caja/cierre";
+    }
+
+    @PostMapping("/cerrar")
+    public String cerrar(@RequestParam BigDecimal montoReal, RedirectAttributes attr) {
+        try {
+            cajaService.cerrarCaja(montoReal);
+            attr.addFlashAttribute("success", "Caja cerrada y arqueada correctamente.");
+            return "redirect:/caja/apertura"; // Vuelve a pedir apertura para el siguiente turno
+        } catch (Exception e) {
+            attr.addFlashAttribute("error", e.getMessage());
+            return "redirect:/caja";
+        }
+    }
+
+    // Registrar GASTO ADMINISTRATIVO o Retiro
+    @PostMapping("/movimiento")
+    public String movimiento(@RequestParam String tipo, 
+                             @RequestParam String concepto, 
+                             @RequestParam BigDecimal monto, 
+                             RedirectAttributes attr) {
         try {
             cajaService.registrarMovimiento(tipo, concepto, monto);
-            attributes.addFlashAttribute("success", "Movimiento registrado correctamente");
+            attr.addFlashAttribute("success", "Registrado");
         } catch (Exception e) {
-            attributes.addFlashAttribute("error", "Error al registrar movimiento");
+            attr.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/caja";
     }

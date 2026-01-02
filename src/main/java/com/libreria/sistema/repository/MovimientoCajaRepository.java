@@ -1,6 +1,8 @@
 package com.libreria.sistema.repository;
 
 import com.libreria.sistema.model.MovimientoCaja;
+import com.libreria.sistema.model.SesionCaja;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,4 +24,6 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
     // CONSULTA 2: Sumar todos los EGRESOS desde una fecha
     @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'EGRESO' AND m.fecha >= :fecha")
     BigDecimal sumarEgresos(@Param("fecha") LocalDateTime fecha);
+
+    List<MovimientoCaja> findBySesionOrderByFechaDesc(SesionCaja sesion);
 }

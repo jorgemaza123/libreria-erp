@@ -18,7 +18,7 @@ public class MovimientoCaja {
     private String tipo; // INGRESO, EGRESO
 
     @Column(nullable = false)
-    private String concepto; // Ej: "Venta del día", "Pago de Luz", "Taxi"
+    private String concepto;
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal monto;
@@ -29,8 +29,12 @@ public class MovimientoCaja {
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
-    // Opcional: Para vincular con una venta específica si se desea en el futuro
-    private Long referenciaId; // ID de Venta o Compra
+    // NUEVO: Vinculación con la sesión de caja
+    @ManyToOne
+    @JoinColumn(name = "sesion_id")
+    private SesionCaja sesion;
+
+    private Long referenciaId; 
 
     @PrePersist
     protected void onCreate() {
