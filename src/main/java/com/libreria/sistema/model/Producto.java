@@ -14,7 +14,10 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // --- TUS CAMPOS ORIGINALES ---
+    // --- BLOQUEO OPTIMISTA ---
+    @Version
+    private Long version;
+
     @Column(unique = true) 
     private String codigoBarra;
 
@@ -36,7 +39,7 @@ public class Producto {
     private BigDecimal precioVenta;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal precioMayorista; // Mantenido
+    private BigDecimal precioMayorista;
 
     private Integer stockActual;
     private Integer stockMinimo;
@@ -46,24 +49,23 @@ public class Producto {
     private String ubicacionColumna;
     private String ubicacionEstante;
 
-    private String tipoAfectacionIgv; // Mantenido
+    private String tipoAfectacionIgv;
     private boolean activo = true;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
 
-    // --- NUEVOS CAMPOS (FASE 2) ---
     private String marca;
     private String modelo;
     private String color;
     private String generacion; 
     private String tipo;       
-    private String imagen; // Para la foto
+    private String imagen;
 
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
         if (this.stockActual == null) this.stockActual = 0;
-        if (this.stockMinimo == null) this.stockMinimo = 5; // Tu valor por defecto
+        if (this.stockMinimo == null) this.stockMinimo = 5;
         if (this.tipoAfectacionIgv == null) this.tipoAfectacionIgv = "GRAVADO";
     }
 

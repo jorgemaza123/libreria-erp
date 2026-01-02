@@ -2,9 +2,11 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.Producto;
+import com.libreria.sistema.model.Usuario;
 import com.libreria.sistema.model.Venta;
 import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.repository.ProductoRepository;
+import com.libreria.sistema.repository.UsuarioRepository;
 import com.libreria.sistema.repository.VentaRepository;
 
 // --- IMPORTS PDF (iText/OpenPDF) ---
@@ -16,6 +18,7 @@ import com.lowagie.text.FontFactory;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -38,11 +41,17 @@ public class ReporteService {
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
     private final CajaRepository cajaRepository;
+    private final UsuarioRepository usuarioRepository; 
+    private final ConfiguracionService configuracionService; 
 
-    public ReporteService(VentaRepository ventaRepository, ProductoRepository productoRepository, CajaRepository cajaRepository) {
+    public ReporteService(VentaRepository ventaRepository, ProductoRepository productoRepository, 
+                          CajaRepository cajaRepository, UsuarioRepository usuarioRepository,
+                          ConfiguracionService configuracionService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.cajaRepository = cajaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.configuracionService = configuracionService;
     }
 
     // ==========================================
@@ -58,8 +67,8 @@ public class ReporteService {
         if ("VENTAS".equals(tipo)) generarExcelVentas(sheet, inicio, fin, headerStyle, dataStyle);
         else if ("CAJA".equals(tipo)) generarExcelCaja(sheet, inicio, fin, headerStyle, dataStyle);
         else if ("INVENTARIO".equals(tipo)) generarExcelInventario(sheet, headerStyle, dataStyle);
+        else if ("USUARIOS".equals(tipo)) generarExcelUsuarios(sheet, headerStyle, dataStyle); 
 
-        // Autoajustar columnas (0 a 7)
         for(int i=0; i<8; i++) sheet.autoSizeColumn(i);
 
         workbook.write(outputStream);
@@ -91,15 +100,7 @@ public class ReporteService {
     }
 
     private void generarExcelVentas(Sheet sheet, LocalDate inicio, LocalDate fin, CellStyle headerStyle, CellStyle dataStyle) {
-        Row header = sheet.createRow(0);
-        String[] columns = {"ID", "FECHA", "COMPROBANTE", "CLIENTE", "TOTAL", "ESTADO"};
-        
-        for(int i=0; i<columns.length; i++) {
-            Cell cell = header.createCell(i);
-            cell.setCellValue(columns[i]);
-            cell.setCellStyle(headerStyle);
-        }
-
+        crearFilaCabecera(sheet, headerStyle, "ID", "FECHA", "COMPROBANTE", "CLIENTE", "TOTAL", "ESTADO");
         List<Venta> lista = ventaRepository.findAll();
         int rowIdx = 1;
         for (Venta v : lista) {
@@ -117,15 +118,7 @@ public class ReporteService {
     }
 
     private void generarExcelCaja(Sheet sheet, LocalDate inicio, LocalDate fin, CellStyle headerStyle, CellStyle dataStyle) {
-        Row header = sheet.createRow(0);
-        String[] columns = {"FECHA", "TIPO", "CONCEPTO", "MONTO"};
-        
-        for(int i=0; i<columns.length; i++) {
-            Cell cell = header.createCell(i);
-            cell.setCellValue(columns[i]);
-            cell.setCellStyle(headerStyle);
-        }
-
+        crearFilaCabecera(sheet, headerStyle, "FECHA", "TIPO", "CONCEPTO", "MONTO", "USUARIO");
         List<MovimientoCaja> lista = cajaRepository.findAll();
         int rowIdx = 1;
         for (MovimientoCaja m : lista) {
@@ -138,19 +131,12 @@ public class ReporteService {
             crearCelda(row, 1, m.getTipo(), dataStyle);
             crearCelda(row, 2, m.getConcepto(), dataStyle);
             crearCelda(row, 3, "S/ " + m.getMonto(), dataStyle);
+            crearCelda(row, 4, m.getUsuario() != null ? m.getUsuario().getUsername() : "-", dataStyle);
         }
     }
 
     private void generarExcelInventario(Sheet sheet, CellStyle headerStyle, CellStyle dataStyle) {
-        Row header = sheet.createRow(0);
-        String[] columns = {"CODIGO", "PRODUCTO", "STOCK", "P. COMPRA", "P. VENTA", "VALORIZADO"};
-        
-        for(int i=0; i<columns.length; i++) {
-            Cell cell = header.createCell(i);
-            cell.setCellValue(columns[i]);
-            cell.setCellStyle(headerStyle);
-        }
-
+        crearFilaCabecera(sheet, headerStyle, "CODIGO", "PRODUCTO", "STOCK", "P. COMPRA", "P. VENTA", "VALORIZADO");
         List<Producto> lista = productoRepository.findAll();
         int rowIdx = 1;
         for (Producto p : lista) {
@@ -163,6 +149,32 @@ public class ReporteService {
             
             double valor = p.getStockActual() * (p.getPrecioCompra()!=null?p.getPrecioCompra().doubleValue():0);
             crearCelda(row, 5, "S/ " + String.format("%.2f", valor), dataStyle);
+        }
+    }
+
+    private void generarExcelUsuarios(Sheet sheet, CellStyle headerStyle, CellStyle dataStyle) {
+        crearFilaCabecera(sheet, headerStyle, "ID", "USUARIO", "NOMBRE COMPLETO", "ESTADO", "ROLES");
+        List<Usuario> lista = usuarioRepository.findAll();
+        int rowIdx = 1;
+        for (Usuario u : lista) {
+            Row row = sheet.createRow(rowIdx++);
+            crearCelda(row, 0, u.getId().toString(), dataStyle);
+            crearCelda(row, 1, u.getUsername(), dataStyle);
+            crearCelda(row, 2, u.getNombreCompleto(), dataStyle);
+            crearCelda(row, 3, u.isActivo() ? "ACTIVO" : "INACTIVO", dataStyle);
+            
+            StringBuilder roles = new StringBuilder();
+            u.getRoles().forEach(r -> roles.append(r.getNombre()).append(", "));
+            crearCelda(row, 4, roles.toString(), dataStyle);
+        }
+    }
+
+    private void crearFilaCabecera(Sheet sheet, CellStyle style, String... headers) {
+        Row header = sheet.createRow(0);
+        for(int i=0; i<headers.length; i++) {
+            Cell cell = header.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(style);
         }
     }
 
@@ -180,19 +192,42 @@ public class ReporteService {
         PdfWriter.getInstance(document, outputStream);
         document.open();
 
-        // Cabecera Simple
-        Paragraph titulo = new Paragraph("REPORTE DE " + tipo, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, Color.BLUE));
-        titulo.setAlignment(Element.ALIGN_CENTER);
-        document.add(titulo);
+        // --- CABECERA EMPRESARIAL ---
+        var config = configuracionService.obtenerConfiguracion();
         
-        Paragraph subtitulo = new Paragraph("Generado el: " + LocalDate.now(), FontFactory.getFont(FontFactory.HELVETICA, 10));
-        subtitulo.setAlignment(Element.ALIGN_CENTER);
-        document.add(subtitulo);
-        document.add(new Paragraph(" ")); // Espacio
+        PdfPTable headerTable = new PdfPTable(2);
+        headerTable.setWidthPercentage(100);
+        
+        PdfPCell cellEmpresa = new PdfPCell();
+        cellEmpresa.setBorder(Rectangle.NO_BORDER);
+        cellEmpresa.addElement(new Paragraph(config.getNombreEmpresa(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14)));
+        cellEmpresa.addElement(new Paragraph("RUC: " + config.getRuc(), FontFactory.getFont(FontFactory.HELVETICA, 10)));
+        cellEmpresa.addElement(new Paragraph("Dirección: " + config.getDireccion(), FontFactory.getFont(FontFactory.HELVETICA, 10)));
+        headerTable.addCell(cellEmpresa);
+
+        PdfPCell cellTitulo = new PdfPCell();
+        cellTitulo.setBorder(Rectangle.NO_BORDER);
+        cellTitulo.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        Paragraph pTitulo = new Paragraph("REPORTE DE " + tipo, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, Color.BLUE));
+        pTitulo.setAlignment(Element.ALIGN_RIGHT);
+        cellTitulo.addElement(pTitulo);
+        
+        String fechaStr = "Fecha Emisión: " + LocalDate.now();
+        if(inicio != null && fin != null) fechaStr += "\nPeríodo: " + inicio + " al " + fin;
+        
+        Paragraph pFecha = new Paragraph(fechaStr, FontFactory.getFont(FontFactory.HELVETICA, 10));
+        pFecha.setAlignment(Element.ALIGN_RIGHT);
+        cellTitulo.addElement(pFecha);
+        
+        headerTable.addCell(cellTitulo);
+        document.add(headerTable);
+        document.add(new Paragraph(" "));
+        document.add(new Paragraph(" ")); 
 
         if ("VENTAS".equals(tipo)) generarPdfVentas(document, inicio, fin);
         else if ("CAJA".equals(tipo)) generarPdfCaja(document, inicio, fin);
         else if ("INVENTARIO".equals(tipo)) generarPdfInventario(document);
+        else if ("USUARIOS".equals(tipo)) generarPdfUsuarios(document);
 
         document.close();
     }
@@ -200,9 +235,9 @@ public class ReporteService {
     private void generarPdfVentas(Document document, LocalDate inicio, LocalDate fin) throws DocumentException {
         PdfPTable table = new PdfPTable(5);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{2, 3, 4, 2, 2});
+        table.setWidths(new float[]{2, 2, 4, 2, 2});
         
-        agregarCabeceraPdf(table, new String[]{"FECHA", "DOC", "CLIENTE", "TOTAL", "ESTADO"});
+        agregarCabeceraPdf(table, "FECHA", "DOC", "CLIENTE", "TOTAL", "ESTADO");
 
         List<Venta> lista = ventaRepository.findAll();
         for (Venta v : lista) {
@@ -212,16 +247,17 @@ public class ReporteService {
             table.addCell(crearCeldaPdf(v.getFechaEmision().toString()));
             table.addCell(crearCeldaPdf(v.getSerie() + "-" + v.getNumero()));
             table.addCell(crearCeldaPdf(v.getClienteDenominacion()));
-            table.addCell(crearCeldaPdf("S/ " + v.getTotal()));
+            table.addCell(crearCeldaPdfRight("S/ " + v.getTotal()));
             table.addCell(crearCeldaPdf(v.getEstado()));
         }
         document.add(table);
     }
 
     private void generarPdfCaja(Document document, LocalDate inicio, LocalDate fin) throws DocumentException {
-        PdfPTable table = new PdfPTable(4);
+        PdfPTable table = new PdfPTable(5);
         table.setWidthPercentage(100);
-        agregarCabeceraPdf(table, new String[]{"FECHA", "TIPO", "CONCEPTO", "MONTO"});
+        table.setWidths(new float[]{2, 1, 4, 2, 2});
+        agregarCabeceraPdf(table, "FECHA", "TIPO", "CONCEPTO", "MONTO", "USUARIO");
 
         List<MovimientoCaja> lista = cajaRepository.findAll();
         for (MovimientoCaja m : lista) {
@@ -232,7 +268,8 @@ public class ReporteService {
             table.addCell(crearCeldaPdf(m.getFecha().toString().replace("T", " ")));
             table.addCell(crearCeldaPdf(m.getTipo()));
             table.addCell(crearCeldaPdf(m.getConcepto()));
-            table.addCell(crearCeldaPdf("S/ " + m.getMonto()));
+            table.addCell(crearCeldaPdfRight("S/ " + m.getMonto()));
+            table.addCell(crearCeldaPdf(m.getUsuario() != null ? m.getUsuario().getUsername() : "-"));
         }
         document.add(table);
     }
@@ -240,27 +277,48 @@ public class ReporteService {
     private void generarPdfInventario(Document document) throws DocumentException {
         PdfPTable table = new PdfPTable(5);
         table.setWidthPercentage(100);
-        agregarCabeceraPdf(table, new String[]{"CODIGO", "PRODUCTO", "STOCK", "P. VENTA", "VALORIZADO"});
+        table.setWidths(new float[]{2, 4, 1, 2, 2});
+        agregarCabeceraPdf(table, "CODIGO", "PRODUCTO", "STOCK", "P. VENTA", "VALORIZADO");
 
         List<Producto> lista = productoRepository.findAll();
         for (Producto p : lista) {
             table.addCell(crearCeldaPdf(p.getCodigoInterno()));
             table.addCell(crearCeldaPdf(p.getNombre()));
-            table.addCell(crearCeldaPdf(String.valueOf(p.getStockActual())));
-            table.addCell(crearCeldaPdf("S/ " + p.getPrecioVenta()));
+            table.addCell(crearCeldaPdfCenter(String.valueOf(p.getStockActual())));
+            table.addCell(crearCeldaPdfRight("S/ " + p.getPrecioVenta()));
             
             double valor = p.getStockActual() * (p.getPrecioCompra()!=null?p.getPrecioCompra().doubleValue():0);
-            table.addCell(crearCeldaPdf("S/ " + String.format("%.2f", valor)));
+            table.addCell(crearCeldaPdfRight("S/ " + String.format("%.2f", valor)));
         }
         document.add(table);
     }
 
-    private void agregarCabeceraPdf(PdfPTable table, String[] headers) {
+    private void generarPdfUsuarios(Document document) throws DocumentException {
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2, 3, 3, 2});
+        agregarCabeceraPdf(table, "USUARIO", "NOMBRE COMPLETO", "ROLES", "ESTADO");
+
+        List<Usuario> lista = usuarioRepository.findAll();
+        for (Usuario u : lista) {
+            table.addCell(crearCeldaPdf(u.getUsername()));
+            table.addCell(crearCeldaPdf(u.getNombreCompleto()));
+            
+            StringBuilder roles = new StringBuilder();
+            u.getRoles().forEach(r -> roles.append(r.getNombre()).append(" "));
+            table.addCell(crearCeldaPdf(roles.toString()));
+            
+            table.addCell(crearCeldaPdf(u.isActivo() ? "ACTIVO" : "INACTIVO"));
+        }
+        document.add(table);
+    }
+
+    private void agregarCabeceraPdf(PdfPTable table, String... headers) {
         for(String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE)));
             cell.setBackgroundColor(Color.DARK_GRAY);
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(5);
+            cell.setPadding(6);
             table.addCell(cell);
         }
     }
@@ -268,6 +326,18 @@ public class ReporteService {
     private PdfPCell crearCeldaPdf(String texto) {
         PdfPCell cell = new PdfPCell(new Phrase(texto, FontFactory.getFont(FontFactory.HELVETICA, 9)));
         cell.setPadding(4);
+        return cell;
+    }
+    
+    private PdfPCell crearCeldaPdfRight(String texto) {
+        PdfPCell cell = crearCeldaPdf(texto);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        return cell;
+    }
+    
+    private PdfPCell crearCeldaPdfCenter(String texto) {
+        PdfPCell cell = crearCeldaPdf(texto);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         return cell;
     }
 }

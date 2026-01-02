@@ -7,6 +7,7 @@ import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.ConfiguracionService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException; // IMPORTANTE
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,10 +32,9 @@ public class VentaController {
     private final CorrelativoRepository correlativoRepository;
     private final ConfiguracionService configuracionService;
     
-    // NUEVOS REPOSITORIOS Y SERVICIOS
     private final ClienteRepository clienteRepository;
     private final AmortizacionRepository amortizacionRepository;
-    private final CajaService cajaService; // Usamos el servicio, no el repositorio directo
+    private final CajaService cajaService;
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
@@ -81,7 +81,9 @@ public class VentaController {
     @PostMapping("/api/guardar")
     public ResponseEntity<?> guardarVenta(@RequestBody VentaDTO dto) {
         try {
-            // 1. GESTIÓN INTELIGENTE DEL CLIENTE
+            // --- INICIO TRANSACCIÓN ---
+            
+            // 1. CLIENTE
             Cliente cliente = clienteRepository.findByNumeroDocumento(dto.getClienteDocumento())
                 .orElseGet(() -> {
                     Cliente c = new Cliente();
@@ -89,19 +91,17 @@ public class VentaController {
                     c.setNombreRazonSocial(dto.getClienteNombre());
                     c.setDireccion(dto.getClienteDireccion());
                     c.setTelefono(dto.getClienteTelefono());
-                    // Lógica simple: Si tiene 11 dígitos es RUC (6), sino DNI (1)
                     c.setTipoDocumento(dto.getClienteDocumento().length() == 11 ? "6" : "1"); 
                     return clienteRepository.save(c);
                 });
 
-            // 2. PREPARAR VENTA CABECERA
+            // 2. CABECERA VENTA
             Venta venta = new Venta();
-            venta.setClienteEntity(cliente); // Relación fuerte con la tabla Cliente
+            venta.setClienteEntity(cliente);
             venta.setClienteDenominacion(cliente.getNombreRazonSocial());
             venta.setClienteNumeroDocumento(cliente.getNumeroDocumento());
             venta.setClienteDireccion(cliente.getDireccion());
 
-            // Correlativos
             String tipo = dto.getTipoComprobante() != null ? dto.getTipoComprobante() : "NOTA_VENTA";
             String serie = tipo.equals("FACTURA") ? "F001" : (tipo.equals("BOLETA") ? "B001" : "N001");
             
@@ -117,7 +117,7 @@ public class VentaController {
             venta.setFechaEmision(LocalDate.now());
             venta.setEstado("EMITIDO");
 
-            // 3. PROCESAR DETALLES Y STOCK
+            // 3. DETALLES (CON VALIDACIÓN DE STOCK)
             BigDecimal totalVenta = BigDecimal.ZERO;
             BigDecimal totalGravada = BigDecimal.ZERO;
             BigDecimal totalIgv = BigDecimal.ZERO;
@@ -126,8 +126,9 @@ public class VentaController {
                 Producto prod = productoRepository.findById(item.getProductoId())
                         .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
+                // Validación estricta de Stock
                 if (prod.getStockActual() < item.getCantidad().intValue()) {
-                    return ResponseEntity.badRequest().body("Stock insuficiente: " + prod.getNombre());
+                    return ResponseEntity.badRequest().body("Stock insuficiente para: " + prod.getNombre());
                 }
 
                 BigDecimal precioFinal = item.getPrecioVenta();
@@ -162,6 +163,7 @@ public class VentaController {
                 k.setStockActual(prod.getStockActual() - cantidad.intValue());
                 kardexRepository.save(k);
 
+                // ACTUALIZAR STOCK (Aquí JPA verificará la @Version)
                 prod.setStockActual(prod.getStockActual() - cantidad.intValue());
                 productoRepository.save(prod);
             }
@@ -170,25 +172,18 @@ public class VentaController {
             venta.setTotalGravada(totalGravada);
             venta.setTotalIgv(totalIgv);
 
-            // 4. LÓGICA DE CRÉDITO Y CAJA
+            // 4. CRÉDITO / CAJA
             BigDecimal montoAbonado = BigDecimal.ZERO;
 
             if ("CREDITO".equals(dto.getFormaPago())) {
                 venta.setFormaPago("CREDITO");
-                
-                // Si dejaron un adelanto (montoInicial)
                 BigDecimal inicial = dto.getMontoInicial() != null ? dto.getMontoInicial() : BigDecimal.ZERO;
                 montoAbonado = inicial;
-                
                 venta.setMontoPagado(inicial);
                 venta.setSaldoPendiente(totalVenta.subtract(inicial));
-                
-                // Fecha vencimiento
                 int dias = dto.getDiasCredito() != null ? dto.getDiasCredito() : 7;
                 venta.setFechaVencimiento(LocalDate.now().plusDays(dias));
-                
             } else {
-                // CONTADO
                 venta.setFormaPago("CONTADO");
                 venta.setMontoPagado(totalVenta);
                 venta.setSaldoPendiente(BigDecimal.ZERO);
@@ -198,38 +193,36 @@ public class VentaController {
 
             Venta guardada = ventaRepository.save(venta);
 
-            // 5. REGISTRAR PAGO Y CAJA (Solo si hubo flujo de dinero)
             if (montoAbonado.compareTo(BigDecimal.ZERO) > 0) {
-                // A. Guardar Amortización
                 Amortizacion amo = new Amortizacion();
                 amo.setVenta(guardada);
                 amo.setMonto(montoAbonado);
-                amo.setMetodoPago("EFECTIVO"); // Por ahora default
+                amo.setMetodoPago("EFECTIVO");
                 amo.setObservacion("PAGO INICIAL / CONTADO");
                 amortizacionRepository.save(amo);
 
-                // B. Guardar en Caja Chica (Usando el Servicio para validar sesión)
                 try {
                     cajaService.registrarMovimiento("INGRESO", 
                         "VENTA " + guardada.getSerie() + "-" + guardada.getNumero(), 
                         montoAbonado);
                 } catch (Exception e) {
-                    // Si la caja está cerrada, guardamos la venta pero avisamos (o lanzamos error según política)
-                    // Por ahora solo logueamos para no romper la venta
-                    System.err.println("ADVERTENCIA: Venta registrada sin movimiento en caja (Caja Cerrada)");
+                    System.err.println("ADVERTENCIA: Venta sin movimiento de caja: " + e.getMessage());
                 }
             }
 
             return ResponseEntity.ok(Map.of("id", guardada.getId()));
 
+        } catch (OptimisticLockingFailureException e) {
+            // ERROR DE CONCURRENCIA
+            return ResponseEntity.badRequest().body("ERROR DE STOCK: Otro vendedor actualizó el producto mientras usted procesaba la venta. Por favor, vuelva a intentarlo.");
+            
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
-    // --- MÉTODOS EXISTENTES MANTENIDOS ---
-
+    // --- MÉTODOS EXISTENTES SIN CAMBIOS ---
     @GetMapping("/api/producto/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {

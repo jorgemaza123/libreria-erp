@@ -6,7 +6,6 @@
 <div class="wrapper">
 
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
     <aside th:replace="~{fragments/layout :: sidebar(active='reportes')}"></aside>
 
     <div class="content-wrapper">
@@ -21,14 +20,15 @@
                         <div class="card card-navy">
                             <div class="card-header"><h3 class="card-title">Generar Exportación</h3></div>
                             
-                            <form id="formReporte" method="get" target="_blank">
+                            <form id="formReporte">
                                 <div class="card-body">
                                     <div class="form-group">
                                         <label>Tipo de Reporte</label>
                                         <select name="tipo" id="tipoReporte" class="form-control" onchange="toggleFechas()">
                                             <option value="VENTAS">Reporte de Ventas</option>
-                                            <option value="CAJA">Movimientos de Caja</option>
-                                            <option value="INVENTARIO">Inventario General</option>
+                                            <option value="CAJA">Movimientos de Caja (Dinero)</option>
+                                            <option value="INVENTARIO">Inventario General / Valorizado</option>
+                                            <option value="USUARIOS">Directorio de Usuarios / Roles</option>
                                         </select>
                                     </div>
 
@@ -36,23 +36,23 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label>Fecha Inicio</label>
-                                                <input type="date" name="inicio" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-01')}">
+                                                <input type="date" id="fechaInicio" name="inicio" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-01')}">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label>Fecha Fin</label>
-                                                <input type="date" name="fin" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                                                <input type="date" id="fechaFin" name="fin" class="form-control" th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card-footer text-right">
-                                    <button type="button" class="btn btn-success" onclick="enviar('excel')">
-                                        <i class="fas fa-file-excel"></i> Excel
+                                    <button type="button" class="btn btn-success" onclick="procesarReporte('excel')">
+                                        <i class="fas fa-file-excel"></i> Exportar Excel
                                     </button>
-                                    <button type="button" class="btn btn-danger" onclick="enviar('pdf')">
-                                        <i class="fas fa-file-pdf"></i> PDF Estilo SUNAT
+                                    <button type="button" class="btn btn-danger" onclick="procesarReporte('pdf')">
+                                        <i class="fas fa-file-pdf"></i> Imprimir PDF (Estilo SUNAT)
                                     </button>
                                 </div>
                             </form>
@@ -69,22 +69,50 @@
 <script>
     function toggleFechas() {
         let tipo = document.getElementById("tipoReporte").value;
-        document.getElementById("rangoFechas").style.display = (tipo === 'INVENTARIO') ? 'none' : 'flex';
+        // Ocultar fechas para reportes estáticos (Inventario y Usuarios)
+        let mostrar = (tipo !== 'INVENTARIO' && tipo !== 'USUARIOS');
+        document.getElementById("rangoFechas").style.display = mostrar ? 'flex' : 'none';
     }
 
-    function enviar(formato) {
-        let form = document.getElementById("formReporte");
-        form.action = (formato === 'excel') ? '/reportes/exportar/excel' : '/reportes/exportar/pdf';
+    function procesarReporte(formato) {
+        // 1. Obtener valores
+        const tipo = document.getElementById("tipoReporte").value;
+        const inicio = document.getElementById("fechaInicio").value;
+        const fin = document.getElementById("fechaFin").value;
+
+        // 2. Construir URL base
+        let url = `/reportes/exportar/${formato}?tipo=${tipo}`;
         
-        // Verificación de sesión simple antes de enviar
-        fetch('/').then(response => {
-            if(response.redirected || response.status === 401 || response.status === 403) {
-                window.location.href = '/login';
-            } else {
-                form.submit();
-            }
-        }).catch(() => form.submit());
+        // Agregar fechas si corresponde
+        if (tipo !== 'INVENTARIO' && tipo !== 'USUARIOS') {
+            url += `&inicio=${inicio}&fin=${fin}`;
+        }
+
+        // 3. Decidir cómo abrir
+        if (formato === 'pdf') {
+            // PDF: Abrir en POPUP (Ventana flotante)
+            abrirPopup(url);
+        } else {
+            // EXCEL: Descargar directo (navegación simple)
+            window.location.href = url;
+        }
     }
+
+    function abrirPopup(url) {
+        const width = 1000;
+        const height = 700;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        
+        window.open(
+            url, 
+            'ReportePDF', 
+            `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
+        );
+    }
+    
+    // Ejecutar al cargar para validar el estado inicial visual
+    document.addEventListener("DOMContentLoaded", toggleFechas);
 </script>
 </body>
 </html>
