@@ -28,7 +28,9 @@
                                     <div class="mt-2 mb-3 border rounded p-2 bg-light">
                                         <img th:if="${producto.imagen != null}" th:src="@{'/images/' + ${producto.imagen}}" 
                                              class="img-fluid" style="max-height: 180px; object-fit: contain;">
-                                        <img th:unless="${producto.imagen != null}" src="https://via.placeholder.com/150?text=Sin+Foto" 
+                                        
+                                        <img th:unless="${producto.imagen != null}" 
+                                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0PSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGR5PSIuM2VtIiBmaWxsPSIjNTU1IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MSUI8L3RleHQ+PC9zdmc+" 
                                              class="img-fluid" style="max-height: 180px; opacity: 0.5;">
                                     </div>
                                     <div class="custom-file text-left">
@@ -59,9 +61,12 @@
                                                 <label>Categoría</label>
                                                 <input type="text" class="form-control" th:field="*{categoria}" list="listaCategorias">
                                                 <datalist id="listaCategorias">
-                                                    <option value="UTILES ESCOLARES"><option value="OFICINA">
-                                                    <option value="PAPELERÍA"><option value="TECNOLOGÍA">
-                                                    <option value="ARTE Y DISEÑO"><option value="REGALOS">
+                                                    <option value="UTILES ESCOLARES">
+                                                    <option value="OFICINA">
+                                                    <option value="PAPELERÍA">
+                                                    <option value="TECNOLOGÍA">
+                                                    <option value="ARTE Y DISEÑO">
+                                                    <option value="REGALOS">
                                                 </datalist>
                                             </div>
                                         </div>

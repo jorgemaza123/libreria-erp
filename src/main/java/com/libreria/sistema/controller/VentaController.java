@@ -3,6 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
+import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.ConfiguracionService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,87 +28,85 @@ public class VentaController {
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
     private final KardexRepository kardexRepository;
-    private final CajaRepository cajaRepository;
     private final CorrelativoRepository correlativoRepository;
     private final ConfiguracionService configuracionService;
+    
+    // NUEVOS REPOSITORIOS Y SERVICIOS
+    private final ClienteRepository clienteRepository;
+    private final AmortizacionRepository amortizacionRepository;
+    private final CajaService cajaService; // Usamos el servicio, no el repositorio directo
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
 
     public VentaController(ProductoRepository productoRepository, VentaRepository ventaRepository,
-            KardexRepository kardexRepository, CajaRepository cajaRepository,
-            CorrelativoRepository correlativoRepository,
-            ConfiguracionService configuracionService) {
+            KardexRepository kardexRepository, CorrelativoRepository correlativoRepository,
+            ConfiguracionService configuracionService,
+            ClienteRepository clienteRepository,
+            AmortizacionRepository amortizacionRepository,
+            CajaService cajaService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.kardexRepository = kardexRepository;
-        this.cajaRepository = cajaRepository;
         this.correlativoRepository = correlativoRepository;
         this.configuracionService = configuracionService;
+        this.clienteRepository = clienteRepository;
+        this.amortizacionRepository = amortizacionRepository;
+        this.cajaService = cajaService;
     }
 
-    // VISTA POS: Carga rápida (sin productos)
     @GetMapping("/nueva")
-    public String nuevaVenta(Model model) {
+    public String nuevaVenta() {
         return "ventas/pos";
     }
 
-    // BUSCADOR AJAX (Para Select2)
     @GetMapping("/api/buscar-productos")
     @ResponseBody
     public List<Map<String, Object>> buscarProductos(@RequestParam String term) {
         return productoRepository.buscarInteligente(term).stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
-            // Texto que se ve en el desplegable
             map.put("text", p.getCodigoBarra() + " - " + p.getNombre() + " (Stock: " + p.getStockActual() + ")");
-
-            // Datos extra para el JS
             map.put("precio", p.getPrecioVenta());
-            map.put("precioMin", p.getPrecioVenta().multiply(new BigDecimal("0.90"))); // Margen 10%
+            map.put("precioMin", p.getPrecioVenta().multiply(new BigDecimal("0.90")));
             map.put("stock", p.getStockActual());
             map.put("nombre", p.getNombre());
             map.put("marca", p.getMarca());
             map.put("imagen", p.getImagen());
-            map.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-"
-                    + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
+            map.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-" + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
             return map;
         }).collect(Collectors.toList());
     }
 
-    // OBTENER UN SOLO PRODUCTO (Para el visor lateral)
-    @GetMapping("/api/producto/{id}")
-    @ResponseBody
-    public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
-        return productoRepository.findById(id).map(p -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("id", p.getId());
-            data.put("nombre", p.getNombre());
-            data.put("marca", p.getMarca());
-            data.put("precio", p.getPrecioVenta());
-            data.put("precioMinimo", p.getPrecioVenta().multiply(new BigDecimal("0.90")));
-            data.put("stock", p.getStockActual());
-            data.put("imagen", p.getImagen());
-            data.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-"
-                    + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
-            return ResponseEntity.ok(data);
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
-    // GUARDAR VENTA (Transaccional)
     @PostMapping("/api/guardar")
     public ResponseEntity<?> guardarVenta(@RequestBody VentaDTO dto) {
         try {
-            Venta venta = new Venta();
-            venta.setClienteDenominacion(dto.getClienteNombre());
-            venta.setClienteNumeroDocumento(dto.getClienteDocumento());
+            // 1. GESTIÓN INTELIGENTE DEL CLIENTE
+            Cliente cliente = clienteRepository.findByNumeroDocumento(dto.getClienteDocumento())
+                .orElseGet(() -> {
+                    Cliente c = new Cliente();
+                    c.setNumeroDocumento(dto.getClienteDocumento());
+                    c.setNombreRazonSocial(dto.getClienteNombre());
+                    c.setDireccion(dto.getClienteDireccion());
+                    c.setTelefono(dto.getClienteTelefono());
+                    // Lógica simple: Si tiene 11 dígitos es RUC (6), sino DNI (1)
+                    c.setTipoDocumento(dto.getClienteDocumento().length() == 11 ? "6" : "1"); 
+                    return clienteRepository.save(c);
+                });
 
+            // 2. PREPARAR VENTA CABECERA
+            Venta venta = new Venta();
+            venta.setClienteEntity(cliente); // Relación fuerte con la tabla Cliente
+            venta.setClienteDenominacion(cliente.getNombreRazonSocial());
+            venta.setClienteNumeroDocumento(cliente.getNumeroDocumento());
+            venta.setClienteDireccion(cliente.getDireccion());
+
+            // Correlativos
             String tipo = dto.getTipoComprobante() != null ? dto.getTipoComprobante() : "NOTA_VENTA";
             String serie = tipo.equals("FACTURA") ? "F001" : (tipo.equals("BOLETA") ? "B001" : "N001");
-
+            
             Correlativo correlativo = correlativoRepository.findByCodigoAndSerie(tipo, serie)
                     .orElse(new Correlativo(tipo, serie, 0));
-
             Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
             correlativo.setUltimoNumero(nuevoNumero);
             correlativoRepository.save(correlativo);
@@ -119,6 +117,7 @@ public class VentaController {
             venta.setFechaEmision(LocalDate.now());
             venta.setEstado("EMITIDO");
 
+            // 3. PROCESAR DETALLES Y STOCK
             BigDecimal totalVenta = BigDecimal.ZERO;
             BigDecimal totalGravada = BigDecimal.ZERO;
             BigDecimal totalIgv = BigDecimal.ZERO;
@@ -153,7 +152,7 @@ public class VentaController {
                 totalGravada = totalGravada.add(valorVenta);
                 totalIgv = totalIgv.add(igvItem);
 
-                // Kardex y Stock
+                // Kardex
                 Kardex k = new Kardex();
                 k.setProducto(prod);
                 k.setTipo("SALIDA");
@@ -171,15 +170,55 @@ public class VentaController {
             venta.setTotalGravada(totalGravada);
             venta.setTotalIgv(totalIgv);
 
+            // 4. LÓGICA DE CRÉDITO Y CAJA
+            BigDecimal montoAbonado = BigDecimal.ZERO;
+
+            if ("CREDITO".equals(dto.getFormaPago())) {
+                venta.setFormaPago("CREDITO");
+                
+                // Si dejaron un adelanto (montoInicial)
+                BigDecimal inicial = dto.getMontoInicial() != null ? dto.getMontoInicial() : BigDecimal.ZERO;
+                montoAbonado = inicial;
+                
+                venta.setMontoPagado(inicial);
+                venta.setSaldoPendiente(totalVenta.subtract(inicial));
+                
+                // Fecha vencimiento
+                int dias = dto.getDiasCredito() != null ? dto.getDiasCredito() : 7;
+                venta.setFechaVencimiento(LocalDate.now().plusDays(dias));
+                
+            } else {
+                // CONTADO
+                venta.setFormaPago("CONTADO");
+                venta.setMontoPagado(totalVenta);
+                venta.setSaldoPendiente(BigDecimal.ZERO);
+                venta.setFechaVencimiento(LocalDate.now());
+                montoAbonado = totalVenta;
+            }
+
             Venta guardada = ventaRepository.save(venta);
 
-            // Caja
-            MovimientoCaja caja = new MovimientoCaja();
-            caja.setFecha(LocalDateTime.now());
-            caja.setTipo("INGRESO");
-            caja.setConcepto("VENTA " + guardada.getSerie() + "-" + guardada.getNumero());
-            caja.setMonto(totalVenta);
-            cajaRepository.save(caja);
+            // 5. REGISTRAR PAGO Y CAJA (Solo si hubo flujo de dinero)
+            if (montoAbonado.compareTo(BigDecimal.ZERO) > 0) {
+                // A. Guardar Amortización
+                Amortizacion amo = new Amortizacion();
+                amo.setVenta(guardada);
+                amo.setMonto(montoAbonado);
+                amo.setMetodoPago("EFECTIVO"); // Por ahora default
+                amo.setObservacion("PAGO INICIAL / CONTADO");
+                amortizacionRepository.save(amo);
+
+                // B. Guardar en Caja Chica (Usando el Servicio para validar sesión)
+                try {
+                    cajaService.registrarMovimiento("INGRESO", 
+                        "VENTA " + guardada.getSerie() + "-" + guardada.getNumero(), 
+                        montoAbonado);
+                } catch (Exception e) {
+                    // Si la caja está cerrada, guardamos la venta pero avisamos (o lanzamos error según política)
+                    // Por ahora solo logueamos para no romper la venta
+                    System.err.println("ADVERTENCIA: Venta registrada sin movimiento en caja (Caja Cerrada)");
+                }
+            }
 
             return ResponseEntity.ok(Map.of("id", guardada.getId()));
 
@@ -189,26 +228,49 @@ public class VentaController {
         }
     }
 
-    // IMPRESIÓN
+    // --- MÉTODOS EXISTENTES MANTENIDOS ---
+
+    @GetMapping("/api/producto/{id}")
+    @ResponseBody
+    public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
+        return productoRepository.findById(id).map(p -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", p.getId());
+            data.put("nombre", p.getNombre());
+            data.put("marca", p.getMarca());
+            data.put("precio", p.getPrecioVenta());
+            data.put("precioMinimo", p.getPrecioVenta().multiply(new BigDecimal("0.90")));
+            data.put("stock", p.getStockActual());
+            data.put("imagen", p.getImagen());
+            data.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-" + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
+            return ResponseEntity.ok(data);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/imprimir/{id}")
     public String imprimir(@PathVariable Long id, Model model) {
         Venta venta = ventaRepository.findById(id).orElse(null);
-        if (venta == null)
-            return "redirect:/ventas/lista";
-
+        if (venta == null) return "redirect:/ventas/lista";
         model.addAttribute("venta", venta);
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "ventas/impresion";
+    }
+
+    @GetMapping("/ticket/{id}")
+    public String ticket(@PathVariable Long id, Model model) {
+        Venta venta = ventaRepository.findById(id).orElse(null);
+        if (venta == null) return "redirect:/ventas/lista";
+        model.addAttribute("venta", venta);
+        model.addAttribute("config", configuracionService.obtenerConfiguracion());
+        return "ventas/ticket";
     }
 
     @PostMapping("/api/solicitar-stock")
     @ResponseBody
     public ResponseEntity<?> registrarSolicitud(@RequestParam String producto) {
         String nombreLimpio = producto.trim().toUpperCase();
-
         SolicitudProducto solicitud = solicitudRepository.findByNombreProductoAndEstado(nombreLimpio, "PENDIENTE")
                 .orElse(new SolicitudProducto());
-
         if (solicitud.getId() == null) {
             solicitud.setNombreProducto(nombreLimpio);
             solicitud.setContador(1);
@@ -216,20 +278,7 @@ public class VentaController {
             solicitud.setContador(solicitud.getContador() + 1);
             solicitud.setUltimaSolicitud(LocalDateTime.now());
         }
-
         solicitudRepository.save(solicitud);
         return ResponseEntity.ok("Solicitud registrada. Total pedidos: " + solicitud.getContador());
-    }
-
-    // NUEVO ENDPOINT TICKET
-    @GetMapping("/ticket/{id}")
-    public String ticket(@PathVariable Long id, Model model) {
-        Venta venta = ventaRepository.findById(id).orElse(null);
-        if (venta == null)
-            return "redirect:/ventas/lista";
-
-        model.addAttribute("venta", venta);
-        model.addAttribute("config", configuracionService.obtenerConfiguracion());
-        return "ventas/ticket";
     }
 }

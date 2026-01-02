@@ -3,6 +3,8 @@ package com.libreria.sistema.repository;
 import com.libreria.sistema.model.Venta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +18,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
            "FROM Venta v WHERE v.estado = 'EMITIDO' " +
            "GROUP BY v.fechaEmision ORDER BY v.fechaEmision ASC LIMIT 7")
     List<com.libreria.sistema.model.dto.ReporteDTO> obtenerVentasUltimaSemana();
+
+    @Query("SELECT v FROM Venta v WHERE v.clienteNumeroDocumento = :dni AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    List<Venta> findDeudasPorDni(@Param("dni") String dni);
 }

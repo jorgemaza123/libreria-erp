@@ -17,43 +17,65 @@ public class Venta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Datos SUNAT Cabecera
+    // --- DATOS SUNAT CABECERA ---
     private String tipoComprobante; // BOLETA, FACTURA, NOTA_VENTA
     private String serie;           // B001, F001
     private Integer numero;         // Correlativo
 
     private LocalDate fechaEmision;
-    private LocalDate fechaVencimiento;
-    private String moneda = "PEN";  // Por defecto Soles
-    private String tipoOperacion = "0101"; // Venta Interna
+    private LocalDate fechaVencimiento; // Importante para Crédito
+    private String moneda = "PEN";  
+    private String tipoOperacion = "0101"; 
 
-    // Datos Cliente
-    private String clienteTipoDocumento; // 1=DNI, 6=RUC, 0=S/D
+    // --- NUEVO: CONDICIÓN DE PAGO (SUNAT) ---
+    private String formaPago; // "Contado" o "Crédito"
+
+    // --- DATOS CLIENTE (SNAPSHOT) ---
+    // Guardamos los datos en texto por si el cliente cambia de dirección en el futuro,
+    // la factura histórica no se altere.
+    private String clienteTipoDocumento; 
     private String clienteNumeroDocumento;
     private String clienteDenominacion;
     private String clienteDireccion;
 
-    // Totales (Cálculos Fiscales)
+    // --- NUEVO: RELACIÓN CON CLIENTE ---
+    // Para poder buscar "Todas las ventas de Juan" o "Deudas de Juan"
+    @ManyToOne
+    @JoinColumn(name = "cliente_id")
+    private Cliente clienteEntity; 
+
+    // --- TOTALES ---
     @Column(precision = 10, scale = 2)
-    private BigDecimal totalGravada; // Base imponible
+    private BigDecimal totalGravada; 
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal totalIgv;     // El impuesto
+    private BigDecimal totalIgv;    
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal total;        // Lo que paga el cliente
+    private BigDecimal total;       
 
-    private String estado; // EMITIDO, ANULADO
+    // --- NUEVO: CONTROL DE DEUDA ---
+    @Column(precision = 10, scale = 2)
+    private BigDecimal montoPagado; // Suma de amortizaciones
 
-    // Auditoría
+    @Column(precision = 10, scale = 2)
+    private BigDecimal saldoPendiente; // total - montoPagado
+
+    private String estado; // EMITIDO, ANULADO, PAGADO_TOTAL
+
+    // --- AUDITORÍA ---
     private LocalDateTime fechaCreacion;
     
     @ManyToOne
     @JoinColumn(name = "usuario_id")
-    private Usuario usuario; // Quién vendió
+    private Usuario usuario; 
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DetalleVenta> items = new ArrayList<>();
+
+    // --- NUEVO: LISTA DE PAGOS ---
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Amortizacion> amortizaciones = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -61,5 +83,7 @@ public class Venta {
         if(this.fechaEmision == null) this.fechaEmision = LocalDate.now();
         if(this.fechaVencimiento == null) this.fechaVencimiento = LocalDate.now();
         if(this.estado == null) this.estado = "EMITIDO";
+        if(this.montoPagado == null) this.montoPagado = BigDecimal.ZERO;
+        if(this.saldoPendiente == null) this.saldoPendiente = BigDecimal.ZERO;
     }
 }

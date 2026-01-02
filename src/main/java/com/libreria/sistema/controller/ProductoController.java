@@ -2,6 +2,7 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.service.ProductoService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,8 @@ public class ProductoController {
     public String nuevo(Model model) {
         Producto p = new Producto();
         p.setActivo(true);
-        p.setStockMinimo(5); 
+        p.setStockMinimo(5);
+        p.setUnidadMedida("UNIDAD"); // Valor por defecto
         
         model.addAttribute("producto", p);
         model.addAttribute("titulo", "Nuevo Producto");
@@ -55,52 +57,63 @@ public class ProductoController {
 
     @PostMapping("/guardar")
     public String guardar(@ModelAttribute Producto producto, 
-                          @RequestParam("file") MultipartFile imagen, // Recibimos el archivo
+                          @RequestParam("file") MultipartFile imagen, 
                           RedirectAttributes attributes) {
         try {
-            // LÓGICA DE IMAGEN
+            // 1. MANEJO DE IMAGEN
             if (!imagen.isEmpty()) {
-                // Crear nombre único
-                String nombreUnico = UUID.randomUUID().toString() + "_" + imagen.getOriginalFilename();
+                // Crear carpeta uploads si no existe
                 Path rootPath = Paths.get("uploads").toAbsolutePath();
-                
-                // Crear carpeta si no existe
                 if (!Files.exists(rootPath)) {
                     Files.createDirectories(rootPath);
                 }
 
-                // Guardar en disco
+                // Generar nombre único y guardar
+                String nombreUnico = UUID.randomUUID().toString() + "_" + imagen.getOriginalFilename();
                 Files.copy(imagen.getInputStream(), rootPath.resolve(nombreUnico));
                 producto.setImagen(nombreUnico);
             } else {
-                // Si no subió imagen nueva pero ya existía una (Edición), tratamos de mantenerla.
-                // Como 'producto' viene del formulario, el campo imagen podría ser null si no lo pusiste en un hidden.
-                // Buscamos el original en BD para no perder la foto vieja.
+                // Si es EDICIÓN y no subió foto nueva, mantener la anterior
                 if (producto.getId() != null) {
                     Producto pDb = productoService.obtenerPorId(producto.getId()).orElse(null);
                     if (pDb != null) {
                         producto.setImagen(pDb.getImagen());
-                        // También recuperamos fechas si es necesario, aunque JPA suele manejarlo
-                        producto.setFechaCreacion(pDb.getFechaCreacion()); 
+                        // Mantener fechas de auditoría si el formulario no las envía
+                        if(producto.getFechaCreacion() == null) {
+                            producto.setFechaCreacion(pDb.getFechaCreacion());
+                        }
                     }
                 }
             }
 
-            // Lógica original de validación
+            // 2. VALIDACIONES DE NEGOCIO
             if (producto.getStockMinimo() == null) producto.setStockMinimo(0);
             if (producto.getId() == null) producto.setActivo(true);
+            
+            // Convertir a Mayúsculas para estandarizar
+            if(producto.getNombre() != null) producto.setNombre(producto.getNombre().toUpperCase());
+            if(producto.getMarca() != null) producto.setMarca(producto.getMarca().toUpperCase());
 
-            // Guardar usando tu SERVICE
+            // 3. GUARDAR
             productoService.guardar(producto);
             
             attributes.addFlashAttribute("success", "Producto guardado correctamente");
             return "redirect:/productos";
+
+        } catch (DataIntegrityViolationException e) {
+            // ERROR DE DUPLICADOS (Código Barras o SKU repetido)
+            System.err.println("ERROR SQL: " + e.getRootCause().getMessage());
+            attributes.addFlashAttribute("error", "Error: El Código de Barras o Código Interno ya existe en otro producto.");
+            return "redirect:/productos/nuevo"; // O volver al formulario
+            
         } catch (IOException e) {
             e.printStackTrace();
-            attributes.addFlashAttribute("error", "Error al subir imagen: " + e.getMessage());
+            attributes.addFlashAttribute("error", "Error crítico al subir la imagen: " + e.getMessage());
             return "redirect:/productos/nuevo";
+            
         } catch (Exception e) {
-            attributes.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
+            e.printStackTrace();
+            attributes.addFlashAttribute("error", "Error inesperado al guardar: " + e.getMessage());
             return "redirect:/productos/nuevo"; 
         }
     }
@@ -108,11 +121,8 @@ public class ProductoController {
     @GetMapping("/eliminar/{id}")
     public String eliminar(@PathVariable Long id, RedirectAttributes attributes) {
         try {
-            // Asumiendo que tu servicio hace borrado lógico (setActivo false) o físico
-            // Si tu servicio hace borrado físico y quieres lógico, cámbialo aquí o en el servicio.
-            // Por ahora uso tu método original:
             productoService.eliminar(id);
-            attributes.addFlashAttribute("success", "Producto procesado correctamente");
+            attributes.addFlashAttribute("success", "Producto eliminado/desactivado correctamente");
         } catch (Exception e) {
             attributes.addFlashAttribute("error", "No se puede eliminar: " + e.getMessage());
         }

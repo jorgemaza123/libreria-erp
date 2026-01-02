@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket de Pago</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; width: 80mm; font-size: 12px; margin: 0; padding: 5px; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .line { border-bottom: 1px dashed #000; margin: 5px 0; }
+        .big { font-size: 14px; }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="text-center">
+        <h3 class="bold" th:text="${config.nombreEmpresa}">NOMBRE EMPRESA</h3>
+        <p th:text="'RUC: ' + ${config.ruc}"></p>
+        <p th:text="${config.direccion}"></p>
+        <div class="line"></div>
+        <h4 class="bold">TICKET DE ABONO</h4>
+        <p th:text="'Nro Operación: ' + ${pago.id}"></p>
+        <p th:text="'Fecha: ' + ${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}"></p>
+    </div>
+
+    <div class="line"></div>
+    
+    <div>
+        <strong>Cliente:</strong> <span th:text="${venta.clienteDenominacion}"></span><br>
+        <strong>DNI/RUC:</strong> <span th:text="${venta.clienteNumeroDocumento}"></span><br>
+        <strong>Ref. Venta:</strong> <span th:text="${venta.tipoComprobante} + ' ' + ${venta.serie} + '-' + ${venta.numero}"></span>
+    </div>
+
+    <div class="line"></div>
+
+    <table style="width: 100%;">
+        <tr>
+            <td>CONCEPTO</td>
+            <td class="text-right">IMPORTE</td>
+        </tr>
+        <tr>
+            <td>AMORTIZACIÓN / CUOTA</td>
+            <td class="text-right bold big" th:text="'S/ ' + ${pago.monto}"></td>
+        </tr>
+    </table>
+
+    <div class="line"></div>
+
+    <table style="width: 100%;">
+        <tr>
+            <td>Importe Total Venta:</td>
+            <td class="text-right" th:text="'S/ ' + ${venta.total}"></td>
+        </tr>
+        <tr>
+            <td>Total Pagado (Acum):</td>
+            <td class="text-right" th:text="'S/ ' + ${venta.montoPagado}"></td>
+        </tr>
+        <tr>
+            <td class="bold">SALDO PENDIENTE:</td>
+            <td class="text-right bold" th:text="'S/ ' + ${venta.saldoPendiente}"></td>
+        </tr>
+    </table>
+
+    <div class="line"></div>
+    <div class="text-center">
+        <p th:if="${venta.saldoPendiente == 0}" class="bold">*** CANCELADO TOTAL ***</p>
+        <p th:if="${venta.saldoPendiente > 0}">¡Gracias por su abono!</p>
+        <p>Conserve este voucher</p>
+    </div>
+</body>
+</html>

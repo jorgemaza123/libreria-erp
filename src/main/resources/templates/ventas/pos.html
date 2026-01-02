@@ -42,29 +42,62 @@
                                 </table>
                             </div>
 
-                            <div class="card-footer">
+                            <div class="card-footer bg-white">
                                 <div class="row">
-                                    <div class="col-md-4">
-                                        <select id="tipoComprobante" class="form-control">
+                                    <div class="col-md-3">
+                                        <label>Tipo Doc.</label>
+                                        <select id="tipoComprobante" class="form-control form-control-sm">
+                                            <option value="NOTA_VENTA">NOTA VENTA</option>
                                             <option value="BOLETA">BOLETA</option>
                                             <option value="FACTURA">FACTURA</option>
-                                            <option value="NOTA_VENTA">NOTA VENTA</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
-                                        <input type="text" id="clienteDoc" class="form-control" placeholder="DNI / RUC">
+                                    <div class="col-md-3">
+                                        <label>DNI / RUC</label>
+                                        <input type="text" id="clienteDoc" class="form-control form-control-sm" placeholder="00000000">
                                     </div>
-                                    <div class="col-md-4">
-                                        <input type="text" id="cliente" class="form-control" placeholder="Nombre Cliente">
+                                    <div class="col-md-6">
+                                        <label>Cliente</label>
+                                        <input type="text" id="cliente" class="form-control form-control-sm" placeholder="Nombre / Razón Social">
                                     </div>
                                 </div>
-                                <div class="row mt-2">
+
+                                <hr>
+
+                                <div class="row align-items-end">
+                                    <div class="col-md-3">
+                                        <label>Condición Pago</label>
+                                        <select id="formaPago" class="form-control font-weight-bold" onchange="toggleCredito()">
+                                            <option value="CONTADO">CONTADO</option>
+                                            <option value="CREDITO">CRÉDITO / CUOTAS</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3 div-credito d-none">
+                                        <label>Días Crédito</label>
+                                        <select id="diasCredito" class="form-control">
+                                            <option value="7">7 Días</option>
+                                            <option value="15">15 Días</option>
+                                            <option value="30">30 Días</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 div-credito d-none">
+                                        <label>A Cuenta (S/)</label>
+                                        <input type="number" id="montoInicial" class="form-control text-right" value="0.00" onkeyup="calcularSaldo()">
+                                    </div>
+                                    <div class="col-md-3 div-credito d-none text-right">
+                                        <small>Saldo Pendiente:</small>
+                                        <h5 class="text-danger font-weight-bold" id="lblSaldo">S/ 0.00</h5>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
                                     <div class="col-12 text-right">
-                                        <button class="btn btn-app bg-success" onclick="procesarVenta()">
-                                            <i class="fas fa-cash-register"></i> COBRAR
-                                        </button>
                                         <button class="btn btn-app bg-danger" onclick="limpiar()">
                                             <i class="fas fa-trash"></i> LIMPIAR
+                                        </button>
+                                        <button class="btn btn-app bg-success" onclick="procesarVenta()">
+                                            <i class="fas fa-cash-register"></i> COBRAR
                                         </button>
                                     </div>
                                 </div>
@@ -119,8 +152,8 @@
 <script>
     let carrito = [];
     let productoActual = null;
+    let totalVenta = 0;
 
-    // IMAGEN POR DEFECTO EN BASE64 (Para no depender de internet)
     const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0PSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGR5PSIuM2VtIiBmaWxsPSIjNTU1IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5OTzwvdGV4dD48L3N2Zz4=";
 
     $(document).ready(function() {
@@ -145,6 +178,23 @@
         });
     });
 
+    function toggleCredito() {
+        let tipo = $("#formaPago").val();
+        if(tipo === 'CREDITO') {
+            $(".div-credito").removeClass('d-none');
+            calcularSaldo();
+        } else {
+            $(".div-credito").addClass('d-none');
+        }
+    }
+
+    function calcularSaldo() {
+        let inicial = parseFloat($("#montoInicial").val()) || 0;
+        let saldo = totalVenta - inicial;
+        if(saldo < 0) saldo = 0;
+        $("#lblSaldo").text('S/ ' + saldo.toFixed(2));
+    }
+
     function cargarVisor(data) {
         productoActual = data;
         $("#visorNombre").text(data.nombre);
@@ -153,7 +203,6 @@
         $("#visorStock").text(data.stock);
         $("#visorUbicacion").text(data.ubicacion);
         
-        // USO DE IMAGEN LOCAL O BASE64
         if(data.imagen) $("#visorImagen").attr("src", "/images/" + data.imagen);
         else $("#visorImagen").attr("src", IMG_PLACEHOLDER);
 
@@ -185,11 +234,11 @@
 
     function dibujarCarrito() {
         let html = '';
-        let total = 0;
+        totalVenta = 0; 
         
         carrito.forEach((item, index) => {
             let subtotal = item.precio * item.cantidad;
-            total += subtotal;
+            totalVenta += subtotal;
             
             html += `<tr>
                 <td>${item.nombre}</td>
@@ -207,7 +256,10 @@
         });
 
         $("#tbodyCarrito").html(html);
-        $("#totalPantalla").text('S/ ' + total.toFixed(2));
+        $("#totalPantalla").text('S/ ' + totalVenta.toFixed(2));
+        if($("#formaPago").val() === 'CREDITO') {
+            calcularSaldo();
+        }
     }
 
     function cambiarCantidad(index, val) {
@@ -231,11 +283,8 @@
             });
 
             if (pass === '1234') { 
-                Swal.fire('Autorizado', 'Precio modificado', 'success');
                 item.precio = precio;
-            } else {
-                Swal.fire('Denegado', 'Clave incorrecta. Se restablece el precio.', 'error');
-            }
+            } 
         } else {
             item.precio = precio;
         }
@@ -252,20 +301,27 @@
         dibujarCarrito();
         $("#cliente").val('');
         $("#clienteDoc").val('');
+        $("#formaPago").val("CONTADO").trigger('change');
+        $("#montoInicial").val("0.00");
     }
 
     function procesarVenta() {
         if(carrito.length === 0) return Swal.fire('Error', 'Carrito vacío', 'warning');
 
+        let formaPago = $("#formaPago").val();
+        let doc = $("#clienteDoc").val();
+        if (formaPago === 'CREDITO' && (!doc || doc.length < 8)) {
+            return Swal.fire('Faltan Datos', 'Para crédito es obligatorio DNI/RUC', 'warning');
+        }
+
         let dto = {
             clienteNombre: $("#cliente").val() || 'CLIENTE VARIOS',
             clienteDocumento: $("#clienteDoc").val() || '00000000',
             tipoComprobante: $("#tipoComprobante").val(),
-            items: carrito.map(i => ({ 
-                productoId: i.id, 
-                cantidad: i.cantidad, 
-                precioVenta: i.precio 
-            }))
+            formaPago: formaPago,
+            montoInicial: parseFloat($("#montoInicial").val()) || 0,
+            diasCredito: parseInt($("#diasCredito").val()) || 7,
+            items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))
         };
 
         $.ajax({
@@ -274,8 +330,15 @@
             contentType: 'application/json',
             data: JSON.stringify(dto),
             success: function(resp) {
-                Swal.fire('¡Venta Exitosa!', 'Comprobante generado', 'success').then(() => {
-                    window.open('/ventas/imprimir/' + resp.id, '_blank');
+                Swal.fire({
+                    title: '¡Venta Exitosa!',
+                    text: 'Comprobante generado',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    // AQUÍ ESTÁ EL CAMBIO CLAVE: IMPRIMIR EN POPUP
+                    imprimirPopup('/ventas/imprimir/' + resp.id);
                     limpiar();
                 });
             },
@@ -285,13 +348,22 @@
         });
     }
 
+    // FUNCIÓN PARA IMPRIMIR SIN ABRIR PESTAÑA (POPUP)
+    function imprimirPopup(url) {
+        const width = 900;
+        const height = 600;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        const ventana = window.open(url, 'Comprobante', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
+        // Opcional: Si quieres que se cierre automático tras imprimir, se configura en el HTML del comprobante
+    }
+
     function reportarSinStock() {
         Swal.fire({
             title: 'Reportar Falta de Stock',
-            text: '¿Qué producto solicitó el cliente y no tenemos?',
             input: 'text',
             showCancelButton: true,
-            confirmButtonText: 'Registrar Demanda'
+            confirmButtonText: 'Registrar'
         }).then((result) => {
             if (result.isConfirmed && result.value) {
                 $.post('/ventas/api/solicitar-stock', { producto: result.value }, function(resp) {

@@ -2,123 +2,125 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="'Venta-' + ${venta.serie} + '-' + ${venta.numero}"></title>
+    <title th:text="${venta.tipoComprobante} + ' ' + ${venta.serie} + '-' + ${venta.numero}"></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <style>
-        body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px; }
-        
-        .header { width: 100%; overflow: hidden; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .company-info { float: left; width: 60%; }
-        
-        .logo-img { max-height: 80px; max-width: 250px; margin-bottom: 5px; display: block; object-fit: contain; }
-
-        .company-info h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
-        
-        .invoice-box { float: right; width: 35%; border: 1px solid #333; padding: 10px; text-align: center; border-radius: 8px; }
-        .invoice-box h3 { margin: 0; font-size: 18px; }
-        .invoice-box h2 { margin: 10px 0; font-size: 20px; color: #dc3545; } 
-        
-        .client-info { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .label { font-weight: bold; width: 120px; display: inline-block; }
-
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #333; color: white; text-align: center; }
-        td.num { text-align: right; }
-
-        .totals { float: right; width: 300px; }
-        .totals table { border: none; }
-        .totals th { background: none; color: #333; text-align: right; border: none; }
-        .totals td { border: none; border-bottom: 1px solid #ddd; text-align: right; }
-        .grand-total { font-size: 18px; font-weight: bold; }
-
-        .no-print { text-align: center; margin-bottom: 20px; }
-        .btn-print { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
-
-        @media print {
-            .no-print { display: none; }
-            body { padding: 0; }
-            @page { margin: 1cm; }
+        body { background-color: #525659; font-family: Arial, sans-serif; }
+        .page {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 10mm auto;
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
+        @media print {
+            body { background: white; margin: 0; }
+            .page { margin: 0; box-shadow: none; width: 100%; height: auto; }
+            .no-print { display: none; }
+        }
+        .header-title { font-weight: bold; font-size: 1.2rem; text-align: center; border: 2px solid #333; padding: 10px; border-radius: 8px; }
+        .company-info h2 { font-weight: bold; margin-bottom: 5px; color: #000; }
+        .table-items thead th { background-color: #f4f6f9; border-bottom: 2px solid #dee2e6; font-size: 0.9rem; }
+        .table-items tbody td { vertical-align: middle; font-size: 0.9rem; }
+        .footer-legal { font-size: 0.8rem; color: #666; margin-top: 20px; text-align: center; }
+        .qr-placeholder { width: 120px; height: 120px; background: #f0f0f0; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; }
     </style>
 </head>
-<body>
-
-    <div class="no-print">
-        <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR</button>
-        <button class="btn-print" style="background:#6c757d; margin-left:10px;" onclick="window.close()">CERRAR</button>
-    </div>
-
-    <div class="header">
-        <div class="company-info">
-            <img th:if="${config.logoBase64 != null}" 
-                 th:src="'data:image/png;base64,' + ${config.logoBase64}" 
-                 class="logo-img" alt="Logo">
-            
-            <h1 th:if="${config.logoBase64 == null}" th:text="${config.nombreEmpresa}">NOMBRE EMPRESA</h1>
-            <h2 th:if="${config.logoBase64 != null}" th:text="${config.nombreEmpresa}" style="margin:0; font-size:1.2em;">NOMBRE EMPRESA</h2>
-            
-            <p th:text="${config.direccion}">Dirección de la empresa</p>
-            <p th:text="'Tel: ' + ${config.telefono} + ' | Email: ' + ${config.email}">Contacto</p>
+<body onload="window.print()"> <div class="page">
+        <div class="row mb-4">
+            <div class="col-8 company-info">
+                <h2 th:text="${config.nombreEmpresa}">NOMBRE DE LA EMPRESA S.A.C.</h2>
+                <p class="mb-0" th:text="${config.direccion}">Av. Principal 123, Lima</p>
+                <p class="mb-0" th:text="'Teléfono: ' + ${config.telefono}"></p>
+                <p class="mb-0" th:text="'Email: ' + ${config.email}"></p>
+            </div>
+            <div class="col-4">
+                <div class="header-title">
+                    <div>R.U.C. <span th:text="${config.ruc}">20123456789</span></div>
+                    <div class="py-2" style="background: #eee; margin: 5px -10px;" th:text="${venta.tipoComprobante}">BOLETA DE VENTA ELECTRÓNICA</div>
+                    <div th:text="${venta.serie} + ' - ' + ${venta.numero}">B001 - 00001234</div>
+                </div>
+            </div>
         </div>
-        <div class="invoice-box">
-            <h3 th:text="'R.U.C. ' + ${config.ruc}">R.U.C. XXXXXXXXXXX</h3>
-            
-            <h2 th:text="${venta.tipoComprobante}"></h2> 
-            <p th:text="${venta.serie} + ' - ' + ${#numbers.formatInteger(venta.numero, 6)}"></p>
-        </div>
-    </div>
 
-    <div class="client-info">
-        <div class="row">
-            <div><span class="label">Cliente:</span> <span th:text="${venta.clienteDenominacion}"></span></div>
-            <div><span class="label">Fecha:</span> <span th:text="${venta.fechaEmision}"></span></div>
+        <div class="row mb-4 border rounded p-2 mx-0">
+            <div class="col-8">
+                <strong>Señor(es):</strong> <span th:text="${venta.clienteDenominacion}"></span><br>
+                <strong>Dirección:</strong> <span th:text="${venta.clienteDireccion}"></span><br>
+                <strong>Tipo Moneda:</strong> SOLES
+            </div>
+            <div class="col-4">
+                <strong>Fecha Emisión:</strong> <span th:text="${#temporals.format(venta.fechaEmision, 'dd/MM/yyyy')}"></span><br>
+                <strong>RUC/DNI:</strong> <span th:text="${venta.clienteNumeroDocumento}"></span><br>
+                <strong>Condición:</strong> <span th:text="${venta.formaPago}">CONTADO</span>
+                
+                <div th:if="${venta.formaPago == 'CREDITO'}">
+                    <strong>Vencimiento:</strong> <span class="text-danger" th:text="${#temporals.format(venta.fechaVencimiento, 'dd/MM/yyyy')}"></span>
+                </div>
+            </div>
         </div>
-        <div class="row">
-            <div><span class="label">Documento:</span> <span th:text="${venta.clienteNumeroDocumento}"></span></div>
-            <div><span class="label">Moneda:</span> SOLES</div>
-        </div>
-    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th width="10%">Cant.</th>
-                <th>Descripción</th> 
-                <th width="15%">P. Unit</th>
-                <th width="15%">Importe</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="item : ${venta.items}">
-                <td class="num" th:text="${item.cantidad}"></td>
-                <td th:text="${item.descripcion}"></td>
-                <td class="num" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
-                <td class="num" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="totals">
-        <table>
-            <tr>
-                <th>Op. Gravada:</th>
-                <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalGravada, 1, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
-            <tr>
-                <th>IGV (18%):</th>
-                <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalIgv, 1, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
-            <tr>
-                <th class="grand-total">TOTAL:</th>
-                <td class="grand-total" th:text="'S/ ' + ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
+        <table class="table table-items">
+            <thead>
+                <tr>
+                    <th class="text-center">CANT.</th>
+                    <th class="text-center">UNID.</th>
+                    <th>DESCRIPCIÓN</th>
+                    <th class="text-right">P. UNIT</th>
+                    <th class="text-right">IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${venta.items}">
+                    <td class="text-center" th:text="${item.cantidad}"></td>
+                    <td class="text-center">NIU</td>
+                    <td th:text="${item.descripcion}"></td>
+                    <td class="text-right" th:text="${item.precioUnitario}"></td>
+                    <td class="text-right" th:text="${item.subtotal}"></td>
+                </tr>
+            </tbody>
         </table>
-    </div>
-    
-    <div style="margin-top: 50px; font-size: 12px; text-align: center; border-top: 1px dashed #999; padding-top: 10px;">
-        Representación impresa del Comprobante de Pago Electrónico.<br>
-        <strong>¡Gracias por su compra!</strong>
+
+        <div class="row mt-4">
+            <div class="col-8">
+                <div th:if="${venta.formaPago == 'CREDITO'}" class="alert alert-light border">
+                    <strong>INFORMACIÓN DEL CRÉDITO:</strong><br>
+                    Monto Abonado Inicial: S/ <span th:text="${venta.montoPagado}"></span><br>
+                    <strong class="text-danger">Saldo Pendiente: S/ <span th:text="${venta.saldoPendiente}"></span></strong>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-3 text-center">
+                        <div class="qr-placeholder"><small>QR CODE</small></div>
+                    </div>
+                    <div class="col-9 pt-2 text-muted" style="font-size: 0.8rem;">
+                        <p>Representación impresa de la <span th:text="${venta.tipoComprobante}"></span> ELECTRÓNICA. 
+                        Consulte su documento en www.sunat.gob.pe</p>
+                        <p>Autorizado mediante Resolución de Intendencia N° 034-005-0005315</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-4">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-right">Op. Gravada:</td>
+                        <td class="text-right" th:text="${venta.totalGravada}"></td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">I.G.V. (18%):</td>
+                        <td class="text-right" th:text="${venta.totalIgv}"></td>
+                    </tr>
+                    <tr class="border-top">
+                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;">IMPORTE TOTAL:</td>
+                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;" th:text="'S/ ' + ${venta.total}"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
     </div>
 
 </body>
