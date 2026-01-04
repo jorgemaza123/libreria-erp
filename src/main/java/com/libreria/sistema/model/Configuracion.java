@@ -72,6 +72,50 @@ public class Configuracion {
     @Column(precision = 5, scale = 2)
     private BigDecimal igvPorcentaje; // 18.00
 
+    // ========== CONTROL FINANCIERO Y DE CAJA ==========
+    // Bloquea ventas si no hay caja abierta (seguridad financiera)
+    private Boolean aperturaCajaObligatoria;
+
+    // Oculta el monto esperado al cajero al cerrar (evita ajustes fraudulentos)
+    private Boolean cierreCajaCiego;
+
+    // Alerta si hay mucho dinero en caja (riesgo de robo)
+    @Column(precision = 10, scale = 2)
+    private BigDecimal limiteEfectivoCaja;
+
+    // ========== REGLAS DE NEGOCIO ==========
+    // CRÍTICO: Permite vender sin stock (Ferreterías a veces SÍ, Farmacias NUNCA)
+    private Boolean permitirStockNegativo;
+
+    // Permite vender fracciones: 1.5 metros de cable, 0.250 kg de clavos
+    // false = Solo enteros (Librería), true = Decimales (Ferretería/Cable/Peso)
+    private Boolean permitirVentaFraccionada;
+
+    // Límite de descuento que puede aplicar un cajero (evita que regale la tienda)
+    @Column(precision = 5, scale = 2)
+    private BigDecimal porcentajeDescuentoMaximo;
+
+    // true = Precio incluye IGV (B2C), false = Se suma IGV al final (B2B)
+    private Boolean preciosIncluyenImpuesto;
+
+    // ========== FACTURACIÓN ELECTRÓNICA ==========
+    // URL del API de facturación (Nubefact, Facturador SUNAT, etc.)
+    @Column(columnDefinition = "TEXT")
+    private String facturacionEndpoint;
+
+    // Token de seguridad para el servicio de facturación
+    @Column(columnDefinition = "TEXT")
+    private String facturacionToken;
+
+    // Ruta al certificado digital .pfx (si facturas directo a SUNAT)
+    private String certificadoDigitalRuta;
+
+    // Clave del certificado digital
+    private String claveCertificado;
+
+    // false = Modo pruebas (Beta SUNAT), true = Producción (Facturas reales)
+    private Boolean modoProduccion;
+
     /**
      * Constructor con valores por defecto
      */
@@ -109,5 +153,23 @@ public class Configuracion {
         this.diasVencimientoCredito = 30;
         this.diasDevolucion = 30;
         this.igvPorcentaje = new BigDecimal("18.00");
+
+        // Control financiero y de caja
+        this.aperturaCajaObligatoria = true;
+        this.cierreCajaCiego = true;
+        this.limiteEfectivoCaja = new BigDecimal("2000.00");
+
+        // Reglas de negocio
+        this.permitirStockNegativo = false;
+        this.permitirVentaFraccionada = false;
+        this.porcentajeDescuentoMaximo = new BigDecimal("10.00");
+        this.preciosIncluyenImpuesto = true;
+
+        // Facturación electrónica
+        this.facturacionEndpoint = "";
+        this.facturacionToken = "";
+        this.certificadoDigitalRuta = "";
+        this.claveCertificado = "";
+        this.modoProduccion = false;
     }
 }

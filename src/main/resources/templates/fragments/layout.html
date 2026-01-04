@@ -274,7 +274,18 @@
           // Configuración de sistema
           itemsPorPagina: /*[[${config.itemsPorPagina}]]*/ 10,
           stockMinimo: /*[[${config.stockMinimo}]]*/ 5,
-          igvPorcentaje: /*[[${config.igvPorcentaje}]]*/ 18.00
+          igvPorcentaje: /*[[${config.igvPorcentaje}]]*/ 18.00,
+
+          // Reglas de negocio (CRÍTICO para control de ventas)
+          permitirStockNegativo: /*[[${config.permitirStockNegativo}]]*/ false,
+          permitirVentaFraccionada: /*[[${config.permitirVentaFraccionada}]]*/ false,
+          porcentajeDescuentoMaximo: /*[[${config.porcentajeDescuentoMaximo}]]*/ 10.00,
+          preciosIncluyenImpuesto: /*[[${config.preciosIncluyenImpuesto}]]*/ true,
+
+          // Control financiero (CRÍTICO para seguridad de caja)
+          aperturaCajaObligatoria: /*[[${config.aperturaCajaObligatoria}]]*/ true,
+          cierreCajaCiego: /*[[${config.cierreCajaCiego}]]*/ true,
+          limiteEfectivoCaja: /*[[${config.limiteEfectivoCaja}]]*/ 2000.00
         };
 
         // Helper para formatear moneda

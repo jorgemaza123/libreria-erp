@@ -55,6 +55,24 @@ public class ConfiguracionService {
         config.setDiasDevolucion(30);
         config.setIgvPorcentaje(new BigDecimal("18.00"));
 
+        // Control financiero y de caja
+        config.setAperturaCajaObligatoria(true);
+        config.setCierreCajaCiego(true);
+        config.setLimiteEfectivoCaja(new BigDecimal("2000.00"));
+
+        // Reglas de negocio
+        config.setPermitirStockNegativo(false);
+        config.setPermitirVentaFraccionada(false);
+        config.setPorcentajeDescuentoMaximo(new BigDecimal("10.00"));
+        config.setPreciosIncluyenImpuesto(true);
+
+        // Facturación electrónica
+        config.setFacturacionEndpoint("");
+        config.setFacturacionToken("");
+        config.setCertificadoDigitalRuta("");
+        config.setClaveCertificado("");
+        config.setModoProduccion(false);
+
         return repository.save(config);
     }
 
