@@ -1,6 +1,7 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.service.CajaService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,7 @@ public class CajaController {
     }
 
     @PostMapping("/abrir")
+    @PreAuthorize("hasPermission(null, 'CAJA_CREAR')")
     public String abrir(@RequestParam BigDecimal montoInicial, RedirectAttributes attr) {
         try {
             cajaService.abrirCaja(montoInicial);

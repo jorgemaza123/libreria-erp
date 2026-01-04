@@ -61,7 +61,28 @@ public class Venta {
     @Column(precision = 10, scale = 2)
     private BigDecimal saldoPendiente; // total - montoPagado
 
-    private String estado; // EMITIDO, ANULADO, PAGADO_TOTAL
+    // Estados: EMITIDO, PAGADO_TOTAL, ANULADO, DEVUELTO_PARCIAL, DEVUELTO_TOTAL
+    private String estado;
+
+    // Referencia a devolución si aplica
+    @Column(name = "devolucion_id")
+    private Long devolucionId;
+
+    // --- FACTURACIÓN ELECTRÓNICA SUNAT ---
+    private String sunatEstado; // NULL (no enviado), PENDIENTE, ACEPTADO, RECHAZADO
+
+    private String sunatHash; // Hash del comprobante generado por SUNAT
+
+    private String sunatXmlUrl; // URL del XML firmado
+
+    private String sunatCdrUrl; // URL del CDR (Constancia de Recepción)
+
+    private String sunatPdfUrl; // URL del PDF generado por el PSE
+
+    private LocalDateTime sunatFechaEnvio; // Fecha/hora de envío a SUNAT
+
+    @Column(columnDefinition = "TEXT")
+    private String sunatMensajeError; // Mensaje de error si el envío falla
 
     // --- AUDITORÍA ---
     private LocalDateTime fechaCreacion;

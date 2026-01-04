@@ -3,6 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.service.ProductoService;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ public class ProductoController {
     }
 
     @GetMapping
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_VER')")
     public String listar(Model model) {
         model.addAttribute("productos", productoService.listarTodos());
         return "productos/lista";
@@ -56,6 +58,7 @@ public class ProductoController {
     }
 
     @PostMapping("/guardar")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
     public String guardar(@ModelAttribute Producto producto, 
                           @RequestParam("file") MultipartFile imagen, 
                           RedirectAttributes attributes) {

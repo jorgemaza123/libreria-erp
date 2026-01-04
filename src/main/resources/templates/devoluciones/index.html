@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title th:text="${titulo}">Devoluciones</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="fas fa-undo-alt text-danger"></i> Devoluciones y Notas de Crédito
+                        <small class="text-muted ml-2" style="font-size: 0.6em;">Gestión de reembolsos</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Devoluciones</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-success btn-sm" onclick="abrirModalBuscarVenta()">
+                            <i class="fas fa-plus"></i> Nueva Devolución
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Inicio</label>
+                                <input type="date" id="filtroFechaInicio" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Fin</label>
+                                <input type="date" id="filtroFechaFin" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Estado</label>
+                                <select id="filtroEstado" class="form-control">
+                                    <option value="">Todos</option>
+                                    <option value="PROCESADA">PROCESADA</option>
+                                    <option value="ANULADA">ANULADA</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn btn-primary btn-block" onclick="buscarDevoluciones()">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-info card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list"></i> Historial de Devoluciones</h3>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table id="tablaDevoluciones" class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>NC</th>
+                                <th>Fecha</th>
+                                <th>Venta Orig.</th>
+                                <th>Cliente</th>
+                                <th>Motivo</th>
+                                <th class="text-right">Monto</th>
+                                <th>Método</th>
+                                <th>Estado</th>
+                                <th>SUNAT</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyDevoluciones">
+                            <tr>
+                                <td colspan="10" class="text-center text-muted">Cargando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer clearfix">
+                    <div class="float-left text-muted" id="infoPaginacion"></div>
+                    <ul class="pagination pagination-sm m-0 float-right" id="paginacion"></ul>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalBuscarVenta" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title"><i class="fas fa-search"></i> Buscar Venta para Devolución</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" id="txtBuscarVenta" class="form-control" placeholder="Buscar por serie, número, cliente o RUC...">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary btn-block" onclick="buscarVentas()">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-sm table-hover">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Serie-Número</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th class="text-right">Total</th>
+                                    <th>Estado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyVentas">
+                                <tr><td colspan="6" class="text-center text-muted">Realice una búsqueda</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDetalleDevolucion" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title">Detalle de Nota de Crédito</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body" id="contenidoDetalle">
+                    <div class="text-center py-5">
+                        <i class="fas fa-spinner fa-spin fa-3x text-info"></i>
+                        <p class="mt-2">Cargando...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        let paginaActual = 0;
+        let totalPaginas = 0;
+
+        $(document).ready(function() {
+            // Inicializar fechas (Últimos 30 días)
+            const hoy = new Date().toISOString().split('T')[0];
+            $('#filtroFechaFin').val(hoy);
+            
+            const hace30 = new Date();
+            hace30.setDate(hace30.getDate() - 30);
+            $('#filtroFechaInicio').val(hace30.toISOString().split('T')[0]);
+
+            buscarDevoluciones();
+        });
+
+        function buscarDevoluciones(pagina = 0) {
+            paginaActual = pagina;
+            const params = {
+                fechaInicio: $('#filtroFechaInicio').val(),
+                fechaFin: $('#filtroFechaFin').val(),
+                estado: $('#filtroEstado').val(),
+                page: pagina,
+                size: 20,
+                sortBy: 'fechaCreacion',
+                sortDir: 'DESC'
+            };
+
+            $.ajax({
+                url: '/devoluciones/api/buscar',
+                method: 'GET',
+                data: params,
+                success: function(response) {
+                    renderizarTabla(response.content);
+                    renderizarPaginacion(response);
+                },
+                error: function() {
+                    if(typeof toastr !== 'undefined') toastr.error('Error al cargar devoluciones');
+                    $('#tbodyDevoluciones').html('<tr><td colspan="10" class="text-center text-danger">Error al cargar datos</td></tr>');
+                }
+            });
+        }
+
+        function renderizarTabla(devoluciones) {
+            const tbody = $('#tbodyDevoluciones');
+            tbody.empty();
+
+            if (!devoluciones || devoluciones.length === 0) {
+                tbody.html('<tr><td colspan="10" class="text-center text-muted">No hay devoluciones registradas</td></tr>');
+                return;
+            }
+
+            devoluciones.forEach(dev => {
+                const venta = dev.ventaOriginal || {};
+                const cliente = venta.cliente || {};
+
+                // ESTILO ACTUALIZADO: Usar 'badge' en lugar de 'label'
+                const badgeEstado = dev.estado === 'PROCESADA' 
+                    ? '<span class="badge badge-success">PROCESADA</span>' 
+                    : '<span class="badge badge-danger">ANULADA</span>';
+
+                let badgeSunat = '<span class="badge badge-secondary">NO APLICA</span>';
+                if (dev.sunatEstado === 'ACEPTADO') badgeSunat = '<span class="badge badge-success">ACEPTADO</span>';
+                else if (['RECHAZADO', 'ERROR'].includes(dev.sunatEstado)) badgeSunat = `<span class="badge badge-danger">${dev.sunatEstado}</span>`;
+                else if (dev.sunatEstado === 'PENDIENTE') badgeSunat = '<span class="badge badge-warning">PENDIENTE</span>';
+
+                // ESTILO ACTUALIZADO: Botones btn-sm e iconos fas
+                const acciones = `
+                    <button class="btn btn-info btn-sm" onclick="verDetalle(${dev.id})" title="Ver detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${dev.sunatEstado && dev.sunatEstado !== 'NO_APLICA' && dev.sunatEstado !== 'ACEPTADO' ? 
+                        `<button class="btn btn-warning btn-sm" onclick="reenviarSunat(${dev.id})" title="Reenviar a SUNAT">
+                            <i class="fas fa-sync"></i>
+                        </button>` : ''}
+                    ${dev.estado === 'PROCESADA' ? 
+                        `<button class="btn btn-danger btn-sm" onclick="confirmarAnular(${dev.id})" title="Anular">
+                            <i class="fas fa-ban"></i>
+                        </button>` : ''}
+                `;
+
+                tbody.append(`
+                    <tr>
+                        <td><strong>${dev.serie}-${dev.numero}</strong></td>
+                        <td>${formatearFecha(dev.fechaCreacion)}</td>
+                        <td>${venta.serie || ''}-${venta.numero || ''}</td>
+                        <td>${cliente.nombreCompleto || cliente.razonSocial || '-'}</td>
+                        <td><small>${dev.motivoDevolucion || '-'}</small></td>
+                        <td class="text-right text-danger font-weight-bold">S/ ${formatearNumero(dev.totalDevuelto)}</td>
+                        <td><small>${dev.metodoReembolso || '-'}</small></td>
+                        <td>${badgeEstado}</td>
+                        <td>${badgeSunat}</td>
+                        <td class="text-center">${acciones}</td>
+                    </tr>
+                `);
+            });
+        }
+
+        function renderizarPaginacion(page) {
+            totalPaginas = page.totalPages;
+            const ul = $('#paginacion');
+            ul.empty();
+            // ESTILO ACTUALIZADO: Formato de texto de paginación
+            $('#infoPaginacion').text(`Mostrando ${page.numberOfElements} de ${page.totalElements} registros`);
+
+            if (totalPaginas <= 1) return;
+
+            // ESTILO ACTUALIZADO: Clases page-item y page-link de Bootstrap 4
+            ul.append(`<li class="page-item ${page.first ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="buscarDevoluciones(${paginaActual - 1}); return false;">«</a>
+            </li>`);
+
+            for (let i = 0; i < totalPaginas; i++) {
+                if (i < 2 || i > totalPaginas - 3 || Math.abs(i - paginaActual) <= 1) {
+                    ul.append(`<li class="page-item ${i === paginaActual ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="buscarDevoluciones(${i}); return false;">${i + 1}</a>
+                    </li>`);
+                } else if (i === 2 || i === totalPaginas - 3) {
+                    ul.append('<li class="page-item disabled"><a class="page-link">...</a></li>');
+                }
+            }
+
+            ul.append(`<li class="page-item ${page.last ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="buscarDevoluciones(${paginaActual + 1}); return false;">»</a>
+            </li>`);
+        }
+
+        // Lógica del Modal Buscar Venta
+        function abrirModalBuscarVenta() {
+            $('#modalBuscarVenta').modal('show');
+            $('#txtBuscarVenta').val('').focus();
+            $('#tbodyVentas').html('<tr><td colspan="6" class="text-center text-muted">Realice una búsqueda</td></tr>');
+        }
+
+        function buscarVentas() {
+            const termino = $('#txtBuscarVenta').val().trim();
+            if (!termino) {
+                if(typeof toastr !== 'undefined') toastr.warning('Ingrese un criterio de búsqueda');
+                return;
+            }
+
+            $.ajax({
+                url: '/ventas/api/buscar-devolucion',
+                method: 'GET',
+                data: { termino: termino },
+                success: function(ventas) {
+                    const tbody = $('#tbodyVentas');
+                    tbody.empty();
+
+                    if (!ventas || ventas.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center text-muted">No se encontraron ventas</td></tr>');
+                        return;
+                    }
+
+                    ventas.forEach(v => {
+                        const cliente = v.cliente || {};
+                        // ESTILO ACTUALIZADO: Badges
+                        let badgeClass = 'badge-warning';
+                        if (v.estado === 'EMITIDO') badgeClass = 'badge-primary';
+                        else if (v.estado === 'PAGADO_TOTAL') badgeClass = 'badge-success';
+                        else if (v.estado === 'ANULADO') badgeClass = 'badge-danger';
+
+                        tbody.append(`
+                            <tr>
+                                <td>${v.serie}-${v.numero}</td>
+                                <td>${formatearFecha(v.fechaEmision)}</td>
+                                <td>${cliente.nombreCompleto || cliente.razonSocial || '-'}</td>
+                                <td class="text-right">S/ ${formatearNumero(v.total)}</td>
+                                <td><span class="badge ${badgeClass}">${v.estado}</span></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="irANuevaDevolucion(${v.id})">
+                                        <i class="fas fa-undo"></i> Devolver
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: () => {
+                    if(typeof toastr !== 'undefined') toastr.error('Error al buscar ventas');
+                }
+            });
+        }
+
+        function irANuevaDevolucion(ventaId) {
+            window.location.href = '/devoluciones/nueva/' + ventaId;
+        }
+
+        // Lógica del Modal Detalle (ESTILO ACTUALIZADO con dl row)
+        function verDetalle(id) {
+            $('#modalDetalleDevolucion').modal('show');
+            $('#contenidoDetalle').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-3x text-info"></i><p class="mt-2">Cargando...</p></div>');
+
+            $.ajax({
+                url: '/devoluciones/api/' + id,
+                method: 'GET',
+                success: function(dev) {
+                    const venta = dev.ventaOriginal || {};
+                    
+                    const detallesHTML = dev.detalles.map(d => `
+                        <tr>
+                            <td>${d.descripcion}</td>
+                            <td class="text-center">${d.cantidadDevuelta}</td>
+                            <td class="text-right">S/ ${formatearNumero(d.precioUnitario)}</td>
+                            <td class="text-right">S/ ${formatearNumero(d.subtotal)}</td>
+                        </tr>
+                    `).join('');
+
+                    const badgeSunat = dev.sunatEstado === 'ACEPTADO' 
+                        ? '<span class="badge badge-success">ACEPTADO</span>' 
+                        : '<span class="badge badge-secondary">NO APLICA</span>';
+
+                    // Uso de dl row para mejor presentación en el modal
+                    $('#contenidoDetalle').html(`
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="text-info border-bottom pb-2">Información Nota de Crédito</h5>
+                                <dl class="row">
+                                    <dt class="col-sm-4">NC:</dt><dd class="col-sm-8 font-weight-bold">${dev.serie}-${dev.numero}</dd>
+                                    <dt class="col-sm-4">Fecha:</dt><dd class="col-sm-8">${formatearFecha(dev.fechaCreacion)}</dd>
+                                    <dt class="col-sm-4">Estado:</dt><dd class="col-sm-8"><span class="badge ${dev.estado === 'PROCESADA' ? 'badge-success' : 'badge-danger'}">${dev.estado}</span></dd>
+                                    <dt class="col-sm-4">Venta Orig.:</dt><dd class="col-sm-8">${venta.serie}-${venta.numero}</dd>
+                                    <dt class="col-sm-4">Motivo:</dt><dd class="col-sm-8">${dev.motivoDevolucion}</dd>
+                                    <dt class="col-sm-4">Reembolso:</dt><dd class="col-sm-8">${dev.metodoReembolso}</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-info border-bottom pb-2">Información SUNAT</h5>
+                                <dl class="row">
+                                    <dt class="col-sm-4">Estado:</dt><dd class="col-sm-8">${badgeSunat}</dd>
+                                    ${dev.sunatHash ? `<dt class="col-sm-4">Hash:</dt><dd class="col-sm-8"><small class="text-muted text-truncate" style="display:block; max-width:150px;" title="${dev.sunatHash}">${dev.sunatHash}</small></dd>` : ''}
+                                </dl>
+                                <div class="btn-group">
+                                    ${dev.sunatXmlUrl ? `<a href="${dev.sunatXmlUrl}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-code"></i> XML</a>` : ''}
+                                    ${dev.sunatCdrUrl ? `<a href="${dev.sunatCdrUrl}" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-file-alt"></i> CDR</a>` : ''}
+                                    ${dev.sunatPdfUrl ? `<a href="${dev.sunatPdfUrl}" target="_blank" class="btn btn-sm btn-outline-danger"><i class="fas fa-file-pdf"></i> PDF</a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h5 class="text-info border-bottom pb-2">Productos Devueltos</h5>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Descripción</th>
+                                            <th class="text-center">Cant.</th>
+                                            <th class="text-right">P. Unit.</th>
+                                            <th class="text-right">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${detallesHTML}</tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-right font-weight-bold">TOTAL DEVUELTO:</td>
+                                            <td class="text-right font-weight-bold text-danger">S/ ${formatearNumero(dev.totalDevuelto)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    `);
+                },
+                error: () => {
+                    $('#contenidoDetalle').html('<div class="alert alert-danger">Error al cargar el detalle</div>');
+                }
+            });
+        }
+
+        // Acciones extra
+        function reenviarSunat(id) {
+            if (!confirm('¿Desea reenviar esta nota de crédito a SUNAT?')) return;
+            $.ajax({
+                url: '/devoluciones/api/reenviar-sunat/' + id,
+                method: 'POST',
+                success: (response) => {
+                    if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
+                    buscarDevoluciones(paginaActual);
+                },
+                error: (xhr) => {
+                    if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
+                }
+            });
+        }
+
+        function confirmarAnular(id) {
+            if (!confirm('¿Está seguro de ANULAR esta devolución?')) return;
+            $.ajax({
+                url: '/devoluciones/api/anular/' + id,
+                method: 'POST',
+                success: (response) => {
+                    if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
+                    buscarDevoluciones(paginaActual);
+                },
+                error: (xhr) => {
+                    if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
+                }
+            });
+        }
+
+        // Utils
+        function formatearFecha(fecha) {
+            if (!fecha) return '-';
+            const d = new Date(fecha);
+            return d.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        }
+
+        function formatearNumero(num) {
+            if (num == null) return '0.00';
+            return parseFloat(num).toFixed(2);
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

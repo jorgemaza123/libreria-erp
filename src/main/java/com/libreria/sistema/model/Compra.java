@@ -28,11 +28,17 @@ public class Compra {
     private BigDecimal total;
     private String observaciones;
 
+    @Column(nullable = false)
+    private String estado = "REGISTRADA"; // "REGISTRADA", "ANULADA"
+
     @OneToMany(mappedBy = "compra", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleCompra> detalles = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         this.fecha = LocalDateTime.now();
+        if (this.estado == null) {
+            this.estado = "REGISTRADA";
+        }
     }
 }

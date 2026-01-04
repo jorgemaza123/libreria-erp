@@ -3,29 +3,40 @@ package com.libreria.sistema.config;
 import com.libreria.sistema.model.Correlativo;
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.Rol;
+import com.libreria.sistema.model.Role;
 import com.libreria.sistema.model.Usuario;
 import com.libreria.sistema.repository.CorrelativoRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.RolRepository;
+import com.libreria.sistema.repository.RoleRepository;
 import com.libreria.sistema.repository.UsuarioRepository;
+import com.libreria.sistema.service.RolePermissionService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 
 @Configuration
 public class DataInitializer {
 
     @Bean
-    CommandLineRunner initData(UsuarioRepository usuarioRepo, 
-                               RolRepository rolRepo, 
+    CommandLineRunner initData(UsuarioRepository usuarioRepo,
+                               RolRepository rolRepo,
+                               RoleRepository roleRepo,
                                CorrelativoRepository correlativoRepo,
                                ProductoRepository productoRepo,
+                               RolePermissionService rolePermissionService,
                                PasswordEncoder passwordEncoder) {
         return args -> {
+
+            // 0. NUEVO SISTEMA: Crear permisos y roles granulares
+            System.out.println(">>> Inicializando sistema de permisos y roles granulares...");
+            rolePermissionService.crearPermisosPorDefecto();
+            rolePermissionService.crearRolesPredefinidos();
             
             // 1. Roles
             Rol rolAdmin = rolRepo.findByNombre("ROLE_ADMIN").orElseGet(() -> rolRepo.save(new Rol("ROLE_ADMIN")));
@@ -57,14 +68,43 @@ public class DataInitializer {
             }
 
             // 3. Correlativos
+            // Series OFICIALES (para facturación electrónica)
             if(correlativoRepo.findByCodigoAndSerie("BOLETA", "B001").isEmpty()) {
                 correlativoRepo.save(new Correlativo("BOLETA", "B001", 0));
+                System.out.println(">>> Correlativo BOLETA B001 creado (OFICIAL SUNAT)");
             }
             if(correlativoRepo.findByCodigoAndSerie("FACTURA", "F001").isEmpty()) {
                 correlativoRepo.save(new Correlativo("FACTURA", "F001", 0));
+                System.out.println(">>> Correlativo FACTURA F001 creado (OFICIAL SUNAT)");
             }
+
+            // Series INTERNAS (para facturación interna sin SUNAT)
+            if(correlativoRepo.findByCodigoAndSerie("BOLETA", "I001").isEmpty()) {
+                correlativoRepo.save(new Correlativo("BOLETA", "I001", 0));
+                System.out.println(">>> Correlativo BOLETA I001 creado (INTERNO)");
+            }
+            if(correlativoRepo.findByCodigoAndSerie("FACTURA", "IF001").isEmpty()) {
+                correlativoRepo.save(new Correlativo("FACTURA", "IF001", 0));
+                System.out.println(">>> Correlativo FACTURA IF001 creado (INTERNO)");
+            }
+            if(correlativoRepo.findByCodigoAndSerie("NOTA_VENTA", "NI001").isEmpty()) {
+                correlativoRepo.save(new Correlativo("NOTA_VENTA", "NI001", 0));
+                System.out.println(">>> Correlativo NOTA_VENTA NI001 creado (INTERNO)");
+            }
+
+            // Otros correlativos
             if(correlativoRepo.findByCodigoAndSerie("COTIZACION", "C001").isEmpty()) {
                 correlativoRepo.save(new Correlativo("COTIZACION", "C001", 0));
+            }
+
+            // Correlativos de NOTAS DE CRÉDITO
+            if(correlativoRepo.findByCodigoAndSerie("NOTA_CREDITO", "C001").isEmpty()) {
+                correlativoRepo.save(new Correlativo("NOTA_CREDITO", "C001", 0));
+                System.out.println(">>> Correlativo NOTA_CREDITO C001 creado (OFICIAL SUNAT)");
+            }
+            if(correlativoRepo.findByCodigoAndSerie("NOTA_CREDITO", "NC01").isEmpty()) {
+                correlativoRepo.save(new Correlativo("NOTA_CREDITO", "NC01", 0));
+                System.out.println(">>> Correlativo NOTA_CREDITO NC01 creado (INTERNO)");
             }
 
             // 4. Producto Servicio
@@ -82,6 +122,30 @@ public class DataInitializer {
                 servicio.setActivo(true);
                 productoRepo.save(servicio);
             }
+
+            // 5. MIGRACIÓN: Asignar roles granulares a usuarios existentes
+            System.out.println(">>> Migrando usuarios al nuevo sistema de roles...");
+            List<Usuario> todosUsuarios = usuarioRepo.findAll();
+            for (Usuario usuario : todosUsuarios) {
+                if (usuario.getRole() == null) {
+                    // Migrar según rol antiguo
+                    boolean esAdmin = usuario.getRoles().stream()
+                            .anyMatch(r -> r.getNombre().equals("ROLE_ADMIN"));
+                    boolean esVendedor = usuario.getRoles().stream()
+                            .anyMatch(r -> r.getNombre().equals("ROLE_VENDEDOR"));
+
+                    if (esAdmin) {
+                        roleRepo.findByNombre("ADMIN").ifPresent(usuario::setRole);
+                        System.out.println("  - Usuario '" + usuario.getUsername() + "' migrado a rol ADMIN");
+                    } else if (esVendedor) {
+                        roleRepo.findByNombre("VENDEDOR").ifPresent(usuario::setRole);
+                        System.out.println("  - Usuario '" + usuario.getUsername() + "' migrado a rol VENDEDOR");
+                    }
+
+                    usuarioRepo.save(usuario);
+                }
+            }
+            System.out.println(">>> Migración completada");
         };
     }
 }

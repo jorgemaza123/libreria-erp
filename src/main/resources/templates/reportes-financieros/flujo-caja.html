@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <div th:replace="~{fragments/layout :: head}"></div>
+    <title th:text="${titulo}">Flujo de Caja</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <aside th:replace="~{fragments/layout :: sidebar(active='reportes')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1>
+                            <i class="fas fa-exchange-alt text-primary"></i> Flujo de Caja
+                            <small class="text-muted ml-2">Análisis de ingresos y egresos</small>
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item active">Reportes Financieros</li>
+                            <li class="breadcrumb-item active">Flujo de Caja</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                
+                <div class="card card-primary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <input type="date" id="fechaInicio" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <input type="date" id="fechaFin" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
+                                        <i class="fas fa-search"></i> Generar Reporte
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div class="btn-group btn-block">
+                                        <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                                            <i class="fas fa-file-excel"></i> Excel
+                                        </button>
+                                        <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                                            <i class="fas fa-file-pdf"></i> PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3 id="totalIngresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                                <p>Total Ingresos</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="small-box bg-danger">
+                            <div class="inner">
+                                <h3 id="totalEgresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                                <p>Total Egresos</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="small-box" id="boxSaldo">
+                            <div class="inner">
+                                <h3 id="saldoNeto"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                                <p>Saldo Neto</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card card-success card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Comparativo Ingresos vs Egresos</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartFlujoCaja" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card card-info card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-arrow-up"></i> Detalle de Ingresos</h3>
+                            </div>
+                            <div class="card-body table-responsive p-0">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="bg-light-blue">
+                                        <tr>
+                                            <th>Concepto</th>
+                                            <th class="text-center">Cantidad</th>
+                                            <th class="text-right">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyIngresos">
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">Genere el reporte</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot id="tfootIngresos" style="display: none;">
+                                        <tr class="bg-gray-light">
+                                            <td><strong>TOTAL</strong></td>
+                                            <td class="text-center" id="totalCantIngresos">0</td>
+                                            <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoIngresos">0.00</span></strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card card-danger card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-arrow-down"></i> Detalle de Egresos</h3>
+                            </div>
+                            <div class="card-body table-responsive p-0">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="bg-red">
+                                        <tr>
+                                            <th>Concepto</th>
+                                            <th class="text-center">Cantidad</th>
+                                            <th class="text-right">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyEgresos">
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">Genere el reporte</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot id="tfootEgresos" style="display: none;">
+                                        <tr class="bg-gray-light">
+                                            <td><strong>TOTAL</strong></td>
+                                            <td class="text-center" id="totalCantEgresos">0</td>
+                                            <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoEgresos">0.00</span></strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script th:inline="javascript">
+    let chartFlujoCaja;
+
+    $(document).ready(function() {
+        // Establecer fecha de hoy por defecto
+        const hoy = new Date().toISOString().split('T')[0];
+        $('#fechaFin').val(hoy);
+
+        // Fecha inicio: primer día del mes actual
+        const primerDia = new Date();
+        primerDia.setDate(1);
+        $('#fechaInicio').val(primerDia.toISOString().split('T')[0]);
+
+        // Generar reporte automáticamente
+        generarReporte();
+    });
+
+    function generarReporte() {
+        const fechaInicio = $('#fechaInicio').val();
+        const fechaFin = $('#fechaFin').val();
+
+        if (!fechaInicio || !fechaFin) {
+            if(typeof toastr !== 'undefined') toastr.warning('Seleccione el rango de fechas');
+            return;
+        }
+
+        if (new Date(fechaInicio) > new Date(fechaFin)) {
+            if(typeof toastr !== 'undefined') toastr.warning('La fecha de inicio no puede ser mayor a la fecha fin');
+            return;
+        }
+
+        $.ajax({
+            url: '/reportes/financieros/api/flujo-caja',
+            method: 'GET',
+            data: {
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin
+            },
+            success: function(data) {
+                renderizarDatos(data);
+                renderizarGrafico(data);
+            },
+            error: function() {
+                if(typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');
+            }
+        });
+    }
+
+    function renderizarDatos(data) {
+        // Cards
+        $('#totalIngresos').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.totalIngresos));
+        $('#totalEgresos').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.totalEgresos));
+        $('#saldoNeto').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.saldo));
+
+        // Cambiar color del saldo
+        const saldo = parseFloat(data.saldo);
+        const boxSaldo = $('#boxSaldo');
+        boxSaldo.removeClass('bg-success bg-danger bg-warning');
+        if (saldo > 0) {
+            boxSaldo.addClass('bg-success');
+        } else if (saldo < 0) {
+            boxSaldo.addClass('bg-danger');
+        } else {
+            boxSaldo.addClass('bg-warning');
+        }
+
+        // Tabla INGRESOS
+        const tbodyIngresos = $('#tbodyIngresos');
+        tbodyIngresos.empty();
+
+        let totalCantIngresos = 0;
+        data.detalleIngresos.forEach(ingreso => {
+            tbodyIngresos.append(`
+                <tr>
+                    <td>${ingreso.concepto}</td>
+                    <td class="text-center">${ingreso.cantidad}</td>
+                    <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(ingreso.monto)}</td>
+                </tr>
+            `);
+            totalCantIngresos += ingreso.cantidad;
+        });
+
+        $('#totalCantIngresos').text(totalCantIngresos);
+        $('#totalMontoIngresos').text(formatearNumero(data.totalIngresos));
+        $('#tfootIngresos').show();
+
+        // Tabla EGRESOS
+        const tbodyEgresos = $('#tbodyEgresos');
+        tbodyEgresos.empty();
+
+        let totalCantEgresos = 0;
+        data.detalleEgresos.forEach(egreso => {
+            tbodyEgresos.append(`
+                <tr>
+                    <td>${egreso.concepto}</td>
+                    <td class="text-center">${egreso.cantidad}</td>
+                    <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(egreso.monto)}</td>
+                </tr>
+            `);
+            totalCantEgresos += egreso.cantidad;
+        });
+
+        $('#totalCantEgresos').text(totalCantEgresos);
+        $('#totalMontoEgresos').text(formatearNumero(data.totalEgresos));
+        $('#tfootEgresos').show();
+    }
+
+    function renderizarGrafico(data) {
+        const labels = ['Ingresos', 'Egresos'];
+        const values = [data.totalIngresos, data.totalEgresos];
+
+        const ctx = document.getElementById('chartFlujoCaja').getContext('2d');
+
+        if (chartFlujoCaja) {
+            chartFlujoCaja.destroy();
+        }
+
+        chartFlujoCaja = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Monto',
+                    data: values,
+                    backgroundColor: [
+                        APP_CONFIG.colorInfo + 'E6',
+                        APP_CONFIG.colorPeligro + 'E6'
+                    ],
+                    borderColor: [
+                        APP_CONFIG.colorInfo,
+                        APP_CONFIG.colorPeligro
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value.toFixed(0); }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function exportarExcel() {
+        const fechaInicio = $('#fechaInicio').val();
+        const fechaFin = $('#fechaFin').val();
+
+        if (!fechaInicio || !fechaFin) {
+            if(typeof toastr !== 'undefined') toastr.warning('Seleccione el rango de fechas');
+            return;
+        }
+
+        window.location.href = `/reportes/financieros/api/flujo-caja/excel?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+    }
+
+    function exportarPDF() {
+        const fechaInicio = $('#fechaInicio').val();
+        const fechaFin = $('#fechaFin').val();
+
+        if (!fechaInicio || !fechaFin) {
+            if(typeof toastr !== 'undefined') toastr.warning('Seleccione el rango de fechas');
+            return;
+        }
+
+        window.location.href = `/reportes/financieros/api/flujo-caja/pdf?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+    }
+
+    function formatearNumero(num) {
+        if (num == null) return '0.00';
+        return parseFloat(num).toFixed(2);
+    }
+</script>
+</body>
+</html>

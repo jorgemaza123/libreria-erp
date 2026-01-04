@@ -4,8 +4,11 @@ import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.CompraDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.service.CajaService; // IMPORTANTE: Usar el servicio
+import com.libreria.sistema.service.CompraService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -15,24 +18,27 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/compras")
+@Slf4j
 public class CompraController {
 
     private final CompraRepository compraRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductoRepository productoRepository;
     private final KardexRepository kardexRepository;
-    
+
     // CORRECCIÓN: Usamos el servicio de caja, no el repositorio directo
-    private final CajaService cajaService; 
+    private final CajaService cajaService;
+    private final CompraService compraService;
 
     public CompraController(CompraRepository compraRepository, ProveedorRepository proveedorRepository,
                             ProductoRepository productoRepository, KardexRepository kardexRepository,
-                            CajaService cajaService) {
+                            CajaService cajaService, CompraService compraService) {
         this.compraRepository = compraRepository;
         this.proveedorRepository = proveedorRepository;
         this.productoRepository = productoRepository;
         this.kardexRepository = kardexRepository;
         this.cajaService = cajaService;
+        this.compraService = compraService;
     }
 
     @GetMapping("/lista")
@@ -136,5 +142,19 @@ public class CompraController {
                 )).toList()
             ));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/api/anular/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> anularCompra(@PathVariable Long id) {
+        try {
+            compraService.anularCompra(id);
+            return ResponseEntity.ok(Map.of("message", "Compra anulada exitosamente"));
+        } catch (Exception e) {
+            log.error("Error al anular compra: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <div th:replace="~{fragments/layout :: head}"></div>
+    <title th:text="${titulo}">Gestión de Roles</title>
+    <style>
+        .permission-switch {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+        .module-card {
+            border-left: 4px solid #007bff;
+        }
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 15px;
+        }
+        .permission-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+    <aside th:replace="~{fragments/layout :: sidebar(active='roles')}"></aside>
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0" th:text="${titulo}">Gestión de Roles y Permisos</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" id="btnCrearRol">
+                            <i class="fas fa-plus"></i> Crear Nuevo Rol
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-users-cog"></i> Roles del Sistema</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="tablaRoles" class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Permisos</th>
+                                    <th>Usuarios</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal fade" id="modalRol" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title" id="modalRolTitulo">
+                        <i class="fas fa-user-tag"></i> <span id="tituloAccion">Crear Rol</span>
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="formRol">
+                        <input type="hidden" id="roleId" name="roleId">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Nombre del Rol <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="rolNombre" name="nombre"
+                                           required placeholder="Ej: GERENTE, SUPERVISOR">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Descripción</label>
+                                    <input type="text" class="form-control" id="rolDescripcion" name="descripcion"
+                                           placeholder="Breve descripción del rol">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h5 class="mb-3"><i class="fas fa-key"></i> Asignar Permisos</h5>
+
+                        <div class="row">
+                            <div class="col-12 mb-2">
+                                <button type="button" class="btn btn-sm btn-success" id="btnSeleccionarTodos">
+                                    <i class="fas fa-check-double"></i> Seleccionar Todos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning" id="btnDeseleccionarTodos">
+                                    <i class="fas fa-times"></i> Deseleccionar Todos
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="permisosContainer">
+                            </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarRol">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+    let permisosDisponibles = {};
+    let modoEdicion = false;
+    let roleIdActual = null;
+
+    $(document).ready(function() {
+        cargarRoles();
+        cargarPermisos();
+
+        // Botón Crear Rol
+        $('#btnCrearRol').click(function() {
+            abrirModalCrear();
+        });
+
+        // Botón Guardar Rol
+        $('#btnGuardarRol').click(function() {
+            guardarRol();
+        });
+
+        // Seleccionar/Deseleccionar todos
+        $('#btnSeleccionarTodos').click(function() {
+            $('.permission-switch').prop('checked', true);
+        });
+
+        $('#btnDeseleccionarTodos').click(function() {
+            $('.permission-switch').prop('checked', false);
+        });
+    });
+
+    function cargarRoles() {
+        $.get('/roles/api/listar')
+            .done(function(roles) {
+                const tbody = $('#tablaRoles tbody');
+                tbody.empty();
+
+                roles.forEach(function(rol) {
+                    const estadoBadge = rol.activo ?
+                        '<span class="badge badge-success">Activo</span>' :
+                        '<span class="badge badge-secondary">Inactivo</span>';
+
+                    const row = `
+                        <tr>
+                            <td>${rol.id}</td>
+                            <td><strong>${rol.nombre}</strong></td>
+                            <td>${rol.descripcion || '-'}</td>
+                            <td><span class="badge badge-info">${rol.cantidadPermisos} permisos</span></td>
+                            <td><span class="badge badge-primary">${rol.cantidadUsuarios} usuarios</span></td>
+                            <td>${estadoBadge}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editarRol(${rol.id})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="eliminarRol(${rol.id}, '${rol.nombre}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+            })
+            .fail(function() {
+                if(typeof toastr !== 'undefined') toastr.error('Error al cargar roles');
+            });
+    }
+
+    function cargarPermisos() {
+        $.get('/roles/api/permisos')
+            .done(function(data) {
+                permisosDisponibles = data;
+                renderizarPermisos();
+            })
+            .fail(function() {
+                if(typeof toastr !== 'undefined') toastr.error('Error al cargar permisos');
+            });
+    }
+
+    function renderizarPermisos(permisosSeleccionados = []) {
+        const container = $('#permisosContainer');
+        container.empty();
+
+        const ordenModulos = ['VENTAS', 'COMPRAS', 'INVENTARIO', 'CAJA', 'REPORTES',
+                             'CONFIGURACION', 'USUARIOS', 'AUDITORIA'];
+
+        ordenModulos.forEach(function(modulo) {
+            const permisos = permisosDisponibles[modulo];
+            if (!permisos) return;
+
+            const card = $(`
+                <div class="card module-card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-folder-open"></i> ${modulo}
+                            <span class="float-right text-muted">${permisos.length} permisos</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="permission-grid" id="permisos-${modulo}"></div>
+                    </div>
+                </div>
+            `);
+
+            container.append(card);
+
+            const grid = $(`#permisos-${modulo}`);
+
+            permisos.forEach(function(permiso) {
+                const checked = permisosSeleccionados.includes(permiso.id) ? 'checked' : '';
+                const iconClass = getIconoAccion(permiso.accion);
+
+                const item = $(`
+                    <div class="permission-item">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input permission-switch"
+                                   id="perm-${permiso.id}" value="${permiso.id}" ${checked}>
+                            <label class="custom-control-label" for="perm-${permiso.id}">
+                                <i class="${iconClass}"></i> ${permiso.accion}
+                            </label>
+                        </div>
+                    </div>
+                `);
+
+                grid.append(item);
+            });
+        });
+    }
+
+    function getIconoAccion(accion) {
+        const iconos = {
+            'VER': 'fas fa-eye text-info',
+            'CREAR': 'fas fa-plus-circle text-success',
+            'EDITAR': 'fas fa-edit text-warning',
+            'ELIMINAR': 'fas fa-trash text-danger',
+            'EXPORTAR': 'fas fa-file-export text-primary'
+        };
+        return iconos[accion] || 'fas fa-key';
+    }
+
+    function abrirModalCrear() {
+        modoEdicion = false;
+        roleIdActual = null;
+        $('#tituloAccion').text('Crear Rol');
+        $('#formRol')[0].reset();
+        $('#roleId').val('');
+        renderizarPermisos([]);
+        $('#modalRol').modal('show');
+    }
+
+    function editarRol(id) {
+        modoEdicion = true;
+        roleIdActual = id;
+        $('#tituloAccion').text('Editar Rol');
+
+        // Cargar permisos del rol
+        $.get(`/roles/api/${id}/permisos`)
+            .done(function(permisosIds) {
+                // Cargar datos del rol de la tabla
+                const rol = obtenerRolDeTabla(id);
+                if (rol) {
+                    $('#rolNombre').val(rol.nombre);
+                    $('#rolDescripcion').val(rol.descripcion);
+                    $('#roleId').val(id);
+                }
+
+                renderizarPermisos(permisosIds);
+                $('#modalRol').modal('show');
+            })
+            .fail(function() {
+                if(typeof toastr !== 'undefined') toastr.error('Error al cargar datos del rol');
+            });
+    }
+
+    function obtenerRolDeTabla(id) {
+        let rolEncontrado = null;
+        $('#tablaRoles tbody tr').each(function() {
+            const celdas = $(this).find('td');
+            if (parseInt(celdas.eq(0).text()) === id) {
+                rolEncontrado = {
+                    id: id,
+                    nombre: celdas.eq(1).text().trim(),
+                    descripcion: celdas.eq(2).text().trim()
+                };
+                return false;
+            }
+        });
+        return rolEncontrado;
+    }
+
+    function guardarRol() {
+        const nombre = $('#rolNombre').val().trim();
+        const descripcion = $('#rolDescripcion').val().trim();
+
+        if (!nombre) {
+            if(typeof toastr !== 'undefined') toastr.warning('El nombre del rol es obligatorio');
+            return;
+        }
+
+        // Recopilar permisos seleccionados
+        const permissionIds = [];
+        $('.permission-switch:checked').each(function() {
+            permissionIds.push(parseInt($(this).val()));
+        });
+
+        const data = {
+            nombre: nombre,
+            descripcion: descripcion,
+            permissionIds: permissionIds
+        };
+
+        let url = '/roles/api/crear';
+        let metodo = 'POST';
+
+        if (modoEdicion && roleIdActual) {
+            url = `/roles/api/actualizar/${roleIdActual}`;
+            metodo = 'PUT';
+        }
+
+        $.ajax({
+            url: url,
+            method: metodo,
+            contentType: 'application/json',
+            data: JSON.stringify(data)
+        })
+        .done(function(response) {
+            if (response.success) {
+                if(typeof toastr !== 'undefined') toastr.success(response.message);
+                $('#modalRol').modal('hide');
+                cargarRoles();
+            } else {
+                if(typeof toastr !== 'undefined') toastr.error(response.message);
+            }
+        })
+        .fail(function(xhr) {
+            const response = xhr.responseJSON;
+            const msg = response && response.message ? response.message : 'Error al guardar el rol';
+            if(typeof toastr !== 'undefined') toastr.error(msg);
+        });
+    }
+
+    function eliminarRol(id, nombre) {
+        Swal.fire({
+            title: '¿Eliminar Rol?',
+            text: `¿Está seguro de eliminar el rol "${nombre}"? Esta acción no se puede deshacer.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/roles/api/eliminar/${id}`,
+                    method: 'DELETE'
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        if(typeof toastr !== 'undefined') toastr.success(response.message);
+                        cargarRoles();
+                    } else {
+                        if(typeof toastr !== 'undefined') toastr.error(response.message);
+                    }
+                })
+                .fail(function(xhr) {
+                    const response = xhr.responseJSON;
+                    const msg = response && response.message ? response.message : 'Error al eliminar el rol';
+                    if(typeof toastr !== 'undefined') toastr.error(msg);
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>

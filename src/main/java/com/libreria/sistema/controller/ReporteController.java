@@ -3,6 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.service.ReporteService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,11 +23,13 @@ public class ReporteController {
     }
 
     @GetMapping
+    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
     public String index() {
         return "reportes/index";
     }
 
     @GetMapping("/exportar/excel")
+    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
     public void exportarExcel(@RequestParam String tipo,
                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
@@ -41,6 +44,7 @@ public class ReporteController {
     }
 
     @GetMapping("/exportar/pdf")
+    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
     public void exportarPdf(@RequestParam String tipo,
                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,

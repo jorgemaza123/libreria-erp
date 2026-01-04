@@ -3,15 +3,16 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.Cotizacion;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.service.CotizacionService;
+import com.libreria.sistema.service.ConfiguracionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import com.libreria.sistema.service.ConfiguracionService; // NUEVO
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,7 +24,7 @@ import java.util.List;
 public class CotizacionController {
 
     private final CotizacionService cotizacionService;
-    private final ConfiguracionService configuracionService; // NUEVO
+    private final ConfiguracionService configuracionService;
 
     public CotizacionController(CotizacionService cotizacionService, ConfiguracionService configuracionService) {
         this.cotizacionService = cotizacionService;
@@ -31,12 +32,13 @@ public class CotizacionController {
     }
 
     @GetMapping("/nueva")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_CREAR')")
     public String nueva() {
         return "cotizaciones/nueva";
     }
 
-    // Ruta para abrir modo edición
     @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_EDITAR')")
     public String editar(@PathVariable Long id, Model model) {
         Cotizacion coti = cotizacionService.obtenerPorId(id);
         model.addAttribute("cotizacionEdicion", coti);
@@ -44,6 +46,7 @@ public class CotizacionController {
     }
 
     @GetMapping("/lista")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String lista(@RequestParam(defaultValue = "0") int page, Model model) {
         Pageable pageable = PageRequest.of(page, 10, Sort.by("id").descending());
         Page<Cotizacion> pageCoti = cotizacionService.listar(pageable);
@@ -64,6 +67,7 @@ public class CotizacionController {
     }
 
     @PostMapping("/api/guardar")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_CREAR')")
     @ResponseBody
     public ResponseEntity<?> guardar(@RequestBody VentaDTO dto) {
         try {
@@ -74,8 +78,8 @@ public class CotizacionController {
         }
     }
 
-    // API Actualizar (Edición)
     @PutMapping("/api/actualizar/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_EDITAR')")
     @ResponseBody
     public ResponseEntity<?> actualizar(@PathVariable Long id, @RequestBody VentaDTO dto) {
         try {
@@ -85,8 +89,10 @@ public class CotizacionController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-    
+
+    // Metodo corregido: Asegurado de tener solo un @PostMapping
     @PostMapping("/api/convertir/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_CONVERTIR')")
     @ResponseBody
     public ResponseEntity<?> convertir(@PathVariable Long id, @RequestParam String tipo) {
         try {
@@ -101,20 +107,18 @@ public class CotizacionController {
     }
 
     @GetMapping("/imprimir/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String imprimir(@PathVariable Long id, Model model) {
         model.addAttribute("cotizacion", cotizacionService.obtenerPorId(id));
-        // ENVIAMOS LA CONFIGURACIÓN
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "cotizaciones/impresion";
     }
 
-    // NUEVO: Endpoint para el Modal de Detalle (Igual que en Ventas)
-    // Endpoint para el Modal de Detalle
     @GetMapping("/detalle/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String verDetalle(@PathVariable Long id, Model model) {
         Cotizacion cotizacion = cotizacionService.obtenerPorId(id);
         model.addAttribute("cotizacion", cotizacion);
-        // IMPORTANTE: Debe coincidir con la ubicación real del archivo HTML
-        return "cotizaciones/modal_detalle :: contenido"; 
+        return "cotizaciones/modal_detalle :: contenido";
     }
 }

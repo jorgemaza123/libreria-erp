@@ -21,4 +21,25 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
     @Query("SELECT v FROM Venta v WHERE v.clienteNumeroDocumento = :dni AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
     List<Venta> findDeudasPorDni(@Param("dni") String dni);
+
+    /**
+     * Buscar ventas para devolución por serie-número, cliente o documento
+     */
+    @Query("SELECT v FROM Venta v LEFT JOIN FETCH v.clienteEntity c " +
+           "WHERE (CONCAT(v.serie, '-', v.numero) LIKE %:termino% " +
+           "OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "OR v.clienteNumeroDocumento LIKE %:termino%) " +
+           "AND v.estado != 'ANULADO' " +
+           "ORDER BY v.fechaEmision DESC")
+    List<Venta> buscarParaDevolucion(@Param("termino") String termino);
+
+    /**
+     * Obtener venta con sus detalles (JOIN FETCH para evitar LazyInitializationException)
+     */
+    @Query("SELECT v FROM Venta v " +
+           "LEFT JOIN FETCH v.items d " +
+           "LEFT JOIN FETCH d.producto p " +
+           "LEFT JOIN FETCH v.clienteEntity c " +
+           "WHERE v.id = :id")
+    Optional<Venta> findByIdWithDetalles(@Param("id") Long id);
 }

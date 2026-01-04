@@ -1,5 +1,6 @@
 package com.libreria.sistema.service;
 
+import com.libreria.sistema.aspect.Auditable;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.SesionCaja;
 import com.libreria.sistema.model.Usuario;
@@ -39,6 +40,7 @@ public class CajaService {
     }
 
     @Transactional
+    @Auditable(modulo = "CAJA", accion = "CREAR", descripcion = "Apertura de caja")
     public void abrirCaja(BigDecimal montoInicial) {
         if (obtenerSesionActiva().isPresent()) {
             throw new RuntimeException("Ya tienes una caja abierta.");
@@ -93,6 +95,7 @@ public class CajaService {
     }
 
     @Transactional
+    @Auditable(modulo = "CAJA", accion = "MODIFICAR", descripcion = "Cierre de caja")
     public void cerrarCaja(BigDecimal montoRealEnFisico) {
         SesionCaja sesion = obtenerSesionActiva()
                 .orElseThrow(() -> new RuntimeException("No hay caja abierta para cerrar."));

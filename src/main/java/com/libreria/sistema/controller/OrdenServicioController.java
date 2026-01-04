@@ -227,7 +227,7 @@ public String nuevaOrden(Model model) {
             cellDesc.setPadding(5);
             table.addCell(cellDesc);
 
-            PdfPCell cellMonto = new PdfPCell(new Phrase(config.getMoneda() + " " + item.getCosto(), fontData));
+            PdfPCell cellMonto = new PdfPCell(new Phrase(config.getFormatoMoneda() + " " + item.getCosto(), fontData));
             cellMonto.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cellMonto.setPadding(5);
             table.addCell(cellMonto);
@@ -240,9 +240,9 @@ public String nuevaOrden(Model model) {
         totalTable.setWidthPercentage(40);
         totalTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
         
-        agregarFilaTotal(totalTable, "TOTAL:", orden.getTotal(), true, config.getMoneda());
-        agregarFilaTotal(totalTable, "A CUENTA:", orden.getACuenta(), false, config.getMoneda());
-        agregarFilaTotal(totalTable, "SALDO:", orden.getSaldo(), true, config.getMoneda());
+        agregarFilaTotal(totalTable, "TOTAL:", orden.getTotal(), true, config.getFormatoMoneda());
+        agregarFilaTotal(totalTable, "A CUENTA:", orden.getACuenta(), false, config.getFormatoMoneda());
+        agregarFilaTotal(totalTable, "SALDO:", orden.getSaldo(), true, config.getFormatoMoneda());
         
         document.add(totalTable);
 

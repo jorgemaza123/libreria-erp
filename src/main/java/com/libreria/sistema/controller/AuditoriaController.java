@@ -1,0 +1,188 @@
+package com.libreria.sistema.controller;
+
+import com.libreria.sistema.model.AuditoriaLog;
+import com.libreria.sistema.service.AuditoriaService;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
+@Controller
+@RequestMapping("/auditoria")
+@PreAuthorize("hasRole('ADMIN')")
+public class AuditoriaController {
+
+    @Autowired
+    private AuditoriaService auditoriaService;
+
+    /**
+     * Muestra la vista principal de auditoría
+     */
+    @GetMapping
+    public String index(Model model) {
+        model.addAttribute("titulo", "Auditoría del Sistema");
+        return "auditoria/index";
+    }
+
+    /**
+     * API para buscar auditorías con filtros
+     */
+    @GetMapping("/api/buscar")
+    @ResponseBody
+    public Map<String, Object> buscar(
+            @RequestParam(required = false) String usuario,
+            @RequestParam(required = false) String modulo,
+            @RequestParam(required = false) String accion,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+
+        // Validar y ajustar parámetros vacíos a null
+        if (usuario != null && usuario.trim().isEmpty()) usuario = null;
+        if (modulo != null && modulo.trim().isEmpty()) modulo = null;
+        if (accion != null && accion.trim().isEmpty()) accion = null;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fechaHora").descending());
+        Page<AuditoriaLog> resultado = auditoriaService.obtenerHistorial(
+            usuario, modulo, accion, fechaInicio, fechaFin, pageable
+        );
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", resultado.getContent());
+        response.put("totalElements", resultado.getTotalElements());
+        response.put("totalPages", resultado.getTotalPages());
+        response.put("currentPage", resultado.getNumber());
+        response.put("size", resultado.getSize());
+
+        return response;
+    }
+
+    /**
+     * API para obtener detalles de una auditoría
+     */
+    @GetMapping("/api/detalle/{id}")
+    @ResponseBody
+    public ResponseEntity<AuditoriaLog> obtenerDetalle(@PathVariable Long id) {
+        return auditoriaService.obtenerHistorial(null, null, null, null, null,
+                PageRequest.of(0, 1))
+                .stream()
+                .filter(log -> log.getId().equals(id))
+                .findFirst()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Exportar auditorías a Excel
+     */
+    @GetMapping("/exportar")
+    public ResponseEntity<byte[]> exportarExcel(
+            @RequestParam(required = false) String usuario,
+            @RequestParam(required = false) String modulo,
+            @RequestParam(required = false) String accion,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin) {
+
+        try {
+            // Validar parámetros vacíos
+            if (usuario != null && usuario.trim().isEmpty()) usuario = null;
+            if (modulo != null && modulo.trim().isEmpty()) modulo = null;
+            if (accion != null && accion.trim().isEmpty()) accion = null;
+
+            // Obtener datos (limitado a 5000 registros para evitar problemas de memoria)
+            Pageable pageable = PageRequest.of(0, 5000, Sort.by("fechaHora").descending());
+            Page<AuditoriaLog> auditorias = auditoriaService.obtenerHistorial(
+                usuario, modulo, accion, fechaInicio, fechaFin, pageable
+            );
+
+            // Crear workbook
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Auditoría");
+
+            // Estilo para encabezado
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // Crear encabezado
+            Row headerRow = sheet.createRow(0);
+            String[] columnas = {"ID", "Fecha/Hora", "Usuario", "Módulo", "Acción", "Entidad", "ID Entidad", "IP", "Detalles"};
+            for (int i = 0; i < columnas.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columnas[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Llenar datos
+            int rowNum = 1;
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            for (AuditoriaLog log : auditorias.getContent()) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(log.getId());
+                row.createCell(1).setCellValue(log.getFechaHora().format(formatter));
+                row.createCell(2).setCellValue(log.getUsuario());
+                row.createCell(3).setCellValue(log.getModulo());
+                row.createCell(4).setCellValue(log.getAccion());
+                row.createCell(5).setCellValue(log.getEntidad());
+                row.createCell(6).setCellValue(log.getEntidadId() != null ? log.getEntidadId().toString() : "");
+                row.createCell(7).setCellValue(log.getIpAddress());
+                row.createCell(8).setCellValue(log.getDetalles() != null ? log.getDetalles() : "");
+            }
+
+            // Ajustar ancho de columnas
+            for (int i = 0; i < columnas.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Convertir a bytes
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+
+            // Preparar respuesta
+            String nombreArchivo = "auditoria_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", nombreArchivo);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(outputStream.toByteArray());
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * API para obtener historial de una entidad específica
+     */
+    @GetMapping("/api/historial/{entidad}/{entidadId}")
+    @ResponseBody
+    public ResponseEntity<?> obtenerHistorialEntidad(
+            @PathVariable String entidad,
+            @PathVariable Long entidadId) {
+        return ResponseEntity.ok(auditoriaService.obtenerHistorialEntidad(entidad, entidadId));
+    }
+}

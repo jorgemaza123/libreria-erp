@@ -22,7 +22,7 @@
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-info">
                             <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiVentasMes, 1, 2)}"></h3>
+                                <h3 th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiVentasMes, 1, 2)}"></h3>
                                 <p>Ventas del Mes</p>
                             </div>
                             <div class="icon"><i class="fas fa-cash-register"></i></div>
@@ -32,7 +32,7 @@
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-danger">
                             <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiCreditos, 1, 2)}"></h3>
+                                <h3 th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiCreditos, 1, 2)}"></h3>
                                 <p>Cuentas por Cobrar</p>
                             </div>
                             <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
@@ -42,7 +42,7 @@
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-warning">
                             <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiInventario, 1, 2)}"></h3>
+                                <h3 th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiInventario, 1, 2)}"></h3>
                                 <p>Valor del Inventario</p>
                             </div>
                             <div class="icon"><i class="fas fa-boxes"></i></div>
@@ -52,7 +52,7 @@
                     <div class="col-lg-3 col-6">
                         <div class="small-box bg-secondary">
                             <div class="inner">
-                                <h3 th:text="'S/ ' + ${#numbers.formatDecimal(kpiGastos, 1, 2)}"></h3>
+                                <h3 th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiGastos, 1, 2)}"></h3>
                                 <p>Gastos/Compras Mes</p>
                             </div>
                             <div class="icon"><i class="fas fa-file-invoice-dollar"></i></div>
@@ -155,7 +155,7 @@
 
     $(document).ready(function() {
         
-        // GRÁFICO 1: BALANCE (BARRAS)
+        // GRÁFICO 1: BALANCE (BARRAS) - Colores desde configuración
         new Chart(document.getElementById('chartBalance').getContext('2d'), {
             type: 'bar',
             data: {
@@ -163,12 +163,12 @@
                 datasets: [
                     {
                         label: 'Ingresos (Ventas)',
-                        backgroundColor: '#28a745', // Verde
+                        backgroundColor: APP_CONFIG.colorExito,
                         data: dataIngresos
                     },
                     {
                         label: 'Egresos (Gastos/Compras)',
-                        backgroundColor: '#dc3545', // Rojo
+                        backgroundColor: APP_CONFIG.colorPeligro,
                         data: dataEgresos
                     }
                 ]
@@ -177,35 +177,41 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    yAxes: [{ ticks: { beginAtZero: true, callback: function(value) { return 'S/ ' + value; } } }]
+                    yAxes: [{ ticks: { beginAtZero: true, callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; } } }]
                 },
                 tooltips: {
-                    callbacks: { label: function(item) { return 'S/ ' + item.yLabel.toFixed(2); } }
+                    callbacks: { label: function(item) { return APP_CONFIG.formatoMoneda + ' ' + item.yLabel.toFixed(2); } }
                 }
             }
         });
 
-        // GRÁFICO 2: TOP PRODUCTOS (DONUT)
+        // GRÁFICO 2: TOP PRODUCTOS (DONUT) - Paleta de colores personalizada
         new Chart(document.getElementById('chartTop').getContext('2d'), {
             type: 'doughnut',
             data: {
                 labels: rawTop.map(d => d.etiqueta),
                 datasets: [{
                     data: rawTop.map(d => d.valor),
-                    backgroundColor: ['#f56954', '#00a65a', '#f39c12', '#00c0ef', '#3c8dbc'],
+                    backgroundColor: [
+                        APP_CONFIG.colorPeligro,
+                        APP_CONFIG.colorExito,
+                        APP_CONFIG.colorAdvertencia,
+                        APP_CONFIG.colorInfo,
+                        APP_CONFIG.colorPrimario
+                    ],
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, legend: { position: 'right' } }
         });
 
-        // GRÁFICO 3: MODALIDAD (PIE)
+        // GRÁFICO 3: MODALIDAD (PIE) - Colores desde configuración
         new Chart(document.getElementById('chartModalidad').getContext('2d'), {
             type: 'pie',
             data: {
                 labels: ['Contado', 'Crédito'],
                 datasets: [{
                     data: [rawPie.contado, rawPie.credito],
-                    backgroundColor: ['#17a2b8', '#ffc107']
+                    backgroundColor: [APP_CONFIG.colorInfo, APP_CONFIG.colorAdvertencia]
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }

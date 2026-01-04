@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
   <head th:fragment="head">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,7 +12,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@x.x.x/dist/select2-bootstrap4.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" />
-    
+
+    <!-- CSS Personalizado Dinámico desde Configuración -->
+    <link rel="stylesheet" th:href="@{/public/css-personalizado}" />
+
     <style>
       .sidebar-overlay { display: none !important; }
       body { overflow-x: hidden !important; padding-right: 0 !important; }
@@ -37,7 +41,7 @@
 
     <aside th:fragment="sidebar(active)" class="main-sidebar sidebar-dark-primary elevation-4">
       <a href="/" class="brand-link">
-        <span class="brand-text font-weight-bold ml-3">Librería ERP</span>
+        <span class="brand-text font-weight-bold ml-3" th:text="${config.nombreEmpresa}">Librería ERP</span>
       </a>
       
       <div class="sidebar">
@@ -50,8 +54,8 @@
               </a>
             </li>
 
-            <li class="nav-item" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' ? 'menu-open' : ''}">
-              <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' ? 'active' : ''}">
+            <li class="nav-item" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' ? 'menu-open' : ''}">
+              <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' ? 'active' : ''}">
                 <i class="nav-icon fas fa-shopping-cart"></i>
                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
               </a>
@@ -84,6 +88,11 @@
                 <li class="nav-item">
   <a href="/cobranzas" class="nav-link">
     <i class="fas fa-hand-holding-usd nav-icon"></i><p>Cobranzas / Créditos</p>
+  </a>
+</li>
+                <li class="nav-item">
+  <a href="/devoluciones" class="nav-link" th:classappend="${active == 'devoluciones' ? 'active' : ''}">
+    <i class="fas fa-undo nav-icon"></i><p>Devoluciones / NC</p>
   </a>
 </li>
               </ul>
@@ -152,6 +161,26 @@
                     <i class="fas fa-file-excel nav-icon"></i><p>Reportes</p>
                   </a>
                 </li>
+                <li class="nav-item">
+                  <a href="/reportes/financieros" class="nav-link" th:classappend="${active == 'reportes-financieros' ? 'active' : ''}">
+                    <i class="fas fa-chart-line nav-icon"></i><p>Dashboard Financiero</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="/reportes/financieros/flujo-caja" class="nav-link">
+                    <i class="fas fa-exchange-alt nav-icon"></i><p>Flujo de Caja</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="/reportes/financieros/rentabilidad" class="nav-link">
+                    <i class="fas fa-percent nav-icon"></i><p>Rentabilidad</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="/reportes/financieros/analisis-ventas" class="nav-link">
+                    <i class="fas fa-chart-pie nav-icon"></i><p>Análisis de Ventas</p>
+                  </a>
+                </li>
               </ul>
             </li>
 
@@ -163,10 +192,37 @@
               </a>
             </li>
 
-            <li class="nav-item">
-              <a href="/configuracion" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
-                <i class="nav-icon fas fa-cogs"></i><p>Configuración</p>
+            <li class="nav-item has-treeview" th:classappend="${active == 'configuracion' ? 'menu-open' : ''}">
+              <a href="#" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
+                <i class="nav-icon fas fa-cogs"></i>
+                <p>Configuración <i class="right fas fa-angle-left"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="/configuracion/general" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Configuración General</p>
+                  </a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                  <a href="/configuracion/sunat" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Facturación SUNAT</p>
+                  </a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                  <a href="/auditoria" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Auditoría</p>
+                  </a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                  <a href="/roles" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Roles y Permisos</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
     <a href="/usuarios" class="nav-link" th:classappend="${active == 'usuarios' ? 'active' : ''}">
@@ -187,6 +243,55 @@
       <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+      <!-- CONFIGURACIÓN GLOBAL DEL SISTEMA - Accesible desde JavaScript -->
+      <script th:inline="javascript">
+        // Variable global con configuración del sistema (NO hardcodeada)
+        window.APP_CONFIG = {
+          // Datos de empresa
+          nombreEmpresa: /*[[${config.nombreEmpresa}]]*/ 'MI EMPRESA',
+          ruc: /*[[${config.ruc}]]*/ '00000000000',
+          direccion: /*[[${config.direccion}]]*/ '',
+          telefono: /*[[${config.telefono}]]*/ '',
+          email: /*[[${config.email}]]*/ '',
+          slogan: /*[[${config.slogan}]]*/ '',
+
+          // Colores personalizados (para Chart.js)
+          colorPrimario: /*[[${config.colorPrimario}]]*/ '#007bff',
+          colorSecundario: /*[[${config.colorSecundario}]]*/ '#6c757d',
+          colorExito: /*[[${config.colorExito}]]*/ '#28a745',
+          colorPeligro: /*[[${config.colorPeligro}]]*/ '#dc3545',
+          colorAdvertencia: /*[[${config.colorAdvertencia}]]*/ '#ffc107',
+          colorInfo: /*[[${config.colorInfo}]]*/ '#17a2b8',
+          colorOscuro: /*[[${config.colorOscuro}]]*/ '#343a40',
+          colorClaro: /*[[${config.colorClaro}]]*/ '#f8f9fa',
+          colorBronce: /*[[${config.colorBronce}]]*/ '#cd7f32',
+
+          // Configuración de reportes
+          formatoMoneda: /*[[${config.formatoMoneda}]]*/ 'S/',
+          formatoFechaReportes: /*[[${config.formatoFechaReportes}]]*/ 'dd/MM/yyyy',
+
+          // Configuración de sistema
+          itemsPorPagina: /*[[${config.itemsPorPagina}]]*/ 10,
+          stockMinimo: /*[[${config.stockMinimo}]]*/ 5,
+          igvPorcentaje: /*[[${config.igvPorcentaje}]]*/ 18.00
+        };
+
+        // Helper para formatear moneda
+        window.formatearMoneda = function(valor) {
+          return window.APP_CONFIG.formatoMoneda + ' ' + parseFloat(valor).toFixed(2);
+        };
+
+        // Helper para obtener colores en formato rgba con transparencia
+        window.getColorRGBA = function(hexColor, alpha) {
+          alpha = alpha || 1;
+          var r = parseInt(hexColor.substr(1,2), 16);
+          var g = parseInt(hexColor.substr(3,2), 16);
+          var b = parseInt(hexColor.substr(5,2), 16);
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        };
+      </script>
+
       <script>
         $(document).ready(function () {
           setTimeout(function () { $(".sidebar-overlay").remove(); $("body").removeClass("sidebar-open"); }, 200);
