@@ -3,6 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.aspect.Auditable;
 import com.libreria.sistema.model.ConfiguracionSunat;
 import com.libreria.sistema.repository.ConfiguracionSunatRepository;
+import com.libreria.sistema.service.ConfiguracionService; // IMPORTANTE: Para el layout
 import com.libreria.sistema.service.FacturacionElectronicaService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,12 +16,15 @@ public class ConfiguracionSunatController {
 
     private final ConfiguracionSunatRepository configuracionRepo;
     private final FacturacionElectronicaService facturacionService;
+    private final ConfiguracionService generalConfigService; // Servicio General
 
     public ConfiguracionSunatController(
             ConfiguracionSunatRepository configuracionRepo,
-            FacturacionElectronicaService facturacionService) {
+            FacturacionElectronicaService facturacionService,
+            ConfiguracionService generalConfigService) {
         this.configuracionRepo = configuracionRepo;
         this.facturacionService = facturacionService;
+        this.generalConfigService = generalConfigService;
     }
 
     /**
@@ -28,18 +32,22 @@ public class ConfiguracionSunatController {
      */
     @GetMapping
     public String mostrarConfiguracion(Model model) {
-        ConfiguracionSunat config = configuracionRepo.findFirstByOrderByIdDesc()
+        // 1. Cargar Configuración General (NECESARIO PARA EL LAYOUT: nombreEmpresa, logo, etc.)
+        model.addAttribute("config", generalConfigService.obtenerConfiguracion());
+
+        // 2. Cargar Configuración SUNAT (Con nombre distinto para no chocar)
+        ConfiguracionSunat sunatConfig = configuracionRepo.findFirstByOrderByIdDesc()
                 .orElse(new ConfiguracionSunat());
 
         // Verificar si la configuración está completa
-        boolean configCompleta = config.getId() != null &&
-                                 config.getRucEmisor() != null &&
-                                 config.getRazonSocialEmisor() != null &&
-                                 config.getDireccionFiscal() != null &&
-                                 config.getUrlApiSunat() != null &&
-                                 config.getTokenApiSunat() != null;
+        boolean configCompleta = sunatConfig.getId() != null &&
+                                 sunatConfig.getRucEmisor() != null &&
+                                 sunatConfig.getRazonSocialEmisor() != null &&
+                                 sunatConfig.getDireccionFiscal() != null &&
+                                 sunatConfig.getUrlApiSunat() != null &&
+                                 sunatConfig.getTokenApiSunat() != null;
 
-        model.addAttribute("config", config);
+        model.addAttribute("sunatConfig", sunatConfig); // Usamos 'sunatConfig'
         model.addAttribute("isActiva", facturacionService.isFacturacionElectronicaActiva());
         model.addAttribute("configCompleta", configCompleta);
 
@@ -52,53 +60,48 @@ public class ConfiguracionSunatController {
     @PostMapping("/guardar")
     @Auditable(modulo = "CONFIGURACION", accion = "MODIFICAR", descripcion = "Configuración SUNAT")
     public String guardarConfiguracion(
-            @ModelAttribute ConfiguracionSunat config,
+            @ModelAttribute("sunatConfig") ConfiguracionSunat sunatConfig, // Recibir con el nombre correcto
             RedirectAttributes redirectAttributes) {
 
         try {
             // Validaciones
-            if (config.getRucEmisor() == null || config.getRucEmisor().length() != 11) {
+            if (sunatConfig.getRucEmisor() == null || sunatConfig.getRucEmisor().length() != 11) {
                 redirectAttributes.addFlashAttribute("error", "El RUC debe tener 11 dígitos");
                 return "redirect:/configuracion/sunat";
             }
 
-            if (config.getUbigeoEmisor() != null && config.getUbigeoEmisor().length() != 6) {
+            if (sunatConfig.getUbigeoEmisor() != null && !sunatConfig.getUbigeoEmisor().isEmpty() && sunatConfig.getUbigeoEmisor().length() != 6) {
                 redirectAttributes.addFlashAttribute("error", "El Ubigeo debe tener 6 dígitos");
                 return "redirect:/configuracion/sunat";
             }
 
-            // Si existe configuración previa, actualizar; si no, crear nueva
+            // Si existe configuración previa, recuperar ID y estado activo para no perderlos
             ConfiguracionSunat configExistente = configuracionRepo.findFirstByOrderByIdDesc()
                     .orElse(null);
 
             if (configExistente != null) {
-                config.setId(configExistente.getId());
+                sunatConfig.setId(configExistente.getId());
+                sunatConfig.setFacturaElectronicaActiva(configExistente.getFacturaElectronicaActiva());
             }
 
-            configuracionRepo.save(config);
+            configuracionRepo.save(sunatConfig);
 
-            redirectAttributes.addFlashAttribute("success",
-                    "Configuración de SUNAT guardada correctamente");
+            redirectAttributes.addFlashAttribute("success", "Configuración de SUNAT guardada correctamente");
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Error al guardar configuración: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Error al guardar configuración: " + e.getMessage());
         }
 
         return "redirect:/configuracion/sunat";
     }
 
-    /**
-     * Activar/Desactivar facturación electrónica
-     */
     @PostMapping("/toggle")
     @ResponseBody
     @Auditable(modulo = "CONFIGURACION", accion = "MODIFICAR", descripcion = "Toggle facturación electrónica")
     public String toggleFacturacionElectronica(@RequestParam Boolean activo) {
         try {
             ConfiguracionSunat config = configuracionRepo.findFirstByOrderByIdDesc()
-                    .orElseThrow(() -> new RuntimeException(
-                            "Debe configurar SUNAT antes de activar facturación electrónica"));
+                    .orElseThrow(() -> new RuntimeException("Debe configurar SUNAT antes de activar facturación electrónica"));
 
             config.setFacturaElectronicaActiva(activo);
             configuracionRepo.save(config);
@@ -110,41 +113,27 @@ public class ConfiguracionSunatController {
         }
     }
 
-    /**
-     * Sincronizar correlativos con SUNAT
-     */
     @PostMapping("/sincronizar")
     @ResponseBody
     public String sincronizar() {
         try {
-            String resultado = facturacionService.sincronizarConSunat();
-            return resultado;
+            return facturacionService.sincronizarConSunat();
         } catch (Exception e) {
             return "ERROR: " + e.getMessage();
         }
     }
 
-    /**
-     * Test de conexión con APISUNAT (endpoint de validación)
-     */
     @PostMapping("/test-conexion")
     @ResponseBody
     public String testConexion() {
         try {
             ConfiguracionSunat config = facturacionService.obtenerConfiguracionActual();
 
-            if (config == null) {
-                return "ERROR: No hay configuración";
-            }
+            if (config == null) return "ERROR: No hay configuración";
+            if (config.getTokenApiSunat() == null || config.getTokenApiSunat().isEmpty()) return "ERROR: Token no configurado";
 
-            if (config.getTokenApiSunat() == null || config.getTokenApiSunat().isEmpty()) {
-                return "ERROR: Token no configurado";
-            }
-
-            // TODO: Implementar llamada real al endpoint de test de APISUNAT
-            // Por ahora retornamos OK si la configuración existe
             return "OK: Configuración lista. Token: " +
-                   config.getTokenApiSunat().substring(0, Math.min(10, config.getTokenApiSunat().length())) + "...";
+                    config.getTokenApiSunat().substring(0, Math.min(10, config.getTokenApiSunat().length())) + "...";
 
         } catch (Exception e) {
             return "ERROR: " + e.getMessage();
