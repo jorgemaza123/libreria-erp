@@ -26,4 +26,11 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
     BigDecimal sumarEgresos(@Param("fecha") LocalDateTime fecha);
 
     List<MovimientoCaja> findBySesionOrderByFechaDesc(SesionCaja sesion);
+
+    // Buscar por rango de fechas (Reportes)
+    List<MovimientoCaja> findByFechaBetween(LocalDateTime inicio, LocalDateTime fin);
+    
+// Sumar ingresos/egresos de forma segura (evita el error de NULL)
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.sesion = :sesion AND m.tipo = :tipo")
+    BigDecimal sumarPorSesionYTipo(@Param("sesion") SesionCaja sesion, @Param("tipo") String tipo);
 }

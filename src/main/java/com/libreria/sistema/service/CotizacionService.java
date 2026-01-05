@@ -20,25 +20,29 @@ public class CotizacionService {
     private final CotizacionRepository cotizacionRepository;
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
-    private final CajaRepository cajaRepository;
+    private final MovimientoCajaRepository movimientoCajaRepository; // Nombre correcto
     private final KardexRepository kardexRepository;
     private final UsuarioRepository usuarioRepository;
     private final CorrelativoRepository correlativoRepository;
+    private final CajaService cajaService;
 
+    // Constructor corregido para inyectar todo bien
     public CotizacionService(CotizacionRepository cotizacionRepository,
                              ProductoRepository productoRepository,
                              VentaRepository ventaRepository,
-                             CajaRepository cajaRepository,
+                             MovimientoCajaRepository movimientoCajaRepository,
                              KardexRepository kardexRepository,
                              UsuarioRepository usuarioRepository,
-                             CorrelativoRepository correlativoRepository) {
+                             CorrelativoRepository correlativoRepository,
+                             CajaService cajaService) {
         this.cotizacionRepository = cotizacionRepository;
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
-        this.cajaRepository = cajaRepository;
+        this.movimientoCajaRepository = movimientoCajaRepository;
         this.kardexRepository = kardexRepository;
         this.usuarioRepository = usuarioRepository;
         this.correlativoRepository = correlativoRepository;
+        this.cajaService = cajaService;
     }
 
     public Page<Cotizacion> listar(Pageable pageable) {
@@ -53,17 +57,18 @@ public class CotizacionService {
     public Cotizacion crearCotizacion(VentaDTO dto) throws Exception {
         Cotizacion c = new Cotizacion();
         
-        // --- CORRELATIVO PARA COTIZACIÓN ---
         Correlativo correlativo = correlativoRepository.findByCodigoAndSerie("COTIZACION", "C001")
                 .orElse(new Correlativo("COTIZACION", "C001", 0));
 
-        Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
+        // PROTECCIÓN CONTRA NULOS 1
+        int ultimoNum = correlativo.getUltimoNumero() != null ? correlativo.getUltimoNumero() : 0;
+        Integer nuevoNumero = ultimoNum + 1;
+        
         correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
         c.setSerie("C001");
         c.setNumero(nuevoNumero);
-        // -----------------------------------
 
         c.setClienteDocumento(dto.getClienteDocumento());
         c.setClienteNombre(dto.getClienteNombre());
@@ -82,11 +87,8 @@ public class CotizacionService {
             det.setCotizacion(c);
             det.setProducto(p);
             det.setDescripcion(p.getNombre());
-            
-            // Asignación directa BigDecimal
             det.setCantidad(item.getCantidad()); 
             det.setPrecioUnitario(item.getPrecioVenta());
-            
             det.setSubtotal(det.getCantidad().multiply(det.getPrecioUnitario()));
 
             c.getItems().add(det);
@@ -142,26 +144,30 @@ public class CotizacionService {
             throw new Exception("Esta cotización ya fue procesada.");
         }
 
+        // Obtener sesión activa PRIMERO (Si falla aquí, no guarda nada)
+        SesionCaja sesionActiva = cajaService.obtenerSesionActiva()
+                .orElseThrow(() -> new Exception("CAJA CERRADA: Debe abrir caja antes de generar ventas."));
+
         Venta v = new Venta();
         v.setClienteNumeroDocumento(c.getClienteDocumento());
         v.setClienteDenominacion(c.getClienteNombre());
         v.setClienteTipoDocumento(tipoComprobante.equals("FACTURA") ? "6" : "1");
         
-        // --- CORRELATIVO PARA VENTA DESDE COTIZACIÓN ---
         String serie = tipoComprobante.equals("FACTURA") ? "F001" : "B001";
         
         Correlativo correlativo = correlativoRepository.findByCodigoAndSerie(tipoComprobante, serie)
                 .orElse(new Correlativo(tipoComprobante, serie, 0));
 
-        Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
+        // PROTECCIÓN CONTRA NULOS 2 (Aquí solía fallar)
+        int ultimoNumVenta = correlativo.getUltimoNumero() != null ? correlativo.getUltimoNumero() : 0;
+        Integer nuevoNumero = ultimoNumVenta + 1;
+        
         correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
         v.setTipoComprobante(tipoComprobante);
         v.setSerie(serie);
         v.setNumero(nuevoNumero);
-        // -----------------------------------------------
-
         v.setFechaEmision(LocalDate.now());
         v.setFechaVencimiento(LocalDate.now());
         v.setMoneda("PEN");
@@ -176,26 +182,28 @@ public class CotizacionService {
         for (DetalleCotizacion itemCoti : c.getItems()) {
             Producto p = itemCoti.getProducto();
 
-            // Validar stock
-            if (p.getStockActual() < itemCoti.getCantidad().intValue()) {
-                throw new Exception("Stock insuficiente: " + p.getNombre());
+            // Validar stock (Solo si no es servicio)
+            if (!"SERV-001".equals(p.getCodigoInterno())) {
+                // PROTECCIÓN CONTRA NULOS 3 (Stock)
+                int stockActual = p.getStockActual() != null ? p.getStockActual() : 0;
+                
+                if (stockActual < itemCoti.getCantidad().intValue()) {
+                    throw new Exception("Stock insuficiente: " + p.getNombre());
+                }
+                
+                p.setStockActual(stockActual - itemCoti.getCantidad().intValue());
+                productoRepository.save(p);
+
+                Kardex k = new Kardex();
+                k.setProducto(p);
+                k.setTipo("SALIDA");
+                k.setMotivo("VENTA COTIZ. " + v.getSerie() + "-" + v.getNumero());
+                k.setCantidad(itemCoti.getCantidad().intValue());
+                k.setStockAnterior(stockActual);
+                k.setStockActual(p.getStockActual());
+                kardexRepository.save(k);
             }
-            
-            // Bajar Stock
-            p.setStockActual(p.getStockActual() - itemCoti.getCantidad().intValue());
-            productoRepository.save(p);
 
-            // Registrar Kardex
-            Kardex k = new Kardex();
-            k.setProducto(p);
-            k.setTipo("SALIDA");
-            k.setMotivo("VENTA COTIZ. " + v.getSerie() + "-" + v.getNumero());
-            k.setCantidad(itemCoti.getCantidad().intValue());
-            k.setStockAnterior(p.getStockActual() + itemCoti.getCantidad().intValue());
-            k.setStockActual(p.getStockActual());
-            kardexRepository.save(k);
-
-            // Crear Detalle Venta
             DetalleVenta dv = new DetalleVenta();
             dv.setVenta(v);
             dv.setProducto(p);
@@ -233,12 +241,15 @@ public class CotizacionService {
         c.setEstado("CONVERTIDO_VENTA");
         cotizacionRepository.save(c);
 
+        // Registro en Caja (Usa el repositorio corregido)
         MovimientoCaja caja = new MovimientoCaja();
         caja.setFecha(LocalDateTime.now());
         caja.setTipo("INGRESO");
         caja.setConcepto("VENTA COTIZ. " + v.getSerie() + "-" + v.getNumero());
         caja.setMonto(totalVenta);
-        cajaRepository.save(caja);
+        caja.setSesion(sesionActiva);
+        caja.setUsuario(c.getUsuario());
+        movimientoCajaRepository.save(caja);
 
         return v.getId();
     }

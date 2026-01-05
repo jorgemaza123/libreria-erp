@@ -20,6 +20,7 @@ import java.util.Optional;
 @Service
 public class CajaService {
 
+    // Usamos el nombre correcto del repositorio
     private final MovimientoCajaRepository movimientoRepo;
     private final SesionCajaRepository sesionRepo;
     private final UsuarioRepository usuarioRepo;
@@ -32,11 +33,13 @@ public class CajaService {
 
     private Usuario getUsuarioActual() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return usuarioRepo.findByUsername(username).orElseThrow();
+        return usuarioRepo.findByUsername(username).orElse(null);
     }
 
     public Optional<SesionCaja> obtenerSesionActiva() {
-        return sesionRepo.findByUsuarioAndEstado(getUsuarioActual(), "ABIERTA");
+        Usuario u = getUsuarioActual();
+        if (u == null) return Optional.empty();
+        return sesionRepo.findByUsuarioAndEstado(u, "ABIERTA");
     }
 
     @Transactional
@@ -48,10 +51,13 @@ public class CajaService {
         SesionCaja sesion = new SesionCaja();
         sesion.setUsuario(getUsuarioActual());
         sesion.setMontoInicial(montoInicial);
+        sesion.setFechaInicio(LocalDateTime.now());
+        sesion.setEstado("ABIERTA");
         sesionRepo.save(sesion);
         
         registrarMovimiento("INGRESO", "APERTURA DE CAJA", montoInicial);
     }
+
     @Transactional
     public void registrarMovimiento(String tipo, String concepto, BigDecimal monto) {
         SesionCaja sesion = obtenerSesionActiva()
@@ -63,7 +69,7 @@ public class CajaService {
         mov.setMonto(monto);
         mov.setFecha(LocalDateTime.now());
         mov.setUsuario(getUsuarioActual());
-        mov.setSesion(sesion); // VINCULAMOS A LA SESIÓN
+        mov.setSesion(sesion);
 
         movimientoRepo.save(mov);
     }
@@ -74,16 +80,18 @@ public class CajaService {
                 .orElse(List.of());
     }
 
+    // CORREGIDO: Usa las consultas seguras del repositorio
     public Map<String, BigDecimal> obtenerBalanceSesion() {
         SesionCaja sesion = obtenerSesionActiva().orElse(null);
         if (sesion == null) return Map.of();
 
-        List<MovimientoCaja> movs = movimientoRepo.findBySesionOrderByFechaDesc(sesion);
+        BigDecimal ingresos = movimientoRepo.sumarPorSesionYTipo(sesion, "INGRESO");
+        BigDecimal egresos = movimientoRepo.sumarPorSesionYTipo(sesion, "EGRESO");
         
-        BigDecimal ingresos = movs.stream().filter(m -> "INGRESO".equals(m.getTipo())).map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal egresos = movs.stream().filter(m -> "EGRESO".equals(m.getTipo())).map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        // Saldo Actual = Monto Inicial + Ingresos - Egresos
+        // Protección extra por si acaso
+        if (ingresos == null) ingresos = BigDecimal.ZERO;
+        if (egresos == null) egresos = BigDecimal.ZERO;
+
         BigDecimal saldo = sesion.getMontoInicial().add(ingresos).subtract(egresos);
 
         return Map.of(
@@ -112,8 +120,7 @@ public class CajaService {
         sesionRepo.save(sesion);
     }
     
-    // Obtener saldo de HOY solo para el dashboard (informativo)
     public Map<String, BigDecimal> obtenerBalanceHoy() {
-       return obtenerBalanceSesion(); // Reutilizamos la lógica de sesión
+       return obtenerBalanceSesion();
     }
 }
