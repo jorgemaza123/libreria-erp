@@ -6,10 +6,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.libreria.sistema.model.AuditoriaLog;
 import com.libreria.sistema.repository.AuditoriaLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.persistence.criteria.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +22,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,9 +67,6 @@ public class AuditoriaService {
         }
     }
 
-    /**
-     * Registra una auditoría con información simplificada
-     */
     @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarAuditoria(String modulo, String accion, String entidad, Long entidadId, String detalles) {
@@ -74,42 +74,43 @@ public class AuditoriaService {
     }
 
     /**
-     * Obtiene el historial de auditoría con filtros
+     * Obtiene el historial usando Specifications (Soluciona error PostgreSQL con nulos)
      */
     public Page<AuditoriaLog> obtenerHistorial(String usuario, String modulo, String accion,
                                                LocalDateTime fechaInicio, LocalDateTime fechaFin,
                                                Pageable pageable) {
-        return auditoriaLogRepository.buscarConFiltros(usuario, modulo, accion, fechaInicio, fechaFin, pageable);
+        
+        Specification<AuditoriaLog> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (usuario != null && !usuario.isEmpty()) {
+                predicates.add(cb.equal(root.get("usuario"), usuario));
+            }
+            if (modulo != null && !modulo.isEmpty()) {
+                predicates.add(cb.equal(root.get("modulo"), modulo));
+            }
+            if (accion != null && !accion.isEmpty()) {
+                predicates.add(cb.equal(root.get("accion"), accion));
+            }
+            if (fechaInicio != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("fechaHora"), fechaInicio));
+            }
+            if (fechaFin != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("fechaHora"), fechaFin));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return auditoriaLogRepository.findAll(spec, pageable);
     }
 
-    /**
-     * Obtiene todas las auditorías paginadas
-     */
-    public Page<AuditoriaLog> obtenerTodas(Pageable pageable) {
-        return auditoriaLogRepository.findAll(pageable);
-    }
-
-    /**
-     * Obtiene el historial de un registro específico
-     */
     public List<AuditoriaLog> obtenerHistorialEntidad(String entidad, Long entidadId) {
         return auditoriaLogRepository.findByEntidadAndEntidadIdOrderByFechaHoraDesc(entidad, entidadId);
     }
 
-    /**
-     * Obtiene las últimas 50 auditorías
-     */
-    public List<AuditoriaLog> obtenerUltimas() {
-        return auditoriaLogRepository.findTop50ByOrderByFechaHoraDesc();
-    }
-
-    /**
-     * Convierte un objeto a JSON
-     */
     public String convertirAJson(Object objeto) {
-        if (objeto == null) {
-            return null;
-        }
+        if (objeto == null) return null;
         try {
             return objectMapper.writeValueAsString(objeto);
         } catch (JsonProcessingException e) {
@@ -118,19 +119,6 @@ public class AuditoriaService {
         }
     }
 
-    /**
-     * Crea un mapa con los cambios entre dos objetos
-     */
-    public Map<String, Object> crearMapaCambios(Object objetoAnterior, Object objetoNuevo) {
-        Map<String, Object> cambios = new HashMap<>();
-        cambios.put("anterior", objetoAnterior);
-        cambios.put("nuevo", objetoNuevo);
-        return cambios;
-    }
-
-    /**
-     * Obtiene el nombre del usuario actual
-     */
     private String obtenerUsuarioActual() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -143,9 +131,6 @@ public class AuditoriaService {
         return "SYSTEM";
     }
 
-    /**
-     * Obtiene la dirección IP del cliente
-     */
     private String obtenerIpCliente() {
         try {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -161,19 +146,5 @@ public class AuditoriaService {
             log.warn("No se pudo obtener la IP del cliente: {}", e.getMessage());
         }
         return "UNKNOWN";
-    }
-
-    /**
-     * Cuenta auditorías por usuario
-     */
-    public long contarPorUsuario(String usuario) {
-        return auditoriaLogRepository.countByUsuario(usuario);
-    }
-
-    /**
-     * Cuenta auditorías por módulo
-     */
-    public long contarPorModulo(String modulo) {
-        return auditoriaLogRepository.countByModulo(modulo);
     }
 }

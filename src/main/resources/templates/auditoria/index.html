@@ -1,151 +1,148 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='auditoria'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
     <title>Auditoría del Sistema</title>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
-    <aside th:replace="~{fragments/layout :: sidebar(active='auditoria')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1><i class="fas fa-history"></i> Auditoría del Sistema</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item active">Auditoría</li>
-                        </ol>
-                    </div>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-history"></i> Auditoría del Sistema</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Auditoría</li>
+                    </ol>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <form id="filtrosForm">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Fecha Inicio</label>
-                                        <input type="datetime-local" class="form-control" id="fechaInicio" name="fechaInicio">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Fecha Fin</label>
-                                        <input type="datetime-local" class="form-control" id="fechaFin" name="fechaFin">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Usuario</label>
-                                        <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Todos">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Módulo</label>
-                                        <select class="form-control" id="modulo" name="modulo">
-                                            <option value="">Todos</option>
-                                            <option value="PRODUCTOS">PRODUCTOS</option>
-                                            <option value="VENTAS">VENTAS</option>
-                                            <option value="COMPRAS">COMPRAS</option>
-                                            <option value="CAJA">CAJA</option>
-                                            <option value="INVENTARIO">INVENTARIO</option>
-                                            <option value="CONFIGURACION">CONFIGURACION</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Acción</label>
-                                        <select class="form-control" id="accion" name="accion">
-                                            <option value="">Todas</option>
-                                            <option value="CREAR">CREAR</option>
-                                            <option value="MODIFICAR">MODIFICAR</option>
-                                            <option value="ELIMINAR">ELIMINAR</option>
-                                            <option value="ANULAR">ANULAR</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12 text-right">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-search"></i> Buscar
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" id="btnLimpiar">
-                                        <i class="fas fa-eraser"></i> Limpiar
-                                    </button>
-                                    <button type="button" class="btn btn-success" id="btnExportar">
-                                        <i class="fas fa-file-excel"></i> Exportar Excel
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
                     </div>
                 </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-list"></i> Resultados</h3>
-                        <div class="card-tools">
-                            <span class="badge badge-info" id="totalRegistros">0 registros</span>
+                <div class="card-body">
+                    <form id="filtrosForm">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <input type="datetime-local" class="form-control" id="fechaInicio" name="fechaInicio">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <input type="datetime-local" class="form-control" id="fechaFin" name="fechaFin">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Usuario</label>
+                                    <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Todos">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Módulo</label>
+                                    <select class="form-control" id="modulo" name="modulo">
+                                        <option value="">Todos</option>
+                                        <option value="PRODUCTOS">PRODUCTOS</option>
+                                        <option value="VENTAS">VENTAS</option>
+                                        <option value="COMPRAS">COMPRAS</option>
+                                        <option value="CAJA">CAJA</option>
+                                        <option value="INVENTARIO">INVENTARIO</option>
+                                        <option value="CONFIGURACION">CONFIGURACION</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Acción</label>
+                                    <select class="form-control" id="accion" name="accion">
+                                        <option value="">Todas</option>
+                                        <option value="CREAR">CREAR</option>
+                                        <option value="MODIFICAR">MODIFICAR</option>
+                                        <option value="ELIMINAR">ELIMINAR</option>
+                                        <option value="ANULAR">ANULAR</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover table-sm">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 60px">ID</th>
-                                        <th style="width: 150px">Fecha/Hora</th>
-                                        <th style="width: 100px">Usuario</th>
-                                        <th style="width: 120px">Módulo</th>
-                                        <th style="width: 100px">Acción</th>
-                                        <th style="width: 120px">Entidad</th>
-                                        <th style="width: 80px">ID Ent.</th>
-                                        <th style="width: 120px">IP</th>
-                                        <th>Detalles</th>
-                                        <th style="width: 100px">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaAuditoria">
-                                    <tr>
-                                        <td colspan="10" class="text-center">
-                                            <i class="fas fa-spinner fa-spin"></i> Cargando...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="row">
+                            <div class="col-md-12 text-right">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnLimpiar">
+                                    <i class="fas fa-eraser"></i> Limpiar
+                                </button>
+                                <button type="button" class="btn btn-success" id="btnExportar">
+                                    <i class="fas fa-file-excel"></i> Exportar Excel
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-footer clearfix">
-                        <ul class="pagination pagination-sm m-0 float-right" id="paginacion">
-                        </ul>
-                    </div>
+                    </form>
                 </div>
             </div>
-        </section>
-    </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list"></i> Resultados</h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info" id="totalRegistros">0 registros</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px">ID</th>
+                                    <th style="width: 150px">Fecha/Hora</th>
+                                    <th style="width: 100px">Usuario</th>
+                                    <th style="width: 120px">Módulo</th>
+                                    <th style="width: 100px">Acción</th>
+                                    <th style="width: 120px">Entidad</th>
+                                    <th style="width: 80px">ID Ent.</th>
+                                    <th style="width: 120px">IP</th>
+                                    <th>Detalles</th>
+                                    <th style="width: 100px">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaAuditoria">
+                                <tr>
+                                    <td colspan="10" class="text-center">
+                                        <i class="fas fa-spinner fa-spin"></i> Cargando...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer clearfix">
+                    <ul class="pagination pagination-sm m-0 float-right" id="paginacion">
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <div class="modal fade" id="modalDetalle" tabindex="-1">
         <div class="modal-dialog modal-xl">
@@ -199,227 +196,201 @@
         </div>
     </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
+<th:block layout:fragment="scripts">
+    <script>
+        let currentPage = 0;
+        let pageSize = 20;
 
-<script>
-    let currentPage = 0;
-    let pageSize = 20;
-
-    $(document).ready(function() {
-        // Cargar datos iniciales
-        buscarAuditorias();
-
-        // Evento buscar
-        $('#filtrosForm').on('submit', function(e) {
-            e.preventDefault();
-            currentPage = 0;
+        $(document).ready(function() {
             buscarAuditorias();
-        });
 
-        // Limpiar filtros
-        $('#btnLimpiar').on('click', function() {
-            $('#filtrosForm')[0].reset();
-            currentPage = 0;
-            buscarAuditorias();
-        });
-
-        // Exportar
-        $('#btnExportar').on('click', function() {
-            exportarExcel();
-        });
-    });
-
-    function buscarAuditorias() {
-        const params = {
-            fechaInicio: $('#fechaInicio').val(),
-            fechaFin: $('#fechaFin').val(),
-            usuario: $('#usuario').val(),
-            modulo: $('#modulo').val(),
-            accion: $('#accion').val(),
-            page: currentPage,
-            size: pageSize
-        };
-
-        // Mostrar loading
-        $('#tablaAuditoria').html('<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>');
-
-        $.get('/auditoria/api/buscar', params)
-            .done(function(data) {
-                mostrarResultados(data);
-            })
-            .fail(function() {
-                $('#tablaAuditoria').html('<tr><td colspan="10" class="text-center text-danger">Error al cargar datos</td></tr>');
-                // Si tienes toastr o Swal configurado
-                if(typeof Swal !== 'undefined') Swal.fire('Error', 'No se pudieron cargar los registros', 'error');
+            $('#filtrosForm').on('submit', function(e) {
+                e.preventDefault();
+                currentPage = 0;
+                buscarAuditorias();
             });
-    }
 
-    function mostrarResultados(data) {
-        const tbody = $('#tablaAuditoria');
-        tbody.empty();
+            $('#btnLimpiar').on('click', function() {
+                $('#filtrosForm')[0].reset();
+                currentPage = 0;
+                buscarAuditorias();
+            });
 
-        if (!data.content || data.content.length === 0) {
-            tbody.append('<tr><td colspan="10" class="text-center">No se encontraron registros</td></tr>');
-            $('#totalRegistros').text('0 registros');
-            $('#paginacion').empty();
-            return;
+            $('#btnExportar').on('click', function() {
+                exportarExcel();
+            });
+        });
+
+        function buscarAuditorias() {
+            const params = {
+                fechaInicio: $('#fechaInicio').val(),
+                fechaFin: $('#fechaFin').val(),
+                usuario: $('#usuario').val(),
+                modulo: $('#modulo').val(),
+                accion: $('#accion').val(),
+                page: currentPage,
+                size: pageSize
+            };
+
+            $('#tablaAuditoria').html('<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>');
+
+            $.get('/auditoria/api/buscar', params)
+                .done(function(data) {
+                    mostrarResultados(data);
+                })
+                .fail(function() {
+                    $('#tablaAuditoria').html('<tr><td colspan="10" class="text-center text-danger">Error al cargar datos</td></tr>');
+                });
         }
 
-        $('#totalRegistros').text(data.totalElements + ' registros');
+        function mostrarResultados(data) {
+            const tbody = $('#tablaAuditoria');
+            tbody.empty();
 
-        data.content.forEach(function(log) {
-            const badgeClass = {
-                'CREAR': 'badge-success',
-                'MODIFICAR': 'badge-warning',
-                'ELIMINAR': 'badge-danger',
-                'ANULAR': 'badge-secondary'
-            }[log.accion] || 'badge-info';
-
-            // Formatear fecha
-            let fechaFormateada = log.fechaHora;
-            if (log.fechaHora) {
-                const fecha = new Date(log.fechaHora);
-                // Ajuste simple para mostrar fecha local
-                fechaFormateada = fecha.toLocaleString('es-PE'); 
+            if (!data.content || data.content.length === 0) {
+                tbody.append('<tr><td colspan="10" class="text-center">No se encontraron registros</td></tr>');
+                $('#totalRegistros').text('0 registros');
+                $('#paginacion').empty();
+                return;
             }
 
-            const row = `
-                <tr>
-                    <td>${log.id}</td>
-                    <td>${fechaFormateada}</td>
-                    <td>${log.usuario}</td>
-                    <td><span class="badge badge-primary">${log.modulo}</span></td>
-                    <td><span class="badge ${badgeClass}">${log.accion}</span></td>
-                    <td>${log.entidad || '-'}</td>
-                    <td>${log.entidadId || '-'}</td>
-                    <td><small>${log.ipAddress || ''}</small></td>
-                    <td><small class="text-muted text-truncate d-inline-block" style="max-width: 150px;">${log.detalles || '-'}</small></td>
-                    <td>
-                        <button class="btn btn-sm btn-info" onclick="verDetalle(${log.id})" title="Ver Detalle">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.append(row);
-        });
+            $('#totalRegistros').text(data.totalElements + ' registros');
 
-        mostrarPaginacion(data);
-    }
+            data.content.forEach(function(log) {
+                const badgeClass = {
+                    'CREAR': 'badge-success',
+                    'MODIFICAR': 'badge-warning',
+                    'ELIMINAR': 'badge-danger',
+                    'ANULAR': 'badge-secondary'
+                }[log.accion] || 'badge-info';
 
-    function mostrarPaginacion(data) {
-        const paginacion = $('#paginacion');
-        paginacion.empty();
+                let fechaFormateada = log.fechaHora;
+                if (log.fechaHora) {
+                    const fecha = new Date(log.fechaHora);
+                    fechaFormateada = fecha.toLocaleString('es-PE'); 
+                }
 
-        if (data.totalPages <= 1) return;
+                const row = `
+                    <tr>
+                        <td>${log.id}</td>
+                        <td>${fechaFormateada}</td>
+                        <td>${log.usuario}</td>
+                        <td><span class="badge badge-primary">${log.modulo}</span></td>
+                        <td><span class="badge ${badgeClass}">${log.accion}</span></td>
+                        <td>${log.entidad || '-'}</td>
+                        <td>${log.entidadId || '-'}</td>
+                        <td><small>${log.ipAddress || ''}</small></td>
+                        <td><small class="text-muted text-truncate d-inline-block" style="max-width: 150px;">${log.detalles || '-'}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="verDetalle(${log.id})" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
 
-        // Anterior
-        const prevDisabled = data.first ? 'disabled' : '';
-        paginacion.append(`
-            <li class="page-item ${prevDisabled}">
-                <a class="page-link" href="#" onclick="if(!${data.first}) cambiarPagina(${currentPage - 1}); return false;">«</a>
-            </li>
-        `);
+            mostrarPaginacion(data);
+        }
 
-        // Páginas (Ventana de 5 páginas)
-        let startPage = Math.max(0, currentPage - 2);
-        let endPage = Math.min(data.totalPages - 1, currentPage + 2);
+        function mostrarPaginacion(data) {
+            const paginacion = $('#paginacion');
+            paginacion.empty();
 
-        // Ajustar si estamos al inicio o final
-        if (currentPage < 2) endPage = Math.min(data.totalPages - 1, 4);
-        if (currentPage > data.totalPages - 3) startPage = Math.max(0, data.totalPages - 5);
+            if (data.totalPages <= 1) return;
 
-        for (let i = startPage; i <= endPage; i++) {
-            const activeClass = i === currentPage ? 'active' : '';
+            const prevDisabled = data.first ? 'disabled' : '';
             paginacion.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i + 1}</a>
+                <li class="page-item ${prevDisabled}">
+                    <a class="page-link" href="#" onclick="if(!${data.first}) cambiarPagina(${currentPage - 1}); return false;">«</a>
+                </li>
+            `);
+
+            let startPage = Math.max(0, currentPage - 2);
+            let endPage = Math.min(data.totalPages - 1, currentPage + 2);
+
+            if (currentPage < 2) endPage = Math.min(data.totalPages - 1, 4);
+            if (currentPage > data.totalPages - 3) startPage = Math.max(0, data.totalPages - 5);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                paginacion.append(`
+                    <li class="page-item ${activeClass}">
+                        <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i + 1}</a>
+                    </li>
+                `);
+            }
+
+            const nextDisabled = data.last ? 'disabled' : '';
+            paginacion.append(`
+                <li class="page-item ${nextDisabled}">
+                    <a class="page-link" href="#" onclick="if(!${data.last}) cambiarPagina(${currentPage + 1}); return false;">»</a>
                 </li>
             `);
         }
 
-        // Siguiente
-        const nextDisabled = data.last ? 'disabled' : '';
-        paginacion.append(`
-            <li class="page-item ${nextDisabled}">
-                <a class="page-link" href="#" onclick="if(!${data.last}) cambiarPagina(${currentPage + 1}); return false;">»</a>
-            </li>
-        `);
-    }
+        function cambiarPagina(page) {
+            currentPage = page;
+            buscarAuditorias();
+        }
 
-    function cambiarPagina(page) {
-        currentPage = page;
-        buscarAuditorias();
-    }
+        function verDetalle(id) {
+            $.get('/auditoria/api/detalle/' + id)
+                .done(function(log) {
+                    mostrarDetalleModal(log);
+                })
+                .fail(function() {
+                    if(typeof Swal !== 'undefined') Swal.fire('Error', 'No se pudo cargar el detalle', 'error');
+                });
+        }
 
-    // Guardamos los datos actuales para no tener que volver a pedir al servidor al abrir el modal
-    let auditoriasCache = [];
+        function mostrarDetalleModal(log) {
+            const fecha = new Date(log.fechaHora);
+            $('#detalle-id').text(log.id);
+            $('#detalle-fecha').text(fecha.toLocaleString('es-PE'));
+            $('#detalle-usuario').text(log.usuario);
+            $('#detalle-modulo').html('<span class="badge badge-primary">' + log.modulo + '</span>');
+            $('#detalle-accion').text(log.accion);
+            $('#detalle-entidad').text(log.entidad);
+            $('#detalle-entidadId').text(log.entidadId || '-');
+            $('#detalle-ip').text(log.ipAddress);
+            $('#detalle-detalles').text(log.detalles || '-');
 
-    function verDetalle(id) {
-        // Opción A: Pedir detalle específico al servidor (Más seguro si el JSON es muy grande y no viene en el listado)
-        // Opción B: Buscar en la tabla actual (Más rápido si ya tenemos los datos)
-        
-        // Aquí usaremos una petición AJAX directa para asegurar tener el JSON completo
-        $.get('/auditoria/api/detalle/' + id)
-            .done(function(log) {
-                mostrarDetalleModal(log);
-            })
-            .fail(function() {
-                // Fallback: intentar buscar en la fila de la tabla si no existe endpoint de detalle único
-                // (Dependerá de tu Controller)
-                if(typeof Swal !== 'undefined') Swal.fire('Error', 'No se pudo cargar el detalle', 'error');
+            formatearJsonEnElemento('#detalle-valorAnterior', log.valorAnterior);
+            formatearJsonEnElemento('#detalle-valorNuevo', log.valorNuevo);
+
+            $('#modalDetalle').modal('show');
+        }
+
+        function formatearJsonEnElemento(selector, jsonString) {
+            const elem = $(selector);
+            if (!jsonString) {
+                elem.text('N/A');
+                return;
+            }
+            try {
+                const obj = (typeof jsonString === 'string') ? JSON.parse(jsonString) : jsonString;
+                elem.text(JSON.stringify(obj, null, 2));
+            } catch (e) {
+                elem.text(jsonString);
+            }
+        }
+
+        function exportarExcel() {
+            const params = new URLSearchParams({
+                fechaInicio: $('#fechaInicio').val() || '',
+                fechaFin: $('#fechaFin').val() || '',
+                usuario: $('#usuario').val() || '',
+                modulo: $('#modulo').val() || '',
+                accion: $('#accion').val() || ''
             });
-    }
-
-    function mostrarDetalleModal(log) {
-        const fecha = new Date(log.fechaHora);
-        $('#detalle-id').text(log.id);
-        $('#detalle-fecha').text(fecha.toLocaleString('es-PE'));
-        $('#detalle-usuario').text(log.usuario);
-        $('#detalle-modulo').html('<span class="badge badge-primary">' + log.modulo + '</span>');
-        $('#detalle-accion').text(log.accion);
-        $('#detalle-entidad').text(log.entidad);
-        $('#detalle-entidadId').text(log.entidadId || '-');
-        $('#detalle-ip').text(log.ipAddress);
-        $('#detalle-detalles').text(log.detalles || '-');
-
-        // Formatear JSON si existe
-        formatearJsonEnElemento('#detalle-valorAnterior', log.valorAnterior);
-        formatearJsonEnElemento('#detalle-valorNuevo', log.valorNuevo);
-
-        $('#modalDetalle').modal('show');
-    }
-
-    function formatearJsonEnElemento(selector, jsonString) {
-        const elem = $(selector);
-        if (!jsonString) {
-            elem.text('N/A');
-            return;
+            window.location.href = '/auditoria/exportar?' + params.toString();
         }
-        try {
-            // Intentar parsear si es string
-            const obj = (typeof jsonString === 'string') ? JSON.parse(jsonString) : jsonString;
-            elem.text(JSON.stringify(obj, null, 2));
-        } catch (e) {
-            // Si falla el parseo, mostrar como texto plano
-            elem.text(jsonString);
-        }
-    }
+    </script>
+</th:block>
 
-    function exportarExcel() {
-        const params = new URLSearchParams({
-            fechaInicio: $('#fechaInicio').val() || '',
-            fechaFin: $('#fechaFin').val() || '',
-            usuario: $('#usuario').val() || '',
-            modulo: $('#modulo').val() || '',
-            accion: $('#accion').val() || ''
-        });
-
-        window.location.href = '/auditoria/exportar?' + params.toString();
-    }
-</script>
 </body>
 </html>

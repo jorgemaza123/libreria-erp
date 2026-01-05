@@ -26,24 +26,18 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/auditoria")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('ROLE_ADMIN')") // Ajustado a hasAuthority para consistencia
 public class AuditoriaController {
 
     @Autowired
     private AuditoriaService auditoriaService;
 
-    /**
-     * Muestra la vista principal de auditoría
-     */
     @GetMapping
     public String index(Model model) {
         model.addAttribute("titulo", "Auditoría del Sistema");
         return "auditoria/index";
     }
 
-    /**
-     * API para buscar auditorías con filtros
-     */
     @GetMapping("/api/buscar")
     @ResponseBody
     public Map<String, Object> buscar(
@@ -53,9 +47,9 @@ public class AuditoriaController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "20") int size) {
 
-        // Validar y ajustar parámetros vacíos a null
+        // Limpieza de strings vacíos
         if (usuario != null && usuario.trim().isEmpty()) usuario = null;
         if (modulo != null && modulo.trim().isEmpty()) modulo = null;
         if (accion != null && accion.trim().isEmpty()) accion = null;
@@ -70,19 +64,19 @@ public class AuditoriaController {
         response.put("totalElements", resultado.getTotalElements());
         response.put("totalPages", resultado.getTotalPages());
         response.put("currentPage", resultado.getNumber());
-        response.put("size", resultado.getSize());
+        response.put("first", resultado.isFirst());
+        response.put("last", resultado.isLast());
 
         return response;
     }
 
-    /**
-     * API para obtener detalles de una auditoría
-     */
     @GetMapping("/api/detalle/{id}")
     @ResponseBody
     public ResponseEntity<AuditoriaLog> obtenerDetalle(@PathVariable Long id) {
-        return auditoriaService.obtenerHistorial(null, null, null, null, null,
-                PageRequest.of(0, 1))
+        // Enfoque simplificado usando el repositorio directamente si fuera necesario, 
+        // pero usaremos el filtro para ser consistentes.
+        // Lo ideal sería un método findById en el servicio, pero esto funciona:
+        return auditoriaService.obtenerHistorial(null, null, null, null, null, Pageable.unpaged())
                 .stream()
                 .filter(log -> log.getId().equals(id))
                 .findFirst()
@@ -90,9 +84,6 @@ public class AuditoriaController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Exportar auditorías a Excel
-     */
     @GetMapping("/exportar")
     public ResponseEntity<byte[]> exportarExcel(
             @RequestParam(required = false) String usuario,
@@ -102,22 +93,18 @@ public class AuditoriaController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin) {
 
         try {
-            // Validar parámetros vacíos
             if (usuario != null && usuario.trim().isEmpty()) usuario = null;
             if (modulo != null && modulo.trim().isEmpty()) modulo = null;
             if (accion != null && accion.trim().isEmpty()) accion = null;
 
-            // Obtener datos (limitado a 5000 registros para evitar problemas de memoria)
             Pageable pageable = PageRequest.of(0, 5000, Sort.by("fechaHora").descending());
             Page<AuditoriaLog> auditorias = auditoriaService.obtenerHistorial(
                 usuario, modulo, accion, fechaInicio, fechaFin, pageable
             );
 
-            // Crear workbook
             Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("Auditoría");
 
-            // Estilo para encabezado
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -125,7 +112,6 @@ public class AuditoriaController {
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // Crear encabezado
             Row headerRow = sheet.createRow(0);
             String[] columnas = {"ID", "Fecha/Hora", "Usuario", "Módulo", "Acción", "Entidad", "ID Entidad", "IP", "Detalles"};
             for (int i = 0; i < columnas.length; i++) {
@@ -134,7 +120,6 @@ public class AuditoriaController {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Llenar datos
             int rowNum = 1;
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
             for (AuditoriaLog log : auditorias.getContent()) {
@@ -150,17 +135,14 @@ public class AuditoriaController {
                 row.createCell(8).setCellValue(log.getDetalles() != null ? log.getDetalles() : "");
             }
 
-            // Ajustar ancho de columnas
             for (int i = 0; i < columnas.length; i++) {
                 sheet.autoSizeColumn(i);
             }
 
-            // Convertir a bytes
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             workbook.close();
 
-            // Preparar respuesta
             String nombreArchivo = "auditoria_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
@@ -173,16 +155,5 @@ public class AuditoriaController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
-    }
-
-    /**
-     * API para obtener historial de una entidad específica
-     */
-    @GetMapping("/api/historial/{entidad}/{entidadId}")
-    @ResponseBody
-    public ResponseEntity<?> obtenerHistorialEntidad(
-            @PathVariable String entidad,
-            @PathVariable Long entidadId) {
-        return ResponseEntity.ok(auditoriaService.obtenerHistorialEntidad(entidad, entidadId));
     }
 }
