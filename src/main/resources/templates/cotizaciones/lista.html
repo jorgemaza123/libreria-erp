@@ -99,29 +99,23 @@
     }
 
     // Función WhatsApp
-    function enviarWhatsapp(nombre, serie, numero, total, telefono) {
+    async function enviarWhatsapp(nombre, serie, numero, total, telefono) {
         let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
         mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
         mensaje += `Quedamos atentos a su confirmación.`;
 
-        if (telefono && telefono !== "null" && telefono.trim() !== "") {
-            let url = `https://web.whatsapp.com/send?phone=51${telefono}&text=${encodeURIComponent(mensaje)}`;
-            window.open(url, '_blank');
-        } else {
-            Swal.fire({
-                title: 'Ingresar Número de WhatsApp',
-                input: 'text',
-                inputLabel: 'El cliente no tiene número. Ingrese uno:',
-                inputPlaceholder: '999888777',
-                showCancelButton: true,
-                confirmButtonText: 'Enviar'
-            }).then((result) => {
-                if (result.isConfirmed && result.value) {
-                    let num = result.value;
-                    let url = `https://web.whatsapp.com/send?phone=51${num}&text=${encodeURIComponent(mensaje)}`;
-                    window.open(url, '_blank');
-                }
-            });
+        const { value: nuevoNumero } = await Swal.fire({
+            title: 'Enviar WhatsApp',
+            text: 'Confirma el número:',
+            input: 'text',
+            inputValue: telefono || '',
+            showCancelButton: true,
+            confirmButtonText: 'Abrir Chat',
+            confirmButtonColor: '#25D366'
+        });
+
+        if (nuevoNumero) {
+            window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
         }
     }
 
