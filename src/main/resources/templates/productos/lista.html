@@ -1,41 +1,49 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='productos'">
+<head>
+    <title>Inventario - Productos</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<div layout:fragment="content">
     
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='inventario')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6"><h1>Inventario</h1></div>
-                    <div class="col-sm-6 text-right">
-                        <a href="/productos/nuevo" class="btn btn-primary"><i class="fas fa-plus"></i> Nuevo</a>
-                        <a href="/inventario/importar" class="btn btn-success ml-2"><i class="fas fa-file-excel"></i> Importar Excel</a>
-                    </div>
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Inventario</h1>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <a href="/productos/nuevo" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo
+                    </a>
+                    <a href="/inventario/importar" class="btn btn-success ml-2">
+                        <i class="fas fa-file-excel"></i> Importar Excel
+                    </a>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <span th:text="${success}"></span>
-                </div>
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <span th:text="${error}"></span>
-                </div>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <span th:text="${error}"></span>
+            </div>
 
-                <div class="card">
-                    <div class="card-body">
-                        <table id="tablaProductos" class="table table-bordered table-striped">
-                            <thead>
+            <div class="card">
+                <div class="card-body">
+                    <table id="tablaProductos" class="table table-bordered table-striped">
+                        <thead>
                             <tr>
                                 <th style="width: 50px;">IMG</th>
                                 <th>Código</th>
@@ -46,8 +54,8 @@
                                 <th>Ubicación</th>
                                 <th>Acciones</th>
                             </tr>
-                            </thead>
-                            <tbody>
+                        </thead>
+                        <tbody>
                             <tr th:each="p : ${productos}">
                                 <td class="text-center">
                                     <button th:if="${p.imagen != null}" 
@@ -56,7 +64,9 @@
                                             title="Ver Foto">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <span th:unless="${p.imagen != null}" class="text-muted"><i class="fas fa-ban"></i></span>
+                                    <span th:unless="${p.imagen != null}" class="text-muted">
+                                        <i class="fas fa-ban"></i>
+                                    </span>
                                 </td>
 
                                 <td th:text="${p.codigoBarra}"></td>
@@ -80,55 +90,60 @@
                                 <td th:text="${p.ubicacionEstante} + '-' + ${p.ubicacionFila}"></td>
 
                                 <td>
-                                    <a th:href="@{/productos/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm" title="Editar"><i class="fas fa-edit"></i></a>
-                                    <a th:href="@{/productos/eliminar/{id}(id=${p.id})}" class="btn btn-danger btn-sm" onclick="return confirm('¿Desactivar producto?')" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                    <a th:href="@{/productos/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a th:href="@{/productos/eliminar/{id}(id=${p.id})}" class="btn btn-danger btn-sm" onclick="return confirm('¿Desactivar producto?')" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
                                     <a th:href="@{/inventario/etiquetas/{id}(id=${p.id})}" class="btn btn-info btn-sm" title="Imprimir Etiquetas">
-    <i class="fas fa-barcode"></i>
-</a>
+                                        <i class="fas fa-barcode"></i>
+                                    </a>
                                 </td>
                             </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="modal fade" id="modalImagen" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <div class="modal-header bg-navy">
-                        <h5 class="modal-title" id="tituloImagen">Producto</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body text-center bg-light">
-                        <img id="imgPreview" src="" class="img-fluid rounded shadow" style="max-height: 400px;">
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+    </section>
 
+    <div class="modal fade" id="modalImagen" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-navy">
+                    <h5 class="modal-title" id="tituloImagen">Producto</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center bg-light">
+                    <img id="imgPreview" src="" class="img-fluid rounded shadow" style="max-height: 400px;">
+                </div>
+            </div>
+        </div>
     </div>
+
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
-<script>
-    $(document).ready(function () {
-        $("#tablaProductos").DataTable({
-            "responsive": true, "autoWidth": false,
-            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function () {
+            $("#tablaProductos").DataTable({
+                "responsive": true, 
+                "autoWidth": false,
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+            });
         });
-    });
 
-    // Función JS para abrir el modal dinámicamente
-    function verImagen(nombreArchivo, nombreProducto) {
-        $("#tituloImagen").text(nombreProducto);
-        $("#imgPreview").attr("src", "/images/" + nombreArchivo);
-        $("#modalImagen").modal("show");
-    }
-</script>
+        // Función JS para abrir el modal dinámicamente
+        function verImagen(nombreArchivo, nombreProducto) {
+            $("#tituloImagen").text(nombreProducto);
+            $("#imgPreview").attr("src", "/images/" + nombreArchivo);
+            $("#modalImagen").modal("show");
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

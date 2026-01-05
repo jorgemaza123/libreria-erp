@@ -1,150 +1,144 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='devoluciones'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
     <title th:text="${titulo}">Nueva Devolución</title>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>
+                        <i class="fas fa-undo text-danger"></i> Nueva Devolución / Nota de Crédito
+                        <small class="text-muted ml-2">Procesar devolución de venta</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/devoluciones">Devoluciones</a></li>
+                        <li class="breadcrumb-item active">Nueva</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <aside th:replace="~{fragments/layout :: sidebar(active='devoluciones')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>
-                            <i class="fas fa-undo text-danger"></i> Nueva Devolución / Nota de Crédito
-                            <small class="text-muted ml-2">Procesar devolución de venta</small>
-                        </h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item"><a href="/devoluciones">Devoluciones</a></li>
-                            <li class="breadcrumb-item active">Nueva</li>
-                        </ol>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-file-invoice"></i> Información de la Venta Original</h3>
+                </div>
+                <div class="card-body" id="infoVenta">
+                    <div class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                        <p class="mt-2 text-muted">Cargando información de la venta...</p>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-file-invoice"></i> Información de la Venta Original</h3>
-                    </div>
-                    <div class="card-body" id="infoVenta">
-                        <div class="text-center py-4">
-                            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                            <p class="mt-2 text-muted">Cargando información de la venta...</p>
+            <div class="card card-warning card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-edit"></i> Datos de la Devolución</h3>
+                </div>
+                <div class="card-body">
+                    <form id="formDevolucion">
+                        <input type="hidden" id="ventaOriginalId" th:value="${ventaId}">
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Motivo de Devolución <span class="text-danger">*</span></label>
+                                    <select id="motivoDevolucion" class="form-control" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="PRODUCTO_DEFECTUOSO">Producto defectuoso</option>
+                                        <option value="ERROR_FACTURACION">Error en facturación</option>
+                                        <option value="PRODUCTO_INCORRECTO">Producto incorrecto</option>
+                                        <option value="INSATISFACCION_CLIENTE">Insatisfacción del cliente</option>
+                                        <option value="CAMBIO_PRODUCTO">Cambio de producto</option>
+                                        <option value="VENTA_DUPLICADA">Venta duplicada</option>
+                                        <option value="OTRO">Otro motivo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Método de Reembolso <span class="text-danger">*</span></label>
+                                    <select id="metodoReembolso" class="form-control" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="EFECTIVO">Devolución en efectivo</option>
+                                        <option value="CREDITO_FAVOR">Crédito a favor del cliente</option>
+                                        <option value="DEVOLUCION_INVENTARIO">Solo devolución a inventario</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Observaciones</label>
+                                    <textarea id="observaciones" class="form-control" rows="1" placeholder="Detalles adicionales..."></textarea>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+
+                        <h5 class="text-primary mt-3 mb-2"><i class="fas fa-boxes"></i> Productos a Devolver</h5>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Seleccione los productos que desea devolver e ingrese las cantidades.
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th width="50" class="text-center">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="checkTodos">
+                                                <label class="custom-control-label" for="checkTodos"></label>
+                                            </div>
+                                        </th>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cant. Original</th>
+                                        <th class="text-center">Cant. a Devolver</th>
+                                        <th class="text-right">Precio Unit.</th>
+                                        <th class="text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyProductos">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Cargando productos...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-light">
+                                        <td colspan="5" class="text-right"><strong>TOTAL A DEVOLVER:</strong></td>
+                                        <td class="text-right text-danger"><strong>S/ <span id="totalDevolver">0.00</span></strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12 text-right">
+                                <a href="/devoluciones" class="btn btn-secondary btn-lg mr-2">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="button" class="btn btn-success btn-lg" onclick="procesarDevolucion()">
+                                    <i class="fas fa-save"></i> Procesar Devolución
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-
-                <div class="card card-warning card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-edit"></i> Datos de la Devolución</h3>
-                    </div>
-                    <div class="card-body">
-                        <form id="formDevolucion">
-                            <input type="hidden" id="ventaOriginalId" th:value="${ventaId}">
-
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label>Motivo de Devolución <span class="text-danger">*</span></label>
-                                        <select id="motivoDevolucion" class="form-control" required>
-                                            <option value="">Seleccione...</option>
-                                            <option value="PRODUCTO_DEFECTUOSO">Producto defectuoso</option>
-                                            <option value="ERROR_FACTURACION">Error en facturación</option>
-                                            <option value="PRODUCTO_INCORRECTO">Producto incorrecto</option>
-                                            <option value="INSATISFACCION_CLIENTE">Insatisfacción del cliente</option>
-                                            <option value="CAMBIO_PRODUCTO">Cambio de producto</option>
-                                            <option value="VENTA_DUPLICADA">Venta duplicada</option>
-                                            <option value="OTRO">Otro motivo</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label>Método de Reembolso <span class="text-danger">*</span></label>
-                                        <select id="metodoReembolso" class="form-control" required>
-                                            <option value="">Seleccione...</option>
-                                            <option value="EFECTIVO">Devolución en efectivo</option>
-                                            <option value="CREDITO_FAVOR">Crédito a favor del cliente</option>
-                                            <option value="DEVOLUCION_INVENTARIO">Solo devolución a inventario</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label>Observaciones</label>
-                                        <textarea id="observaciones" class="form-control" rows="1" placeholder="Detalles adicionales..."></textarea>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h5 class="text-primary mt-3 mb-2"><i class="fas fa-boxes"></i> Productos a Devolver</h5>
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i> Seleccione los productos que desea devolver e ingrese las cantidades.
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-striped">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th width="50" class="text-center">
-                                                <div class="custom-control custom-checkbox">
-                                                    <input type="checkbox" class="custom-control-input" id="checkTodos">
-                                                    <label class="custom-control-label" for="checkTodos"></label>
-                                                </div>
-                                            </th>
-                                            <th>Producto</th>
-                                            <th class="text-center">Cant. Original</th>
-                                            <th class="text-center">Cant. a Devolver</th>
-                                            <th class="text-right">Precio Unit.</th>
-                                            <th class="text-right">Subtotal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyProductos">
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted">Cargando productos...</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="bg-light">
-                                            <td colspan="5" class="text-right"><strong>TOTAL A DEVOLVER:</strong></td>
-                                            <td class="text-right text-danger"><strong>S/ <span id="totalDevolver">0.00</span></strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <div class="row mt-4">
-                                <div class="col-md-12 text-right">
-                                    <a href="/devoluciones" class="btn btn-secondary btn-lg mr-2">
-                                        <i class="fas fa-times"></i> Cancelar
-                                    </a>
-                                    <button type="button" class="btn btn-success btn-lg" onclick="procesarDevolucion()">
-                                        <i class="fas fa-save"></i> Procesar Devolución
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
             </div>
-        </section>
-    </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+        </div>
+    </section>
 
     <div class="modal fade" id="modalConfirmacion" tabindex="-1" data-backdrop="static">
         <div class="modal-dialog">
@@ -168,289 +162,289 @@
             </div>
         </div>
     </div>
-
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        let ventaOriginal = null;
+        const ventaId = /*[[${ventaId}]]*/ 0;
 
-<script th:inline="javascript">
-    let ventaOriginal = null;
-    const ventaId = /*[[${ventaId}]]*/ 0;
+        $(document).ready(function() {
+            cargarVenta();
 
-    $(document).ready(function() {
-        cargarVenta();
+            // Check todos
+            $('#checkTodos').change(function() {
+                const checked = $(this).prop('checked');
+                $('.check-producto').prop('checked', checked);
+                if (checked) {
+                    $('.input-cantidad').each(function() {
+                        const max = $(this).attr('max');
+                        $(this).val(max).prop('disabled', false);
+                    });
+                } else {
+                    $('.input-cantidad').val(0).prop('disabled', true);
+                }
+                calcularTotal();
+            });
+        });
 
-        // Check todos
-        $('#checkTodos').change(function() {
-            const checked = $(this).prop('checked');
-            $('.check-producto').prop('checked', checked);
+        function cargarVenta() {
+            $.ajax({
+                url: '/ventas/api/' + ventaId,
+                method: 'GET',
+                success: function(venta) {
+                    ventaOriginal = venta;
+                    renderizarInfoVenta(venta);
+                    renderizarProductos(venta.detalles);
+                },
+                error: function() {
+                    if(typeof toastr !== 'undefined') toastr.error('Error al cargar la venta');
+                    $('#infoVenta').html('<div class="alert alert-danger">Error al cargar la venta. Verifique que el ID sea correcto.</div>');
+                }
+            });
+        }
+
+        function renderizarInfoVenta(venta) {
+            const cliente = venta.cliente || {};
+            
+            let badgeClass = 'badge-secondary';
+            if(venta.estado === 'EMITIDO') badgeClass = 'badge-primary';
+            else if(venta.estado === 'PAGADO_TOTAL') badgeClass = 'badge-success';
+            else if(venta.estado === 'ANULADO') badgeClass = 'badge-danger';
+
+            const html = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Comprobante:</strong></p>
+                        <p>${venta.tipoComprobante}</p>
+                        <p class="mb-1"><strong>Serie-Número:</strong></p>
+                        <p class="text-primary font-weight-bold">${venta.serie}-${venta.numero}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1"><strong>Fecha Emisión:</strong></p>
+                        <p>${formatearFecha(venta.fechaEmision)}</p>
+                        <p class="mb-1"><strong>Estado:</strong></p>
+                        <p><span class="badge ${badgeClass}">${venta.estado}</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-1"><strong>Cliente:</strong></p>
+                        <p>${cliente.nombreCompleto || cliente.razonSocial || 'Público general'}</p>
+                        <p class="mb-1"><strong>Documento:</strong></p>
+                        <p>${cliente.numeroDocumento || '-'}</p>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <p class="mb-1"><strong>Total Venta:</strong></p>
+                        <h3 class="text-success font-weight-bold">S/ ${formatearNumero(venta.total)}</h3>
+                    </div>
+                </div>
+            `;
+            $('#infoVenta').html(html);
+        }
+
+        function renderizarProductos(detalles) {
+            const tbody = $('#tbodyProductos');
+            tbody.empty();
+
+            if (!detalles || detalles.length === 0) {
+                tbody.html('<tr><td colspan="6" class="text-center text-muted">No hay productos en esta venta</td></tr>');
+                return;
+            }
+
+            detalles.forEach((detalle, index) => {
+                const producto = detalle.producto || {};
+                tbody.append(`
+                    <tr>
+                        <td class="text-center align-middle">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input check-producto" 
+                                       id="check_${index}" data-index="${index}" onchange="toggleProducto(${index})">
+                                <label class="custom-control-label" for="check_${index}"></label>
+                            </div>
+                        </td>
+                        <td class="align-middle">
+                            <strong>${detalle.descripcion || producto.nombre}</strong><br>
+                            <small class="text-muted">Código: ${producto.codigoInterno || '-'}</small>
+                        </td>
+                        <td class="text-center align-middle">${detalle.cantidad}</td>
+                        <td class="text-center align-middle">
+                            <input type="number" class="form-control form-control-sm input-cantidad mx-auto"
+                                   id="cantidad_${index}"
+                                   data-index="${index}"
+                                   data-producto-id="${producto.id}"
+                                   data-precio="${detalle.precioUnitario}"
+                                   data-descripcion="${detalle.descripcion || producto.nombre}"
+                                   min="0"
+                                   max="${detalle.cantidad}"
+                                   value="0"
+                                   step="1"
+                                   style="width: 80px;"
+                                   onchange="calcularTotal()"
+                                   disabled>
+                        </td>
+                        <td class="text-right align-middle">S/ ${formatearNumero(detalle.precioUnitario)}</td>
+                        <td class="text-right align-middle font-weight-bold">S/ <span id="subtotal_${index}">0.00</span></td>
+                    </tr>
+                `);
+            });
+        }
+
+        function toggleProducto(index) {
+            const checked = $(`#check_${index}`).prop('checked');
+            const input = $(`#cantidad_${index}`);
+
             if (checked) {
-                $('.input-cantidad').each(function() {
-                    const max = $(this).attr('max');
-                    $(this).val(max).prop('disabled', false);
-                });
+                input.prop('disabled', false);
+                const max = input.attr('max');
+                input.val(max);
             } else {
-                $('.input-cantidad').val(0).prop('disabled', true);
+                input.val(0);
+                input.prop('disabled', true);
             }
+
             calcularTotal();
-        });
-    });
-
-    function cargarVenta() {
-        $.ajax({
-            url: '/ventas/api/' + ventaId,
-            method: 'GET',
-            success: function(venta) {
-                ventaOriginal = venta;
-                renderizarInfoVenta(venta);
-                renderizarProductos(venta.detalles);
-            },
-            error: function() {
-                if(typeof toastr !== 'undefined') toastr.error('Error al cargar la venta');
-                $('#infoVenta').html('<div class="alert alert-danger">Error al cargar la venta. Verifique que el ID sea correcto.</div>');
-            }
-        });
-    }
-
-    function renderizarInfoVenta(venta) {
-        const cliente = venta.cliente || {};
-        
-        let badgeClass = 'badge-secondary';
-        if(venta.estado === 'EMITIDO') badgeClass = 'badge-primary';
-        else if(venta.estado === 'PAGADO_TOTAL') badgeClass = 'badge-success';
-        else if(venta.estado === 'ANULADO') badgeClass = 'badge-danger';
-
-        const html = `
-            <div class="row">
-                <div class="col-md-3">
-                    <p class="mb-1"><strong>Comprobante:</strong></p>
-                    <p>${venta.tipoComprobante}</p>
-                    <p class="mb-1"><strong>Serie-Número:</strong></p>
-                    <p class="text-primary font-weight-bold">${venta.serie}-${venta.numero}</p>
-                </div>
-                <div class="col-md-3">
-                    <p class="mb-1"><strong>Fecha Emisión:</strong></p>
-                    <p>${formatearFecha(venta.fechaEmision)}</p>
-                    <p class="mb-1"><strong>Estado:</strong></p>
-                    <p><span class="badge ${badgeClass}">${venta.estado}</span></p>
-                </div>
-                <div class="col-md-4">
-                    <p class="mb-1"><strong>Cliente:</strong></p>
-                    <p>${cliente.nombreCompleto || cliente.razonSocial || 'Público general'}</p>
-                    <p class="mb-1"><strong>Documento:</strong></p>
-                    <p>${cliente.numeroDocumento || '-'}</p>
-                </div>
-                <div class="col-md-2 text-right">
-                    <p class="mb-1"><strong>Total Venta:</strong></p>
-                    <h3 class="text-success font-weight-bold">S/ ${formatearNumero(venta.total)}</h3>
-                </div>
-            </div>
-        `;
-        $('#infoVenta').html(html);
-    }
-
-    function renderizarProductos(detalles) {
-        const tbody = $('#tbodyProductos');
-        tbody.empty();
-
-        if (!detalles || detalles.length === 0) {
-            tbody.html('<tr><td colspan="6" class="text-center text-muted">No hay productos en esta venta</td></tr>');
-            return;
         }
 
-        detalles.forEach((detalle, index) => {
-            const producto = detalle.producto || {};
-            tbody.append(`
-                <tr>
-                    <td class="text-center align-middle">
-                        <div class="custom-control custom-checkbox">
-                            <input type="checkbox" class="custom-control-input check-producto" 
-                                   id="check_${index}" data-index="${index}" onchange="toggleProducto(${index})">
-                            <label class="custom-control-label" for="check_${index}"></label>
-                        </div>
-                    </td>
-                    <td class="align-middle">
-                        <strong>${detalle.descripcion || producto.nombre}</strong><br>
-                        <small class="text-muted">Código: ${producto.codigoInterno || '-'}</small>
-                    </td>
-                    <td class="text-center align-middle">${detalle.cantidad}</td>
-                    <td class="text-center align-middle">
-                        <input type="number" class="form-control form-control-sm input-cantidad mx-auto"
-                               id="cantidad_${index}"
-                               data-index="${index}"
-                               data-producto-id="${producto.id}"
-                               data-precio="${detalle.precioUnitario}"
-                               data-descripcion="${detalle.descripcion || producto.nombre}"
-                               min="0"
-                               max="${detalle.cantidad}"
-                               value="0"
-                               step="1"
-                               style="width: 80px;"
-                               onchange="calcularTotal()"
-                               disabled>
-                    </td>
-                    <td class="text-right align-middle">S/ ${formatearNumero(detalle.precioUnitario)}</td>
-                    <td class="text-right align-middle font-weight-bold">S/ <span id="subtotal_${index}">0.00</span></td>
-                </tr>
-            `);
-        });
-    }
+        function calcularTotal() {
+            let total = 0;
 
-    function toggleProducto(index) {
-        const checked = $(`#check_${index}`).prop('checked');
-        const input = $(`#cantidad_${index}`);
+            $('.input-cantidad').each(function() {
+                const cantidad = parseFloat($(this).val()) || 0;
+                const precio = parseFloat($(this).data('precio')) || 0;
+                const index = $(this).data('index');
+                const subtotal = cantidad * precio;
 
-        if (checked) {
-            input.prop('disabled', false);
-            const max = input.attr('max');
-            input.val(max);
-        } else {
-            input.val(0);
-            input.prop('disabled', true);
+                $(`#subtotal_${index}`).text(formatearNumero(subtotal));
+                total += subtotal;
+            });
+
+            $('#totalDevolver').text(formatearNumero(total));
         }
 
-        calcularTotal();
-    }
+        function procesarDevolucion() {
+            const motivo = $('#motivoDevolucion').val();
+            const metodo = $('#metodoReembolso').val();
 
-    function calcularTotal() {
-        let total = 0;
+            if (!motivo) {
+                if(typeof toastr !== 'undefined') toastr.warning('Seleccione el motivo de devolución');
+                $('#motivoDevolucion').focus();
+                return;
+            }
 
-        $('.input-cantidad').each(function() {
-            const cantidad = parseFloat($(this).val()) || 0;
-            const precio = parseFloat($(this).data('precio')) || 0;
-            const index = $(this).data('index');
-            const subtotal = cantidad * precio;
+            if (!metodo) {
+                if(typeof toastr !== 'undefined') toastr.warning('Seleccione el método de reembolso');
+                $('#metodoReembolso').focus();
+                return;
+            }
 
-            $(`#subtotal_${index}`).text(formatearNumero(subtotal));
-            total += subtotal;
-        });
+            const items = [];
+            $('.input-cantidad').each(function() {
+                const cantidad = parseFloat($(this).val()) || 0;
+                if (cantidad > 0) {
+                    items.push({
+                        productoId: $(this).data('producto-id'),
+                        descripcion: $(this).data('descripcion'),
+                        cantidadDevuelta: cantidad,
+                        precioUnitario: $(this).data('precio')
+                    });
+                }
+            });
 
-        $('#totalDevolver').text(formatearNumero(total));
-    }
+            if (items.length === 0) {
+                if(typeof toastr !== 'undefined') toastr.warning('Debe seleccionar al menos un producto para devolver');
+                return;
+            }
 
-    function procesarDevolucion() {
-        const motivo = $('#motivoDevolucion').val();
-        const metodo = $('#metodoReembolso').val();
-
-        if (!motivo) {
-            if(typeof toastr !== 'undefined') toastr.warning('Seleccione el motivo de devolución');
-            $('#motivoDevolucion').focus();
-            return;
+            const totalDevolver = $('#totalDevolver').text();
+            
+            Swal.fire({
+                title: '¿Procesar Devolución?',
+                text: `Se generará una Nota de Crédito por S/ ${totalDevolver}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, procesar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarDevolucion(motivo, metodo, items);
+                }
+            });
         }
 
-        if (!metodo) {
-            if(typeof toastr !== 'undefined') toastr.warning('Seleccione el método de reembolso');
-            $('#metodoReembolso').focus();
-            return;
+        function enviarDevolucion(motivo, metodo, items) {
+            const dto = {
+                ventaOriginalId: parseInt(ventaId),
+                motivoDevolucion: motivo,
+                observaciones: $('#observaciones').val(),
+                metodoReembolso: metodo,
+                items: items
+            };
+
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Generando nota de crédito',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: '/devoluciones/api/procesar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(dto),
+                success: function(response) {
+                    Swal.close();
+                    mostrarConfirmacion(response);
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    const error = xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido';
+                    Swal.fire('Error', error, 'error');
+                }
+            });
         }
 
-        const items = [];
-        $('.input-cantidad').each(function() {
-            const cantidad = parseFloat($(this).val()) || 0;
-            if (cantidad > 0) {
-                items.push({
-                    productoId: $(this).data('producto-id'),
-                    descripcion: $(this).data('descripcion'),
-                    cantidadDevuelta: cantidad,
-                    precioUnitario: $(this).data('precio')
-                });
-            }
-        });
-
-        if (items.length === 0) {
-            if(typeof toastr !== 'undefined') toastr.warning('Debe seleccionar al menos un producto para devolver');
-            return;
-        }
-
-        const totalDevolver = $('#totalDevolver').text();
-        
-        Swal.fire({
-            title: '¿Procesar Devolución?',
-            text: `Se generará una Nota de Crédito por S/ ${totalDevolver}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, procesar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                enviarDevolucion(motivo, metodo, items);
-            }
-        });
-    }
-
-    function enviarDevolucion(motivo, metodo, items) {
-        const dto = {
-            ventaOriginalId: parseInt(ventaId),
-            motivoDevolucion: motivo,
-            observaciones: $('#observaciones').val(),
-            metodoReembolso: metodo,
-            items: items
-        };
-
-        Swal.fire({
-            title: 'Procesando...',
-            text: 'Generando nota de crédito',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        $.ajax({
-            url: '/devoluciones/api/procesar',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(dto),
-            success: function(response) {
-                Swal.close();
-                mostrarConfirmacion(response);
-            },
-            error: function(xhr) {
-                Swal.close();
-                const error = xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido';
-                Swal.fire('Error', error, 'error');
-            }
-        });
-    }
-
-    function mostrarConfirmacion(response) {
-        let html = `
-            <p class="mb-1"><strong>Nota de Crédito:</strong> ${response.serie}-${response.numero}</p>
-            <p class="mb-3"><strong>Total Devuelto:</strong> S/ ${formatearNumero(response.totalDevuelto)}</p>
-        `;
-
-        if (response.facturaElectronica) {
-            const badgeClass = response.estadoSunat === 'ACEPTADO' ? 'badge-success' : 'badge-warning';
-            html += `
-                <div class="alert ${response.estadoSunat === 'ACEPTADO' ? 'alert-success' : 'alert-warning'} mb-0">
-                    <i class="fas ${response.estadoSunat === 'ACEPTADO' ? 'fa-check' : 'fa-exclamation-triangle'} mr-2"></i>
-                    <strong>Estado SUNAT:</strong> <span class="badge ${badgeClass}">${response.estadoSunat}</span>
-                </div>
+        function mostrarConfirmacion(response) {
+            let html = `
+                <p class="mb-1"><strong>Nota de Crédito:</strong> ${response.serie}-${response.numero}</p>
+                <p class="mb-3"><strong>Total Devuelto:</strong> S/ ${formatearNumero(response.totalDevuelto)}</p>
             `;
-        } else {
-            html += `
-                <div class="alert alert-info mb-0">
-                    <i class="fas fa-info-circle mr-2"></i> Nota de crédito interna (no enviada a SUNAT)
-                </div>
-            `;
+
+            if (response.facturaElectronica) {
+                const badgeClass = response.estadoSunat === 'ACEPTADO' ? 'badge-success' : 'badge-warning';
+                html += `
+                    <div class="alert ${response.estadoSunat === 'ACEPTADO' ? 'alert-success' : 'alert-warning'} mb-0">
+                        <i class="fas ${response.estadoSunat === 'ACEPTADO' ? 'fa-check' : 'fa-exclamation-triangle'} mr-2"></i>
+                        <strong>Estado SUNAT:</strong> <span class="badge ${badgeClass}">${response.estadoSunat}</span>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle mr-2"></i> Nota de crédito interna (no enviada a SUNAT)
+                    </div>
+                `;
+            }
+
+            $('#detalleConfirmacion').html(html);
+            $('#modalConfirmacion').modal('show');
         }
 
-        $('#detalleConfirmacion').html(html);
-        $('#modalConfirmacion').modal('show');
-    }
+        function formatearFecha(fecha) {
+            if (!fecha) return '-';
+            const d = new Date(fecha);
+            return d.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        }
 
-    function formatearFecha(fecha) {
-        if (!fecha) return '-';
-        const d = new Date(fecha);
-        return d.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    }
+        function formatearNumero(num) {
+            if (num == null) return '0.00';
+            return parseFloat(num).toFixed(2);
+        }
+    </script>
+</th:block>
 
-    function formatearNumero(num) {
-        if (num == null) return '0.00';
-        return parseFloat(num).toFixed(2);
-    }
-</script>
 </body>
 </html>

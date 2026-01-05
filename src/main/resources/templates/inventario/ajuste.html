@@ -1,110 +1,116 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='inventario')}"></aside>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='ajuste'">
+<head>
+    <title>Ajuste de Inventario</title>
+</head>
+<body>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1><i class="fas fa-boxes"></i> Ajuste de Inventario Físico</h1></div>
-        </section>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1><i class="fas fa-boxes"></i> Ajuste de Inventario Físico</h1>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                
-                <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <div class="card card-warning card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title">Corrección de Stock (Mermas / Sobrantes)</h3>
-                            </div>
-                            <form action="/inventario/ajustar" method="post" onsubmit="return confirm('¿Seguro que desea modificar el stock manualmente? Esto quedará registrado en el Kardex.');">
-                                <div class="card-body">
-                                    
-                                    <div class="form-group">
-                                        <label>Seleccionar Producto</label>
-                                        <select class="form-control select2" name="productoId" id="selectProducto" required style="width: 100%;">
-                                            <option value="">Buscar por nombre o código...</option>
-                                            <option th:each="p : ${productos}" 
-                                                    th:value="${p.id}" 
-                                                    th:data-stock="${p.stockActual}"
-                                                    th:text="${p.codigoBarra + ' - ' + p.nombre}"></option>
-                                        </select>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="info-box bg-light">
-                                                <span class="info-box-icon bg-info"><i class="fas fa-server"></i></span>
-                                                <div class="info-box-content">
-                                                    <span class="info-box-text">Stock en Sistema</span>
-                                                    <span class="info-box-number" id="lblStockSistema" style="font-size: 20px;">-</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label>Stock Real (Conteo Físico) *</label>
-                                                <input type="number" name="stockReal" class="form-control form-control-lg border-warning" required placeholder="¿Cuántos hay?" oninput="calcularDiferencia(this.value)">
-                                                <small id="lblDiferencia" class="form-text font-weight-bold"></small>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Motivo del Ajuste *</label>
-                                        <textarea name="motivo" class="form-control" rows="2" required placeholder="Ej: Producto roto, Robo, Error de conteo anterior..."></textarea>
-                                    </div>
-
-                                </div>
-                                <div class="card-footer text-right">
-                                    <button type="submit" class="btn btn-warning font-weight-bold">
-                                        <i class="fas fa-sync-alt"></i> APLICAR AJUSTE
-                                    </button>
-                                </div>
-                            </form>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card card-warning card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Corrección de Stock (Mermas / Sobrantes)</h3>
                         </div>
+                        <form action="/inventario/ajustar" method="post" onsubmit="return confirm('¿Seguro que desea modificar el stock manualmente? Esto quedará registrado en el Kardex.');">
+                            <div class="card-body">
+                                
+                                <div class="form-group">
+                                    <label>Seleccionar Producto</label>
+                                    <select class="form-control select2" name="productoId" id="selectProducto" required style="width: 100%;">
+                                        <option value="">Buscar por nombre o código...</option>
+                                        <option th:each="p : ${productos}" 
+                                                th:value="${p.id}" 
+                                                th:data-stock="${p.stockActual}"
+                                                th:text="${p.codigoBarra + ' - ' + p.nombre}"></option>
+                                    </select>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="info-box bg-light">
+                                            <span class="info-box-icon bg-info"><i class="fas fa-server"></i></span>
+                                            <div class="info-box-content">
+                                                <span class="info-box-text">Stock en Sistema</span>
+                                                <span class="info-box-number" id="lblStockSistema" style="font-size: 20px;">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Stock Real (Conteo Físico) *</label>
+                                            <input type="number" name="stockReal" class="form-control form-control-lg border-warning" required placeholder="¿Cuántos hay?" oninput="calcularDiferencia(this.value)">
+                                            <small id="lblDiferencia" class="form-text font-weight-bold"></small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Motivo del Ajuste *</label>
+                                    <textarea name="motivo" class="form-control" rows="2" required placeholder="Ej: Producto roto, Robo, Error de conteo anterior..."></textarea>
+                                </div>
+
+                            </div>
+                            <div class="card-footer text-right">
+                                <button type="submit" class="btn btn-warning font-weight-bold">
+                                    <i class="fas fa-sync-alt"></i> APLICAR AJUSTE
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-
             </div>
-        </section>
-    </div>
+
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-<script>
-    let stockActual = 0;
+<th:block layout:fragment="scripts">
+    <script>
+        let stockActual = 0;
 
-    $(document).ready(function() {
-        $('.select2').select2({ theme: 'bootstrap4' });
+        $(document).ready(function() {
+            $('.select2').select2({ theme: 'bootstrap4' });
 
-        $('#selectProducto').on('change', function() {
-            // Obtener el stock del atributo data-stock
-            stockActual = parseInt($(this).find(':selected').data('stock')) || 0;
-            $('#lblStockSistema').text(stockActual);
-            $('#lblDiferencia').text('');
+            $('#selectProducto').on('change', function() {
+                // Obtener el stock del atributo data-stock
+                stockActual = parseInt($(this).find(':selected').data('stock')) || 0;
+                $('#lblStockSistema').text(stockActual);
+                $('#lblDiferencia').text('');
+            });
         });
-    });
 
-    function calcularDiferencia(valor) {
-        let stockReal = parseInt(valor) || 0;
-        let diferencia = stockReal - stockActual;
-        let label = $('#lblDiferencia');
+        function calcularDiferencia(valor) {
+            let stockReal = parseInt(valor) || 0;
+            let diferencia = stockReal - stockActual;
+            let label = $('#lblDiferencia');
 
-        if(diferencia < 0) {
-            label.removeClass('text-success').addClass('text-danger');
-            label.html('<i class="fas fa-arrow-down"></i> Faltante (Merma): ' + Math.abs(diferencia) + ' unidades');
-        } else if (diferencia > 0) {
-            label.removeClass('text-danger').addClass('text-success');
-            label.html('<i class="fas fa-arrow-up"></i> Sobrante (Hallazgo): ' + diferencia + ' unidades');
-        } else {
-            label.removeClass('text-danger text-success').addClass('text-muted');
-            label.text('Sin diferencias');
+            if(diferencia < 0) {
+                label.removeClass('text-success').addClass('text-danger');
+                label.html('<i class="fas fa-arrow-down"></i> Faltante (Merma): ' + Math.abs(diferencia) + ' unidades');
+            } else if (diferencia > 0) {
+                label.removeClass('text-danger').addClass('text-success');
+                label.html('<i class="fas fa-arrow-up"></i> Sobrante (Hallazgo): ' + diferencia + ' unidades');
+            } else {
+                label.removeClass('text-danger text-success').addClass('text-muted');
+                label.text('Sin diferencias');
+            }
         }
-    }
-</script>
+    </script>
+</th:block>
+
 </body>
 </html>

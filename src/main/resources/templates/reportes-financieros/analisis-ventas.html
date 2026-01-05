@@ -1,343 +1,337 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='analisis_ventas'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
     <title th:text="${titulo}">Análisis de Ventas</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
         .small-box h3 { font-size: 2.2rem; font-weight: bold; }
         .table-sm td, .table-sm th { padding: .3rem; font-size: 0.9rem; }
     </style>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>
+                        <i class="fas fa-chart-pie text-primary"></i> Análisis de Ventas
+                        <small class="text-muted ml-2">Estadísticas y tendencias</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Análisis Financiero</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <aside th:replace="~{fragments/layout :: sidebar(active='reportes')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>
-                            <i class="fas fa-chart-pie text-primary"></i> Análisis de Ventas
-                            <small class="text-muted ml-2">Estadísticas y tendencias</small>
-                        </h1>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Período</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
                     </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item active">Análisis Financiero</li>
-                        </ol>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Fecha Inicio</label>
+                                <input type="date" id="fi" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Fecha Fin</label>
+                                <input type="date" id="ff" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button class="btn btn-primary btn-block" onclick="generar()">
+                                    <i class="fas fa-search"></i> Generar Reporte
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Período</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-minus"></i>
-                            </button>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card card-info card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Evolución de Ventas por Día</h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Fecha Inicio</label>
-                                    <input type="date" id="fi" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Fecha Fin</label>
-                                    <input type="date" id="ff" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <button class="btn btn-primary btn-block" onclick="generar()">
-                                        <i class="fas fa-search"></i> Generar Reporte
-                                    </button>
-                                </div>
+                        <div class="card-body">
+                            <div class="chart">
+                                <canvas id="chartDias" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="card card-info card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-chart-line"></i> Evolución de Ventas por Día</h3>
-                                <div class="card-tools">
-                                    <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart">
-                                    <canvas id="chartDias" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
-                                </div>
-                            </div>
+                <div class="col-md-4">
+                    <div class="card card-warning card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Top 10 Productos</h3>
                         </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="card card-warning card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Top 10 Productos</h3>
-                            </div>
-                            <div class="card-body p-0">
-                                <table class="table table-striped table-valign-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th class="text-right">Cant.</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyTop">
-                                        <tr><td colspan="2" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="card-body p-0">
+                            <table class="table table-striped table-valign-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-right">Cant.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyTop">
+                                    <tr><td colspan="2" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card card-success card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-user-tag"></i> Desempeño de Vendedores</h3>
-                            </div>
-                            <div class="card-body p-0">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Vendedor</th>
-                                            <th class="text-center">N° Ventas</th>
-                                            <th class="text-right">Total (S/)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyVend">
-                                        <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card card-danger card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Productos Sin Rotación (Estancados)</h3>
-                            </div>
-                            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                                <table class="table table-striped table-hover table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th class="text-center">Stock Actual</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodySin">
-                                        <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </section>
-    </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card card-success card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-user-tag"></i> Desempeño de Vendedores</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Vendedor</th>
+                                        <th class="text-center">N° Ventas</th>
+                                        <th class="text-right">Total (S/)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyVend">
+                                    <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-danger card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Productos Sin Rotación (Estancados)</h3>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center">Stock Actual</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodySin">
+                                    <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
+<th:block layout:fragment="scripts">
+    <script>
+        let chartDias;
 
-<script>
-    let chartDias;
+        $(document).ready(function() {
+            // Inicializar fechas (Últimos 30 días)
+            const hoy = new Date();
+            const hace30 = new Date();
+            hace30.setDate(hoy.getDate() - 30);
 
-    $(document).ready(function() {
-        // Inicializar fechas (Últimos 30 días)
-        const hoy = new Date();
-        const hace30 = new Date();
-        hace30.setDate(hoy.getDate() - 30);
+            $('#ff').val(hoy.toISOString().split('T')[0]);
+            $('#fi').val(hace30.toISOString().split('T')[0]);
 
-        $('#ff').val(hoy.toISOString().split('T')[0]);
-        $('#fi').val(hace30.toISOString().split('T')[0]);
+            // Cargar datos iniciales
+            generar();
+        });
 
-        // Cargar datos iniciales
-        generar();
-    });
+        function generar() {
+            const fi = $('#fi').val();
+            const ff = $('#ff').val();
+            
+            if (!fi || !ff) {
+                if(typeof Swal !== 'undefined') Swal.fire('Atención', 'Seleccione ambas fechas', 'warning');
+                return;
+            }
 
-    function generar() {
-        const fi = $('#fi').val();
-        const ff = $('#ff').val();
-        
-        if (!fi || !ff) {
-            if(typeof Swal !== 'undefined') Swal.fire('Atención', 'Seleccione ambas fechas', 'warning');
-            return;
+            // Mostrar loading en tablas
+            $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
+
+            $.ajax({
+                url: '/reportes/financieros/api/analisis-ventas',
+                data: {fechaInicio: fi, fechaFin: ff},
+                success: function(data) {
+                    renderChart(data.ventasPorDia);
+                    renderTop(data.topProductos);
+                    renderVend(data.ventasPorVendedor);
+                    renderSin(data.productosSinRotacion);
+                },
+                error: function() {
+                    if(typeof toastr !== 'undefined') toastr.error('Error al cargar los datos del análisis');
+                    $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center text-danger">Error al cargar</td></tr>');
+                }
+            });
         }
 
-        // Mostrar loading en tablas
-        $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
+        function renderChart(datos) {
+            const labels = datos.map(d => d.fecha);
+            const values = datos.map(d => parseFloat(d.total));
 
-        $.ajax({
-            url: '/reportes/financieros/api/analisis-ventas',
-            data: {fechaInicio: fi, fechaFin: ff},
-            success: function(data) {
-                renderChart(data.ventasPorDia);
-                renderTop(data.topProductos);
-                renderVend(data.ventasPorVendedor);
-                renderSin(data.productosSinRotacion);
-            },
-            error: function() {
-                if(typeof toastr !== 'undefined') toastr.error('Error al cargar los datos del análisis');
-                $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center text-danger">Error al cargar</td></tr>');
-            }
-        });
-    }
+            const ctx = document.getElementById('chartDias').getContext('2d');
+            
+            if (chartDias) chartDias.destroy();
 
-    function renderChart(datos) {
-        const labels = datos.map(d => d.fecha); // Asegúrate que el DTO devuelva 'fecha' formateada
-        const values = datos.map(d => parseFloat(d.total));
-
-        const ctx = document.getElementById('chartDias').getContext('2d');
-        
-        if (chartDias) chartDias.destroy();
-
-        chartDias = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Ventas Totales',
-                    data: values,
-                    borderColor: APP_CONFIG.colorInfo,
-                    backgroundColor: APP_CONFIG.colorInfo + '1A',
-                    pointBackgroundColor: APP_CONFIG.colorInfo,
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: APP_CONFIG.colorInfo,
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2);
+            chartDias = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ventas Totales',
+                        data: values,
+                        borderColor: APP_CONFIG.colorInfo,
+                        backgroundColor: APP_CONFIG.colorInfo + '1A',
+                        pointBackgroundColor: APP_CONFIG.colorInfo,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: APP_CONFIG.colorInfo,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2);
+                                }
                             }
                         }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: {
-                            callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; }
-                        }
                     },
-                    x: {
-                        grid: { display: false }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; }
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
                     }
                 }
+            });
+        }
+
+        function renderTop(productos) {
+            const tbody = $('#tbodyTop');
+            tbody.empty();
+            
+            if (!productos || productos.length === 0) {
+                tbody.html('<tr><td colspan="2" class="text-center text-muted">No hay ventas registradas</td></tr>');
+                return;
             }
-        });
-    }
 
-    function renderTop(productos) {
-        const tbody = $('#tbodyTop');
-        tbody.empty();
-        
-        if (!productos || productos.length === 0) {
-            tbody.html('<tr><td colspan="2" class="text-center text-muted">No hay ventas registradas</td></tr>');
-            return;
+            productos.slice(0, 10).forEach((p, i) => {
+                let rank = `<span class="badge badge-secondary">${i+1}</span>`;
+                if (i === 0) rank = `<i class="fas fa-medal text-warning fa-lg"></i>`;
+                if (i === 1) rank = `<i class="fas fa-medal text-secondary fa-lg"></i>`;
+                if (i === 2) rank = `<i class="fas fa-medal text-brown fa-lg" style="color: ` + APP_CONFIG.colorBronce + `;"></i>`;
+
+                tbody.append(`
+                    <tr>
+                        <td>
+                            ${rank} &nbsp; 
+                            <span class="font-weight-bold text-dark">${p.productoNombre}</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="badge badge-success" style="font-size: 0.9em;">${p.cantidadVendida}</span>
+                        </td>
+                    </tr>
+                `);
+            });
         }
 
-        productos.slice(0, 10).forEach((p, i) => {
-            // Icono de medalla para el top 3
-            let rank = `<span class="badge badge-secondary">${i+1}</span>`;
-            if (i === 0) rank = `<i class="fas fa-medal text-warning fa-lg"></i>`;
-            if (i === 1) rank = `<i class="fas fa-medal text-secondary fa-lg"></i>`;
-            if (i === 2) rank = `<i class="fas fa-medal text-brown fa-lg" style="color: ` + APP_CONFIG.colorBronce + `;"></i>`;
+        function renderVend(vendedores) {
+            const tbody = $('#tbodyVend');
+            tbody.empty();
 
-            tbody.append(`
-                <tr>
-                    <td>
-                        ${rank} &nbsp; 
-                        <span class="font-weight-bold text-dark">${p.productoNombre}</span>
-                    </td>
-                    <td class="text-right">
-                        <span class="badge badge-success" style="font-size: 0.9em;">${p.cantidadVendida}</span>
-                    </td>
-                </tr>
-            `);
-        });
-    }
+            if (!vendedores || vendedores.length === 0) {
+                tbody.html('<tr><td colspan="3" class="text-center text-muted">No hay datos de vendedores</td></tr>');
+                return;
+            }
 
-    function renderVend(vendedores) {
-        const tbody = $('#tbodyVend');
-        tbody.empty();
-
-        if (!vendedores || vendedores.length === 0) {
-            tbody.html('<tr><td colspan="3" class="text-center text-muted">No hay datos de vendedores</td></tr>');
-            return;
+            vendedores.forEach(v => {
+                tbody.append(`
+                    <tr>
+                        <td><i class="fas fa-user-circle text-gray"></i> ${v.vendedor}</td>
+                        <td class="text-center"><span class="badge badge-info">${v.cantidad}</span></td>
+                        <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${parseFloat(v.total).toFixed(2)}</td>
+                    </tr>
+                `);
+            });
         }
 
-        vendedores.forEach(v => {
-            tbody.append(`
-                <tr>
-                    <td><i class="fas fa-user-circle text-gray"></i> ${v.vendedor}</td>
-                    <td class="text-center"><span class="badge badge-info">${v.cantidad}</span></td>
-                    <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${parseFloat(v.total).toFixed(2)}</td>
-                </tr>
-            `);
-        });
-    }
+        function renderSin(productos) {
+            const tbody = $('#tbodySin');
+            tbody.empty();
 
-    function renderSin(productos) {
-        const tbody = $('#tbodySin');
-        tbody.empty();
+            if (!productos || productos.length === 0) {
+                tbody.html('<tr><td colspan="2" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tienen rotación reciente</td></tr>');
+                return;
+            }
 
-        if (!productos || productos.length === 0) {
-            tbody.html('<tr><td colspan="2" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tienen rotación reciente</td></tr>');
-            return;
+            productos.slice(0, 20).forEach(p => {
+                tbody.append(`
+                    <tr>
+                        <td>
+                            <i class="fas fa-box-open text-muted"></i> 
+                            ${p.productoNombre}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-danger">${p.stockActual} unid.</span>
+                        </td>
+                    </tr>
+                `);
+            });
         }
+    </script>
+</th:block>
 
-        productos.slice(0, 20).forEach(p => {
-            tbody.append(`
-                <tr>
-                    <td>
-                        <i class="fas fa-box-open text-muted"></i> 
-                        ${p.productoNombre}
-                    </td>
-                    <td class="text-center">
-                        <span class="badge badge-danger">${p.stockActual} unid.</span>
-                    </td>
-                </tr>
-            `);
-        });
-    }
-</script>
 </body>
 </html>

@@ -11,12 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import java.util.concurrent.TimeUnit;
-
-/**
- * Controlador para recursos públicos accesibles sin autenticación.
- * Usado para CSS personalizado que debe cargarse incluso en la página de login.
- */
 @Controller
 @RequestMapping("/public")
 public class PublicResourcesController {
@@ -24,10 +18,6 @@ public class PublicResourcesController {
     @Autowired
     private ConfiguracionService configuracionService;
 
-    /**
-     * Endpoint público para CSS personalizado dinámico.
-     * Accesible sin autenticación para que funcione en login y todas las páginas.
-     */
     @GetMapping(value = "/css-personalizado", produces = "text/css")
     @ResponseBody
     public ResponseEntity<String> cssPersonalizado() {
@@ -35,7 +25,11 @@ public class PublicResourcesController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf("text/css"));
-        headers.setCacheControl(CacheControl.maxAge(1, TimeUnit.HOURS));
+        
+        // CAMBIO CRÍTICO: Desactivar caché para ver cambios al instante
+        headers.setCacheControl(CacheControl.noCache().mustRevalidate());
+        headers.setPragma("no-cache");
+        headers.setExpires(0);
 
         return ResponseEntity.ok().headers(headers).body(css);
     }

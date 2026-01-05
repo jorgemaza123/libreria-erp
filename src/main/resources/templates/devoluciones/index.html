@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{fragments/layout}">
+      layout:decorate="~{fragments/layout}"
+      th:with="active='devoluciones'">
 <head>
     <title th:text="${titulo}">Devoluciones</title>
 </head>
@@ -231,7 +232,7 @@
                 const venta = dev.ventaOriginal || {};
                 const cliente = venta.cliente || {};
 
-                // ESTILO ACTUALIZADO: Usar 'badge' en lugar de 'label'
+                // ESTILO: Badges
                 const badgeEstado = dev.estado === 'PROCESADA' 
                     ? '<span class="badge badge-success">PROCESADA</span>' 
                     : '<span class="badge badge-danger">ANULADA</span>';
@@ -241,7 +242,7 @@
                 else if (['RECHAZADO', 'ERROR'].includes(dev.sunatEstado)) badgeSunat = `<span class="badge badge-danger">${dev.sunatEstado}</span>`;
                 else if (dev.sunatEstado === 'PENDIENTE') badgeSunat = '<span class="badge badge-warning">PENDIENTE</span>';
 
-                // ESTILO ACTUALIZADO: Botones btn-sm e iconos fas
+                // Botones de acción
                 const acciones = `
                     <button class="btn btn-info btn-sm" onclick="verDetalle(${dev.id})" title="Ver detalle">
                         <i class="fas fa-eye"></i>
@@ -277,12 +278,10 @@
             totalPaginas = page.totalPages;
             const ul = $('#paginacion');
             ul.empty();
-            // ESTILO ACTUALIZADO: Formato de texto de paginación
             $('#infoPaginacion').text(`Mostrando ${page.numberOfElements} de ${page.totalElements} registros`);
 
             if (totalPaginas <= 1) return;
 
-            // ESTILO ACTUALIZADO: Clases page-item y page-link de Bootstrap 4
             ul.append(`<li class="page-item ${page.first ? 'disabled' : ''}">
                 <a class="page-link" href="#" onclick="buscarDevoluciones(${paginaActual - 1}); return false;">«</a>
             </li>`);
@@ -331,7 +330,6 @@
 
                     ventas.forEach(v => {
                         const cliente = v.cliente || {};
-                        // ESTILO ACTUALIZADO: Badges
                         let badgeClass = 'badge-warning';
                         if (v.estado === 'EMITIDO') badgeClass = 'badge-primary';
                         else if (v.estado === 'PAGADO_TOTAL') badgeClass = 'badge-success';
@@ -363,7 +361,7 @@
             window.location.href = '/devoluciones/nueva/' + ventaId;
         }
 
-        // Lógica del Modal Detalle (ESTILO ACTUALIZADO con dl row)
+        // Lógica del Modal Detalle
         function verDetalle(id) {
             $('#modalDetalleDevolucion').modal('show');
             $('#contenidoDetalle').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-3x text-info"></i><p class="mt-2">Cargando...</p></div>');
@@ -387,7 +385,6 @@
                         ? '<span class="badge badge-success">ACEPTADO</span>' 
                         : '<span class="badge badge-secondary">NO APLICA</span>';
 
-                    // Uso de dl row para mejor presentación en el modal
                     $('#contenidoDetalle').html(`
                         <div class="row">
                             <div class="col-md-6">
@@ -479,6 +476,7 @@
         function formatearFecha(fecha) {
             if (!fecha) return '-';
             const d = new Date(fecha);
+            // Ajustar zona horaria si es necesario, simple por ahora
             return d.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
         }
 

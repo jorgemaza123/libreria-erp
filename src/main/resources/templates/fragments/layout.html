@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-  <head th:fragment="head">
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head th:fragment="head">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Librería ERP</title>
-    
+
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
@@ -13,302 +14,308 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" />
 
-    <!-- CSS Personalizado Dinámico desde Configuración -->
-    <link rel="stylesheet" th:href="@{/public/css-personalizado}" />
+    <link rel="stylesheet" th:href="@{/public/css-personalizado(v=${#dates.createNow().time})}" />
 
     <style>
-      .sidebar-overlay { display: none !important; }
-      body { overflow-x: hidden !important; padding-right: 0 !important; }
-      .nav-sidebar .nav-item > .nav-link { margin-bottom: 0.2rem; }
-      .nav-treeview { margin-left: 10px; font-size: 0.9em; }
+        .sidebar-overlay { display: none !important; }
+        body { overflow-x: hidden !important; padding-right: 0 !important; }
+        .nav-sidebar .nav-item > .nav-link { margin-bottom: 0.2rem; }
+        .nav-treeview { margin-left: 10px; font-size: 0.9em; }
     </style>
-  </head>
-  
-  <body class="hold-transition sidebar-mini layout-fixed">
-    
-    <nav th:fragment="navbar" class="main-header navbar navbar-expand navbar-white navbar-light">
-      <ul class="navbar-nav">
-        <li class="nav-item">
-          <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
-        </li>
-      </ul>
-      <ul class="navbar-nav ml-auto">
-        <li class="nav-item">
-          <a class="nav-link text-danger" href="/logout" title="Salir"><i class="fas fa-sign-out-alt"></i></a>
-        </li>
-      </ul>
-    </nav>
+</head>
 
-    <aside th:fragment="sidebar(active)" class="main-sidebar sidebar-dark-primary elevation-4">
-      <a href="/" class="brand-link">
-        <span class="brand-text font-weight-bold ml-3" th:text="${config.nombreEmpresa}">Librería ERP</span>
-      </a>
-      
-      <div class="sidebar">
-        <nav class="mt-2">
-          <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-            
-            <li class="nav-item">
-              <a href="/" class="nav-link" th:classappend="${active == 'dashboard' ? 'active' : ''}">
-                <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
-              </a>
-            </li>
+<body class="hold-transition sidebar-mini layout-fixed">
+    <div class="wrapper">
 
-            <li class="nav-item" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' ? 'menu-open' : ''}">
-              <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' ? 'active' : ''}">
-                <i class="nav-icon fas fa-shopping-cart"></i>
-                <p>Comercial <i class="right fas fa-angle-left"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
+        <nav th:fragment="navbar" class="main-header navbar navbar-expand navbar-white navbar-light">
+            <ul class="navbar-nav">
                 <li class="nav-item">
-                  <a href="/ventas/nueva" class="nav-link" th:classappend="${active == 'pos' ? 'active' : ''}">
-                    <i class="fas fa-cash-register nav-icon"></i><p>Punto de Venta</p>
-                  </a>
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
                 </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                  <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'cotizaciones' ? 'active' : ''}">
-                    <i class="fas fa-file-invoice nav-icon"></i><p>Cotizaciones</p>
-                  </a>
+                    <a class="nav-link text-danger" href="/logout" title="Salir">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
                 </li>
-                <li class="nav-item">
-                  <a href="/cotizaciones/nueva" class="nav-link" th:classappend="${active == 'nueva_cotizacion' ? 'active' : ''}">
-                    <i class="fas fa-plus nav-icon"></i><p>Nueva Cotización</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/ordenes/lista" class="nav-link" th:classappend="${active == 'servicios' ? 'active' : ''}">
-                    <i class="fas fa-tools nav-icon"></i><p>Lista Servicios</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/ordenes/nueva" class="nav-link" th:classappend="${active == 'nuevo_servicio' ? 'active' : ''}">
-                    <i class="fas fa-plus-circle nav-icon"></i><p>Nuevo Servicio</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-  <a href="/cobranzas" class="nav-link">
-    <i class="fas fa-hand-holding-usd nav-icon"></i><p>Cobranzas / Créditos</p>
-  </a>
-</li>
-                <li class="nav-item">
-  <a href="/devoluciones" class="nav-link" th:classappend="${active == 'devoluciones' ? 'active' : ''}">
-    <i class="fas fa-undo nav-icon"></i><p>Devoluciones / NC</p>
-  </a>
-</li>
-              </ul>
-            </li>
-
-            <li class="nav-item" th:classappend="${active == 'inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
-              <a href="#" class="nav-link" th:classappend="${active == 'inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'active' : ''}">
-                <i class="nav-icon fas fa-boxes"></i>
-                <p>Logística <i class="right fas fa-angle-left"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="/productos" class="nav-link" th:classappend="${active == 'inventario' ? 'active' : ''}">
-                    <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-    <a href="/inventario/ajuste" class="nav-link text-warning">
-        <i class="nav-icon fas fa-clipboard-check"></i>
-        <p>Ajuste de Inventario</p>
-    </a>
-</li>
-                <li class="nav-item">
-                  <a href="/compras/lista" class="nav-link" th:classappend="${active == 'compras' ? 'active' : ''}">
-                    <i class="fas fa-dolly nav-icon"></i><p>Compras</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/proveedores" class="nav-link" th:classappend="${active == 'proveedores' ? 'active' : ''}">
-                    <i class="fas fa-truck nav-icon"></i><p>Proveedores</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/kardex" class="nav-link" th:classappend="${active == 'kardex' ? 'active' : ''}">
-                    <i class="fas fa-exchange-alt nav-icon"></i><p>Kardex</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-  <a href="/solicitudes/lista" class="nav-link" th:classappend="${active == 'solicitudes' ? 'active' : ''}">
-    <i class="nav-icon fas fa-bullhorn text-warning"></i>
-    <p>Pedidos / Faltantes</p>
-  </a>
-</li>
-              </ul>
-            </li>
-
-            <li class="nav-item" th:classappend="${active == 'caja' or active == 'reportes' ? 'menu-open' : ''}">
-              <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'reportes' ? 'active' : ''}">
-                <i class="nav-icon fas fa-chart-pie"></i>
-                <p>Finanzas <i class="right fas fa-angle-left"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="/caja" class="nav-link" th:classappend="${active == 'caja' ? 'active' : ''}">
-                    <i class="fas fa-wallet nav-icon"></i><p>Caja Chica</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-    <a href="/gastos" class="nav-link" th:classappend="${active == 'gastos' ? 'active' : ''}">
-        <i class="nav-icon fas fa-file-invoice-dollar"></i>
-        <p>Gastos / Egresos</p>
-    </a>
-</li>
-                <li class="nav-item">
-                  <a href="/reportes" class="nav-link" th:classappend="${active == 'reportes' ? 'active' : ''}">
-                    <i class="fas fa-file-excel nav-icon"></i><p>Reportes</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/reportes/financieros" class="nav-link" th:classappend="${active == 'reportes-financieros' ? 'active' : ''}">
-                    <i class="fas fa-chart-line nav-icon"></i><p>Dashboard Financiero</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/reportes/financieros/flujo-caja" class="nav-link">
-                    <i class="fas fa-exchange-alt nav-icon"></i><p>Flujo de Caja</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/reportes/financieros/rentabilidad" class="nav-link">
-                    <i class="fas fa-percent nav-icon"></i><p>Rentabilidad</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="/reportes/financieros/analisis-ventas" class="nav-link">
-                    <i class="fas fa-chart-pie nav-icon"></i><p>Análisis de Ventas</p>
-                  </a>
-                </li>
-              </ul>
-            </li>
-
-            <li class="nav-header">SISTEMA</li>
-            
-            <li class="nav-item">
-              <a href="/vendedor/dashboard" class="nav-link bg-primary text-white">
-                <i class="nav-icon fas fa-th-large"></i><p>Modo Vendedor</p>
-              </a>
-            </li>
-
-            <li class="nav-item has-treeview" th:classappend="${active == 'configuracion' ? 'menu-open' : ''}">
-              <a href="#" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
-                <i class="nav-icon fas fa-cogs"></i>
-                <p>Configuración <i class="right fas fa-angle-left"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="/configuracion/general" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Configuración General</p>
-                  </a>
-                </li>
-                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
-                  <a href="/configuracion/sunat" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Facturación SUNAT</p>
-                  </a>
-                </li>
-                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
-                  <a href="/auditoria" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Auditoría</p>
-                  </a>
-                </li>
-                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
-                  <a href="/roles" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Roles y Permisos</p>
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
-    <a href="/usuarios" class="nav-link" th:classappend="${active == 'usuarios' ? 'active' : ''}">
-        <i class="nav-icon fas fa-users-cog"></i><p>Usuarios</p>
-    </a>
-</li>
-          </ul>
+            </ul>
         </nav>
-      </div>
-    </aside>
 
-    <div th:fragment="scripts">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-      <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-      <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <aside th:fragment="sidebar(active)" class="main-sidebar sidebar-dark-primary elevation-4">
+            <a href="/" class="brand-link">
+                <span class="brand-text font-weight-bold ml-3" th:text="${config != null ? config.nombreEmpresa : 'Librería ERP'}">Librería ERP</span>
+            </a>
 
-      <!-- CONFIGURACIÓN GLOBAL DEL SISTEMA - Accesible desde JavaScript -->
-      <script th:inline="javascript">
-        // Variable global con configuración del sistema (NO hardcodeada)
-        window.APP_CONFIG = {
-          // Datos de empresa
-          nombreEmpresa: /*[[${config.nombreEmpresa}]]*/ 'MI EMPRESA',
-          ruc: /*[[${config.ruc}]]*/ '00000000000',
-          direccion: /*[[${config.direccion}]]*/ '',
-          telefono: /*[[${config.telefono}]]*/ '',
-          email: /*[[${config.email}]]*/ '',
-          slogan: /*[[${config.slogan}]]*/ '',
+            <div class="sidebar">
+                <nav class="mt-2">
+                    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
 
-          // Colores personalizados (para Chart.js)
-          colorPrimario: /*[[${config.colorPrimario}]]*/ '#007bff',
-          colorSecundario: /*[[${config.colorSecundario}]]*/ '#6c757d',
-          colorExito: /*[[${config.colorExito}]]*/ '#28a745',
-          colorPeligro: /*[[${config.colorPeligro}]]*/ '#dc3545',
-          colorAdvertencia: /*[[${config.colorAdvertencia}]]*/ '#ffc107',
-          colorInfo: /*[[${config.colorInfo}]]*/ '#17a2b8',
-          colorOscuro: /*[[${config.colorOscuro}]]*/ '#343a40',
-          colorClaro: /*[[${config.colorClaro}]]*/ '#f8f9fa',
-          colorBronce: /*[[${config.colorBronce}]]*/ '#cd7f32',
+                        <li class="nav-item">
+                            <a href="/" class="nav-link" th:classappend="${active == 'dashboard' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+                            </a>
+                        </li>
 
-          // Configuración de reportes
-          formatoMoneda: /*[[${config.formatoMoneda}]]*/ 'S/',
-          formatoFechaReportes: /*[[${config.formatoFechaReportes}]]*/ 'dd/MM/yyyy',
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-shopping-cart"></i>
+                                <p>Comercial <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/ventas/nueva" class="nav-link" th:classappend="${active == 'pos' ? 'active' : ''}">
+                                        <i class="fas fa-cash-register nav-icon"></i><p>Punto de Venta</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'cotizaciones' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice nav-icon"></i><p>Cotizaciones</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones/nueva" class="nav-link" th:classappend="${active == 'nueva_cotizacion' ? 'active' : ''}">
+                                        <i class="fas fa-plus nav-icon"></i><p>Nueva Cotización</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/ordenes/lista" class="nav-link" th:classappend="${active == 'servicios' ? 'active' : ''}">
+                                        <i class="fas fa-tools nav-icon"></i><p>Lista Servicios</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/ordenes/nueva" class="nav-link" th:classappend="${active == 'nuevo_servicio' ? 'active' : ''}">
+                                        <i class="fas fa-plus-circle nav-icon"></i><p>Nuevo Servicio</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cobranzas" class="nav-link" th:classappend="${active == 'cobranzas' ? 'active' : ''}">
+                                        <i class="fas fa-hand-holding-usd nav-icon"></i><p>Cobranzas / Créditos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/devoluciones" class="nav-link" th:classappend="${active == 'devoluciones' ? 'active' : ''}">
+                                        <i class="fas fa-undo nav-icon"></i><p>Devoluciones / NC</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
 
-          // Configuración de sistema
-          itemsPorPagina: /*[[${config.itemsPorPagina}]]*/ 10,
-          stockMinimo: /*[[${config.stockMinimo}]]*/ 5,
-          igvPorcentaje: /*[[${config.igvPorcentaje}]]*/ 18.00,
+                        <li class="nav-item" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-boxes"></i>
+                                <p>Logística <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/productos" class="nav-link" th:classappend="${active == 'productos' ? 'active' : ''}">
+                                        <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/inventario/ajuste" class="nav-link text-warning" th:classappend="${active == 'ajuste' ? 'active' : ''}">
+                                        <i class="nav-icon fas fa-clipboard-check"></i><p>Ajuste de Inventario</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/compras/lista" class="nav-link" th:classappend="${active == 'compras' ? 'active' : ''}">
+                                        <i class="fas fa-dolly nav-icon"></i><p>Compras</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/proveedores" class="nav-link" th:classappend="${active == 'proveedores' ? 'active' : ''}">
+                                        <i class="fas fa-truck nav-icon"></i><p>Proveedores</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/kardex" class="nav-link" th:classappend="${active == 'kardex' ? 'active' : ''}">
+                                        <i class="fas fa-exchange-alt nav-icon"></i><p>Kardex</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/solicitudes/lista" class="nav-link" th:classappend="${active == 'solicitudes' ? 'active' : ''}">
+                                        <i class="nav-icon fas fa-bullhorn text-warning"></i><p>Pedidos / Faltantes</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
 
-          // Reglas de negocio (CRÍTICO para control de ventas)
-          permitirStockNegativo: /*[[${config.permitirStockNegativo}]]*/ false,
-          permitirVentaFraccionada: /*[[${config.permitirVentaFraccionada}]]*/ false,
-          porcentajeDescuentoMaximo: /*[[${config.porcentajeDescuentoMaximo}]]*/ 10.00,
-          preciosIncluyenImpuesto: /*[[${config.preciosIncluyenImpuesto}]]*/ true,
+                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-chart-pie"></i>
+                                <p>Finanzas <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/caja" class="nav-link" th:classappend="${active == 'caja' ? 'active' : ''}">
+                                        <i class="fas fa-wallet nav-icon"></i><p>Caja Chica</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/gastos" class="nav-link" th:classappend="${active == 'gastos' ? 'active' : ''}">
+                                        <i class="nav-icon fas fa-file-invoice-dollar"></i><p>Gastos / Egresos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes" class="nav-link" th:classappend="${active == 'reportes' ? 'active' : ''}">
+                                        <i class="fas fa-file-excel nav-icon"></i><p>Reportes Generales</p>
+                                    </a>
+                                </li>
+                                <li class="nav-header pl-3 text-uppercase text-secondary" style="font-size: 0.8rem;">Análisis Financiero</li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros" class="nav-link" th:classappend="${active == 'financiero_dashboard' ? 'active' : ''}">
+                                        <i class="fas fa-chart-line nav-icon"></i><p>Dashboard</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/flujo-caja" class="nav-link" th:classappend="${active == 'flujo_caja' ? 'active' : ''}">
+                                        <i class="fas fa-exchange-alt nav-icon"></i><p>Flujo de Caja</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/rentabilidad" class="nav-link" th:classappend="${active == 'rentabilidad' ? 'active' : ''}">
+                                        <i class="fas fa-percent nav-icon"></i><p>Rentabilidad</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/analisis-ventas" class="nav-link" th:classappend="${active == 'analisis_ventas' ? 'active' : ''}">
+                                        <i class="fas fa-chart-pie nav-icon"></i><p>Análisis de Ventas</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
 
-          // Control financiero (CRÍTICO para seguridad de caja)
-          aperturaCajaObligatoria: /*[[${config.aperturaCajaObligatoria}]]*/ true,
-          cierreCajaCiego: /*[[${config.cierreCajaCiego}]]*/ true,
-          limiteEfectivoCaja: /*[[${config.limiteEfectivoCaja}]]*/ 2000.00
-        };
+                        <li class="nav-header">SISTEMA</li>
 
-        // Helper para formatear moneda
-        window.formatearMoneda = function(valor) {
-          return window.APP_CONFIG.formatoMoneda + ' ' + parseFloat(valor).toFixed(2);
-        };
+                        <li class="nav-item">
+                            <a href="/vendedor/dashboard" class="nav-link bg-primary text-white">
+                                <i class="nav-icon fas fa-th-large"></i><p>Modo Vendedor</p>
+                            </a>
+                        </li>
 
-        // Helper para obtener colores en formato rgba con transparencia
-        window.getColorRGBA = function(hexColor, alpha) {
-          alpha = alpha || 1;
-          var r = parseInt(hexColor.substr(1,2), 16);
-          var g = parseInt(hexColor.substr(3,2), 16);
-          var b = parseInt(hexColor.substr(5,2), 16);
-          return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-        };
-      </script>
+                        <li class="nav-item" th:classappend="${active == 'configuracion' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'configuracion' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-cogs"></i>
+                                <p>Configuración <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/configuracion/general" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
+                                        <i class="far fa-circle nav-icon"></i><p>General</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/configuracion/sunat" class="nav-link" th:classappend="${active == 'sunat' ? 'active' : ''}">
+                                        <i class="far fa-circle nav-icon"></i><p>Facturación SUNAT</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/auditoria" class="nav-link" th:classappend="${active == 'auditoria' ? 'active' : ''}">
+                                        <i class="far fa-circle nav-icon"></i><p>Auditoría</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/roles" class="nav-link" th:classappend="${active == 'roles' ? 'active' : ''}">
+                                        <i class="far fa-circle nav-icon"></i><p>Roles y Permisos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/usuarios" class="nav-link" th:classappend="${active == 'usuarios' ? 'active' : ''}">
+                                        <i class="fas fa-users-cog nav-icon"></i><p>Usuarios</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
 
-      <script>
-        $(document).ready(function () {
-          setTimeout(function () { $(".sidebar-overlay").remove(); $("body").removeClass("sidebar-open"); }, 200);
-          if($('.select2').length) { $('.select2').select2({ theme: 'bootstrap4' }); }
-        });
-      </script>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <div class="content-wrapper">
+            <section layout:fragment="content"></section>
+        </div>
+
+        <footer th:fragment="footer" class="main-footer">
+            <div class="float-right d-none d-sm-block">
+                <b>Versión</b> 1.0.0
+            </div>
+            <strong>Copyright &copy; 2026 <a href="#" th:text="${config != null ? config.nombreEmpresa : 'Librería ERP'}">Librería ERP</a>.</strong> Todos los derechos reservados.
+        </footer>
+
     </div>
-  </body>
+    <div th:fragment="scripts">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <script th:inline="javascript">
+            // Verificación segura de objeto config
+            /*[+
+            var configData = [[${config}]];
+            +]*/
+            
+            var defaultConfig = {
+                 nombreEmpresa: 'Librería ERP',
+                 ruc: '00000000000',
+                 colorPrimario: '#007bff',
+                 colorSecundario: '#6c757d',
+                 colorExito: '#28a745',
+                 colorPeligro: '#dc3545',
+                 colorAdvertencia: '#ffc107',
+                 colorInfo: '#17a2b8',
+                 colorBronce: '#cd7f32',
+                 formatoMoneda: 'S/',
+                 formatoFechaReportes: 'dd/MM/yyyy',
+                 itemsPorPagina: 10,
+                 stockMinimo: 5,
+                 igvPorcentaje: 18.00
+            };
+
+            var finalConfig = configData || defaultConfig;
+
+            window.APP_CONFIG = {
+                nombreEmpresa: finalConfig.nombreEmpresa,
+                ruc: finalConfig.ruc,
+                colorPrimario: finalConfig.colorPrimario,
+                colorExito: finalConfig.colorExito,
+                colorPeligro: finalConfig.colorPeligro,
+                colorAdvertencia: finalConfig.colorAdvertencia,
+                colorInfo: finalConfig.colorInfo,
+                colorBronce: finalConfig.colorBronce,
+                formatoMoneda: finalConfig.formatoMoneda,
+                formatoFechaReportes: finalConfig.formatoFechaReportes,
+                itemsPorPagina: finalConfig.itemsPorPagina,
+                stockMinimo: finalConfig.stockMinimo,
+                igvPorcentaje: finalConfig.igvPorcentaje
+            };
+
+            window.formatearMoneda = function(valor) {
+                if(valor === null || valor === undefined) return window.APP_CONFIG.formatoMoneda + ' 0.00';
+                return window.APP_CONFIG.formatoMoneda + ' ' + parseFloat(valor).toFixed(2);
+            };
+
+            window.getColorRGBA = function(hexColor, alpha) {
+                if(!hexColor) return 'rgba(0,0,0,' + (alpha || 1) + ')';
+                alpha = alpha || 1;
+                var r = parseInt(hexColor.substr(1,2), 16);
+                var g = parseInt(hexColor.substr(3,2), 16);
+                var b = parseInt(hexColor.substr(5,2), 16);
+                return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+            };
+
+            $(document).ready(function () {
+                setTimeout(function () { $(".sidebar-overlay").remove(); $("body").removeClass("sidebar-open"); }, 200);
+                if($('.select2').length) { $('.select2').select2({ theme: 'bootstrap4' }); }
+            });
+        </script>
+
+        <th:block layout:fragment="scripts"></th:block>
+    </div>
+</body>
 </html>

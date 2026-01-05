@@ -1,210 +1,204 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='rentabilidad'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
-    
     <title th:text="${titulo}">Rentabilidad</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
-    <aside th:replace="~{fragments/layout :: sidebar(active='reportes')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>
-                            <i class="fas fa-percentage text-primary"></i> Análisis de Rentabilidad
-                            <small class="text-muted ml-2">Margen y ganancia</small>
-                        </h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item active">Reportes Financieros</li>
-                            <li class="breadcrumb-item active">Rentabilidad</li>
-                        </ol>
-                    </div>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>
+                        <i class="fas fa-percentage text-primary"></i> Análisis de Rentabilidad
+                        <small class="text-muted ml-2">Margen y ganancia</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Reportes Financieros</li>
+                        <li class="breadcrumb-item active">Rentabilidad</li>
+                    </ol>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Fecha Inicio</label>
-                                    <input type="date" id="fechaInicio" class="form-control">
-                                </div>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Inicio</label>
+                                <input type="date" id="fechaInicio" class="form-control">
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Fecha Fin</label>
-                                    <input type="date" id="fechaFin" class="form-control">
-                                </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Fin</label>
+                                <input type="date" id="fechaFin" class="form-control">
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
-                                        <i class="fas fa-search"></i> Generar Reporte
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
+                                    <i class="fas fa-search"></i> Generar Reporte
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <div class="btn-group btn-block">
+                                    <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                                        <i class="fas fa-file-excel"></i> Excel
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                                        <i class="fas fa-file-pdf"></i> PDF
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div class="btn-group btn-block">
-                                        <button type="button" class="btn btn-success" onclick="exportarExcel()">
-                                            <i class="fas fa-file-excel"></i> Excel
-                                        </button>
-                                        <button type="button" class="btn btn-danger" onclick="exportarPDF()">
-                                            <i class="fas fa-file-pdf"></i> PDF
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="card card-success card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-chart-line"></i> Rentabilidad por Productos</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table id="tablaRentabilidad" class="table table-bordered table-hover table-striped">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th>Categoría</th>
-                                        <th class="text-center">Cant.</th>
-                                        <th class="text-right">P.Compra Prom.</th>
-                                        <th class="text-right">P.Venta Prom.</th>
-                                        <th class="text-right">Margen Unit.</th>
-                                        <th class="text-right">Margen %</th>
-                                        <th class="text-right">Ganancia Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tbody">
-                                    <tr><td colspan="8" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </section>
-    </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+            <div class="card card-success card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Rentabilidad por Productos</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablaRentabilidad" class="table table-bordered table-hover table-striped">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th class="text-right">P.Compra Prom.</th>
+                                    <th class="text-right">P.Venta Prom.</th>
+                                    <th class="text-right">Margen Unit.</th>
+                                    <th class="text-right">Margen %</th>
+                                    <th class="text-right">Ganancia Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                                <tr><td colspan="8" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
-<script>
-    $(document).ready(function() {
-        // Inicializar fechas (Primer día del mes hasta hoy)
-        const hoy = new Date().toISOString().split('T')[0];
-        $('#fechaFin').val(hoy);
-        
-        const primerDia = new Date();
-        primerDia.setDate(1);
-        $('#fechaInicio').val(primerDia.toISOString().split('T')[0]);
-        
-        // Cargar datos iniciales
-        generarReporte();
-    });
-
-    function generarReporte() {
-        const fi = $('#fechaInicio').val();
-        const ff = $('#fechaFin').val();
-        
-        if (!fi || !ff) {
-            if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
-            return;
-        }
-
-        // Loading state
-        $('#tbody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Calculando rentabilidad...</td></tr>');
-
-        $.ajax({
-            url: '/reportes/financieros/api/rentabilidad',
-            data: {fechaInicio: fi, fechaFin: ff},
-            success: function(data) {
-                const tbody = $('#tbody');
-                tbody.empty();
-                
-                if (!data || data.length === 0) {
-                    tbody.html('<tr><td colspan="8" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
-                    return;
-                }
-                
-                data.forEach(item => {
-                    const margenPorc = parseFloat(item.margenPorcentaje);
-                    // Color para márgenes bajos/altos
-                    let margenClass = 'text-success';
-                    if (margenPorc < 10) margenClass = 'text-danger font-weight-bold';
-                    else if (margenPorc < 30) margenClass = 'text-warning font-weight-bold';
-
-                    tbody.append(`
-                        <tr>
-                            <td>${item.productoNombre}</td>
-                            <td>${item.productoCategoria}</td>
-                            <td class="text-center">${item.cantidadVendida}</td>
-                            <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioCompra)}</td>
-                            <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioVentaPromedio)}</td>
-                            <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.margenBruto)}</td>
-                            <td class="text-right ${margenClass}">${formatear(item.margenPorcentaje)}%</td>
-                            <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(item.gananciaTotal)}</td>
-                        </tr>
-                    `);
-                });
-            },
-            error: () => {
-                if(typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');
-                $('#tbody').html('<tr><td colspan="8" class="text-center text-danger">Error al cargar datos</td></tr>');
-            }
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function() {
+            // Inicializar fechas (Primer día del mes hasta hoy)
+            const hoy = new Date().toISOString().split('T')[0];
+            $('#fechaFin').val(hoy);
+            
+            const primerDia = new Date();
+            primerDia.setDate(1);
+            $('#fechaInicio').val(primerDia.toISOString().split('T')[0]);
+            
+            // Cargar datos iniciales automáticamente
+            generarReporte();
         });
-    }
 
-    function exportarExcel() {
-        const fi = $('#fechaInicio').val();
-        const ff = $('#fechaFin').val();
-        if (!fi || !ff) {
-            if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
-            return;
+        function generarReporte() {
+            const fi = $('#fechaInicio').val();
+            const ff = $('#fechaFin').val();
+            
+            if (!fi || !ff) {
+                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+
+            // Loading state
+            $('#tbody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Calculando rentabilidad...</td></tr>');
+
+            $.ajax({
+                url: '/reportes/financieros/api/rentabilidad',
+                data: {fechaInicio: fi, fechaFin: ff},
+                success: function(data) {
+                    const tbody = $('#tbody');
+                    tbody.empty();
+                    
+                    if (!data || data.length === 0) {
+                        tbody.html('<tr><td colspan="8" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
+                        return;
+                    }
+                    
+                    data.forEach(item => {
+                        const margenPorc = parseFloat(item.margenPorcentaje);
+                        // Color para márgenes bajos/altos
+                        let margenClass = 'text-success';
+                        if (margenPorc < 10) margenClass = 'text-danger font-weight-bold';
+                        else if (margenPorc < 30) margenClass = 'text-warning font-weight-bold';
+
+                        tbody.append(`
+                            <tr>
+                                <td>${item.productoNombre}</td>
+                                <td>${item.productoCategoria}</td>
+                                <td class="text-center">${item.cantidadVendida}</td>
+                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioCompra)}</td>
+                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioVentaPromedio)}</td>
+                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.margenBruto)}</td>
+                                <td class="text-right ${margenClass}">${formatear(item.margenPorcentaje)}%</td>
+                                <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(item.gananciaTotal)}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: () => {
+                    if(typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');
+                    $('#tbody').html('<tr><td colspan="8" class="text-center text-danger">Error al cargar datos</td></tr>');
+                }
+            });
         }
-        window.location.href = `/reportes/financieros/api/rentabilidad/excel?fechaInicio=${fi}&fechaFin=${ff}`;
-    }
 
-    function exportarPDF() {
-        const fi = $('#fechaInicio').val();
-        const ff = $('#fechaFin').val();
-        if (!fi || !ff) {
-            if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
-            return;
+        function exportarExcel() {
+            const fi = $('#fechaInicio').val();
+            const ff = $('#fechaFin').val();
+            if (!fi || !ff) {
+                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+            window.location.href = `/reportes/financieros/api/rentabilidad/excel?fechaInicio=${fi}&fechaFin=${ff}`;
         }
-        window.location.href = `/reportes/financieros/api/rentabilidad/pdf?fechaInicio=${fi}&fechaFin=${ff}`;
-    }
 
-    function formatear(num) {
-        return num == null ? '0.00' : parseFloat(num).toFixed(2);
-    }
-</script>
+        function exportarPDF() {
+            const fi = $('#fechaInicio').val();
+            const ff = $('#fechaFin').val();
+            if (!fi || !ff) {
+                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+            window.location.href = `/reportes/financieros/api/rentabilidad/pdf?fechaInicio=${fi}&fechaFin=${ff}`;
+        }
+
+        function formatear(num) {
+            return num == null ? '0.00' : parseFloat(num).toFixed(2);
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

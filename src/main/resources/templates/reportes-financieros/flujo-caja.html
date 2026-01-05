@@ -1,211 +1,202 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='flujo_caja'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
     <title th:text="${titulo}">Flujo de Caja</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <style>
-    </style>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
-    <aside th:replace="~{fragments/layout :: sidebar(active='reportes')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>
-                            <i class="fas fa-exchange-alt text-primary"></i> Flujo de Caja
-                            <small class="text-muted ml-2">Análisis de ingresos y egresos</small>
-                        </h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item active">Reportes Financieros</li>
-                            <li class="breadcrumb-item active">Flujo de Caja</li>
-                        </ol>
-                    </div>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>
+                        <i class="fas fa-exchange-alt text-primary"></i> Flujo de Caja
+                        <small class="text-muted ml-2">Análisis de ingresos y egresos</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Reportes Financieros</li>
+                        <li class="breadcrumb-item active">Flujo de Caja</li>
+                    </ol>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Fecha Inicio</label>
-                                    <input type="date" id="fechaInicio" class="form-control">
-                                </div>
+    <section class="content">
+        <div class="container-fluid">
+            
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Inicio</label>
+                                <input type="date" id="fechaInicio" class="form-control">
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Fecha Fin</label>
-                                    <input type="date" id="fechaFin" class="form-control">
-                                </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha Fin</label>
+                                <input type="date" id="fechaFin" class="form-control">
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
-                                        <i class="fas fa-search"></i> Generar Reporte
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
+                                    <i class="fas fa-search"></i> Generar Reporte
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <div class="btn-group btn-block">
+                                    <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                                        <i class="fas fa-file-excel"></i> Excel
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="exportarPDF()">
+                                        <i class="fas fa-file-pdf"></i> PDF
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div class="btn-group btn-block">
-                                        <button type="button" class="btn btn-success" onclick="exportarExcel()">
-                                            <i class="fas fa-file-excel"></i> Excel
-                                        </button>
-                                        <button type="button" class="btn btn-danger" onclick="exportarPDF()">
-                                            <i class="fas fa-file-pdf"></i> PDF
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="small-box bg-info">
-                            <div class="inner">
-                                <h3 id="totalIngresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
-                                <p>Total Ingresos</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-arrow-up"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="small-box bg-danger">
-                            <div class="inner">
-                                <h3 id="totalEgresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
-                                <p>Total Egresos</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-arrow-down"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="small-box" id="boxSaldo">
-                            <div class="inner">
-                                <h3 id="saldoNeto"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
-                                <p>Saldo Neto</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-balance-scale"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card card-success card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Comparativo Ingresos vs Egresos</h3>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chartFlujoCaja" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card card-info card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-arrow-up"></i> Detalle de Ingresos</h3>
-                            </div>
-                            <div class="card-body table-responsive p-0">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="bg-light-blue">
-                                        <tr>
-                                            <th>Concepto</th>
-                                            <th class="text-center">Cantidad</th>
-                                            <th class="text-right">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyIngresos">
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted">Genere el reporte</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot id="tfootIngresos" style="display: none;">
-                                        <tr class="bg-gray-light">
-                                            <td><strong>TOTAL</strong></td>
-                                            <td class="text-center" id="totalCantIngresos">0</td>
-                                            <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoIngresos">0.00</span></strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card card-danger card-outline">
-                            <div class="card-header">
-                                <h3 class="card-title"><i class="fas fa-arrow-down"></i> Detalle de Egresos</h3>
-                            </div>
-                            <div class="card-body table-responsive p-0">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="bg-red">
-                                        <tr>
-                                            <th>Concepto</th>
-                                            <th class="text-center">Cantidad</th>
-                                            <th class="text-right">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyEgresos">
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted">Genere el reporte</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot id="tfootEgresos" style="display: none;">
-                                        <tr class="bg-gray-light">
-                                            <td><strong>TOTAL</strong></td>
-                                            <td class="text-center" id="totalCantEgresos">0</td>
-                                            <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoEgresos">0.00</span></strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </section>
-    </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 id="totalIngresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                            <p>Total Ingresos</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 id="totalEgresos"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                            <p>Total Egresos</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="small-box" id="boxSaldo">
+                        <div class="inner">
+                            <h3 id="saldoNeto"><span th:text="${config.formatoMoneda}">S/</span> 0.00</h3>
+                            <p>Saldo Neto</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-success card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-bar"></i> Comparativo Ingresos vs Egresos</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartFlujoCaja" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card card-info card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-arrow-up"></i> Detalle de Ingresos</h3>
+                        </div>
+                        <div class="card-body table-responsive p-0">
+                            <table class="table table-bordered table-hover">
+                                <thead class="bg-light-blue">
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyIngresos">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Genere el reporte</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot id="tfootIngresos" style="display: none;">
+                                    <tr class="bg-gray-light">
+                                        <td><strong>TOTAL</strong></td>
+                                        <td class="text-center" id="totalCantIngresos">0</td>
+                                        <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoIngresos">0.00</span></strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-danger card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-arrow-down"></i> Detalle de Egresos</h3>
+                        </div>
+                        <div class="card-body table-responsive p-0">
+                            <table class="table table-bordered table-hover">
+                                <thead class="bg-red">
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyEgresos">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Genere el reporte</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot id="tfootEgresos" style="display: none;">
+                                    <tr class="bg-gray-light">
+                                        <td><strong>TOTAL</strong></td>
+                                        <td class="text-center" id="totalCantEgresos">0</td>
+                                        <td class="text-right"><strong><span th:text="${config.formatoMoneda}">S/</span> <span id="totalMontoEgresos">0.00</span></strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
-<script th:inline="javascript">
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
     let chartFlujoCaja;
 
     $(document).ready(function() {
@@ -276,16 +267,21 @@
         tbodyIngresos.empty();
 
         let totalCantIngresos = 0;
-        data.detalleIngresos.forEach(ingreso => {
-            tbodyIngresos.append(`
-                <tr>
-                    <td>${ingreso.concepto}</td>
-                    <td class="text-center">${ingreso.cantidad}</td>
-                    <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(ingreso.monto)}</td>
-                </tr>
-            `);
-            totalCantIngresos += ingreso.cantidad;
-        });
+        // Validación de null o undefined
+        if (data.detalleIngresos && Array.isArray(data.detalleIngresos)) {
+            data.detalleIngresos.forEach(function(item) {
+                tbodyIngresos.append(`
+                    <tr>
+                        <td>${item.concepto || '-'}</td>
+                        <td class="text-center">${item.cantidad || 0}</td>
+                        <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(item.monto)}</td>
+                    </tr>
+                `);
+                totalCantIngresos += (item.cantidad || 0);
+            });
+        } else {
+             tbodyIngresos.html('<tr><td colspan="3" class="text-center">No hay ingresos registrados</td></tr>');
+        }
 
         $('#totalCantIngresos').text(totalCantIngresos);
         $('#totalMontoIngresos').text(formatearNumero(data.totalIngresos));
@@ -296,16 +292,21 @@
         tbodyEgresos.empty();
 
         let totalCantEgresos = 0;
-        data.detalleEgresos.forEach(egreso => {
-            tbodyEgresos.append(`
-                <tr>
-                    <td>${egreso.concepto}</td>
-                    <td class="text-center">${egreso.cantidad}</td>
-                    <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(egreso.monto)}</td>
-                </tr>
-            `);
-            totalCantEgresos += egreso.cantidad;
-        });
+        // Validación de null o undefined
+        if (data.detalleEgresos && Array.isArray(data.detalleEgresos)) {
+            data.detalleEgresos.forEach(function(item) {
+                tbodyEgresos.append(`
+                    <tr>
+                        <td>${item.concepto || '-'}</td>
+                        <td class="text-center">${item.cantidad || 0}</td>
+                        <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatearNumero(item.monto)}</td>
+                    </tr>
+                `);
+                totalCantEgresos += (item.cantidad || 0);
+            });
+        } else {
+             tbodyEgresos.html('<tr><td colspan="3" class="text-center">No hay egresos registrados</td></tr>');
+        }
 
         $('#totalCantEgresos').text(totalCantEgresos);
         $('#totalMontoEgresos').text(formatearNumero(data.totalEgresos));
@@ -330,7 +331,7 @@
                     label: 'Monto',
                     data: values,
                     backgroundColor: [
-                        APP_CONFIG.colorInfo + 'E6',
+                        APP_CONFIG.colorInfo + 'E6',  // E6 = transparencia
                         APP_CONFIG.colorPeligro + 'E6'
                     ],
                     borderColor: [
@@ -390,9 +391,11 @@
     }
 
     function formatearNumero(num) {
-        if (num == null) return '0.00';
+        if (num == null || isNaN(num)) return '0.00';
         return parseFloat(num).toFixed(2);
     }
 </script>
+</th:block>
+
 </body>
 </html>

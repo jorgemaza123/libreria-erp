@@ -1,7 +1,9 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,20 +20,21 @@ public class DevolucionVenta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER) // Aseguramos carga para evitar LazyInit en serialización simple
     @JoinColumn(name = "venta_original_id", nullable = false)
+    @ToString.Exclude
+    @JsonIgnoreProperties({"devoluciones", "hibernateLazyInitializer", "handler"}) // Evita bucles si Venta tiene lista de devoluciones
     private Venta ventaOriginal;
 
     private String tipoComprobante = "NOTA_CREDITO";
 
-    private String serie; // NC01 (interno) o C001 (SUNAT)
+    private String serie; 
 
     private Integer numero;
 
     @Column(name = "fecha_emision", nullable = false)
     private LocalDate fechaEmision;
 
-    // PRODUCTO_DEFECTUOSO, ERROR_FACTURACION, CLIENTE_DESISTE, OTRO
     @Column(name = "motivo_devolucion", nullable = false, length = 100)
     private String motivoDevolucion;
 
@@ -41,16 +44,16 @@ public class DevolucionVenta {
     @Column(name = "total_devuelto", precision = 10, scale = 2, nullable = false)
     private BigDecimal totalDevuelto;
 
-    // EFECTIVO, CREDITO_FAVOR, DEVOLUCION_INVENTARIO
     @Column(name = "metodo_reembolso", nullable = false, length = 50)
     private String metodoReembolso;
 
-    // PROCESADA, ANULADA
     @Column(nullable = false, length = 20)
     private String estado = "PROCESADA";
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
+    @ToString.Exclude
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "roles"}) // No enviar datos sensibles ni proxy
     private Usuario usuario;
 
     @Column(name = "fecha_creacion")
@@ -58,7 +61,7 @@ public class DevolucionVenta {
 
     // --- CAMPOS SUNAT ---
     @Column(name = "sunat_estado", length = 50)
-    private String sunatEstado; // NULL, PENDIENTE, ACEPTADO, RECHAZADO
+    private String sunatEstado;
 
     @Column(name = "sunat_hash", length = 255)
     private String sunatHash;
@@ -79,6 +82,8 @@ public class DevolucionVenta {
     private String sunatMensajeError;
 
     @OneToMany(mappedBy = "devolucion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonIgnoreProperties({"devolucion", "hibernateLazyInitializer", "handler"}) // CRÍTICO: Rompe el bucle con el hijo
     private List<DetalleDevolucion> detalles = new ArrayList<>();
 
     @PrePersist

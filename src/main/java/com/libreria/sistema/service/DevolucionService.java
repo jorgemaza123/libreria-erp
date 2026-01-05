@@ -17,7 +17,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -168,7 +167,7 @@ public class DevolucionService {
         kardex.setProducto(producto);
         kardex.setTipo("INGRESO");
         kardex.setMotivo("DEVOLUCIÓN NC " + devolucion.getSerie() + "-" + devolucion.getNumero() +
-                         " (Venta " + ventaOriginal.getSerie() + "-" + ventaOriginal.getNumero() + ")");
+                          " (Venta " + ventaOriginal.getSerie() + "-" + ventaOriginal.getNumero() + ")");
         kardex.setCantidad(cantidad);
         kardex.setStockAnterior(producto.getStockActual() - cantidad);
         kardex.setStockActual(producto.getStockActual());
@@ -237,8 +236,7 @@ public class DevolucionService {
             throw new RuntimeException("Debe seleccionar al menos un producto para devolver");
         }
 
-        // Validar cantidades (esto requeriría comparar con las cantidades originales de la venta)
-        // Por simplicidad, validamos que sean mayores a cero
+        // Validar cantidades
         for (DevolucionDTO.ItemDevolucion item : dto.getItems()) {
             if (item.getCantidadDevuelta().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new RuntimeException("Las cantidades deben ser mayores a cero");
@@ -300,6 +298,10 @@ public class DevolucionService {
      * Buscar devoluciones con filtros
      */
     public Page<DevolucionVenta> buscarConFiltros(String estado, LocalDate fechaInicio, LocalDate fechaFin, Pageable pageable) {
+        // CORRECCIÓN: Convertir string vacío a NULL para que la query JPQL funcione
+        if (estado != null && estado.trim().isEmpty()) {
+            estado = null;
+        }
         return devolucionRepository.buscarConFiltros(estado, fechaInicio, fechaFin, pageable);
     }
 
@@ -345,7 +347,7 @@ public class DevolucionService {
             kardexRepository.save(kardex);
         }
 
-        // Revertir estado de venta original (volver a EMITIDO o PAGADO_TOTAL)
+        // Revertir estado de venta original
         Venta ventaOriginal = devolucion.getVentaOriginal();
         if ("DEVUELTO_TOTAL".equals(ventaOriginal.getEstado()) || "DEVUELTO_PARCIAL".equals(ventaOriginal.getEstado())) {
             // Determinar el estado correcto

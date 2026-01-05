@@ -21,10 +21,11 @@ public interface DevolucionVentaRepository extends JpaRepository<DevolucionVenta
 
     Page<DevolucionVenta> findByEstado(String estado, Pageable pageable);
 
+    // CORRECCIÓN: Agregamos CAST(... as date) para que PostgreSQL entienda los nulos
     @Query("SELECT d FROM DevolucionVenta d WHERE " +
            "(:estado IS NULL OR d.estado = :estado) AND " +
-           "(:fechaInicio IS NULL OR d.fechaEmision >= :fechaInicio) AND " +
-           "(:fechaFin IS NULL OR d.fechaEmision <= :fechaFin) " +
+           "(CAST(:fechaInicio AS date) IS NULL OR d.fechaEmision >= :fechaInicio) AND " +
+           "(CAST(:fechaFin AS date) IS NULL OR d.fechaEmision <= :fechaFin) " +
            "ORDER BY d.fechaEmision DESC, d.id DESC")
     Page<DevolucionVenta> buscarConFiltros(
         @Param("estado") String estado,

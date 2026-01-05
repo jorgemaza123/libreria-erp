@@ -33,23 +33,23 @@ public class Configuracion {
     private String horarioAtencion; // "Lun-Vie: 9am-7pm, Sáb: 9am-2pm"
 
     // ========== PERSONALIZACIÓN VISUAL ==========
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorPrimario; // "#007bff"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorSecundario; // "#6c757d"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorExito; // "#28a745"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorPeligro; // "#dc3545"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorAdvertencia; // "#ffc107"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorInfo; // "#17a2b8"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorOscuro; // "#343a40"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorClaro; // "#f8f9fa"
-    @Column(length = 7)
+    @Column(length = 20)
     private String colorBronce; // "#cd7f32" - Para medallas 3er lugar
 
     // ========== CONFIGURACIÓN DE REPORTES ==========

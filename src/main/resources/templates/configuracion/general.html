@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='configuracion'">
 <head>
-    <div th:replace="~{fragments/layout :: head}"></div>
     <title>Configuración General</title>
     <style>
         .color-preview {
@@ -26,744 +28,535 @@
             padding: 10px;
             border-radius: 5px;
         }
+        .d-none-custom { display: none !important; }
     </style>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body>
 
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-
-    <aside th:replace="~{fragments/layout :: sidebar(active='configuracion')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1><i class="fas fa-cogs"></i> Configuración General del Sistema</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                            <li class="breadcrumb-item active">Configuración</li>
-                        </ol>
-                    </div>
+<div layout:fragment="content">
+    
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-cogs"></i> Configuración General del Sistema</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Configuración</li>
+                    </ol>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="content">
-            <div class="container-fluid">
+    <section class="content">
+        <div class="container-fluid">
 
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <i class="icon fas fa-check"></i> <span th:text="${success}"></span>
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="icon fas fa-check"></i> <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="icon fas fa-ban"></i> <span th:text="${error}"></span>
+            </div>
+
+            <div class="card card-primary card-outline card-tabs">
+                <div class="card-header p-0 pt-1 border-bottom-0">
+                    <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="tab-empresa" data-toggle="pill" href="#empresa" role="tab">
+                                <i class="fas fa-building"></i> Datos de Empresa
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-visual" data-toggle="pill" href="#visual" role="tab">
+                                <i class="fas fa-palette"></i> Personalización Visual
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-reportes" data-toggle="pill" href="#reportes" role="tab">
+                                <i class="fas fa-file-pdf"></i> Configuración de Reportes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-sistema" data-toggle="pill" href="#sistema" role="tab">
+                                <i class="fas fa-sliders-h"></i> Configuración de Sistema
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-financiero" data-toggle="pill" href="#financiero" role="tab">
+                                <i class="fas fa-cash-register"></i> Control Financiero
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-facturacion" data-toggle="pill" href="#facturacion" role="tab">
+                                <i class="fas fa-file-invoice"></i> Facturación Electrónica
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <i class="icon fas fa-ban"></i> <span th:text="${error}"></span>
-                </div>
 
-                <div class="card card-primary card-outline card-tabs">
-                    <div class="card-header p-0 pt-1 border-bottom-0">
-                        <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
-                            <li class="nav-item">
-                                <a class="nav-link active" id="tab-empresa" data-toggle="pill" href="#empresa" role="tab">
-                                    <i class="fas fa-building"></i> Datos de Empresa
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-visual" data-toggle="pill" href="#visual" role="tab">
-                                    <i class="fas fa-palette"></i> Personalización Visual
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-reportes" data-toggle="pill" href="#reportes" role="tab">
-                                    <i class="fas fa-file-pdf"></i> Configuración de Reportes
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-sistema" data-toggle="pill" href="#sistema" role="tab">
-                                    <i class="fas fa-sliders-h"></i> Configuración de Sistema
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-financiero" data-toggle="pill" href="#financiero" role="tab">
-                                    <i class="fas fa-cash-register"></i> Control Financiero
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-facturacion" data-toggle="pill" href="#facturacion" role="tab">
-                                    <i class="fas fa-file-invoice"></i> Facturación Electrónica
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+                <div class="card-body">
+                    <form id="formConfiguracion" th:action="@{/configuracion/general/guardar}" method="post" enctype="multipart/form-data" th:object="${config}" novalidate>
+                        
+                        <input type="hidden" th:field="*{id}">
 
-                    <div class="card-body">
-                        <form id="formConfiguracion" th:action="@{/configuracion/general/guardar}" method="post"
-                              enctype="multipart/form-data" th:object="${config}">
+                        <div class="tab-content" id="custom-tabs-content">
 
-                            <input type="hidden" th:field="*{id}">
-
-                            <div class="tab-content" id="custom-tabs-content">
-
-                                <div class="tab-pane fade show active" id="empresa" role="tabpanel">
-                                    <h4 class="mb-3"><i class="fas fa-building text-primary"></i> Información de la Empresa</h4>
-
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Logo de la Empresa</label>
-                                                <div class="text-center mb-3">
-                                                    <img th:if="${config.logoBase64 != null}"
-                                                         th:src="'data:image/png;base64,' + ${config.logoBase64}"
-                                                         class="logo-preview" id="logoPreview" alt="Logo">
-                                                    <div th:if="${config.logoBase64 == null}" class="logo-preview d-flex align-items-center justify-content-center">
-                                                        <span class="text-muted">Sin logo</span>
-                                                    </div>
-                                                </div>
-                                                <input type="file" class="form-control-file" name="fileLogo" id="fileLogo" accept="image/*" onchange="previewLogo(this)">
-                                                <small class="form-text text-muted">Formatos: PNG, JPG. Máx: 2MB</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-8">
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Nombre de la Empresa <span class="text-danger">*</span></label>
-                                                        <input type="text" class="form-control" th:field="*{nombreEmpresa}" required>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>RUC <span class="text-danger">*</span></label>
-                                                        <input type="text" class="form-control" th:field="*{ruc}" maxlength="11" required>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Slogan</label>
-                                                <input type="text" class="form-control" th:field="*{slogan}" placeholder="Tu empresa de confianza">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Dirección <span class="text-danger">*</span></label>
-                                                <textarea class="form-control" th:field="*{direccion}" rows="2" required></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <hr>
-                                    <h5 class="mt-3"><i class="fas fa-phone text-info"></i> Datos de Contacto</h5>
-
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Teléfono</label>
-                                                <input type="text" class="form-control" th:field="*{telefono}">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Email</label>
-                                                <input type="email" class="form-control" th:field="*{email}">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Sitio Web</label>
-                                                <input type="text" class="form-control" th:field="*{webSite}" placeholder="https://www.miempresa.com">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label><i class="fab fa-facebook text-primary"></i> Facebook</label>
-                                                <input type="text" class="form-control" th:field="*{facebook}" placeholder="@miempresa">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label><i class="fab fa-instagram text-danger"></i> Instagram</label>
-                                                <input type="text" class="form-control" th:field="*{instagram}" placeholder="@miempresa">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label><i class="fab fa-whatsapp text-success"></i> WhatsApp</label>
-                                                <input type="text" class="form-control" th:field="*{whatsapp}" placeholder="+51 999 999 999">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label><i class="fas fa-clock text-warning"></i> Horario</label>
-                                                <input type="text" class="form-control" th:field="*{horarioAtencion}" placeholder="Lun-Vie: 9am-7pm">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="tab-pane fade" id="visual" role="tabpanel">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h4 class="mb-3"><i class="fas fa-palette text-primary"></i> Colores Personalizados</h4>
-
-                                            <div class="alert alert-info">
-                                                <i class="icon fas fa-info-circle"></i>
-                                                Personalice los colores del sistema. Los cambios se aplicarán en toda la interfaz.
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Primario</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorPrimario}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorPrimario}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Secundario</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorSecundario}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorSecundario}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Éxito</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorExito}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorExito}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Peligro</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorPeligro}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorPeligro}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Advertencia</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorAdvertencia}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorAdvertencia}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Información</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorInfo}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorInfo}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <div class="form-group">
-                                                        <label>Color Bronce (Medalla 3er lugar)</label>
-                                                        <div class="input-group">
-                                                            <input type="color" class="form-control color-preview" th:field="*{colorBronce}" onchange="updatePreview()">
-                                                            <input type="text" class="form-control" th:field="*{colorBronce}" readonly>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <button type="button" class="btn btn-warning btn-block" onclick="restaurarColores()">
-                                                <i class="fas fa-undo"></i> Restaurar Colores por Defecto
-                                            </button>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <h4 class="mb-3"><i class="fas fa-eye text-success"></i> Vista Previa</h4>
-
-                                            <div id="colorPreview">
-                                                <p><strong>Botones:</strong></p>
-                                                <button type="button" class="btn btn-sm btn-primary mb-2" style="background-color: var(--color-primario, #007bff)">Primario</button>
-                                                <button type="button" class="btn btn-sm btn-success mb-2" style="background-color: var(--color-exito, #28a745)">Éxito</button>
-                                                <button type="button" class="btn btn-sm btn-danger mb-2" style="background-color: var(--color-peligro, #dc3545)">Peligro</button>
-                                                <button type="button" class="btn btn-sm btn-warning mb-2" style="background-color: var(--color-advertencia, #ffc107)">Advertencia</button>
-                                                <button type="button" class="btn btn-sm btn-info mb-2" style="background-color: var(--color-info, #17a2b8)">Info</button>
-
-                                                <p class="mt-3"><strong>Badges:</strong></p>
-                                                <span class="badge badge-primary" style="background-color: var(--color-primario, #007bff)">Primario</span>
-                                                <span class="badge badge-success" style="background-color: var(--color-exito, #28a745)">Éxito</span>
-                                                <span class="badge badge-danger" style="background-color: var(--color-peligro, #dc3545)">Peligro</span>
-                                                <span class="badge badge-warning" style="background-color: var(--color-advertencia, #ffc107)">Advertencia</span>
-                                                <span class="badge badge-info" style="background-color: var(--color-info, #17a2b8)">Info</span>
-
-                                                <p class="mt-3"><strong>Alertas:</strong></p>
-                                                <div class="alert alert-primary" role="alert" style="background-color: var(--color-primario, #007bff); color: white; border: none;">
-                                                    Alerta primaria - Color principal de la marca
-                                                </div>
-                                                <div class="alert alert-success" role="alert" style="background-color: var(--color-exito, #28a745); color: white; border: none;">
-                                                    Alerta de éxito - Operación completada
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="tab-pane fade" id="reportes" role="tabpanel">
-                                    <h4 class="mb-3"><i class="fas fa-file-pdf text-danger"></i> Personalización de Reportes PDF</h4>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <div class="custom-control custom-switch custom-switch-lg">
-                                                    <input type="checkbox" class="custom-control-input" th:field="*{mostrarLogoEnReportes}" id="mostrarLogo">
-                                                    <label class="custom-control-label" for="mostrarLogo">
-                                                        Mostrar Logo en Reportes
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">El logo aparecerá en el encabezado de los PDFs</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Formato de Fecha en Reportes</label>
-                                                <select class="form-control" th:field="*{formatoFechaReportes}">
-                                                    <option value="dd/MM/yyyy">DD/MM/AAAA (31/12/2025)</option>
-                                                    <option value="MM/dd/yyyy">MM/DD/AAAA (12/31/2025)</option>
-                                                    <option value="yyyy-MM-dd">AAAA-MM-DD (2025-12-31)</option>
-                                                    <option value="dd-MM-yyyy">DD-MM-AAAA (31-12-2025)</option>
-                                                </select>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Símbolo de Moneda</label>
-                                                <input type="text" class="form-control" th:field="*{formatoMoneda}" placeholder="S/" maxlength="5">
-                                                <small class="form-text text-muted">Ej: S/, $, €, USD</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label>Encabezado Personalizado de Reportes</label>
-                                                <textarea class="form-control" th:field="*{encabezadoReportes}" rows="3"
-                                                          placeholder="Documento generado automáticamente"></textarea>
-                                                <small class="form-text text-muted">Texto que aparecerá en la parte superior del reporte</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Pie de Página de Reportes</label>
-                                                <textarea class="form-control" th:field="*{piePaginaReportes}" rows="3"
-                                                          placeholder="Gracias por su preferencia"></textarea>
-                                                <small class="form-text text-muted">Texto que aparecerá al final del reporte</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="tab-pane fade" id="sistema" role="tabpanel">
-                                    <h4 class="mb-3"><i class="fas fa-sliders-h text-warning"></i> Parámetros del Sistema</h4>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h5 class="text-primary">Configuración de Interfaz</h5>
-
-                                            <div class="form-group">
-                                                <label>Items por Página en Tablas</label>
-                                                <input type="number" class="form-control" th:field="*{itemsPorPagina}" min="5" max="100">
-                                                <small class="form-text text-muted">Cantidad de registros mostrados en las tablas (5-100)</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <h5 class="text-success">Configuración de Inventario</h5>
-
-                                            <div class="form-group">
-                                                <label>Stock Mínimo para Alertas</label>
-                                                <input type="number" class="form-control" th:field="*{stockMinimo}" min="1">
-                                                <small class="form-text text-muted">Se mostrará alerta cuando el stock esté por debajo de este valor</small>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <hr>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h5 class="text-info">Configuración de Ventas</h5>
-
-                                            <div class="form-group">
-                                                <label>Días de Vencimiento para Créditos</label>
-                                                <input type="number" class="form-control" th:field="*{diasVencimientoCredito}" min="1">
-                                                <small class="form-text text-muted">Días por defecto para el vencimiento de ventas a crédito</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Días para Devoluciones</label>
-                                                <input type="number" class="form-control" th:field="*{diasDevolucion}" min="1">
-                                                <small class="form-text text-muted">Período permitido para procesar devoluciones</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <h5 class="text-danger">Configuración Fiscal</h5>
-
-                                            <div class="form-group">
-                                                <label>Porcentaje de IGV (%)</label>
-                                                <input type="number" step="0.01" class="form-control" th:field="*{igvPorcentaje}" min="0" max="100">
-                                                <small class="form-text text-muted">Porcentaje de IGV aplicado a las ventas (Perú: 18%)</small>
-                                            </div>
-
-                                            <div class="alert alert-warning mt-3">
-                                                <i class="icon fas fa-exclamation-triangle"></i>
-                                                <strong>Importante:</strong> Cambiar el IGV afectará los cálculos de nuevas ventas.
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <hr>
-
-                                    <div class="row">
-                                        <div class="col-md-12">
-                                            <h5 class="text-purple"><i class="fas fa-gavel"></i> Reglas de Negocio</h5>
-                                            <p class="text-muted">Configuraciones críticas que definen cómo opera el negocio</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <div class="custom-control custom-switch custom-switch-on-success">
-                                                    <input type="checkbox" class="custom-control-input" id="permitirStockNegativo" th:field="*{permitirStockNegativo}">
-                                                    <label class="custom-control-label" for="permitirStockNegativo">
-                                                        <strong>Permitir Stock Negativo</strong>
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">
-                                                    <i class="fas fa-info-circle"></i> CRÍTICO: Permite vender sin stock disponible.
-                                                    <br>Ferreterías: A veces SÍ | Farmacias: NUNCA
-                                                </small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <div class="custom-control custom-switch custom-switch-on-success">
-                                                    <input type="checkbox" class="custom-control-input" id="permitirVentaFraccionada" th:field="*{permitirVentaFraccionada}">
-                                                    <label class="custom-control-label" for="permitirVentaFraccionada">
-                                                        <strong>Permitir Ventas Fraccionadas</strong>
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">
-                                                    <i class="fas fa-info-circle"></i> Permite vender decimales: 1.5 metros de cable, 0.250 kg de clavos.
-                                                    <br>Librería: NO | Ferretería/Peso: SÍ
-                                                </small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label>Descuento Máximo Permitido (%)</label>
-                                                <input type="number" step="0.01" class="form-control" th:field="*{porcentajeDescuentoMaximo}" min="0" max="100">
-                                                <small class="form-text text-muted">
-                                                    Límite de descuento que puede aplicar un cajero (evita que regale la tienda)
-                                                </small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <div class="custom-control custom-switch custom-switch-on-success">
-                                                    <input type="checkbox" class="custom-control-input" id="preciosIncluyenImpuesto" th:field="*{preciosIncluyenImpuesto}">
-                                                    <label class="custom-control-label" for="preciosIncluyenImpuesto">
-                                                        <strong>Precios Incluyen Impuesto (IGV)</strong>
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">
-                                                    SÍ = Precio final (B2C/Retail) | NO = Se suma IGV al final (B2B/Mayorista)
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- TAB 5: CONTROL FINANCIERO -->
-                                <div class="tab-pane fade" id="financiero" role="tabpanel">
-                                    <h4 class="mb-3"><i class="fas fa-cash-register text-success"></i> Control Financiero y de Caja</h4>
-                                    <p class="text-muted">Configuraciones de seguridad para el manejo del dinero</p>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="card bg-light">
-                                                <div class="card-body">
-                                                    <h5 class="text-primary"><i class="fas fa-lock"></i> Seguridad de Caja</h5>
-
-                                                    <div class="form-group">
-                                                        <div class="custom-control custom-switch custom-switch-on-danger">
-                                                            <input type="checkbox" class="custom-control-input" id="aperturaCajaObligatoria" th:field="*{aperturaCajaObligatoria}">
-                                                            <label class="custom-control-label" for="aperturaCajaObligatoria">
-                                                                <strong>Apertura de Caja Obligatoria</strong>
-                                                            </label>
-                                                        </div>
-                                                        <small class="form-text text-muted">
-                                                            Si está activado, NO se puede vender sin haber abierto caja al inicio del día.
-                                                            <br><strong class="text-danger">Recomendado: SÍ</strong> (Control financiero estricto)
-                                                        </small>
-                                                    </div>
-
-                                                    <div class="form-group">
-                                                        <div class="custom-control custom-switch custom-switch-on-warning">
-                                                            <input type="checkbox" class="custom-control-input" id="cierreCajaCiego" th:field="*{cierreCajaCiego}">
-                                                            <label class="custom-control-label" for="cierreCajaCiego">
-                                                                <strong>Cierre de Caja Ciego</strong>
-                                                            </label>
-                                                        </div>
-                                                        <small class="form-text text-muted">
-                                                            Si está activado, el cajero NO ve cuánto debería haber en caja al cerrar.
-                                                            <br>Obliga a contar el dinero real. El sistema calculará sobrante/faltante.
-                                                            <br><strong class="text-success">Recomendado: SÍ</strong> (Evita ajustes fraudulentos)
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <div class="card bg-light">
-                                                <div class="card-body">
-                                                    <h5 class="text-warning"><i class="fas fa-shield-alt"></i> Límites de Efectivo</h5>
-
-                                                    <div class="form-group">
-                                                        <label>Límite de Efectivo en Caja (S/)</label>
-                                                        <div class="input-group">
-                                                            <div class="input-group-prepend">
-                                                                <span class="input-group-text"><i class="fas fa-dollar-sign"></i></span>
-                                                            </div>
-                                                            <input type="number" step="0.01" class="form-control" th:field="*{limiteEfectivoCaja}" min="0">
-                                                        </div>
-                                                        <small class="form-text text-muted">
-                                                            El sistema mostrará una alerta cuando el efectivo en caja supere este monto.
-                                                            <br><strong>Recomendado:</strong> S/ 2000.00 (riesgo de robo)
-                                                            <br>Cuando se alcance el límite, el cajero debe depositar el excedente.
-                                                        </small>
-                                                    </div>
-
-                                                    <div class="alert alert-info mt-3">
-                                                        <i class="icon fas fa-info-circle"></i>
-                                                        <strong>Buena Práctica:</strong>
-                                                        <br>• Abrir caja con monto inicial (S/ 100-200 para cambio)
-                                                        <br>• Depositar excedentes cuando se alcance el límite
-                                                        <br>• Cerrar caja contando el efectivo real
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- TAB 6: FACTURACIÓN ELECTRÓNICA -->
-                                <div class="tab-pane fade" id="facturacion" role="tabpanel">
-                                    <h4 class="mb-3"><i class="fas fa-file-invoice text-info"></i> Facturación Electrónica (SUNAT)</h4>
-                                    <p class="text-muted">Configuración para integración con proveedores de facturación electrónica</p>
-
-                                    <div class="alert alert-warning">
-                                        <i class="icon fas fa-exclamation-triangle"></i>
-                                        <strong>Importante:</strong> Esta configuración requiere contratar un servicio de facturación electrónica
-                                        (OSE/PSE) como Nubefact, FacturadorSUNAT, Greenter, etc.
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h5 class="text-primary"><i class="fas fa-plug"></i> Configuración del Proveedor</h5>
-
-                                            <div class="form-group">
-                                                <label>Endpoint de Facturación (URL)</label>
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text"><i class="fas fa-link"></i></span>
-                                                    </div>
-                                                    <input type="text" class="form-control" th:field="*{facturacionEndpoint}"
-                                                           placeholder="https://api.proveedor.com/v1/facturar">
-                                                </div>
-                                                <small class="form-text text-muted">URL del API del servicio de facturación contratado</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Token de Seguridad</label>
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text"><i class="fas fa-key"></i></span>
-                                                    </div>
-                                                    <input type="password" class="form-control" th:field="*{facturacionToken}"
-                                                           placeholder="Token proporcionado por el proveedor">
-                                                </div>
-                                                <small class="form-text text-muted">Token de autenticación del servicio (mantener secreto)</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <div class="custom-control custom-switch custom-switch-on-danger">
-                                                    <input type="checkbox" class="custom-control-input" id="modoProduccion" th:field="*{modoProduccion}">
-                                                    <label class="custom-control-label" for="modoProduccion">
-                                                        <strong>Modo Producción (Facturas Reales)</strong>
-                                                    </label>
-                                                </div>
-                                                <small class="form-text text-muted">
-                                                    <strong class="text-danger">NO</strong> = Modo Pruebas (Beta SUNAT - No genera comprobantes reales)
-                                                    <br><strong class="text-success">SÍ</strong> = Modo Producción (Facturas válidas ante SUNAT)
-                                                </small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <h5 class="text-danger"><i class="fas fa-certificate"></i> Certificado Digital (Opcional)</h5>
-                                            <p class="text-muted small">Solo si facturas directamente a SUNAT sin intermediario</p>
-
-                                            <div class="form-group">
-                                                <label>Ruta del Certificado (.pfx)</label>
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text"><i class="fas fa-file-alt"></i></span>
-                                                    </div>
-                                                    <input type="text" class="form-control" th:field="*{certificadoDigitalRuta}"
-                                                           placeholder="/ruta/al/certificado.pfx">
-                                                </div>
-                                                <small class="form-text text-muted">Ruta absoluta al archivo de certificado digital</small>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>Clave del Certificado</label>
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                                    </div>
-                                                    <input type="password" class="form-control" th:field="*{claveCertificado}"
-                                                           placeholder="Contraseña del certificado">
-                                                </div>
-                                                <small class="form-text text-muted">Contraseña para acceder al certificado digital</small>
-                                            </div>
-
-                                            <div class="alert alert-info">
-                                                <i class="icon fas fa-lightbulb"></i>
-                                                <strong>Recomendación:</strong>
-                                                <br>Para PyMES, es más fácil usar un proveedor (OSE) como:
-                                                <br>• Nubefact
-                                                <br>• Facturador SUNAT
-                                                <br>• Greenter
-                                                <br>Ellos manejan el certificado y la conexión a SUNAT.
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row mt-3">
-                                        <div class="col-md-12">
-                                            <div class="alert alert-success">
-                                                <i class="icon fas fa-check-circle"></i>
-                                                <strong>Próximos Pasos después de configurar:</strong>
-                                                <br>1. Probar conexión con el proveedor (modo pruebas)
-                                                <br>2. Verificar que se generen XML correctamente
-                                                <br>3. Activar modo producción solo cuando todo funcione
-                                                <br>4. Monitorear el primer día de facturación real
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="card-footer">
+                            <div class="tab-pane fade show active" id="empresa" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-building text-primary"></i> Información de la Empresa</h4>
                                 <div class="row">
-                                    <div class="col-md-6">
-                                        <button type="submit" class="btn btn-primary btn-lg btn-block">
-                                            <i class="fas fa-save"></i> Guardar Configuración
-                                        </button>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+    <label>Logo de la Empresa</label>
+    <div class="text-center mb-3">
+        
+        <img id="logoPreview" 
+             class="logo-preview" 
+             alt="Logo"
+             th:src="${config.logoBase64 != null} ? 'data:image/png;base64,' + ${config.logoBase64} : ''"
+             th:style="${config.logoBase64 == null} ? 'display:none;' : 'display:inline-block;'">
+
+        <div id="noLogoText" 
+             class="logo-preview d-flex align-items-center justify-content-center"
+             th:style="${config.logoBase64 != null} ? 'display:none;' : ''">
+            <span class="text-muted">Sin logo</span>
+        </div>
+
+    </div>
+    <input type="file" class="form-control-file" name="fileLogo" id="fileLogo" accept="image/*" onchange="previewLogo(this)">
+    <small class="form-text text-muted">Formatos: PNG, JPG. Máx: 2MB</small>
+</div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <a href="/" class="btn btn-secondary btn-lg btn-block">
-                                            <i class="fas fa-times"></i> Cancelar
-                                        </a>
+                                    <div class="col-md-8">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>Nombre de la Empresa <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control" th:field="*{nombreEmpresa}" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>RUC <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control" th:field="*{ruc}" maxlength="11" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Slogan</label>
+                                            <input type="text" class="form-control" th:field="*{slogan}" placeholder="Tu empresa de confianza">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Dirección <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" th:field="*{direccion}" rows="2" required></textarea>
+                                        </div>
                                     </div>
                                 </div>
+                                <hr>
+                                <h5 class="mt-3"><i class="fas fa-phone text-info"></i> Datos de Contacto</h5>
+                                <div class="row">
+                                    <div class="col-md-4"><div class="form-group"><label>Teléfono</label><input type="text" class="form-control" th:field="*{telefono}"></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label>Email</label><input type="email" class="form-control" th:field="*{email}"></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label>Sitio Web</label><input type="text" class="form-control" th:field="*{webSite}"></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3"><div class="form-group"><label><i class="fab fa-facebook text-primary"></i> Facebook</label><input type="text" class="form-control" th:field="*{facebook}"></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label><i class="fab fa-instagram text-danger"></i> Instagram</label><input type="text" class="form-control" th:field="*{instagram}"></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label><i class="fab fa-whatsapp text-success"></i> WhatsApp</label><input type="text" class="form-control" th:field="*{whatsapp}"></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label><i class="fas fa-clock text-warning"></i> Horario</label><input type="text" class="form-control" th:field="*{horarioAtencion}"></div></div>
+                                </div>
                             </div>
-                        </form>
+
+                            <div class="tab-pane fade" id="visual" role="tabpanel">
+    <div class="row">
+        <div class="col-md-6">
+            <h4 class="mb-3"><i class="fas fa-palette text-primary"></i> Colores Personalizados</h4>
+            <div class="alert alert-info">
+                <i class="icon fas fa-info-circle"></i> Personalice los colores del sistema. Los cambios se aplicarán en toda la interfaz.
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Primario</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorPrimario" name="colorPrimario" 
+                                   th:value="${config.colorPrimario}" onchange="updatePreview()">
+                            <input type="text" class="form-control" 
+                                   id="txtColorPrimario" 
+                                   th:value="${config.colorPrimario}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Secundario</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorSecundario" name="colorSecundario" 
+                                   th:value="${config.colorSecundario}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorSecundario" 
+                                   th:value="${config.colorSecundario}" readonly>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
-    </div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Éxito</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorExito" name="colorExito" 
+                                   th:value="${config.colorExito}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorExito" 
+                                   th:value="${config.colorExito}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Peligro</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorPeligro" name="colorPeligro" 
+                                   th:value="${config.colorPeligro}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorPeligro" 
+                                   th:value="${config.colorPeligro}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Advertencia</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorAdvertencia" name="colorAdvertencia" 
+                                   th:value="${config.colorAdvertencia}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorAdvertencia" 
+                                   th:value="${config.colorAdvertencia}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Información</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorInfo" name="colorInfo" 
+                                   th:value="${config.colorInfo}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorInfo" 
+                                   th:value="${config.colorInfo}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Bronce</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview" 
+                                   id="colorBronce" name="colorBronce" 
+                                   th:value="${config.colorBronce}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorBronce" 
+                                   th:value="${config.colorBronce}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-warning btn-block" onclick="restaurarColores()">
+                <i class="fas fa-undo"></i> Restaurar Colores por Defecto
+            </button>
+        </div>
+
+        <div class="col-md-6">
+            <h4 class="mb-3"><i class="fas fa-eye text-success"></i> Vista Previa</h4>
+            <div id="colorPreview">
+                <p><strong>Botones:</strong></p>
+                <button type="button" class="btn btn-sm mb-2" style="background-color: var(--color-primario); color: #fff;">Primario</button>
+                <button type="button" class="btn btn-sm mb-2" style="background-color: var(--color-exito); color: #fff;">Éxito</button>
+                <button type="button" class="btn btn-sm mb-2" style="background-color: var(--color-peligro); color: #fff;">Peligro</button>
+                <button type="button" class="btn btn-sm mb-2" style="background-color: var(--color-advertencia); color: #fff;">Advertencia</button>
+                <button type="button" class="btn btn-sm mb-2" style="background-color: var(--color-info); color: #fff;">Info</button>
+                
+                <p class="mt-3"><strong>Alertas:</strong></p>
+                <div class="alert" style="background-color: var(--color-primario); color: white;">Alerta primaria - Color principal</div>
+                <div class="alert" style="background-color: var(--color-exito); color: white;">Alerta de éxito - Operación completada</div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
+                            <div class="tab-pane fade" id="reportes" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-file-pdf text-danger"></i> Personalización de Reportes PDF</h4>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch custom-switch-lg">
+                                                <input type="checkbox" class="custom-control-input" th:field="*{mostrarLogoEnReportes}" id="mostrarLogo">
+                                                <label class="custom-control-label" for="mostrarLogo">Mostrar Logo en Reportes</label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Formato de Fecha</label>
+                                            <select class="form-control" th:field="*{formatoFechaReportes}">
+                                                <option value="dd/MM/yyyy">DD/MM/AAAA</option>
+                                                <option value="MM/dd/yyyy">MM/DD/AAAA</option>
+                                                <option value="yyyy-MM-dd">AAAA-MM-DD</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Símbolo de Moneda</label>
+                                            <input type="text" class="form-control" th:field="*{formatoMoneda}" maxlength="5">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Encabezado Personalizado</label>
+                                            <textarea class="form-control" th:field="*{encabezadoReportes}" rows="3"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Pie de Página</label>
+                                            <textarea class="form-control" th:field="*{piePaginaReportes}" rows="3"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-<script>
-    function previewLogo(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('logoPreview').src = e.target.result;
-            };
-            reader.readAsDataURL(input.files[0]);
+                            <div class="tab-pane fade" id="sistema" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-sliders-h text-warning"></i> Parámetros del Sistema</h4>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="text-primary">Configuración de Interfaz</h5>
+                                        <div class="form-group"><label>Items por Página</label><input type="number" class="form-control" th:field="*{itemsPorPagina}" min="5" max="100"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="text-success">Inventario</h5>
+                                        <div class="form-group"><label>Stock Mínimo</label><input type="number" class="form-control" th:field="*{stockMinimo}" min="1"></div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="text-info">Ventas</h5>
+                                        <div class="form-group"><label>Días Vencimiento Crédito</label><input type="number" class="form-control" th:field="*{diasVencimientoCredito}" min="1"></div>
+                                        <div class="form-group"><label>Días Devolución</label><input type="number" class="form-control" th:field="*{diasDevolucion}" min="1"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="text-danger">Fiscal</h5>
+                                        <div class="form-group"><label>IGV (%)</label><input type="number" step="0.01" class="form-control" th:field="*{igvPorcentaje}" min="0"></div>
+                                        <div class="custom-control custom-switch mt-3">
+                                            <input type="checkbox" class="custom-control-input" id="preciosIncluyenImpuesto" th:field="*{preciosIncluyenImpuesto}">
+                                            <label class="custom-control-label" for="preciosIncluyenImpuesto">Precios Incluyen Impuesto</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h5 class="text-purple">Reglas de Negocio</h5>
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="permitirStockNegativo" th:field="*{permitirStockNegativo}">
+                                            <label class="custom-control-label" for="permitirStockNegativo">Permitir Stock Negativo (Crítico)</label>
+                                        </div>
+                                        <div class="custom-control custom-switch mt-2">
+                                            <input type="checkbox" class="custom-control-input" id="permitirVentaFraccionada" th:field="*{permitirVentaFraccionada}">
+                                            <label class="custom-control-label" for="permitirVentaFraccionada">Permitir Ventas Fraccionadas</label>
+                                        </div>
+                                        <div class="form-group mt-2">
+                                            <label>Descuento Máximo (%)</label>
+                                            <input type="number" step="0.01" class="form-control" th:field="*{porcentajeDescuentoMaximo}" min="0" max="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="financiero" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-cash-register text-success"></i> Control Financiero</h4>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="custom-control custom-switch custom-switch-on-danger mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="aperturaCajaObligatoria" th:field="*{aperturaCajaObligatoria}">
+                                            <label class="custom-control-label" for="aperturaCajaObligatoria">Apertura de Caja Obligatoria</label>
+                                        </div>
+                                        <div class="custom-control custom-switch custom-switch-on-warning mb-3">
+                                            <input type="checkbox" class="custom-control-input" id="cierreCajaCiego" th:field="*{cierreCajaCiego}">
+                                            <label class="custom-control-label" for="cierreCajaCiego">Cierre de Caja Ciego (Ocultar monto esperado)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Límite Efectivo en Caja (Alerta)</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                                <input type="number" step="0.01" class="form-control" th:field="*{limiteEfectivoCaja}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="facturacion" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-file-invoice text-info"></i> Facturación Electrónica (Proveedor)</h4>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle"></i> Configuración técnica del proveedor (OSE/PSE). Para datos del emisor (RUC, Dirección), use el módulo "Facturación SUNAT" en el menú.
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Endpoint (URL)</label>
+                                            <input type="text" class="form-control" th:field="*{facturacionEndpoint}" placeholder="https://api.proveedor.com...">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Token</label>
+                                            <input type="password" class="form-control" th:field="*{facturacionToken}">
+                                        </div>
+                                        <div class="custom-control custom-switch custom-switch-on-danger">
+                                            <input type="checkbox" class="custom-control-input" id="modoProduccion" th:field="*{modoProduccion}">
+                                            <label class="custom-control-label" for="modoProduccion">Modo Producción (Facturas Reales)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="text-danger">Certificado Digital (Solo facturación directa)</h5>
+                                        <div class="form-group"><label>Ruta .pfx</label><input type="text" class="form-control" th:field="*{certificadoDigitalRuta}"></div>
+                                        <div class="form-group"><label>Clave Certificado</label><input type="password" class="form-control" th:field="*{claveCertificado}"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div> <div class="card-footer">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-primary btn-lg btn-block"><i class="fas fa-save"></i> Guardar Configuración</button>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="/" class="btn btn-secondary btn-lg btn-block"><i class="fas fa-times"></i> Cancelar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+
+        // Función para actualizar la vista previa y los inputs de texto
+        function updatePreview() {
+            const root = document.documentElement;
+            
+            // Lista de IDs de colores y sus variables CSS correspondientes
+            const colors = [
+                { id: 'colorPrimario', var: '--color-primario', txt: 'txtColorPrimario' },
+                { id: 'colorSecundario', var: '--color-secundario', txt: 'txtColorSecundario' },
+                { id: 'colorExito', var: '--color-exito', txt: 'txtColorExito' },
+                { id: 'colorPeligro', var: '--color-peligro', txt: 'txtColorPeligro' },
+                { id: 'colorAdvertencia', var: '--color-advertencia', txt: 'txtColorAdvertencia' },
+                { id: 'colorInfo', var: '--color-info', txt: 'txtColorInfo' },
+                { id: 'colorBronce', var: '--color-bronce', txt: 'txtColorBronce' }
+            ];
+
+            colors.forEach(c => {
+                const picker = document.getElementById(c.id);
+                const textInput = document.getElementById(c.txt);
+                
+                if (picker) {
+                    // 1. Actualizar variable CSS (Vista Previa en tiempo real)
+                    root.style.setProperty(c.var, picker.value);
+                    
+                    // 2. Actualizar el input de texto (Hexadecimal)
+                    if (textInput) {
+                        textInput.value = picker.value;
+                    }
+                }
+            });
         }
-    }
 
-    function updatePreview() {
-        const root = document.documentElement;
-        root.style.setProperty('--color-primario', document.getElementById('colorPrimario').value);
-        root.style.setProperty('--color-exito', document.getElementById('colorExito').value);
-        root.style.setProperty('--color-peligro', document.getElementById('colorPeligro').value);
-        root.style.setProperty('--color-advertencia', document.getElementById('colorAdvertencia').value);
-        root.style.setProperty('--color-info', document.getElementById('colorInfo').value);
-    }
-
-    function restaurarColores() {
-        if (!confirm('¿Está seguro de restaurar los colores por defecto? Se perderá la personalización actual.')) {
-            return;
-        }
-
-        fetch('/configuracion/general/colores-default', {
-            method: 'POST'
-        })
-        .then(response => response.text())
-        .then(data => {
-            alert(data);
-            location.reload();
-        })
-        .catch(error => {
-            alert('Error: ' + error);
+        // Ejecutar al cargar la página para pintar los colores actuales
+        $(document).ready(function() {
+            updatePreview();
         });
-    }
-
-    // Inicializar vista previa y tabs al cargar
-    $(document).ready(function() {
-        // Inicializar vista previa de colores
-        updatePreview();
-
-        // Activar tabs de Bootstrap (asegurar que funcionan correctamente)
-        $('#custom-tabs a[data-toggle="pill"]').on('click', function (e) {
-            e.preventDefault();
-            $(this).tab('show');
-        });
-
-        // Si hay un hash en la URL, activar ese tab
-        var hash = window.location.hash;
-        if (hash) {
-            $('#custom-tabs a[href="' + hash + '"]').tab('show');
+        function previewLogo(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = document.getElementById('logoPreview');
+                    const noLogo = document.getElementById('noLogoText');
+                    
+                    if (img) {
+                        img.src = e.target.result;
+                        img.style.display = 'inline-block'; // Mostrar imagen
+                    }
+                    
+                    if (noLogo) {
+                        noLogo.style.display = 'none'; // Ocultar texto "Sin logo"
+                    }
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            }
         }
-    });
-</script>
+
+        function updatePreview() {
+            // Actualizar variables CSS en tiempo real para la vista previa
+            // Nota: Esto solo afecta a los elementos que usen las variables, como los botones de ejemplo
+            // Como los botones de ejemplo tienen estilos inline 'style="background-color: var(...)"', 
+            // necesitamos actualizar el root o los estilos inline.
+            // Una forma sencilla es actualizar el style del documentElement
+            const root = document.documentElement;
+            root.style.setProperty('--color-primario', document.getElementById('colorPrimario').value);
+            root.style.setProperty('--color-exito', document.getElementById('colorExito').value);
+            root.style.setProperty('--color-peligro', document.getElementById('colorPeligro').value);
+            root.style.setProperty('--color-advertencia', document.getElementById('colorAdvertencia').value);
+            root.style.setProperty('--color-info', document.getElementById('colorInfo').value);
+        }
+
+        function restaurarColores() {
+            if (!confirm('¿Está seguro de restaurar los colores por defecto?')) return;
+
+            fetch('/configuracion/general/colores-default', { method: 'POST' })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                location.reload();
+            })
+            .catch(error => alert('Error: ' + error));
+        }
+
+        $(document).ready(function() {
+            updatePreview();
+            
+            // Fix para tabs en AdminLTE si es necesario
+            $('#custom-tabs a').on('click', function (e) {
+                e.preventDefault()
+                $(this).tab('show')
+            });
+            
+            // Activar tab si viene en URL hash
+            var hash = window.location.hash;
+            if (hash) {
+                $('#custom-tabs a[href="' + hash + '"]').tab('show');
+            }
+            // SOLUCIÓN PARA EL ERROR DE VALIDACIÓN EN TABS OCULTOS
+    
+        });
+    </script>
+</th:block>
+
 </body>
 </html>
