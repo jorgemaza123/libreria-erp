@@ -1,104 +1,261 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Librería | Login</title>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css"
-    />
-    <style>
-      body {
-        background: -webkit-linear-gradient(
-          90deg,
-          #c044ff,
-          #276cd8,
-          #2f6284
-        ); /* Chrome 10-25, Safari 5.1-6 */
-        background: linear-gradient(
-          90deg,
-          #c044ff,
-          #276cd8,
-          #2f6284
-        ); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-      }
-      .login-box {
-        margin-top: 10%;
-      }
-    </style>
-  </head>
-  <body class="hold-transition login-page">
-    <div class="login-box">
-      <div class="card card-outline card-primary">
-        <div class="card-header text-center">
-          <a href="#" class="h1"><b>Sistema</b>Librería</a>
-        </div>
-        <div class="card-body">
-          <p class="login-box-msg">Inicie sesión para comenzar</p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Librería | Login</title>
 
-          <form th:action="@{/login}" method="post">
-            <div th:if="${param.error}" class="alert alert-danger text-center">
-              Usuario o contraseña incorrectos
-            </div>
-            <div
-              th:if="${param.logout}"
-              class="alert alert-success text-center"
-            >
-              Ha cerrado sesión
-            </div>
+  <!-- Google Fonts -->
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css?family=Poppins:300,400,600,700&display=swap"
+  />
 
-            <div class="input-group mb-3">
-              <input
-                type="text"
-                name="username"
-                class="form-control"
-                placeholder="Usuario"
-                autofocus
-                required
-              />
-              <div class="input-group-append">
-                <div class="input-group-text">
-                  <span class="fas fa-user"></span>
-                </div>
-              </div>
-            </div>
-            <div class="input-group mb-3">
-              <input
-                type="password"
-                name="password"
-                class="form-control"
-                placeholder="Contraseña"
-                required
-              />
-              <div class="input-group-append">
-                <div class="input-group-text">
-                  <span class="fas fa-lock"></span>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-12">
-                <button type="submit" class="btn btn-primary btn-block">
-                  Ingresar
-                </button>
-              </div>
-            </div>
-          </form>
+  <!-- Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+  />
+
+  <!-- AdminLTE -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css"
+  />
+
+  <style>
+    /* =========================
+       FIX ADMINLTE + CENTRADO
+    ========================== */
+    body.login-page {
+      min-height: 100vh !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: linear-gradient(120deg, #c044ff, #276cd8, #2f6284);
+      font-family: "Poppins", sans-serif;
+    }
+
+    .login-box {
+      margin: 0 !important;
+      width: 380px;
+      animation: fadeInUp 0.9s ease;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(16px);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.25);
+    }
+
+    /* =========================
+       LOGO
+    ========================== */
+    .logo-box {
+      padding: 40px 20px 25px;
+      text-align: center;
+    }
+
+    .logo-icon {
+      font-size: 54px;
+      color: #ffffff;
+      margin-bottom: 12px;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    .logo-text {
+      font-size: 34px;
+      font-weight: 700;
+    }
+
+    .logo-main {
+      color: #ffffff;
+    }
+
+    .logo-accent {
+      background: linear-gradient(90deg, #ffd86f, #ff6a6a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* =========================
+       FORMULARIO
+    ========================== */
+    .card-body {
+      padding: 30px;
+    }
+
+    .login-box-msg {
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+
+    .form-control {
+      height: 45px;
+      border-radius: 10px;
+      border: none;
+    }
+
+    .input-group-text {
+      background: rgba(255, 255, 255, 0.85);
+      border: none;
+    }
+
+    /* =========================
+       BOTÓN
+    ========================== */
+    .btn-primary {
+      height: 45px;
+      border-radius: 12px;
+      font-weight: 600;
+      background: linear-gradient(90deg, #ffd86f, #ff6a6a);
+      border: none;
+    }
+
+    /* =========================
+       CAPS LOCK
+    ========================== */
+    .caps-warning {
+      display: none;
+      font-size: 12px;
+      color: #ffc107;
+      margin-top: 5px;
+    }
+
+    /* =========================
+       ANIMACIONES
+    ========================== */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseGlow {
+      0% { text-shadow: 0 0 10px rgba(255,255,255,0.6); }
+      50% { text-shadow: 0 0 24px rgba(255,255,255,1); }
+      100% { text-shadow: 0 0 10px rgba(255,255,255,0.6); }
+    }
+
+    /* =========================
+       BLOQUEAR AUTOFILL VISUAL
+    ========================== */
+    input:-webkit-autofill {
+      box-shadow: 0 0 0 1000px white inset !important;
+      -webkit-text-fill-color: #000 !important;
+    }
+  </style>
+</head>
+
+<body class="hold-transition login-page">
+  <div class="login-box">
+    <div class="card">
+
+      <!-- LOGO -->
+      <div class="logo-box">
+        <div class="logo-icon">
+          <i class="fas fa-book-open"></i>
         </div>
+        <div class="logo-text">
+          <span class="logo-main">Librería</span>
+          <span class="logo-accent">H & J</span>
+        </div>
+        <span class="logo-sub">Gestión inteligente y profesional</span>
+      </div>
+
+      <!-- FORM -->
+      <div class="card-body">
+        <p class="login-box-msg">Inicie sesión para continuar</p>
+
+        <form th:action="@{/login}" method="post" autocomplete="off">
+
+          <!-- CAMPOS SEÑUELO (ANTI AUTOFILL) -->
+          <input type="text" style="display:none">
+          <input type="password" style="display:none">
+
+          <div th:if="${param.error}" class="alert alert-danger text-center">
+            Usuario o contraseña incorrectos
+          </div>
+
+          <div th:if="${param.logout}" class="alert alert-success text-center">
+            Ha cerrado sesión correctamente
+          </div>
+
+          <div class="input-group mb-3">
+            <input
+              type="text"
+              name="username"
+              class="form-control"
+              placeholder="Usuario"
+              autocomplete="off"
+              required
+            />
+            <div class="input-group-append">
+              <div class="input-group-text">
+                <span class="fas fa-user"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group mb-2">
+            <input
+              type="password"
+              name="password"
+              class="form-control"
+              placeholder="Contraseña"
+              autocomplete="new-password"
+              required
+              id="password"
+            />
+            <div class="input-group-append">
+              <div class="input-group-text">
+                <span class="fas fa-lock"></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="capsWarning" class="caps-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            Bloq Mayús activado
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block mt-4">
+            Ingresar al sistema
+          </button>
+        </form>
       </div>
     </div>
+  </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-  </body>
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+
+  <!-- CAPS LOCK DETECTION -->
+  <script>
+    const passwordInput = document.getElementById("password");
+    const capsWarning = document.getElementById("capsWarning");
+
+    passwordInput.addEventListener("keyup", function (e) {
+      if (e.getModifierState && e.getModifierState("CapsLock")) {
+        capsWarning.style.display = "block";
+      } else {
+        capsWarning.style.display = "none";
+      }
+    });
+  </script>
+</body>
 </html>
