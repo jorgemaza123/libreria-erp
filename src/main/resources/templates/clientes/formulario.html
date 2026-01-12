@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+
+<head>
+    <title th:text="${titulo} + ' - Sistema'">Cliente - Sistema</title>
+</head>
+
+<body>
+<section layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="fas fa-user-plus text-primary mr-2"></i>
+                        <span th:text="${titulo}">Cliente</span>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/clientes">Clientes</a></li>
+                        <li class="breadcrumb-item active" th:text="${titulo}">Formulario</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Alertas -->
+            <div th:if="${error}" class="alert alert-danger alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <form th:action="@{/clientes/guardar}" th:object="${cliente}" method="post">
+                <input type="hidden" th:field="*{id}">
+
+                <div class="row">
+                    <!-- Datos principales -->
+                    <div class="col-lg-8">
+                        <div class="card card-outline card-primary">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-id-card mr-2"></i>Datos del Cliente</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Tipo Documento <span class="text-danger">*</span></label>
+                                            <select th:field="*{tipoDocumento}" class="form-control" required id="tipoDocumento">
+                                                <option value="1">DNI</option>
+                                                <option value="6">RUC</option>
+                                                <option value="4">Carnet Extranjeria</option>
+                                                <option value="0">Otro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Numero Documento <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="text" th:field="*{numeroDocumento}" class="form-control"
+                                                       required id="numeroDocumento" maxlength="15">
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-info" id="btnConsultarSunat"
+                                                            title="Consultar SUNAT/RENIEC">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Categoria</label>
+                                            <select th:field="*{categoria}" class="form-control">
+                                                <option value="">Sin categoria</option>
+                                                <option th:each="cat : ${categorias}" th:value="${cat}" th:text="${cat}"></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Nombre / Razon Social <span class="text-danger">*</span></label>
+                                    <input type="text" th:field="*{nombreRazonSocial}" class="form-control" required
+                                           placeholder="Nombre completo o razon social">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Direccion</label>
+                                    <input type="text" th:field="*{direccion}" class="form-control"
+                                           placeholder="Direccion fiscal (requerido para facturas)">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Telefono Principal</label>
+                                            <input type="tel" th:field="*{telefono}" class="form-control"
+                                                   placeholder="999999999">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Telefono Secundario</label>
+                                            <input type="tel" th:field="*{telefonoSecundario}" class="form-control"
+                                                   placeholder="Contacto alternativo">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Email</label>
+                                            <input type="email" th:field="*{email}" class="form-control"
+                                                   placeholder="correo@ejemplo.com">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Observaciones</label>
+                                    <textarea th:field="*{observaciones}" class="form-control" rows="2"
+                                              placeholder="Notas internas sobre el cliente"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuracion de credito -->
+                    <div class="col-lg-4">
+                        <div class="card card-outline card-warning">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-credit-card mr-2"></i>Configuracion de Credito</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" th:field="*{tieneCredito}"
+                                           id="tieneCredito">
+                                    <label class="custom-control-label" for="tieneCredito">
+                                        <strong>Habilitar Credito</strong>
+                                    </label>
+                                </div>
+
+                                <div id="configCredito" style="display: none;">
+                                    <div class="form-group">
+                                        <label>Limite de Credito (S/)</label>
+                                        <input type="number" th:field="*{limiteCredito}" class="form-control"
+                                               step="0.01" min="0" placeholder="0.00">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Dias de Credito</label>
+                                        <select th:field="*{diasCredito}" class="form-control">
+                                            <option value="7">7 dias</option>
+                                            <option value="15">15 dias</option>
+                                            <option value="30">30 dias</option>
+                                            <option value="45">45 dias</option>
+                                            <option value="60">60 dias</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="alert alert-info small mb-0">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        El cliente podra comprar a credito hasta el limite establecido.
+                                    </div>
+                                </div>
+
+                                <div th:if="${cliente.saldoDeudor != null and cliente.saldoDeudor > 0}"
+                                     class="alert alert-warning mt-3 mb-0">
+                                    <strong>Deuda Actual:</strong>
+                                    S/ <span th:text="${#numbers.formatDecimal(cliente.saldoDeudor, 1, 2)}">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estadisticas si es edicion -->
+                        <div th:if="${cliente.id != null}" class="card card-outline card-info">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i>Estadisticas</h3>
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Total Compras</span>
+                                        <strong>S/ <span th:text="${#numbers.formatDecimal(cliente.totalComprasHistorico ?: 0, 1, 2)}">0.00</span></strong>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Cantidad Compras</span>
+                                        <strong th:text="${cliente.cantidadCompras ?: 0}">0</strong>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Ultima Compra</span>
+                                        <strong th:text="${cliente.fechaUltimaCompra != null ? #temporals.format(cliente.fechaUltimaCompra, 'dd/MM/yyyy') : 'Nunca'}">-</strong>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Registrado</span>
+                                        <strong th:text="${#temporals.format(cliente.fechaRegistro, 'dd/MM/yyyy')}">-</strong>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save mr-2"></i>Guardar Cliente
+                                </button>
+                                <a href="/clientes" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</section>
+
+<th:block layout:fragment="scripts">
+<script>
+$(document).ready(function() {
+    // Mostrar/ocultar config de credito
+    function toggleCredito() {
+        if ($('#tieneCredito').is(':checked')) {
+            $('#configCredito').slideDown();
+        } else {
+            $('#configCredito').slideUp();
+        }
+    }
+    toggleCredito();
+    $('#tieneCredito').change(toggleCredito);
+
+    // Auto-detectar tipo de documento
+    $('#numeroDocumento').on('input', function() {
+        var doc = $(this).val();
+        if (doc.length === 11) {
+            $('#tipoDocumento').val('6'); // RUC
+        } else if (doc.length === 8) {
+            $('#tipoDocumento').val('1'); // DNI
+        }
+    });
+
+    // Consulta SUNAT/RENIEC (placeholder - requiere API externa)
+    $('#btnConsultarSunat').click(function() {
+        var doc = $('#numeroDocumento').val();
+        if (!doc) {
+            Swal.fire('Error', 'Ingrese un numero de documento', 'error');
+            return;
+        }
+        Swal.fire({
+            title: 'Consultar SUNAT/RENIEC',
+            text: 'Esta funcion requiere configurar una API externa de consulta.',
+            icon: 'info'
+        });
+    });
+});
+</script>
+</th:block>
+</body>
+</html>

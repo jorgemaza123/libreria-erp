@@ -128,7 +128,19 @@
                         });
                     },
                     error: function(xhr) {
-                        Swal.fire('Error', xhr.responseText, 'error');
+                        // Detectar error de caja cerrada
+                        if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+                            return;
+                        }
+                        // Otros errores
+                        let mensaje = 'Ocurrió un error al procesar el pago';
+                        try {
+                            let resp = JSON.parse(xhr.responseText);
+                            mensaje = resp.error || resp.message || xhr.responseText;
+                        } catch(e) {
+                            mensaje = xhr.responseText || mensaje;
+                        }
+                        Swal.fire('Error', mensaje, 'error');
                     }
                 });
             }

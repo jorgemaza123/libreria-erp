@@ -55,8 +55,9 @@
             <div class="col-4">
                 <strong>Fecha Emisión:</strong> <span th:text="${#temporals.format(venta.fechaEmision, 'dd/MM/yyyy')}"></span><br>
                 <strong>RUC/DNI:</strong> <span th:text="${venta.clienteNumeroDocumento}"></span><br>
-                <strong>Condición:</strong> <span th:text="${venta.formaPago}">CONTADO</span>
-                
+                <strong>Condición:</strong> <span th:text="${venta.formaPago}">CONTADO</span><br>
+                <strong>Método Pago:</strong> <span th:text="${venta.metodoPago != null ? venta.metodoPago : 'EFECTIVO'}">EFECTIVO</span>
+
                 <div th:if="${venta.formaPago == 'CREDITO'}">
                     <strong>Vencimiento:</strong> <span class="text-danger" th:text="${#temporals.format(venta.fechaVencimiento, 'dd/MM/yyyy')}"></span>
                 </div>
@@ -119,6 +120,23 @@
                         <td class="text-right font-weight-bold" style="font-size: 1.1rem;" th:text="'S/ ' + ${venta.total}"></td>
                     </tr>
                 </table>
+            </div>
+        </div>
+
+        <!-- CUENTAS BANCARIAS -->
+        <div th:if="${config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" class="row mt-3">
+            <div class="col-12">
+                <div class="p-2 border rounded text-center" style="background-color: #f8f9fa;">
+                    <strong>CUENTAS BANCARIAS:</strong>
+                    <p class="mb-0" style="white-space: pre-line; font-size: 0.9rem;" th:text="${config.cuentasBancarias}"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- USUARIO CAJERO -->
+        <div th:if="${venta.usuario != null}" class="row mt-2">
+            <div class="col-12 text-center text-muted" style="font-size: 0.8rem;">
+                <span th:text="'Atendido por: ' + ${venta.usuario.nombreCompleto}"></span>
             </div>
         </div>
     </div>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Denegado - Error 403</title>
+    <link rel="stylesheet" th:href="@{/plugins/fontawesome-free/css/all.min.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/adminlte.min.css}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-page {
+            text-align: center;
+            color: white;
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+            margin-bottom: 0;
+        }
+        .error-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: shake 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes shake {
+            0% { transform: rotate(-5deg); }
+            100% { transform: rotate(5deg); }
+        }
+        .error-message {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .error-description {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .btn-home {
+            background: white;
+            color: #667eea;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .btn-home:hover {
+            transform: scale(1.05);
+            color: #764ba2;
+            text-decoration: none;
+        }
+        .help-text {
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-icon">
+            <i class="fas fa-lock"></i>
+        </div>
+        <h1 class="error-code">403</h1>
+        <h2 class="error-message">Acceso Denegado</h2>
+        <p class="error-description">
+            No tiene permisos para acceder a este recurso.<br>
+            Revise sus permisos o contacte al administrador del sistema.
+        </p>
+        <a th:href="@{/}" class="btn-home">
+            <i class="fas fa-home mr-2"></i> Volver al Inicio
+        </a>
+        <p class="help-text">
+            <i class="fas fa-info-circle mr-1"></i>
+            Si cree que esto es un error, cierre sesion e intente nuevamente.
+        </p>
+    </div>
+</body>
+</html>

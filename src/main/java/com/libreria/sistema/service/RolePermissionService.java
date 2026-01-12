@@ -138,7 +138,9 @@ public class RolePermissionService {
     }
 
     /**
-     * Verificar si un usuario tiene un permiso específico
+     * Verificar si un usuario tiene un permiso específico.
+     *
+     * REGLA DE ORO: ADMIN siempre tiene todos los permisos (bypass).
      */
     public boolean tienePermiso(String username, String codigoPermiso) {
         Usuario usuario = usuarioRepository.findByUsername(username)
@@ -148,15 +150,29 @@ public class RolePermissionService {
             return false;
         }
 
-        // Si tiene el nuevo sistema de roles
-        if (usuario.getRole() != null) {
-            return usuario.getRole().getPermissions().stream()
-                    .anyMatch(p -> p.getCodigo().equals(codigoPermiso));
+        // ============================================================
+        // VERIFICACION 1: ADMIN tiene SIEMPRE todos los permisos
+        // Verificar en el sistema de roles antiguo (roles)
+        // ============================================================
+        if (usuario.getRoles() != null &&
+            usuario.getRoles().stream().anyMatch(r ->
+                "ROLE_ADMIN".equals(r.getNombre()) || "ADMIN".equals(r.getNombre()))) {
+            return true;
         }
 
-        // Fallback: ADMIN tiene todos los permisos
-        if (usuario.getRoles().stream().anyMatch(r -> r.getNombre().equals("ROLE_ADMIN"))) {
-            return true;
+        // ============================================================
+        // VERIFICACION 2: Nuevo sistema de roles (role singular)
+        // ============================================================
+        if (usuario.getRole() != null) {
+            // Si el nuevo role es ADMIN, permitir todo
+            String nombreRole = usuario.getRole().getNombre();
+            if ("ADMIN".equals(nombreRole) || "ROLE_ADMIN".equals(nombreRole)) {
+                return true;
+            }
+
+            // Para otros roles, verificar permisos específicos
+            return usuario.getRole().getPermissions().stream()
+                    .anyMatch(p -> p.getCodigo().equals(codigoPermiso));
         }
 
         return false;
@@ -269,6 +285,46 @@ public class RolePermissionService {
         permisos.add(crearPermisoSiNoExiste("COTIZACIONES", "ELIMINAR", "COTIZACIONES_ELIMINAR", "Eliminar cotizaciones"));
         permisos.add(crearPermisoSiNoExiste("COTIZACIONES", "CONVERTIR", "COTIZACIONES_CONVERTIR", "Convertir cotizaciones a ventas"));
 
+        // COBRANZAS
+        permisos.add(crearPermisoSiNoExiste("COBRANZAS", "VER", "COBRANZAS_VER", "Ver cobranzas"));
+        permisos.add(crearPermisoSiNoExiste("COBRANZAS", "CREAR", "COBRANZAS_CREAR", "Registrar pagos de cobranza"));
+
+        // CLIENTES
+        permisos.add(crearPermisoSiNoExiste("CLIENTES", "VER", "CLIENTES_VER", "Ver clientes"));
+        permisos.add(crearPermisoSiNoExiste("CLIENTES", "CREAR", "CLIENTES_CREAR", "Crear clientes"));
+        permisos.add(crearPermisoSiNoExiste("CLIENTES", "EDITAR", "CLIENTES_EDITAR", "Editar clientes"));
+        permisos.add(crearPermisoSiNoExiste("CLIENTES", "ELIMINAR", "CLIENTES_ELIMINAR", "Eliminar clientes"));
+
+        // PROVEEDORES
+        permisos.add(crearPermisoSiNoExiste("PROVEEDORES", "VER", "PROVEEDORES_VER", "Ver proveedores"));
+        permisos.add(crearPermisoSiNoExiste("PROVEEDORES", "CREAR", "PROVEEDORES_CREAR", "Crear proveedores"));
+        permisos.add(crearPermisoSiNoExiste("PROVEEDORES", "EDITAR", "PROVEEDORES_EDITAR", "Editar proveedores"));
+        permisos.add(crearPermisoSiNoExiste("PROVEEDORES", "ELIMINAR", "PROVEEDORES_ELIMINAR", "Eliminar proveedores"));
+
+        // KARDEX
+        permisos.add(crearPermisoSiNoExiste("KARDEX", "VER", "KARDEX_VER", "Ver movimientos de kardex"));
+
+        // ORDENES DE SERVICIO
+        permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "VER", "ORDENES_SERVICIO_VER", "Ver órdenes de servicio"));
+        permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "CREAR", "ORDENES_SERVICIO_CREAR", "Crear órdenes de servicio"));
+        permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "EDITAR", "ORDENES_SERVICIO_EDITAR", "Editar órdenes de servicio"));
+        permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "ELIMINAR", "ORDENES_SERVICIO_ELIMINAR", "Eliminar órdenes de servicio"));
+
+        // ROLES Y PERMISOS (Gestión de accesos)
+        permisos.add(crearPermisoSiNoExiste("ROLES", "VER", "ROLES_VER", "Ver roles y permisos"));
+        permisos.add(crearPermisoSiNoExiste("ROLES", "CREAR", "ROLES_CREAR", "Crear roles"));
+        permisos.add(crearPermisoSiNoExiste("ROLES", "EDITAR", "ROLES_EDITAR", "Editar roles y asignar permisos"));
+        permisos.add(crearPermisoSiNoExiste("ROLES", "ELIMINAR", "ROLES_ELIMINAR", "Eliminar roles"));
+
+        // INCIDENCIAS / REPORTES DE PROBLEMAS
+        permisos.add(crearPermisoSiNoExiste("INCIDENCIAS", "VER", "INCIDENCIAS_VER", "Ver incidencias/reportes de problemas"));
+        permisos.add(crearPermisoSiNoExiste("INCIDENCIAS", "CREAR", "INCIDENCIAS_CREAR", "Crear incidencias"));
+        permisos.add(crearPermisoSiNoExiste("INCIDENCIAS", "EDITAR", "INCIDENCIAS_EDITAR", "Editar/Gestionar incidencias"));
+        permisos.add(crearPermisoSiNoExiste("INCIDENCIAS", "ELIMINAR", "INCIDENCIAS_ELIMINAR", "Eliminar incidencias"));
+
+        // NOTIFICACIONES
+        permisos.add(crearPermisoSiNoExiste("NOTIFICACIONES", "VER", "NOTIFICACIONES_VER", "Ver notificaciones"));
+
         log.info("Permisos por defecto creados/verificados");
     }
 
@@ -320,6 +376,8 @@ public class RolePermissionService {
         agregarPermiso(permisosVendedor, "COTIZACIONES_CREAR");
         agregarPermiso(permisosVendedor, "COTIZACIONES_EDITAR");
         agregarPermiso(permisosVendedor, "COTIZACIONES_CONVERTIR");
+        agregarPermiso(permisosVendedor, "COBRANZAS_VER");
+        agregarPermiso(permisosVendedor, "COBRANZAS_CREAR");
         vendedor.setPermissions(permisosVendedor);
         roleRepository.save(vendedor);
 

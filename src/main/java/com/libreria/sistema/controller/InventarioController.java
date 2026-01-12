@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Controller
 @RequestMapping("/inventario")
+@PreAuthorize("hasPermission(null, 'INVENTARIO_VER')")
 public class InventarioController {
 
     private final ProductoRepository productoRepository;

@@ -22,11 +22,19 @@ public class DashboardService {
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
     private final CajaRepository cajaRepository;
+    private final SunatBillingService sunatBillingService;
+    private final LicenseValidationService licenseService;
 
-    public DashboardService(ProductoRepository productoRepository, VentaRepository ventaRepository, CajaRepository cajaRepository) {
+    public DashboardService(ProductoRepository productoRepository,
+                           VentaRepository ventaRepository,
+                           CajaRepository cajaRepository,
+                           SunatBillingService sunatBillingService,
+                           LicenseValidationService licenseService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.cajaRepository = cajaRepository;
+        this.sunatBillingService = sunatBillingService;
+        this.licenseService = licenseService;
     }
 
     public Map<String, Object> obtenerDatosDashboard() {
@@ -99,20 +107,37 @@ public class DashboardService {
 
         // --- 3. ALERTA STOCK ---
         List<Producto> stockCritico = productos.stream()
-                .filter(p -> p.getStockActual() != null && p.getStockMinimo() != null && 
+                .filter(p -> p.getStockActual() != null && p.getStockMinimo() != null &&
                              p.getStockActual() <= p.getStockMinimo() && p.isActivo())
                 .collect(Collectors.toList());
 
-        return Map.of(
-            "kpiVentasMes", totalVentasMes,
-            "kpiCreditos", totalCreditosPendientes,
-            "kpiInventario", valorInventario,
-            "kpiGastos", gastosMes,
-            "topProductos", topProductos,
-            "comparativa", comparativa,
-            "pieCredito", Map.of("credito", ventasAlCredito, "contado", ventasContado),
-            "stockCritico", stockCritico,
-            "sinMovimiento", new ArrayList<>() // Placeholder para evitar error si no usas esa query aún
-        );
+        // --- 4. DATOS SUNAT Y LICENCIA ---
+        Map<String, Object> sunatStats = sunatBillingService.obtenerEstadisticasDashboard();
+        LicenseValidationService.LicenseInfo licenseInfo = licenseService.validarLicencia();
+
+        // Usar HashMap mutable para poder agregar más datos
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("kpiVentasMes", totalVentasMes);
+        resultado.put("kpiCreditos", totalCreditosPendientes);
+        resultado.put("kpiInventario", valorInventario);
+        resultado.put("kpiGastos", gastosMes);
+        resultado.put("topProductos", topProductos);
+        resultado.put("comparativa", comparativa);
+        resultado.put("pieCredito", Map.of("credito", ventasAlCredito, "contado", ventasContado));
+        resultado.put("stockCritico", stockCritico);
+        resultado.put("sinMovimiento", new ArrayList<>());
+
+        // Agregar stats de SUNAT Billing
+        resultado.put("sunatStats", sunatStats);
+
+        // Agregar info de licencia
+        resultado.put("licenseInfo", licenseInfo);
+        resultado.put("alertaPago", licenseInfo.isAlertaPago());
+
+        // Agregar alerta de deuda SUNAT
+        resultado.put("tieneDeudaSunat", sunatBillingService.hayDeudaPendiente());
+        resultado.put("deudaTotalSunat", sunatBillingService.obtenerDeudaTotal());
+
+        return resultado;
     }
 }

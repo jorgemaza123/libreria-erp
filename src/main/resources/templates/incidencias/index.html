@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head}"></head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='incidencias')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1><i class="fas fa-exclamation-triangle text-warning"></i> Reporte de Incidencias</h1>
+                    </div>
+                    <div class="col-sm-6 text-right">
+                        <button class="btn btn-primary" data-toggle="modal" data-target="#modalNuevoReporte">
+                            <i class="fas fa-plus"></i> Reportar Problema
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- TARJETAS DE ESTADÍSTICAS -->
+                <div class="row">
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3 th:text="${stats.pendientes}">0</h3>
+                                <p>Pendientes</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-clock"></i></div>
+                            <a th:href="@{/incidencias(filtroEstado='PENDIENTE')}" class="small-box-footer">
+                                Ver pendientes <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3 th:text="${stats.enRevision}">0</h3>
+                                <p>En Revisión</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-search"></i></div>
+                            <a th:href="@{/incidencias(filtroEstado='EN_REVISION')}" class="small-box-footer">
+                                Ver en revisión <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3 th:text="${stats.resueltos}">0</h3>
+                                <p>Resueltos</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-check-circle"></i></div>
+                            <a th:href="@{/incidencias(filtroEstado='RESUELTO')}" class="small-box-footer">
+                                Ver resueltos <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-secondary">
+                            <div class="inner">
+                                <h3 th:text="${stats.total}">0</h3>
+                                <p>Total Reportes</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-list"></i></div>
+                            <a th:href="@{/incidencias(filtroEstado='TODOS')}" class="small-box-footer">
+                                Ver todos <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTROS -->
+                <div class="card card-outline card-primary mb-3">
+                    <div class="card-header py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-0"><i class="fas fa-filter"></i> Filtrar por Estado</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="btn-group btn-group-sm float-right">
+                                    <a th:href="@{/incidencias(filtroEstado='TODOS')}"
+                                       th:classappend="${filtroEstado == 'TODOS' ? 'active' : ''}"
+                                       class="btn btn-outline-secondary">Todos</a>
+                                    <a th:href="@{/incidencias(filtroEstado='PENDIENTE')}"
+                                       th:classappend="${filtroEstado == 'PENDIENTE' ? 'active' : ''}"
+                                       class="btn btn-outline-warning">Pendientes</a>
+                                    <a th:href="@{/incidencias(filtroEstado='EN_REVISION')}"
+                                       th:classappend="${filtroEstado == 'EN_REVISION' ? 'active' : ''}"
+                                       class="btn btn-outline-info">En Revisión</a>
+                                    <a th:href="@{/incidencias(filtroEstado='RESUELTO')}"
+                                       th:classappend="${filtroEstado == 'RESUELTO' ? 'active' : ''}"
+                                       class="btn btn-outline-success">Resueltos</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABLA DE INCIDENCIAS -->
+                <div class="card">
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th style="width: 5%">#</th>
+                                    <th style="width: 12%">Fecha</th>
+                                    <th style="width: 10%">Tipo</th>
+                                    <th style="width: 25%">Título</th>
+                                    <th style="width: 15%">Producto</th>
+                                    <th style="width: 8%">Urgencia</th>
+                                    <th style="width: 10%">Estado</th>
+                                    <th style="width: 10%">Reportó</th>
+                                    <th style="width: 5%">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Paginado -->
+                                <tr th:if="${reportes != null}" th:each="r : ${reportes.content}">
+                                    <td th:text="${r.id}"></td>
+                                    <td>
+                                        <small th:text="${#temporals.format(r.fechaReporte, 'dd/MM/yyyy HH:mm')}"></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-secondary" th:text="${tiposProblema[r.tipoProblema]}"></span>
+                                    </td>
+                                    <td>
+                                        <a href="#" th:data-id="${r.id}" onclick="verDetalle(this.dataset.id)"
+                                           th:text="${r.titulo}" class="text-primary"></a>
+                                    </td>
+                                    <td>
+                                        <span th:if="${r.producto != null}" th:text="${r.producto.nombre}"></span>
+                                        <span th:if="${r.producto == null}" class="text-muted">-</span>
+                                    </td>
+                                    <td>
+                                        <span th:class="'badge ' + ${r.urgencia == 'CRITICA' ? 'badge-danger' :
+                                                          (r.urgencia == 'ALTA' ? 'badge-warning' :
+                                                          (r.urgencia == 'MEDIA' ? 'badge-info' : 'badge-secondary'))}"
+                                              th:text="${r.urgencia}"></span>
+                                    </td>
+                                    <td>
+                                        <span th:class="'badge ' + ${r.estado == 'PENDIENTE' ? 'badge-warning' :
+                                                          (r.estado == 'EN_REVISION' ? 'badge-info' :
+                                                          (r.estado == 'RESUELTO' ? 'badge-success' : 'badge-secondary'))}"
+                                              th:text="${r.estado}"></span>
+                                    </td>
+                                    <td>
+                                        <small th:if="${r.usuarioReporta != null}" th:text="${r.usuarioReporta.username}"></small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-info btn-sm" th:data-id="${r.id}"
+                                                    onclick="verDetalle(this.dataset.id)" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button sec:authorize="hasRole('ADMIN')" class="btn btn-primary btn-sm"
+                                                    th:data-id="${r.id}" onclick="abrirModalEstado(this.dataset.id)"
+                                                    title="Cambiar estado">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Lista sin paginar -->
+                                <tr th:if="${reportesLista != null}" th:each="r : ${reportesLista}">
+                                    <td th:text="${r.id}"></td>
+                                    <td>
+                                        <small th:text="${#temporals.format(r.fechaReporte, 'dd/MM/yyyy HH:mm')}"></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-secondary" th:text="${tiposProblema[r.tipoProblema]}"></span>
+                                    </td>
+                                    <td>
+                                        <a href="#" th:data-id="${r.id}" onclick="verDetalle(this.dataset.id)"
+                                           th:text="${r.titulo}" class="text-primary"></a>
+                                    </td>
+                                    <td>
+                                        <span th:if="${r.producto != null}" th:text="${r.producto.nombre}"></span>
+                                        <span th:if="${r.producto == null}" class="text-muted">-</span>
+                                    </td>
+                                    <td>
+                                        <span th:class="'badge ' + ${r.urgencia == 'CRITICA' ? 'badge-danger' :
+                                                          (r.urgencia == 'ALTA' ? 'badge-warning' :
+                                                          (r.urgencia == 'MEDIA' ? 'badge-info' : 'badge-secondary'))}"
+                                              th:text="${r.urgencia}"></span>
+                                    </td>
+                                    <td>
+                                        <span th:class="'badge ' + ${r.estado == 'PENDIENTE' ? 'badge-warning' :
+                                                          (r.estado == 'EN_REVISION' ? 'badge-info' :
+                                                          (r.estado == 'RESUELTO' ? 'badge-success' : 'badge-secondary'))}"
+                                              th:text="${r.estado}"></span>
+                                    </td>
+                                    <td>
+                                        <small th:if="${r.usuarioReporta != null}" th:text="${r.usuarioReporta.username}"></small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-info btn-sm" th:data-id="${r.id}"
+                                                    onclick="verDetalle(this.dataset.id)" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button sec:authorize="hasRole('ADMIN')" class="btn btn-primary btn-sm"
+                                                    th:data-id="${r.id}" onclick="abrirModalEstado(this.dataset.id)"
+                                                    title="Cambiar estado">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr th:if="${(reportes == null or reportes.content.empty) and (reportesLista == null or reportesLista.empty)}">
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p>No hay reportes de incidencias</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div th:if="${reportes != null and reportes.totalPages > 1}" class="card-footer">
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                                <li class="page-item" th:classappend="${reportes.first ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/incidencias(page=${reportes.number - 1}, filtroEstado=${filtroEstado})}">Anterior</a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, reportes.totalPages - 1)}"
+                                    th:classappend="${i == reportes.number ? 'active' : ''}">
+                                    <a class="page-link" th:href="@{/incidencias(page=${i}, filtroEstado=${filtroEstado})}" th:text="${i + 1}"></a>
+                                </li>
+                                <li class="page-item" th:classappend="${reportes.last ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/incidencias(page=${reportes.number + 1}, filtroEstado=${filtroEstado})}">Siguiente</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- MODAL NUEVO REPORTE -->
+<div class="modal fade" id="modalNuevoReporte" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Reportar Problema</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevoReporte">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Tipo de Problema *</label>
+                                <select id="tipoProblema" class="form-control" required>
+                                    <option value="">-- Seleccionar --</option>
+                                    <option th:each="tipo : ${tiposProblema}" th:value="${tipo.key}" th:text="${tipo.value}"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Urgencia *</label>
+                                <select id="urgencia" class="form-control" required>
+                                    <option th:each="nivel : ${nivelesUrgencia}" th:value="${nivel.key}" th:text="${nivel.value}"
+                                            th:selected="${nivel.key == 'MEDIA'}"></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Título del Problema *</label>
+                        <input type="text" id="titulo" class="form-control" placeholder="Ej: Libro con páginas rotas" required maxlength="150">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Descripción Detallada *</label>
+                        <textarea id="descripcion" class="form-control" rows="3"
+                                  placeholder="Describa el problema con el mayor detalle posible..." required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Producto Relacionado (opcional)</label>
+                                <select id="productoId" class="form-control select2" style="width: 100%;">
+                                    <option value="">-- Ninguno --</option>
+                                    <option th:each="p : ${productos}" th:value="${p.id}"
+                                            th:text="${p.codigoInterno + ' - ' + p.nombre}"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Cantidad Afectada</label>
+                                <input type="number" id="cantidadAfectada" class="form-control" min="1" placeholder="1">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Ubicación</label>
+                                <input type="text" id="ubicacion" class="form-control" placeholder="Ej: Estante A3">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Foto del Problema (opcional)</label>
+                        <input type="file" id="imagenInput" class="form-control-file" accept="image/*" onchange="previsualizarImagen(this)">
+                        <img id="imagenPreview" src="" class="img-thumbnail mt-2" style="max-height: 150px; display: none;">
+                        <input type="hidden" id="imagenBase64">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarReporte()">
+                    <i class="fas fa-save"></i> Guardar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Detalle del Reporte</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body" id="detalleContenido">
+                <div class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CAMBIAR ESTADO (ADMIN) -->
+<div class="modal fade" id="modalEstado" tabindex="-1" sec:authorize="hasRole('ADMIN')">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Actualizar Estado</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reporteIdEstado">
+
+                <div class="form-group">
+                    <label>Nuevo Estado</label>
+                    <select id="nuevoEstado" class="form-control">
+                        <option value="PENDIENTE">Pendiente</option>
+                        <option value="EN_REVISION">En Revisión</option>
+                        <option value="RESUELTO">Resuelto</option>
+                        <option value="DESCARTADO">Descartado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Acción Tomada</label>
+                    <select id="accionTomada" class="form-control">
+                        <option value="">-- Ninguna --</option>
+                        <option th:each="acc : ${acciones}" th:value="${acc.key}" th:text="${acc.value}"></option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Comentario</label>
+                    <textarea id="comentarioEstado" class="form-control" rows="3" placeholder="Comentario de resolución o seguimiento..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarEstado()">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+    $(document).ready(function() {
+        $('#productoId').select2({
+            theme: 'bootstrap4',
+            placeholder: 'Buscar producto...',
+            allowClear: true,
+            dropdownParent: $('#modalNuevoReporte')
+        });
+    });
+
+    function previsualizarImagen(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                $('#imagenPreview').attr('src', e.target.result).show();
+                $('#imagenBase64').val(e.target.result.split(',')[1]);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function guardarReporte() {
+        var datos = {
+            tipoProblema: $('#tipoProblema').val(),
+            titulo: $('#titulo').val(),
+            descripcion: $('#descripcion').val(),
+            productoId: $('#productoId').val() || null,
+            ubicacion: $('#ubicacion').val(),
+            urgencia: $('#urgencia').val(),
+            cantidadAfectada: $('#cantidadAfectada').val() || null,
+            imagenBase64: $('#imagenBase64').val() || null
+        };
+
+        if (!datos.tipoProblema || !datos.titulo || !datos.descripcion) {
+            Swal.fire('Error', 'Complete los campos obligatorios', 'warning');
+            return;
+        }
+
+        $.ajax({
+            url: '/incidencias/api/crear',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(datos),
+            success: function(resp) {
+                if (resp.success) {
+                    Swal.fire('Éxito', 'Reporte creado correctamente', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', resp.error, 'error');
+                }
+            },
+            error: function(err) {
+                Swal.fire('Error', 'No se pudo crear el reporte', 'error');
+            }
+        });
+    }
+
+    function verDetalle(id) {
+        $('#modalDetalle').modal('show');
+        $('#detalleContenido').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+
+        $.get('/incidencias/api/detalle/' + id, function(data) {
+            var html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID:</strong> ${data.id}</p>
+                        <p><strong>Tipo:</strong> ${data.tipoProblema}</p>
+                        <p><strong>Título:</strong> ${data.titulo}</p>
+                        <p><strong>Urgencia:</strong> <span class="badge ${data.urgencia == 'CRITICA' ? 'badge-danger' :
+                            (data.urgencia == 'ALTA' ? 'badge-warning' :
+                            (data.urgencia == 'MEDIA' ? 'badge-info' : 'badge-secondary'))}">${data.urgencia}</span></p>
+                        <p><strong>Estado:</strong> <span class="badge ${data.estado == 'PENDIENTE' ? 'badge-warning' :
+                            (data.estado == 'EN_REVISION' ? 'badge-info' :
+                            (data.estado == 'RESUELTO' ? 'badge-success' : 'badge-secondary'))}">${data.estado}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Fecha Reporte:</strong> ${data.fechaReporte}</p>
+                        <p><strong>Reportado por:</strong> ${data.usuarioReporta || '-'}</p>
+                        <p><strong>Producto:</strong> ${data.productoNombre || 'N/A'}</p>
+                        <p><strong>Ubicación:</strong> ${data.ubicacion || '-'}</p>
+                        <p><strong>Cantidad Afectada:</strong> ${data.cantidadAfectada || '-'}</p>
+                    </div>
+                </div>
+                <hr>
+                <p><strong>Descripción:</strong></p>
+                <p class="bg-light p-2 rounded">${data.descripcion}</p>
+                ${data.imagenBase64 ? '<p><strong>Imagen:</strong></p><img src="data:image/png;base64,' + data.imagenBase64 + '" class="img-fluid rounded" style="max-height: 200px;">' : ''}
+                ${data.comentarioResolucion ? '<hr><p><strong>Comentario Resolución:</strong></p><p class="bg-success text-white p-2 rounded">' + data.comentarioResolucion + '</p>' : ''}
+                ${data.accionTomada ? '<p><strong>Acción Tomada:</strong> ' + data.accionTomada + '</p>' : ''}
+                ${data.usuarioAtiende ? '<p><strong>Atendido por:</strong> ' + data.usuarioAtiende + '</p>' : ''}
+                ${data.fechaResolucion ? '<p><strong>Fecha Resolución:</strong> ' + data.fechaResolucion + '</p>' : ''}
+            `;
+            $('#detalleContenido').html(html);
+        });
+    }
+
+    function abrirModalEstado(id) {
+        $('#reporteIdEstado').val(id);
+        $('#nuevoEstado').val('PENDIENTE');
+        $('#accionTomada').val('');
+        $('#comentarioEstado').val('');
+        $('#modalEstado').modal('show');
+    }
+
+    function guardarEstado() {
+        var datos = {
+            id: $('#reporteIdEstado').val(),
+            estado: $('#nuevoEstado').val(),
+            accionTomada: $('#accionTomada').val(),
+            comentario: $('#comentarioEstado').val()
+        };
+
+        $.ajax({
+            url: '/incidencias/api/actualizar-estado',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(datos),
+            success: function(resp) {
+                if (resp.success) {
+                    Swal.fire('Éxito', 'Estado actualizado', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', resp.error, 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'No se pudo actualizar el estado', 'error');
+            }
+        });
+    }
+</script>
+</body>
+</html>

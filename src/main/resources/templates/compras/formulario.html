@@ -220,8 +220,20 @@
                 Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
                     .then(() => window.location.href = '/compras/lista');
             },
-            error: function(err) {
-                Swal.fire('Error', err.responseText || 'Ocurrió un error al guardar', 'error');
+            error: function(xhr) {
+                // Detectar error de caja cerrada
+                if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+                    return;
+                }
+                // Otros errores
+                let mensaje = 'Ocurrió un error al guardar';
+                try {
+                    let resp = JSON.parse(xhr.responseText);
+                    mensaje = resp.error || resp.message || xhr.responseText;
+                } catch(e) {
+                    mensaje = xhr.responseText || mensaje;
+                }
+                Swal.fire('Error', mensaje, 'error');
             }
         });
     });

@@ -116,6 +116,38 @@ public class Configuracion {
     // false = Modo pruebas (Beta SUNAT), true = Producción (Facturas reales)
     private Boolean modoProduccion;
 
+    // ========== CONFIGURACIÓN DE IMPRESIÓN ==========
+    /**
+     * Formato de impresión por defecto.
+     * Valores: "A4" (hoja completa), "TICKET" (impresora térmica 80mm)
+     */
+    @Column(length = 20)
+    private String formatoImpresion;
+
+    /**
+     * Ancho del ticket en mm (para impresoras térmicas)
+     * Valores típicos: 58, 80
+     */
+    private Integer anchoTicketMm;
+
+    /**
+     * Mostrar logo en tickets (algunos negocios lo omiten por velocidad)
+     */
+    private Boolean mostrarLogoEnTicket;
+
+    /**
+     * Mensaje de pie en tickets/comprobantes
+     */
+    @Column(length = 200)
+    private String mensajePieTicket;
+
+    /**
+     * Cuentas bancarias para mostrar en tickets/comprobantes.
+     * Formato libre: puede ser texto multilinea con BCP, BBVA, etc.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String cuentasBancarias;
+
     /**
      * Constructor con valores por defecto
      */
@@ -171,5 +203,12 @@ public class Configuracion {
         this.certificadoDigitalRuta = "";
         this.claveCertificado = "";
         this.modoProduccion = false;
+
+        // Configuración de impresión
+        this.formatoImpresion = "TICKET"; // Por defecto ticket térmico
+        this.anchoTicketMm = 80;
+        this.mostrarLogoEnTicket = true;
+        this.mensajePieTicket = "Gracias por su compra. Vuelva pronto!";
+        this.cuentasBancarias = "BCP: 123-456789-0-12\nBBVA: 0011-0123-45-6789012345";
     }
 }

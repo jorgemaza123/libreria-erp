@@ -5,6 +5,8 @@
 <head th:fragment="head">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>Librería H & J</title>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback" />
@@ -33,7 +35,49 @@
                     <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
                 </li>
             </ul>
+
+            <!-- Alerta de Licencia (cuando alertaPago=true) -->
+            <div th:if="${alertaPago}" class="navbar-nav mx-auto" id="alertaLicencia">
+                <div class="alert alert-danger mb-0 py-1 px-3 d-flex align-items-center" style="border-radius: 20px;">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span th:if="${licenseInfo != null and licenseInfo.diasRestantes >= 0}">
+                        Licencia vence en <strong th:text="${licenseInfo.diasRestantes}">0</strong> dia(s)
+                    </span>
+                    <span th:if="${licenseInfo != null and licenseInfo.diasRestantes < 0}">
+                        <strong>LICENCIA VENCIDA</strong> - Periodo de gracia
+                    </span>
+                    <a href="/licencia" class="btn btn-sm btn-light ml-2">
+                        <i class="fas fa-key"></i> Renovar
+                    </a>
+                </div>
+            </div>
+
             <ul class="navbar-nav ml-auto">
+                <!-- Campana de Notificaciones -->
+                <li class="nav-item dropdown" id="notificacionesDropdown">
+                    <a class="nav-link" data-toggle="dropdown" href="#" role="button" style="position: relative;">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span class="badge badge-danger navbar-badge" id="notifBadge" style="display: none;">0</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" style="max-height: 450px; overflow-y: auto; width: 360px;">
+                        <div class="dropdown-header d-flex justify-content-between align-items-center px-3 py-2" style="background: #f8f9fa;">
+                            <span class="font-weight-bold"><i class="fas fa-bell mr-2"></i>Notificaciones</span>
+                            <button type="button" class="btn btn-sm btn-link p-0" id="marcarTodasLeidas" title="Marcar todas como leídas">
+                                <i class="fas fa-check-double"></i>
+                            </button>
+                        </div>
+                        <div class="dropdown-divider m-0"></div>
+                        <div id="notificacionesLista">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando...
+                            </div>
+                        </div>
+                        <div class="dropdown-divider m-0"></div>
+                        <a href="#" class="dropdown-item dropdown-footer text-center" data-toggle="modal" data-target="#modalNotificaciones">
+                            <i class="fas fa-list mr-1"></i> Ver todas las notificaciones
+                        </a>
+                    </div>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link text-danger" href="/logout" title="Salir">
                         <i class="fas fa-sign-out-alt"></i>
@@ -41,6 +85,70 @@
                 </li>
             </ul>
         </nav>
+
+        <!-- Modal de Notificaciones Completo -->
+        <div class="modal fade" id="modalNotificaciones" tabindex="-1" role="dialog" aria-labelledby="modalNotificacionesLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="modalNotificacionesLabel">
+                            <i class="fas fa-bell mr-2"></i>Centro de Notificaciones
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <!-- Filtros -->
+                        <div class="p-3 bg-light border-bottom">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <select class="form-control form-control-sm" id="filtroTipoNotif">
+                                        <option value="">Todos los tipos</option>
+                                        <option value="STOCK_BAJO">Stock Bajo</option>
+                                        <option value="STOCK_AGOTADO">Stock Agotado</option>
+                                        <option value="CREDITO_VENCIDO">Crédito Vencido</option>
+                                        <option value="INCIDENCIA">Incidencias</option>
+                                        <option value="SISTEMA">Sistema</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-control form-control-sm" id="filtroEstadoNotif">
+                                        <option value="">Todos los estados</option>
+                                        <option value="no_leidas">No leídas</option>
+                                        <option value="no_resueltas">No resueltas</option>
+                                        <option value="resueltas">Resueltas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <button class="btn btn-sm btn-outline-secondary" id="btnRefreshModal">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Lista de notificaciones -->
+                        <div id="notificacionesModalLista" style="max-height: 400px; overflow-y: auto;">
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                <p class="mt-2">Cargando notificaciones...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <div>
+                            <span class="text-muted small" id="statsNotif">0 notificaciones</span>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                            <a href="/notificaciones" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt mr-1"></i>Ver página completa
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <aside th:fragment="sidebar(active)" class="main-sidebar sidebar-dark-primary elevation-4">
             <a href="/" class="brand-link">
@@ -57,8 +165,8 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
                                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -66,6 +174,11 @@
                                 <li class="nav-item">
                                     <a href="/ventas/nueva" class="nav-link" th:classappend="${active == 'pos' ? 'active' : ''}">
                                         <i class="fas fa-cash-register nav-icon"></i><p>Punto de Venta</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/ventas/lista" class="nav-link" th:classappend="${active == 'ventas' ? 'active' : ''}">
+                                        <i class="fas fa-list-alt nav-icon"></i><p>Historial de Ventas</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -140,8 +253,8 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-chart-pie"></i>
                                 <p>Finanzas <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -159,6 +272,11 @@
                                 <li class="nav-item">
                                     <a href="/reportes" class="nav-link" th:classappend="${active == 'reportes' ? 'active' : ''}">
                                         <i class="fas fa-file-excel nav-icon"></i><p>Reportes Generales</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/avanzados" class="nav-link" th:classappend="${active == 'reportes_avanzados' ? 'active' : ''}">
+                                        <i class="fas fa-chart-bar nav-icon text-info"></i><p>Reportes Avanzados</p>
                                     </a>
                                 </li>
                                 <li class="nav-header pl-3 text-uppercase text-secondary" style="font-size: 0.8rem;">Análisis Financiero</li>
@@ -188,6 +306,18 @@
                         <li class="nav-header">SISTEMA</li>
 
                         <li class="nav-item">
+                            <a href="/notificaciones" class="nav-link" th:classappend="${active == 'notificaciones' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-bell text-info"></i><p>Notificaciones</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/incidencias" class="nav-link" th:classappend="${active == 'incidencias' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-exclamation-triangle text-warning"></i><p>Reportar Incidencias</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="/vendedor/dashboard" class="nav-link bg-primary text-white">
                                 <i class="nav-icon fas fa-th-large"></i><p>Modo Vendedor</p>
                             </a>
@@ -206,7 +336,17 @@
                                 </li>
                                 <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
                                     <a href="/configuracion/sunat" class="nav-link" th:classappend="${active == 'sunat' ? 'active' : ''}">
-                                        <i class="far fa-circle nav-icon"></i><p>Facturación SUNAT</p>
+                                        <i class="far fa-circle nav-icon"></i><p>Config. SUNAT</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/configuracion/sunat-billing" class="nav-link" th:classappend="${active == 'sunat_billing' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice-dollar nav-icon text-purple"></i><p>Consumo SUNAT</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/licencia" class="nav-link" th:classappend="${active == 'licencia' ? 'active' : ''}">
+                                        <i class="fas fa-key nav-icon text-warning"></i><p>Licencia</p>
                                     </a>
                                 </li>
                                 <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
@@ -246,6 +386,7 @@
     </div>
     <div th:fragment="scripts">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script th:src="@{/js/csrf-ajax-setup.js}"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
         <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
@@ -309,9 +450,284 @@
                 return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
             };
 
+            // ============================================
+            // MANEJO GLOBAL DE ERROR DE CAJA CERRADA
+            // ============================================
+            /**
+             * Verifica si un mensaje de error indica que la caja está cerrada.
+             * @param {string} mensaje - El mensaje de error a verificar
+             * @returns {boolean} - true si el error es de caja cerrada
+             */
+            window.esCajaCerrada = function(mensaje) {
+                if (!mensaje) return false;
+                var msgUpper = mensaje.toUpperCase();
+                return msgUpper.includes('CAJA CERRADA') || msgUpper.includes('ABRIR CAJA') || msgUpper.includes('DEBE ABRIR CAJA');
+            };
+
+            /**
+             * Muestra el diálogo de caja cerrada con botón para ir a abrirla.
+             * Usar en el manejo de errores AJAX de cualquier módulo que requiera caja abierta.
+             */
+            window.mostrarAlertaCajaCerrada = function() {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Caja Cerrada',
+                    html: '<p class="mb-3">No puede realizar operaciones porque la <strong>caja no está abierta</strong>.</p>' +
+                          '<p class="text-muted small">Debe abrir la caja antes de registrar ventas, compras o movimientos.</p>',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fas fa-cash-register"></i> Ir a Abrir Caja',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        window.location.href = '/caja';
+                    }
+                });
+            };
+
+            /**
+             * Manejador de errores AJAX genérico que detecta caja cerrada.
+             * Usar como: error: window.manejarErrorAjax
+             * O como: error: function(xhr) { if(!window.manejarErrorCajaCerrada(xhr)) { // manejar otros errores } }
+             * @returns {boolean} - true si el error fue manejado (caja cerrada), false si no
+             */
+            window.manejarErrorCajaCerrada = function(xhr) {
+                if (xhr.status === 400) {
+                    try {
+                        var resp = JSON.parse(xhr.responseText);
+                        var mensaje = resp.error || resp.message || '';
+                        if (window.esCajaCerrada(mensaje)) {
+                            window.mostrarAlertaCajaCerrada();
+                            return true;
+                        }
+                    } catch(e) {}
+                }
+                return false;
+            };
+
             $(document).ready(function () {
                 setTimeout(function () { $(".sidebar-overlay").remove(); $("body").removeClass("sidebar-open"); }, 200);
                 if($('.select2').length) { $('.select2').select2({ theme: 'bootstrap4' }); }
+            });
+
+            // ============================================
+            // SISTEMA DE NOTIFICACIONES
+            // ============================================
+            var notificacionesData = [];
+
+            function cargarNotificaciones() {
+                $.get('/notificaciones/api/ultimas?limite=10', function(data) {
+                    notificacionesData = data.notificaciones || [];
+                    actualizarBadge(data.noLeidas);
+                    renderizarDropdown(data.notificaciones);
+                }).fail(function() {
+                    console.log('No se pudieron cargar las notificaciones');
+                });
+            }
+
+            function actualizarBadge(count) {
+                var badge = $('#notifBadge');
+                if (count > 0) {
+                    badge.text(count > 99 ? '99+' : count).show();
+                } else {
+                    badge.hide();
+                }
+            }
+
+            function getIconoTipo(tipo) {
+                var iconos = {
+                    'STOCK_BAJO': 'fa-box text-warning',
+                    'STOCK_AGOTADO': 'fa-times-circle text-danger',
+                    'CREDITO_VENCIDO': 'fa-clock text-danger',
+                    'INCIDENCIA': 'fa-exclamation-circle text-warning',
+                    'SISTEMA': 'fa-info-circle text-info',
+                    'INFO': 'fa-info-circle text-info',
+                    'ALERTA': 'fa-exclamation-triangle text-warning'
+                };
+                return iconos[tipo] || 'fa-bell text-secondary';
+            }
+
+            function renderizarDropdown(notificaciones) {
+                var html = '';
+                if (!notificaciones || notificaciones.length === 0) {
+                    html = '<div class="text-center py-4 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><p class="mb-0">No hay notificaciones</p></div>';
+                } else {
+                    notificaciones.forEach(function(n) {
+                        var bgClass = n.leida ? '' : 'bg-light';
+                        var iconClass = n.icono ? n.icono + ' ' + (n.color || '') : getIconoTipo(n.tipo);
+                        html += '<a href="' + (n.url || '#') + '" class="dropdown-item ' + bgClass + ' notif-item" data-id="' + n.id + '" style="white-space: normal; border-bottom: 1px solid #eee;">';
+                        html += '  <div class="d-flex align-items-start">';
+                        html += '    <div class="mr-3 mt-1"><i class="fas ' + iconClass + ' fa-lg"></i></div>';
+                        html += '    <div class="flex-grow-1">';
+                        html += '      <div class="d-flex justify-content-between">';
+                        html += '        <strong class="text-dark" style="font-size: 0.9rem;">' + n.titulo + '</strong>';
+                        if (n.prioridad === 'URGENTE') {
+                            html += '        <span class="badge badge-danger badge-sm">URGENTE</span>';
+                        } else if (n.prioridad === 'ALTA') {
+                            html += '        <span class="badge badge-warning badge-sm">ALTA</span>';
+                        }
+                        html += '      </div>';
+                        html += '      <p class="text-muted mb-1" style="font-size: 0.8rem;">' + (n.mensaje ? n.mensaje.substring(0, 80) + (n.mensaje.length > 80 ? '...' : '') : '') + '</p>';
+                        html += '      <div class="d-flex justify-content-between align-items-center">';
+                        html += '        <small class="text-muted"><i class="fas fa-clock mr-1"></i>' + n.tiempoRelativo + '</small>';
+                        if (!n.resuelta) {
+                            html += '        <button class="btn btn-xs btn-outline-success btn-resolver" data-id="' + n.id + '" title="Marcar como resuelta"><i class="fas fa-check"></i></button>';
+                        } else {
+                            html += '        <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Resuelta</span>';
+                        }
+                        html += '      </div>';
+                        html += '    </div>';
+                        html += '  </div>';
+                        html += '</a>';
+                    });
+                }
+                $('#notificacionesLista').html(html);
+            }
+
+            function renderizarModal(notificaciones) {
+                var html = '';
+                var filtroTipo = $('#filtroTipoNotif').val();
+                var filtroEstado = $('#filtroEstadoNotif').val();
+
+                var filtradas = notificaciones.filter(function(n) {
+                    if (filtroTipo && n.tipo !== filtroTipo) return false;
+                    if (filtroEstado === 'no_leidas' && n.leida) return false;
+                    if (filtroEstado === 'no_resueltas' && n.resuelta) return false;
+                    if (filtroEstado === 'resueltas' && !n.resuelta) return false;
+                    return true;
+                });
+
+                if (filtradas.length === 0) {
+                    html = '<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>No hay notificaciones que mostrar</p></div>';
+                } else {
+                    filtradas.forEach(function(n) {
+                        var bgClass = n.leida ? '' : 'bg-light';
+                        var iconClass = n.icono ? n.icono + ' ' + (n.color || '') : getIconoTipo(n.tipo);
+                        html += '<div class="p-3 border-bottom ' + bgClass + ' notif-modal-item" data-id="' + n.id + '">';
+                        html += '  <div class="d-flex">';
+                        html += '    <div class="mr-3"><div class="rounded-circle p-2" style="background: #f0f0f0;"><i class="fas ' + iconClass + ' fa-lg"></i></div></div>';
+                        html += '    <div class="flex-grow-1">';
+                        html += '      <div class="d-flex justify-content-between align-items-start mb-1">';
+                        html += '        <h6 class="mb-0">' + n.titulo + '</h6>';
+                        html += '        <div>';
+                        if (n.prioridad === 'URGENTE') {
+                            html += '          <span class="badge badge-danger mr-1">URGENTE</span>';
+                        } else if (n.prioridad === 'ALTA') {
+                            html += '          <span class="badge badge-warning mr-1">ALTA</span>';
+                        }
+                        html += '          <span class="badge badge-' + (n.resuelta ? 'success' : 'secondary') + '">' + (n.resuelta ? 'Resuelta' : 'Pendiente') + '</span>';
+                        html += '        </div>';
+                        html += '      </div>';
+                        html += '      <p class="text-muted mb-2" style="font-size: 0.9rem;">' + (n.mensaje || '') + '</p>';
+                        html += '      <div class="d-flex justify-content-between align-items-center">';
+                        html += '        <small class="text-muted"><i class="fas fa-clock mr-1"></i>' + n.fecha + ' (' + n.tiempoRelativo + ')</small>';
+                        html += '        <div class="btn-group btn-group-sm">';
+                        if (n.url) {
+                            html += '          <a href="' + n.url + '" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> Ir</a>';
+                        }
+                        if (!n.resuelta) {
+                            html += '          <button class="btn btn-outline-success btn-sm btn-resolver-modal" data-id="' + n.id + '"><i class="fas fa-check"></i> Resolver</button>';
+                        }
+                        html += '          <button class="btn btn-outline-danger btn-sm btn-eliminar-modal" data-id="' + n.id + '"><i class="fas fa-trash"></i></button>';
+                        html += '        </div>';
+                        html += '      </div>';
+                        html += '    </div>';
+                        html += '  </div>';
+                        html += '</div>';
+                    });
+                }
+                $('#notificacionesModalLista').html(html);
+                $('#statsNotif').text(filtradas.length + ' de ' + notificaciones.length + ' notificaciones');
+            }
+
+            // Event handlers
+            $(document).on('click', '.notif-item', function(e) {
+                var id = $(this).data('id');
+                $.post('/notificaciones/api/leer/' + id);
+            });
+
+            $(document).on('click', '.btn-resolver, .btn-resolver-modal', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var id = $(this).data('id');
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+                $.post('/notificaciones/api/resolver/' + id, function(resp) {
+                    if (resp.success) {
+                        cargarNotificaciones();
+                        if ($('#modalNotificaciones').is(':visible')) {
+                            cargarNotificacionesModal();
+                        }
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Notificación resuelta',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                }).fail(function() {
+                    btn.prop('disabled', false).html('<i class="fas fa-check"></i>');
+                });
+            });
+
+            $(document).on('click', '.btn-eliminar-modal', function(e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                $.ajax({
+                    url: '/notificaciones/api/eliminar/' + id,
+                    type: 'DELETE',
+                    success: function(resp) {
+                        if (resp.success) {
+                            cargarNotificaciones();
+                            cargarNotificacionesModal();
+                        }
+                    }
+                });
+            });
+
+            $('#marcarTodasLeidas').click(function(e) {
+                e.preventDefault();
+                $.post('/notificaciones/api/leer-todas', function(resp) {
+                    if (resp.success) {
+                        cargarNotificaciones();
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Todas marcadas como leídas',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                });
+            });
+
+            function cargarNotificacionesModal() {
+                $.get('/notificaciones/api/ultimas?limite=50', function(data) {
+                    notificacionesData = data.notificaciones || [];
+                    renderizarModal(notificacionesData);
+                });
+            }
+
+            $('#modalNotificaciones').on('show.bs.modal', function() {
+                cargarNotificacionesModal();
+            });
+
+            $('#filtroTipoNotif, #filtroEstadoNotif').change(function() {
+                renderizarModal(notificacionesData);
+            });
+
+            $('#btnRefreshModal').click(function() {
+                cargarNotificacionesModal();
+            });
+
+            // Cargar al inicio y refrescar cada 60 segundos
+            $(document).ready(function() {
+                cargarNotificaciones();
+                setInterval(cargarNotificaciones, 60000);
             });
         </script>
 

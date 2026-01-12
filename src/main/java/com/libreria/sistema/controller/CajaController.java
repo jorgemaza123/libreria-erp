@@ -1,6 +1,8 @@
 package com.libreria.sistema.controller;
 
+import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.service.CajaService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -8,9 +10,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/caja")
+@PreAuthorize("hasPermission(null, 'CAJA_VER')")
 public class CajaController {
 
     private final CajaService cajaService;
@@ -61,6 +70,7 @@ public class CajaController {
     }
 
     @PostMapping("/cerrar")
+    @PreAuthorize("hasPermission(null, 'CAJA_CREAR')")
     public String cerrar(@RequestParam BigDecimal montoReal, RedirectAttributes attr) {
         try {
             cajaService.cerrarCaja(montoReal);
@@ -74,9 +84,10 @@ public class CajaController {
 
     // Registrar GASTO ADMINISTRATIVO o Retiro
     @PostMapping("/movimiento")
-    public String movimiento(@RequestParam String tipo, 
-                             @RequestParam String concepto, 
-                             @RequestParam BigDecimal monto, 
+    @PreAuthorize("hasPermission(null, 'CAJA_EDITAR')")
+    public String movimiento(@RequestParam String tipo,
+                             @RequestParam String concepto,
+                             @RequestParam BigDecimal monto,
                              RedirectAttributes attr) {
         try {
             cajaService.registrarMovimiento(tipo, concepto, monto);
@@ -85,5 +96,45 @@ public class CajaController {
             attr.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/caja";
+    }
+
+    /**
+     * API endpoint para polling de la caja.
+     * Retorna balance y movimientos actualizados en formato JSON.
+     */
+    @GetMapping("/api/datos")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> obtenerDatosCaja() {
+        Map<String, Object> datos = new HashMap<>();
+
+        // Verificar si hay sesión activa
+        if (cajaService.obtenerSesionActiva().isEmpty()) {
+            datos.put("sesionActiva", false);
+            return ResponseEntity.ok(datos);
+        }
+
+        datos.put("sesionActiva", true);
+        datos.put("balance", cajaService.obtenerBalanceSesion());
+
+        // Convertir movimientos a formato JSON-friendly
+        List<MovimientoCaja> movimientos = cajaService.listarMovimientosSesion();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        List<Map<String, Object>> movimientosJson = movimientos.stream()
+            .map(m -> {
+                Map<String, Object> mov = new HashMap<>();
+                mov.put("hora", m.getFecha().format(formatter));
+                mov.put("concepto", m.getConcepto());
+                mov.put("tipo", m.getTipo());
+                mov.put("monto", m.getMonto());
+                return mov;
+            })
+            .collect(Collectors.toList());
+
+        datos.put("movimientos", movimientosJson);
+        datos.put("ultimaActualizacion",
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+        return ResponseEntity.ok(datos);
     }
 }

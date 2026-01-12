@@ -11,9 +11,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Controller
 @RequestMapping("/kardex")
+@PreAuthorize("hasPermission(null, 'KARDEX_VER')")
 public class KardexController {
 
     private final KardexRepository kardexRepository;

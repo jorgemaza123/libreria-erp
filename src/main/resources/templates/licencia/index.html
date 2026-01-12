@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Activar Licencia | Sistema ERP</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .license-card {
+            max-width: 600px;
+            width: 100%;
+            margin: 20px;
+        }
+        .uuid-box {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin-bottom: 20px;
+        }
+        .uuid-box .copy-btn {
+            float: right;
+            margin-top: -5px;
+        }
+        .status-badge {
+            font-size: 1.1em;
+            padding: 8px 16px;
+        }
+        .form-control-lg {
+            font-family: monospace;
+        }
+        .info-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="license-card">
+    <div class="card card-primary card-outline">
+        <div class="card-header text-center">
+            <h3 class="mb-0">
+                <i class="fas fa-key text-primary"></i> Activar Licencia
+            </h3>
+        </div>
+        <div class="card-body">
+
+            <!-- Estado actual de la licencia -->
+            <div class="text-center mb-4">
+                <span th:if="${licenseInfo.estado.name() == 'SIN_LICENCIA'}"
+                      class="badge badge-secondary status-badge">
+                    <i class="fas fa-times-circle"></i> Sin Licencia
+                </span>
+                <span th:if="${licenseInfo.estado.name() == 'ACTIVO'}"
+                      class="badge badge-success status-badge">
+                    <i class="fas fa-check-circle"></i> Licencia Activa
+                </span>
+                <span th:if="${licenseInfo.estado.name() == 'EN_GRACIA'}"
+                      class="badge badge-warning status-badge">
+                    <i class="fas fa-exclamation-triangle"></i> Periodo de Gracia
+                </span>
+                <span th:if="${licenseInfo.estado.name() == 'BLOQUEADO'}"
+                      class="badge badge-danger status-badge">
+                    <i class="fas fa-ban"></i> Licencia Vencida
+                </span>
+                <span th:if="${licenseInfo.estado.name() == 'INVALIDA'}"
+                      class="badge badge-danger status-badge">
+                    <i class="fas fa-times-circle"></i> Licencia Invalida
+                </span>
+            </div>
+
+            <!-- Mensaje del estado -->
+            <div class="alert alert-info text-center" th:if="${licenseInfo.mensaje}">
+                <i class="fas fa-info-circle"></i> <span th:text="${licenseInfo.mensaje}"></span>
+            </div>
+
+            <!-- UUID de instalacion -->
+            <div class="uuid-box">
+                <button type="button" class="btn btn-sm btn-outline-secondary copy-btn"
+                        onclick="copiarUUID()" title="Copiar UUID">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <strong>UUID de Instalacion:</strong><br>
+                <span id="installationUUID" th:text="${installationUUID}">-</span>
+            </div>
+
+            <p class="text-muted text-center mb-4">
+                <i class="fas fa-info-circle"></i>
+                Proporcione este UUID a su proveedor para obtener una licencia.
+            </p>
+
+            <!-- Informacion de licencia actual (si existe) -->
+            <div th:if="${licenseInfo.fechaVencimiento != null}" class="mb-4">
+                <h5><i class="fas fa-file-contract"></i> Informacion de Licencia</h5>
+                <div class="info-item">
+                    <strong>Fecha de Vencimiento:</strong>
+                    <span class="float-right" th:text="${licenseInfo.fechaVencimiento}">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>Dias Restantes:</strong>
+                    <span class="float-right"
+                          th:class="${licenseInfo.diasRestantes >= 0 ? 'text-success' : 'text-danger'}"
+                          th:text="${licenseInfo.diasRestantes}">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>Plan:</strong>
+                    <span class="float-right badge badge-info" th:text="${licenseInfo.nivelPlan}">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>SUNAT Habilitado:</strong>
+                    <span class="float-right">
+                        <i th:if="${licenseInfo.sunatActivo}" class="fas fa-check-circle text-success"></i>
+                        <i th:unless="${licenseInfo.sunatActivo}" class="fas fa-times-circle text-danger"></i>
+                    </span>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Formulario de activacion -->
+            <form id="formActivar" class="mt-4">
+                <div class="form-group">
+                    <label for="licenseHash">
+                        <i class="fas fa-key"></i> Codigo de Licencia
+                    </label>
+                    <textarea id="licenseHash" name="licenseHash"
+                              class="form-control form-control-lg"
+                              rows="3"
+                              placeholder="Pegue aqui su codigo de licencia..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-unlock"></i> Activar Licencia
+                </button>
+            </form>
+
+            <!-- Opcion de modo offline (solo si esta bloqueado) -->
+            <div th:if="${licenseInfo.estado.name() == 'BLOQUEADO'}" class="mt-4">
+                <hr>
+                <div class="alert alert-warning">
+                    <h5><i class="fas fa-wifi-slash"></i> Modo Sin SUNAT</h5>
+                    <p>Si no puede renovar ahora, puede desactivar SUNAT y continuar trabajando en modo offline.
+                       No podra emitir comprobantes electronicos.</p>
+                    <button type="button" class="btn btn-warning btn-block" onclick="desactivarSunat()">
+                        <i class="fas fa-power-off"></i> Trabajar Sin SUNAT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Boton para ir al sistema (solo si licencia valida) -->
+            <div th:if="${licenseInfo.estado.name() == 'ACTIVO' or licenseInfo.estado.name() == 'EN_GRACIA'}"
+                 class="mt-4">
+                <a href="/" class="btn btn-success btn-lg btn-block">
+                    <i class="fas fa-arrow-right"></i> Continuar al Sistema
+                </a>
+            </div>
+
+        </div>
+        <div class="card-footer text-center text-muted">
+            <small>Sistema ERP - Libreria H & J</small>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Configurar CSRF para AJAX
+    var csrfToken = $('meta[name="_csrf"]').attr('content');
+    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+
+    $.ajaxSetup({
+        beforeSend: function(xhr) {
+            if (csrfHeader && csrfToken) {
+                xhr.setRequestHeader(csrfHeader, csrfToken);
+            }
+        }
+    });
+
+    // Copiar UUID al portapapeles
+    function copiarUUID() {
+        var uuid = document.getElementById('installationUUID').innerText;
+        navigator.clipboard.writeText(uuid).then(function() {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'UUID copiado al portapapeles',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+
+    // Activar licencia
+    $('#formActivar').on('submit', function(e) {
+        e.preventDefault();
+
+        var licenseHash = $('#licenseHash').val().trim();
+
+        if (!licenseHash) {
+            Swal.fire('Error', 'Ingrese el codigo de licencia', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Activando licencia...',
+            text: 'Por favor espere',
+            allowOutsideClick: false,
+            didOpen: function() {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: '/licencia/activar',
+            method: 'POST',
+            data: { licenseHash: licenseHash },
+            success: function(resp) {
+                if (resp.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Licencia Activada',
+                        html: '<p>' + resp.mensaje + '</p>' +
+                              '<p><strong>Plan:</strong> ' + resp.nivelPlan + '</p>' +
+                              '<p><strong>Vence:</strong> ' + resp.fechaVencimiento + '</p>' +
+                              '<p><strong>Dias restantes:</strong> ' + resp.diasRestantes + '</p>',
+                        confirmButtonText: 'Ir al Sistema'
+                    }).then(function() {
+                        window.location.href = '/';
+                    });
+                } else {
+                    Swal.fire('Error', resp.mensaje, 'error');
+                }
+            },
+            error: function(xhr) {
+                var msg = 'Error al activar la licencia';
+                if (xhr.responseJSON && xhr.responseJSON.mensaje) {
+                    msg = xhr.responseJSON.mensaje;
+                }
+                Swal.fire('Error', msg, 'error');
+            }
+        });
+    });
+
+    // Desactivar SUNAT
+    function desactivarSunat() {
+        Swal.fire({
+            title: 'Desactivar SUNAT?',
+            html: '<p>Podra trabajar sin emitir comprobantes electronicos.</p>' +
+                  '<p class="text-warning"><strong>Nota:</strong> Sus ventas NO se enviaran a SUNAT.</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: 'Si, desactivar SUNAT',
+            cancelButtonText: 'Cancelar'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/licencia/desactivar-sunat',
+                    method: 'POST',
+                    success: function(resp) {
+                        if (resp.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'SUNAT Desactivado',
+                                text: resp.mensaje,
+                                confirmButtonText: 'Ir al Sistema'
+                            }).then(function() {
+                                window.location.href = '/';
+                            });
+                        } else {
+                            Swal.fire('Error', resp.mensaje, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'No se pudo desactivar SUNAT', 'error');
+                    }
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>

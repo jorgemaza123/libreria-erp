@@ -6,8 +6,11 @@ import com.libreria.sistema.repository.AmortizacionRepository;
 import com.libreria.sistema.repository.VentaRepository;
 import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.ConfiguracionService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +20,7 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/cobranzas")
+@Slf4j
 public class CobranzaController {
 
     private final VentaRepository ventaRepository;
@@ -32,11 +36,13 @@ public class CobranzaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasPermission(null, 'COBRANZAS_VER')")
     public String index() {
         return "cobranzas/index";
     }
 
     @GetMapping("/buscar")
+    @PreAuthorize("hasPermission(null, 'COBRANZAS_VER')")
     public String buscarDeudas(@RequestParam String dni, Model model) {
         List<Venta> deudas = ventaRepository.findDeudasPorDni(dni);
         model.addAttribute("deudas", deudas);
@@ -45,9 +51,12 @@ public class CobranzaController {
     }
 
     @PostMapping("/pagar")
-    @ResponseBody 
-    public ResponseEntity<?> registrarPago(@RequestParam Long ventaId, 
-                                           @RequestParam BigDecimal montoPago) {
+    @ResponseBody
+    @Transactional
+    @PreAuthorize("hasPermission(null, 'COBRANZAS_CREAR')")
+    public ResponseEntity<?> registrarPago(@RequestParam Long ventaId,
+                                           @RequestParam BigDecimal montoPago,
+                                           @RequestParam(defaultValue = "EFECTIVO") String metodoPago) {
         try {
             Venta venta = ventaRepository.findById(ventaId)
                     .orElseThrow(() -> new RuntimeException("Venta no encontrada"));
@@ -59,8 +68,8 @@ public class CobranzaController {
             Amortizacion pago = new Amortizacion();
             pago.setVenta(venta);
             pago.setMonto(montoPago);
-            pago.setMetodoPago("EFECTIVO");
-            pago.setObservacion("PAGO A CUENTA / CUOTA");
+            pago.setMetodoPago(metodoPago);
+            pago.setObservacion("PAGO A CUENTA / CUOTA - " + metodoPago);
             Amortizacion pagoGuardado = amortizacionRepository.save(pago);
 
             venta.setMontoPagado(venta.getMontoPagado().add(montoPago));
@@ -71,11 +80,8 @@ public class CobranzaController {
             }
             ventaRepository.save(venta);
 
-            try {
-                cajaService.registrarMovimiento("INGRESO", "COBRO CUOTA VENTA " + venta.getSerie() + "-" + venta.getNumero(), montoPago);
-            } catch (Exception e) {
-                // Loguear error de caja cerrada pero permitir el pago
-            }
+            // Registrar movimiento en caja - OBLIGATORIO: Si falla, debe abortar la transacción (ahora con @Transactional)
+            cajaService.registrarMovimiento("INGRESO", "COBRO CUOTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")", montoPago);
 
             // Devolvemos el ID del pago para que el JS abra el ticket
             return ResponseEntity.ok(Map.of(
@@ -84,11 +90,13 @@ public class CobranzaController {
             ));
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            log.error("Error al registrar pago de cobranza", e);
+            return ResponseEntity.badRequest().body("Error al procesar el pago. Por favor intente nuevamente.");
         }
     }
 
     @GetMapping("/ticket/{idAmortizacion}")
+    @PreAuthorize("hasPermission(null, 'COBRANZAS_VER')")
     public String ticketPago(@PathVariable Long idAmortizacion, Model model) {
         Amortizacion pago = amortizacionRepository.findById(idAmortizacion)
                 .orElseThrow(() -> new RuntimeException("Pago no encontrado"));

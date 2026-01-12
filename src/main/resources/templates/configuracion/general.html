@@ -92,6 +92,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" id="tab-impresion" data-toggle="pill" href="#impresion" role="tab">
+                                <i class="fas fa-print"></i> Impresión
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" id="tab-facturacion" data-toggle="pill" href="#facturacion" role="tab">
                                 <i class="fas fa-file-invoice"></i> Facturación Electrónica
                             </a>
@@ -264,12 +269,39 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
+                        <label>Color Oscuro</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview"
+                                   id="colorOscuro" name="colorOscuro"
+                                   th:value="${config.colorOscuro}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorOscuro"
+                                   th:value="${config.colorOscuro}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Color Claro</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control color-preview"
+                                   id="colorClaro" name="colorClaro"
+                                   th:value="${config.colorClaro}" onchange="updatePreview()">
+                            <input type="text" class="form-control" id="txtColorClaro"
+                                   th:value="${config.colorClaro}" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
                         <label>Color Bronce</label>
                         <div class="input-group">
-                            <input type="color" class="form-control color-preview" 
-                                   id="colorBronce" name="colorBronce" 
+                            <input type="color" class="form-control color-preview"
+                                   id="colorBronce" name="colorBronce"
                                    th:value="${config.colorBronce}" onchange="updatePreview()">
-                            <input type="text" class="form-control" id="txtColorBronce" 
+                            <input type="text" class="form-control" id="txtColorBronce"
                                    th:value="${config.colorBronce}" readonly>
                         </div>
                     </div>
@@ -401,6 +433,74 @@
                                             <div class="input-group">
                                                 <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
                                                 <input type="number" step="0.01" class="form-control" th:field="*{limiteEfectivoCaja}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="impresion" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-print text-primary"></i> Configuración de Impresión de Comprobantes</h4>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-primary">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-file-alt"></i> Formato de Impresión</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group">
+                                                    <label>Formato por Defecto</label>
+                                                    <select class="form-control" th:field="*{formatoImpresion}">
+                                                        <option value="TICKET">Ticket Térmico (80mm)</option>
+                                                        <option value="A4">Hoja A4 Completa</option>
+                                                    </select>
+                                                    <small class="form-text text-muted">
+                                                        <strong>TICKET:</strong> Para impresoras térmicas de punto de venta (58mm, 80mm)<br>
+                                                        <strong>A4:</strong> Para impresoras comunes (formato hoja completa)
+                                                    </small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Ancho del Ticket (mm)</label>
+                                                    <select class="form-control" th:field="*{anchoTicketMm}">
+                                                        <option value="58">58 mm (Mini)</option>
+                                                        <option value="80">80 mm (Estándar)</option>
+                                                    </select>
+                                                    <small class="form-text text-muted">Solo aplica cuando el formato es TICKET</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-success">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-cog"></i> Opciones de Ticket</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="custom-control custom-switch mb-3">
+                                                    <input type="checkbox" class="custom-control-input" id="mostrarLogoEnTicket" th:field="*{mostrarLogoEnTicket}">
+                                                    <label class="custom-control-label" for="mostrarLogoEnTicket">Mostrar Logo en Tickets</label>
+                                                    <small class="form-text text-muted">Desactivar puede acelerar la impresión</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Mensaje de Pie de Ticket</label>
+                                                    <textarea class="form-control" th:field="*{mensajePieTicket}" rows="2" placeholder="Gracias por su compra. Vuelva pronto!"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card card-outline card-info">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-university"></i> Cuentas Bancarias (para comprobantes)</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group">
+                                                    <label>Información de Cuentas Bancarias</label>
+                                                    <textarea class="form-control" th:field="*{cuentasBancarias}" rows="4" placeholder="BCP: 123-456789-0-12&#10;BBVA: 0011-0123-0200123456&#10;Interbank: 200-3001234567"></textarea>
+                                                    <small class="form-text text-muted">Se mostrará en boletas y facturas. Use una línea por cada cuenta.</small>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

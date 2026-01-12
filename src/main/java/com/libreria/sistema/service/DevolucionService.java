@@ -66,11 +66,17 @@ public class DevolucionService {
         // 3. Determinar modo de facturación
         boolean facturaElectronicaActiva = facturacionService.isFacturacionElectronicaActiva();
 
-        // 4. Obtener correlativo de nota de crédito
+        // 4. Obtener correlativo de nota de crédito CON LOCK PESIMISTA (evita duplicados en concurrencia)
+        // Si la serie no existe, se crea automáticamente con ultimoNumero = 0
         String serie = facturaElectronicaActiva ? "C001" : "NC01";
-        Correlativo correlativo = correlativoRepository.findByCodigoAndSerie("NOTA_CREDITO", serie)
-                .orElse(new Correlativo("NOTA_CREDITO", serie, 0));
-        Integer nuevoNumero = correlativo.getUltimoNumero() + 1;
+        Correlativo correlativo = correlativoRepository.findByCodigoAndSerieWithLock("NOTA_CREDITO", serie)
+                .orElseGet(() -> {
+                    Correlativo nuevo = new Correlativo("NOTA_CREDITO", serie, 0);
+                    return correlativoRepository.save(nuevo);
+                });
+        // SAFE UNBOXING DEFENSIVO: Triple protección contra NPE
+        Integer ultimoActual = correlativo.getUltimoNumero();
+        int nuevoNumero = (ultimoActual != null ? ultimoActual : 0) + 1;
         correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
@@ -198,15 +204,11 @@ public class DevolucionService {
     }
 
     /**
-     * Registra egreso en caja por reembolso
+     * Registra egreso en caja por reembolso - OBLIGATORIO: Si falla, debe abortar la transacción
      */
     private void registrarEgresoCaja(DevolucionVenta devolucion) {
-        try {
-            String concepto = "REEMBOLSO DEVOLUCIÓN NC " + devolucion.getSerie() + "-" + devolucion.getNumero();
-            cajaService.registrarMovimiento("EGRESO", concepto, devolucion.getTotalDevuelto());
-        } catch (Exception e) {
-            log.warn("No se pudo registrar movimiento en caja: {}", e.getMessage());
-        }
+        String concepto = "REEMBOLSO DEVOLUCIÓN NC " + devolucion.getSerie() + "-" + devolucion.getNumero();
+        cajaService.registrarMovimiento("EGRESO", concepto, devolucion.getTotalDevuelto());
     }
 
     /**
@@ -358,6 +360,17 @@ public class DevolucionService {
                 ventaOriginal.setEstado("EMITIDO");
             }
             ventaRepository.save(ventaOriginal);
+        }
+
+        // CORRECCION: Si la devolución tuvo reembolso en efectivo, registrar ingreso para anular el egreso
+        if ("EFECTIVO".equals(devolucion.getMetodoReembolso()) && devolucion.getTotalDevuelto() != null) {
+            try {
+                String concepto = "ANULACIÓN REEMBOLSO NC " + devolucion.getSerie() + "-" + devolucion.getNumero();
+                cajaService.registrarMovimiento("INGRESO", concepto, devolucion.getTotalDevuelto());
+            } catch (Exception e) {
+                log.warn("No se pudo registrar ingreso de anulación de devolución (¿caja cerrada?): {}", e.getMessage());
+                // No bloqueamos la anulación si la caja está cerrada, pero queda registrado
+            }
         }
 
         devolucionRepository.save(devolucion);

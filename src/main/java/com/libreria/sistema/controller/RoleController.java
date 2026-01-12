@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/roles")
-@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+@PreAuthorize("hasPermission(null, 'ROLES_VER')")
 public class RoleController {
 
     @Autowired
@@ -101,6 +101,7 @@ public class RoleController {
      * Crear un nuevo rol
      */
     @PostMapping("/api/crear")
+    @PreAuthorize("hasPermission(null, 'ROLES_CREAR')")
     @ResponseBody
     public ResponseEntity<?> crearRole(@RequestBody Map<String, Object> request) {
         try {
@@ -132,6 +133,7 @@ public class RoleController {
      * Actualizar un rol existente
      */
     @PutMapping("/api/actualizar/{id}")
+    @PreAuthorize("hasPermission(null, 'ROLES_EDITAR')")
     @ResponseBody
     public ResponseEntity<?> actualizarRole(@PathVariable Long id,
                                            @RequestBody Map<String, Object> request) {
@@ -163,6 +165,7 @@ public class RoleController {
      * Eliminar un rol
      */
     @DeleteMapping("/api/eliminar/{id}")
+    @PreAuthorize("hasPermission(null, 'ROLES_ELIMINAR')")
     @ResponseBody
     public ResponseEntity<?> eliminarRole(@PathVariable Long id) {
         try {

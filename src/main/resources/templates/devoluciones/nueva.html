@@ -401,6 +401,10 @@
                 },
                 error: function(xhr) {
                     Swal.close();
+                    // Detectar error de caja cerrada
+                    if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+                        return;
+                    }
                     const error = xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido';
                     Swal.fire('Error', error, 'error');
                 }

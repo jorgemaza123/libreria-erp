@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+
+<head>
+    <title>Notificaciones - Sistema</title>
+</head>
+
+<body>
+<section layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><i class="fas fa-bell text-primary mr-2"></i>Centro de Notificaciones</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Notificaciones</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Estadisticas -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${stats.noLeidas}">0</h3>
+                            <p>No Leídas</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-envelope"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${stats.total}">0</h3>
+                            <p>Total</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-bell"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${stats.porTipo != null && stats.porTipo['STOCK_AGOTADO'] != null ? stats.porTipo['STOCK_AGOTADO'] : 0}">0</h3>
+                            <p>Stock Agotado</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-times-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${stats.porTipo != null && stats.porTipo['STOCK_BAJO'] != null ? stats.porTipo['STOCK_BAJO'] : 0}">0</h3>
+                            <p>Stock Bajo</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-box"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones rapidas -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary" id="btnMarcarTodasLeidas">
+                            <i class="fas fa-check-double mr-1"></i>Marcar todas como leídas
+                        </button>
+                        <button class="btn btn-outline-success" id="btnVerificarStock">
+                            <i class="fas fa-sync-alt mr-1"></i>Verificar stock ahora
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de notificaciones -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list mr-2"></i>Todas las Notificaciones</h3>
+                    <div class="card-tools">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <select class="form-control" id="filtroTipo">
+                                <option value="">Todos los tipos</option>
+                                <option value="STOCK_BAJO">Stock Bajo</option>
+                                <option value="STOCK_AGOTADO">Stock Agotado</option>
+                                <option value="CREDITO_VENCIDO">Crédito Vencido</option>
+                                <option value="INCIDENCIA">Incidencias</option>
+                                <option value="SISTEMA">Sistema</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tablaNotificaciones">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th>Notificación</th>
+                                    <th style="width: 120px;">Tipo</th>
+                                    <th style="width: 100px;">Prioridad</th>
+                                    <th style="width: 150px;">Fecha</th>
+                                    <th style="width: 100px;">Estado</th>
+                                    <th style="width: 150px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="n : ${notificaciones.content}"
+                                    th:classappend="${!n.leida} ? 'table-warning' : ''"
+                                    th:data-id="${n.id}">
+                                    <td class="align-middle">
+                                        <i th:class="'fas fa-lg ' + (${n.icono} ?: 'fa-bell') + ' ' + (${n.colorIcono} ?: 'text-secondary')"></i>
+                                    </td>
+                                    <td>
+                                        <strong th:text="${n.titulo}">Título</strong>
+                                        <p class="text-muted mb-0 small" th:text="${n.mensaje}">Mensaje</p>
+                                    </td>
+                                    <td>
+                                        <span class="badge"
+                                              th:classappend="${n.tipo == 'STOCK_AGOTADO'} ? 'badge-danger' :
+                                                             (${n.tipo == 'STOCK_BAJO'} ? 'badge-warning' :
+                                                             (${n.tipo == 'CREDITO_VENCIDO'} ? 'badge-danger' :
+                                                             (${n.tipo == 'INCIDENCIA'} ? 'badge-warning' : 'badge-info')))"
+                                              th:text="${n.tipo}">TIPO</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge"
+                                              th:classappend="${n.prioridad == 'URGENTE'} ? 'badge-danger' :
+                                                             (${n.prioridad == 'ALTA'} ? 'badge-warning' : 'badge-secondary')"
+                                              th:text="${n.prioridad}">NORMAL</span>
+                                    </td>
+                                    <td>
+                                        <small th:text="${#temporals.format(n.fechaCreacion, 'dd/MM/yyyy HH:mm')}">01/01/2024</small>
+                                    </td>
+                                    <td>
+                                        <span th:if="${n.resuelta}" class="badge badge-success">
+                                            <i class="fas fa-check mr-1"></i>Resuelta
+                                        </span>
+                                        <span th:if="${!n.resuelta}" class="badge badge-secondary">Pendiente</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a th:if="${n.urlAccion}" th:href="${n.urlAccion}"
+                                               class="btn btn-outline-primary" title="Ir">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                            <button th:if="${!n.resuelta}" class="btn btn-outline-success btn-resolver-page"
+                                                    th:data-id="${n.id}" title="Marcar como resuelta">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-eliminar-page"
+                                                    th:data-id="${n.id}" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${notificaciones.content.isEmpty()}">
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="fas fa-check-circle fa-3x mb-3"></i>
+                                        <p class="mb-0">No hay notificaciones</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer" th:if="${notificaciones.totalPages > 1}">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 justify-content-center">
+                            <li class="page-item" th:classappend="${notificaciones.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/notificaciones(page=${notificaciones.number - 1})}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            <li th:each="i : ${#numbers.sequence(0, notificaciones.totalPages - 1)}"
+                                class="page-item" th:classappend="${i == notificaciones.number} ? 'active'">
+                                <a class="page-link" th:href="@{/notificaciones(page=${i})}" th:text="${i + 1}">1</a>
+                            </li>
+                            <li class="page-item" th:classappend="${notificaciones.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/notificaciones(page=${notificaciones.number + 1})}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+
+<th:block layout:fragment="scripts">
+<script>
+$(document).ready(function() {
+    // Marcar todas como leídas
+    $('#btnMarcarTodasLeidas').click(function() {
+        $.post('/notificaciones/api/leer-todas', function(resp) {
+            if (resp.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listo',
+                    text: resp.actualizadas + ' notificaciones marcadas como leídas',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(function() {
+                    location.reload();
+                });
+            }
+        });
+    });
+
+    // Verificar stock
+    $('#btnVerificarStock').click(function() {
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Verificando...');
+        $.post('/notificaciones/api/verificar-stock', function(resp) {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i>Verificar stock ahora');
+            if (resp.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Verificación completada',
+                    text: 'Se han verificado los productos con stock bajo',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(function() {
+                    location.reload();
+                });
+            }
+        }).fail(function() {
+            btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-1"></i>Verificar stock ahora');
+        });
+    });
+
+    // Resolver notificación
+    $(document).on('click', '.btn-resolver-page', function() {
+        var id = $(this).data('id');
+        var row = $(this).closest('tr');
+        $.post('/notificaciones/api/resolver/' + id, function(resp) {
+            if (resp.success) {
+                row.find('.badge-secondary').removeClass('badge-secondary').addClass('badge-success')
+                   .html('<i class="fas fa-check mr-1"></i>Resuelta');
+                row.find('.btn-resolver-page').remove();
+                row.removeClass('table-warning');
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Notificación resuelta',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    });
+
+    // Eliminar notificación
+    $(document).on('click', '.btn-eliminar-page', function() {
+        var id = $(this).data('id');
+        var row = $(this).closest('tr');
+        Swal.fire({
+            title: '¿Eliminar notificación?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '/notificaciones/api/eliminar/' + id,
+                    type: 'DELETE',
+                    success: function(resp) {
+                        if (resp.success) {
+                            row.fadeOut(300, function() { $(this).remove(); });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // Filtro por tipo
+    $('#filtroTipo').change(function() {
+        var tipo = $(this).val();
+        $('table tbody tr').each(function() {
+            var rowTipo = $(this).find('td:nth-child(3) .badge').text().trim();
+            if (!tipo || rowTipo === tipo) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+});
+</script>
+</th:block>
+</body>
+</html>

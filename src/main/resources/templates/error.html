@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del Sistema</title>
+    <link rel="stylesheet" th:href="@{/plugins/fontawesome-free/css/all.min.css}">
+    <link rel="stylesheet" th:href="@{/dist/css/adminlte.min.css}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-page {
+            text-align: center;
+            color: white;
+            max-width: 500px;
+            padding: 20px;
+        }
+        .error-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        .error-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .error-message {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .btn-home {
+            background: white;
+            color: #4facfe;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.2s;
+            margin: 5px;
+            display: inline-block;
+        }
+        .btn-home:hover {
+            transform: scale(1.05);
+            color: #00f2fe;
+            text-decoration: none;
+        }
+        .error-details {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h1 class="error-title">Ocurrio un Error</h1>
+        <p class="error-message">
+            Ha ocurrido un error inesperado en el sistema.<br>
+            Por favor intente nuevamente o contacte soporte.
+        </p>
+        <div>
+            <a th:href="@{/}" class="btn-home">
+                <i class="fas fa-home mr-1"></i> Inicio
+            </a>
+            <a href="javascript:history.back()" class="btn-home">
+                <i class="fas fa-arrow-left mr-1"></i> Volver
+            </a>
+        </div>
+
+        <div class="error-details" th:if="${status != null}">
+            <strong>Codigo:</strong> <span th:text="${status}">500</span><br>
+            <strong>Error:</strong> <span th:text="${error}">Error interno</span><br>
+            <span th:if="${message != null}">
+                <strong>Mensaje:</strong> <span th:text="${message}">-</span>
+            </span>
+        </div>
+    </div>
+</body>
+</html>

@@ -26,7 +26,7 @@
                             <span class="info-box-icon bg-info"><i class="fas fa-money-bill-wave"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">Saldo Inicial</span>
-                                <span class="info-box-number" th:text="'S/ ' + ${balance.inicial}"></span>
+                                <span class="info-box-number" id="balanceInicial" th:text="'S/ ' + ${balance.inicial}"></span>
                             </div>
                         </div>
                     </div>
@@ -35,7 +35,7 @@
                             <span class="info-box-icon bg-success"><i class="fas fa-arrow-up"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">Ventas/Ingresos</span>
-                                <span class="info-box-number" th:text="'S/ ' + ${balance.ingresos}"></span>
+                                <span class="info-box-number" id="balanceIngresos" th:text="'S/ ' + ${balance.ingresos}"></span>
                             </div>
                         </div>
                     </div>
@@ -44,7 +44,7 @@
                             <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">Gastos/Salidas</span>
-                                <span class="info-box-number" th:text="'S/ ' + ${balance.egresos}"></span>
+                                <span class="info-box-number" id="balanceEgresos" th:text="'S/ ' + ${balance.egresos}"></span>
                             </div>
                         </div>
                     </div>
@@ -53,7 +53,7 @@
                             <span class="info-box-icon"><i class="fas fa-wallet"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">SALDO ACTUAL</span>
-                                <span class="info-box-number" style="font-size: 1.5em;" th:text="'S/ ' + ${balance.saldo}"></span>
+                                <span class="info-box-number" id="balanceSaldo" style="font-size: 1.5em;" th:text="'S/ ' + ${balance.saldo}"></span>
                             </div>
                         </div>
                     </div>
@@ -111,7 +111,7 @@
                                             <th class="text-right">Monto</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="tbodyMovimientos">
                                         <tr th:each="m : ${movimientos}">
                                             <td th:text="${#temporals.format(m.fecha, 'HH:mm')}"></td>
                                             <td th:text="${m.concepto}"></td>
@@ -132,5 +132,100 @@
     </div>
 </div>
 <div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+    // ============================================
+    // POLLING - REFRESCO AUTOMATICO DE CAJA
+    // ============================================
+    const CAJA_POLLING_INTERVAL = 15000; // 15 segundos (más frecuente por ser crítico)
+    let cajaPollingTimer = null;
+
+    $(document).ready(function() {
+        iniciarPollingCaja();
+    });
+
+    function iniciarPollingCaja() {
+        if (cajaPollingTimer) clearInterval(cajaPollingTimer);
+
+        cajaPollingTimer = setInterval(function() {
+            console.log('[Caja] Actualizando datos...');
+            actualizarCaja();
+        }, CAJA_POLLING_INTERVAL);
+
+        console.log('[Caja] Polling iniciado - refresco cada ' + (CAJA_POLLING_INTERVAL/1000) + ' segundos');
+    }
+
+    function detenerPollingCaja() {
+        if (cajaPollingTimer) {
+            clearInterval(cajaPollingTimer);
+            cajaPollingTimer = null;
+            console.log('[Caja] Polling detenido');
+        }
+    }
+
+    // Detener polling cuando la pestaña no está visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            detenerPollingCaja();
+        } else {
+            actualizarCaja();
+            iniciarPollingCaja();
+        }
+    });
+
+    function actualizarCaja() {
+        $.ajax({
+            url: '/caja/api/datos',
+            method: 'GET',
+            success: function(data) {
+                if (!data.sesionActiva) {
+                    // Si la sesión se cerró, recargar la página
+                    window.location.reload();
+                    return;
+                }
+
+                // Actualizar balance
+                if (data.balance) {
+                    $('#balanceInicial').text('S/ ' + parseFloat(data.balance.inicial || 0).toFixed(2));
+                    $('#balanceIngresos').text('S/ ' + parseFloat(data.balance.ingresos || 0).toFixed(2));
+                    $('#balanceEgresos').text('S/ ' + parseFloat(data.balance.egresos || 0).toFixed(2));
+                    $('#balanceSaldo').text('S/ ' + parseFloat(data.balance.saldo || 0).toFixed(2));
+                }
+
+                // Actualizar tabla de movimientos
+                if (data.movimientos) {
+                    actualizarTablaMovimientos(data.movimientos);
+                }
+
+                console.log('[Caja] Actualizado a las ' + (data.ultimaActualizacion || new Date().toLocaleTimeString()));
+            },
+            error: function(xhr) {
+                console.log('[Caja] Error al actualizar:', xhr.statusText);
+            }
+        });
+    }
+
+    function actualizarTablaMovimientos(movimientos) {
+        var tbody = $('#tbodyMovimientos');
+        tbody.empty();
+
+        if (!movimientos || movimientos.length === 0) {
+            tbody.html('<tr><td colspan="4" class="text-center text-muted">No hay movimientos registrados</td></tr>');
+            return;
+        }
+
+        movimientos.forEach(function(m) {
+            var badgeClass = m.tipo === 'INGRESO' ? 'badge-success' : 'badge-danger';
+            tbody.append(
+                '<tr>' +
+                    '<td>' + m.hora + '</td>' +
+                    '<td>' + m.concepto + '</td>' +
+                    '<td><span class="badge ' + badgeClass + '">' + m.tipo + '</span></td>' +
+                    '<td class="text-right font-weight-bold">S/ ' + parseFloat(m.monto).toFixed(2) + '</td>' +
+                '</tr>'
+            );
+        });
+    }
+</script>
 </body>
 </html>

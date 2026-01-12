@@ -26,16 +26,19 @@ public class FacturacionElectronicaService {
     private final VentaRepository ventaRepo;
     private final CorrelativoRepository correlativoRepo;
     private final RestTemplate restTemplate;
+    private final ConfiguracionService configuracionService;
 
     public FacturacionElectronicaService(
             ConfiguracionSunatRepository configuracionRepo,
             VentaRepository ventaRepo,
             CorrelativoRepository correlativoRepo,
-            RestTemplate restTemplate) {
+            RestTemplate restTemplate,
+            ConfiguracionService configuracionService) {
         this.configuracionRepo = configuracionRepo;
         this.ventaRepo = ventaRepo;
         this.correlativoRepo = correlativoRepo;
         this.restTemplate = restTemplate;
+        this.configuracionService = configuracionService;
     }
 
     /**
@@ -203,10 +206,10 @@ public class FacturacionElectronicaService {
 
     /**
      * Calcula el valor unitario SIN IGV a partir del precio con IGV
-     * Fórmula: valorUnitario = precioConIgv / 1.18
+     * Fórmula: valorUnitario = precioConIgv / igvFactor (configurable)
      */
     public BigDecimal calcularValorUnitarioSinIgv(BigDecimal precioConIgv) {
-        BigDecimal igvFactor = new BigDecimal("1.18");
+        BigDecimal igvFactor = configuracionService.getIgvFactor();
         return precioConIgv.divide(igvFactor, 6, RoundingMode.HALF_UP);
     }
 
@@ -408,16 +411,19 @@ public class FacturacionElectronicaService {
 
         // Items de la devolución
         List<SunatRequestDTO.ItemDTO> items = new ArrayList<>();
+        BigDecimal igvFactor = configuracionService.getIgvFactor();
+        String igvPorcentajeStr = configuracionService.getIgvPorcentajeString();
+
         for (DetalleDevolucion detalle : devolucion.getDetalles()) {
             SunatRequestDTO.ItemDTO item = new SunatRequestDTO.ItemDTO();
             item.setUnidadDeMedida("NIU");
             item.setDescripcion(detalle.getDescripcion());
             item.setCantidad(detalle.getCantidadDevuelta().toString());
 
-            // Calcular valor unitario sin IGV
-            BigDecimal valorUnitario = detalle.getPrecioUnitario().divide(new BigDecimal("1.18"), 6, RoundingMode.HALF_UP);
+            // Calcular valor unitario sin IGV (configurable)
+            BigDecimal valorUnitario = detalle.getPrecioUnitario().divide(igvFactor, 6, RoundingMode.HALF_UP);
             item.setValorUnitario(valorUnitario.toString());
-            item.setPorcentajeIgv("18.00");
+            item.setPorcentajeIgv(igvPorcentajeStr);
             item.setCodigoTipoAfectacionIgv("10"); // Gravado
             item.setNombreTributo("IGV");
             items.add(item);

@@ -104,13 +104,53 @@
                                 <i class="fas fa-search fa-3x mb-3 text-gray-300"></i>
                                 <p>Busque un producto para comenzar...</p>
                             </div>
+
+                            <!-- PANEL DE PRODUCTOS RÁPIDOS (Quick Pick) -->
+                            <div id="panelRapido" class="p-3 border-top bg-light">
+                                <h6 class="text-secondary mb-3">
+                                    <i class="fas fa-bolt text-warning"></i> Productos Rápidos (sin código)
+                                </h6>
+                                <div class="d-flex flex-wrap justify-content-start">
+                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
+                                       onclick="agregarRapido('FOTOCOPIA_BN', 'Fotocopia B/N', 0.10)">
+                                        <i class="fas fa-copy text-secondary"></i>
+                                        <span class="d-block small">Fotocopia B/N</span>
+                                        <span class="badge bg-success">S/ 0.10</span>
+                                    </a>
+                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
+                                       onclick="agregarRapido('IMPRESION_A4', 'Impresión A4', 0.50)">
+                                        <i class="fas fa-print text-primary"></i>
+                                        <span class="d-block small">Impresión A4</span>
+                                        <span class="badge bg-success">S/ 0.50</span>
+                                    </a>
+                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
+                                       onclick="agregarRapido('ANILLADO', 'Anillado', 3.50)">
+                                        <i class="fas fa-ring text-info"></i>
+                                        <span class="d-block small">Anillado</span>
+                                        <span class="badge bg-success">S/ 3.50</span>
+                                    </a>
+                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
+                                       onclick="agregarRapido('BOLSA_PLASTICA', 'Bolsa Plástica', 0.10)">
+                                        <i class="fas fa-shopping-bag text-warning"></i>
+                                        <span class="d-block small">Bolsa Plástica</span>
+                                        <span class="badge bg-success">S/ 0.10</span>
+                                    </a>
+                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
+                                       onclick="agregarRapido('LAPICERO_AZUL', 'Lapicero Azul', 1.00)">
+                                        <i class="fas fa-pen text-primary"></i>
+                                        <span class="d-block small">Lapicero Azul</span>
+                                        <span class="badge bg-success">S/ 1.00</span>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        
+
                         <div class="card-footer bg-light text-muted small">
-                            <i class="fas fa-keyboard"></i> 
-                            <b>Enter</b> en buscador: Selecciona | 
-                            <b>Enter</b> en Cantidad: Suma 1 | 
-                            <b>Tab</b> en Cantidad: Vuelve a buscar
+                            <i class="fas fa-keyboard"></i>
+                            <b>F2</b> Preparar Cobro |
+                            <b>F4</b> Cambiar Comprobante |
+                            <b>Enter</b> Suma +1 |
+                            <b>Tab</b> Volver a buscar
                         </div>
                     </div>
                 </div>
@@ -177,20 +217,33 @@
                         <div class="form-group mb-2">
                             <label class="small mb-1">Tipo Comprobante</label>
                             <select id="tipoComprobante" class="form-control form-control-sm">
-                                <option value="NOTA_VENTA">NOTA VENTA</option>
                                 <option value="BOLETA">BOLETA</option>
                                 <option value="FACTURA">FACTURA</option>
+                                <option value="NOTA_VENTA">NOTA VENTA</option>
                             </select>
                         </div>
 
                         <div class="form-group mb-2">
                             <label class="small mb-1">DNI / RUC</label>
-                            <input type="text" id="clienteDoc" class="form-control form-control-sm" placeholder="00000000">
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="clienteDoc" class="form-control" placeholder="00000000" maxlength="11">
+                                <div class="input-group-append">
+                                    <button type="button" id="btnBuscarDoc" class="btn btn-info" onclick="buscarDocumento()" title="Buscar en SUNAT/RENIEC" style="display: none;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <small id="docFeedback" class="text-muted" style="display: none;"></small>
                         </div>
-                        
+
                         <div class="form-group mb-2">
                             <label class="small mb-1">Cliente *</label>
                             <input type="text" id="cliente" class="form-control form-control-sm font-weight-bold" placeholder="Nombre / Razón Social">
+                        </div>
+
+                        <div class="form-group mb-2" id="divDireccion" style="display: none;">
+                            <label class="small mb-1">Direccion</label>
+                            <input type="text" id="clienteDireccion" class="form-control form-control-sm" placeholder="Direccion fiscal">
                         </div>
 
                         <!-- CONDICIÓN DE PAGO -->
@@ -240,10 +293,17 @@
 </div>
 
 <div th:replace="~{fragments/layout :: scripts}"></div>
-<script>
+<script th:inline="javascript">
     let carrito = [];
     let productoActual = null;
     let totalVenta = 0;
+
+    // CONTROL DE PRECIOS: Determina si el usuario puede editar precios
+    // Solo ADMIN puede modificar precios en el POS
+    const esAdminGlobal = /*[[${#authorization.expression('hasRole("ADMIN")')}]]*/ false;
+
+    // FACTURACION ELECTRONICA: Determina si las validaciones SUNAT estan activas
+    const facturaElectronicaActiva = /*[[${facturaElectronicaActiva}]]*/ false;
 
     const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tk88L3RleHQ+PC9zdmc+";
 
@@ -282,11 +342,20 @@
         // Foco inicial al buscador
         setTimeout(() => $('#busquedaAjax').select2('open'), 300);
 
-        // Atajo Global F2 para cobrar
+        // =============================================
+        // ATAJOS DE TECLADO GLOBALES
+        // =============================================
         $(document).keydown(function(e) {
+            // F2: Preparar cobro (enfocar campo según tipo de pago)
             if (e.key === 'F2') {
                 e.preventDefault();
-                procesarVenta();
+                prepararCobro();
+            }
+
+            // F4: Cambiar tipo de comprobante cíclicamente
+            if (e.key === 'F4') {
+                e.preventDefault();
+                cambiarTipoComprobante();
             }
         });
     });
@@ -310,7 +379,7 @@
     function agregarDesdeVisor() {
         if(!productoActual) return;
         let cant = parseInt($("#inputCantidad").val());
-        
+
         if(cant > productoActual.stock) {
             Swal.fire('Stock Insuficiente', 'Solo quedan ' + productoActual.stock, 'warning');
             return;
@@ -332,6 +401,135 @@
             });
             dibujarCarrito(true, carrito.length - 1);
         }
+    }
+
+    // =============================================
+    // PRODUCTOS RÁPIDOS (Quick Pick)
+    // =============================================
+
+    /**
+     * Agrega un producto rápido al carrito sin pasar por el buscador.
+     * Estos productos son servicios que no requieren stock ni código de barras.
+     * @param {string} id - Identificador único del producto rápido
+     * @param {string} nombre - Nombre a mostrar en el carrito
+     * @param {number} precio - Precio unitario
+     */
+    function agregarRapido(id, nombre, precio) {
+        let index = carrito.findIndex(i => i.id === id);
+
+        if (index !== -1) {
+            // Si ya existe en el carrito, incrementar cantidad
+            carrito[index].cantidad += 1;
+            dibujarCarrito(true, index);
+        } else {
+            // Agregar nuevo item al carrito
+            carrito.push({
+                id: id,
+                nombre: nombre,
+                precio: parseFloat(precio),
+                precioMin: parseFloat(precio) * 0.8, // Mínimo 80% del precio
+                cantidad: 1,
+                stock: 99999, // Stock ilimitado para servicios
+                esServicio: true
+            });
+            dibujarCarrito(true, carrito.length - 1);
+        }
+
+        // Feedback visual rápido
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: nombre + ' agregado',
+            showConfirmButton: false,
+            timer: 800
+        });
+    }
+
+    // =============================================
+    // ATAJOS DE TECLADO - FUNCIONES
+    // =============================================
+
+    /**
+     * F2: Prepara el cobro enfocando el campo apropiado
+     * - Si es CRÉDITO -> Enfoca #montoInicial
+     * - Si es CONTADO -> Enfoca #clienteDoc
+     */
+    function prepararCobro() {
+        // Validar que hay productos en el carrito
+        if (carrito.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Carrito Vacío',
+                text: 'Agregue productos antes de cobrar',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            $('#busquedaAjax').select2('open');
+            return;
+        }
+
+        let formaPago = $("#formaPago").val();
+
+        if (formaPago === 'CREDITO') {
+            // Crédito: Enfocar monto inicial
+            $("#montoInicial").focus().select();
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: 'Ingrese el monto a cuenta',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        } else {
+            // Contado: Enfocar documento del cliente
+            $("#clienteDoc").focus().select();
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: 'Ingrese DNI/RUC del cliente',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+    }
+
+    /**
+     * F4: Cambia cíclicamente el tipo de comprobante
+     * BOLETA -> FACTURA -> NOTA_VENTA -> BOLETA...
+     */
+    function cambiarTipoComprobante() {
+        let $select = $("#tipoComprobante");
+        let actual = $select.val();
+        let siguiente;
+
+        // Ciclo: BOLETA -> FACTURA -> NOTA_VENTA -> BOLETA
+        switch(actual) {
+            case 'BOLETA':
+                siguiente = 'FACTURA';
+                break;
+            case 'FACTURA':
+                siguiente = 'NOTA_VENTA';
+                break;
+            case 'NOTA_VENTA':
+            default:
+                siguiente = 'BOLETA';
+                break;
+        }
+
+        $select.val(siguiente).trigger('change');
+
+        // Feedback visual
+        Swal.fire({
+            toast: true,
+            position: 'top',
+            icon: 'success',
+            title: 'Comprobante: ' + siguiente.replace('_', ' '),
+            showConfirmButton: false,
+            timer: 1000
+        });
     }
 
     // --- FUNCIONES DEL CARRITO ---
@@ -373,8 +571,10 @@
                 <td class="text-center text-muted">${index + 1}</td>
                 <td><span class="font-weight-bold text-dark">${item.nombre}</span></td>
                 <td class="text-right">
-                    <input type="number" step="0.10" class="form-control form-control-sm text-right border-0 bg-transparent" 
-                           value="${item.precio.toFixed(2)}" 
+                    <input type="number" step="0.10"
+                           class="form-control form-control-sm text-right border-0 ${esAdminGlobal ? '' : 'bg-light'}"
+                           value="${item.precio.toFixed(2)}"
+                           ${esAdminGlobal ? '' : 'readonly'}
                            onchange="cambiarPrecio(${index}, this.value)">
                 </td>
                 <td class="text-center">
@@ -455,10 +655,17 @@
     }
 
     async function cambiarPrecio(index, nuevoPrecio) {
+        // CONTROL DE PRECIOS: Solo ADMIN puede modificar
+        if (!esAdminGlobal) {
+            Swal.fire('Acceso Denegado', 'Solo administradores pueden modificar precios', 'error');
+            dibujarCarrito(); // Restaurar valor original
+            return;
+        }
+
         let item = carrito[index];
         let precio = parseFloat(nuevoPrecio);
 
-        if(precio < item.precioMin) {
+        if (precio < item.precioMin) {
             const { value: pass } = await Swal.fire({
                 title: 'AUTORIZACIÓN REQUERIDA',
                 text: `El precio mínimo es S/ ${item.precioMin.toFixed(2)}. Ingrese clave de Supervisor:`,
@@ -467,11 +674,13 @@
                 showCancelButton: true
             });
 
-            if (pass === '1234') { 
+            if (pass === '1234') {
                 item.precio = precio;
-            } 
+                item.precioModificado = true; // Marca para validación backend
+            }
         } else {
             item.precio = precio;
+            item.precioModificado = true; // Marca para validación backend
         }
         dibujarCarrito();
     }
@@ -506,6 +715,8 @@
             dibujarCarrito();
             $("#cliente").val('');
             $("#clienteDoc").val('');
+            $("#clienteDireccion").val('');
+            $("#docFeedback").hide();
             $("#formaPago").val("CONTADO").trigger('change');
             $("#montoInicial").val("0.00");
             $('#busquedaAjax').select2('open');
@@ -513,23 +724,116 @@
     }
 
     function procesarVenta() {
-        if(carrito.length === 0) return Swal.fire('Error', 'Carrito vacío', 'warning');
+        // Validación 1: Carrito vacío
+        if(carrito.length === 0) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Carrito Vacío',
+                text: 'Agregue al menos un producto para realizar la venta.',
+                confirmButtonText: 'Entendido'
+            });
+        }
+
+        // Validación 2: Productos sin cantidad válida
+        let itemsInvalidos = carrito.filter(i => !i.cantidad || i.cantidad <= 0);
+        if (itemsInvalidos.length > 0) {
+            return Swal.fire({
+                icon: 'error',
+                title: 'Cantidad Inválida',
+                text: 'Hay productos con cantidad inválida. Verifique el carrito.',
+                confirmButtonText: 'Revisar'
+            });
+        }
+
+        // Validación 3: Productos sin precio válido
+        let sinPrecio = carrito.filter(i => !i.precio || i.precio <= 0);
+        if (sinPrecio.length > 0) {
+            return Swal.fire({
+                icon: 'error',
+                title: 'Precio Inválido',
+                text: 'Hay productos sin precio válido. Verifique el carrito.',
+                confirmButtonText: 'Revisar'
+            });
+        }
 
         let formaPago = $("#formaPago").val();
         let doc = $("#clienteDoc").val();
+        let tipoComprobante = $("#tipoComprobante").val();
+
+        // Validación 4: Crédito requiere documento
         if (formaPago === 'CREDITO' && (!doc || doc.length < 8)) {
-            return Swal.fire('Faltan Datos', 'Para crédito es obligatorio DNI/RUC', 'warning');
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Datos Incompletos',
+                text: 'Para ventas a crédito es obligatorio ingresar el DNI o RUC del cliente.',
+                confirmButtonText: 'Completar Datos'
+            });
+        }
+
+        // Validación 5: Factura requiere RUC
+        if (tipoComprobante === 'FACTURA' && (!doc || doc.length !== 11)) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'RUC Requerido',
+                text: 'Para emitir Factura se requiere un RUC válido de 11 dígitos.',
+                confirmButtonText: 'Completar Datos'
+            });
+        }
+
+        // Validación 6: Factura requiere RUC validado y ACTIVO/HABIDO
+        // Solo aplica si la facturacion electronica esta activa
+        if (tipoComprobante === 'FACTURA' && facturaElectronicaActiva) {
+            if (!rucValidado) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'RUC No Validado',
+                    text: 'Debe consultar el RUC en SUNAT antes de emitir la Factura. Haga clic en el boton de busqueda.',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+            if (!rucActivo) {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Contribuyente No Activo',
+                    text: 'No se puede emitir Factura. El contribuyente no esta ACTIVO o no esta HABIDO en SUNAT.',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+        }
+
+        // Validación 7: Boleta con monto > S/ 700 requiere DNI
+        // Solo aplica si la facturacion electronica esta activa
+        if (tipoComprobante === 'BOLETA' && totalVenta > 700 && facturaElectronicaActiva) {
+            if (!doc || doc.length !== 8) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'DNI Requerido',
+                    html: 'Segun normativa SUNAT, para <b>Boletas mayores a S/ 700.00</b> es obligatorio identificar al cliente con su DNI (8 digitos).<br><br>' +
+                          '<b>Total de venta:</b> S/ ' + totalVenta.toFixed(2),
+                    confirmButtonText: 'Completar DNI'
+                });
+            }
         }
 
         let dto = {
             clienteNombre: $("#cliente").val() || 'CLIENTE VARIOS',
-            clienteDocumento: $("#clienteDoc").val() || '00000000',
-            tipoComprobante: $("#tipoComprobante").val(),
+            clienteDocumento: doc || '00000000',
+            clienteDireccion: $("#clienteDireccion").val() || '',
+            tipoComprobante: tipoComprobante,
             formaPago: formaPago,
             montoInicial: parseFloat($("#montoInicial").val()) || 0,
             diasCredito: parseInt($("#diasCredito").val()) || 7,
             items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))
         };
+
+        // Mostrar loading
+        Swal.fire({
+            title: 'Procesando venta...',
+            text: 'Por favor espere',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
         $.ajax({
             url: '/ventas/api/guardar',
@@ -539,9 +843,9 @@
             success: function(resp) {
                 Swal.fire({
                     title: '¡Venta Exitosa!',
-                    text: 'Comprobante generado',
+                    html: '<strong>' + resp.serie + '-' + resp.numero + '</strong><br>Comprobante generado correctamente',
                     icon: 'success',
-                    timer: 1500,
+                    timer: 2000,
                     showConfirmButton: false
                 }).then(() => {
                     imprimirPopup('/ventas/imprimir/' + resp.id);
@@ -549,13 +853,64 @@
                     dibujarCarrito();
                     $("#cliente").val('');
                     $("#clienteDoc").val('');
+                    $("#clienteDireccion").val('');
+                    $("#docFeedback").hide();
                     $("#formaPago").val("CONTADO").trigger('change');
                     $("#montoInicial").val("0.00");
                     $('#busquedaAjax').select2('open');
                 });
             },
-            error: function(err) {
-                Swal.fire('Error', err.responseText, 'error');
+            error: function(xhr, status, error) {
+                let mensaje = 'Error desconocido. Por favor intente nuevamente.';
+                let titulo = 'Error';
+
+                // Manejar diferentes códigos de error
+                if (xhr.status === 401) {
+                    titulo = 'Sesión Expirada';
+                    mensaje = 'Su sesión ha expirado. Será redirigido al login.';
+                    Swal.fire({
+                        icon: 'warning',
+                        title: titulo,
+                        text: mensaje,
+                        confirmButtonText: 'Ir al Login'
+                    }).then(() => {
+                        window.location.href = '/login';
+                    });
+                    return;
+                } else if (xhr.status === 403) {
+                    titulo = 'Acceso Denegado';
+                    mensaje = 'No tiene permisos para realizar ventas. Contacte al administrador.';
+                } else if (xhr.status === 400) {
+                    // Error de validación o negocio
+                    try {
+                        let resp = JSON.parse(xhr.responseText);
+                        mensaje = resp.error || resp.message || xhr.responseText;
+                    } catch(e) {
+                        mensaje = xhr.responseText || 'Error en los datos enviados.';
+                    }
+
+                    // DETECCIÓN ESPECIAL: CAJA CERRADA (usa función global del layout)
+                    if (window.esCajaCerrada && window.esCajaCerrada(mensaje)) {
+                        window.mostrarAlertaCajaCerrada();
+                        return;
+                    }
+                } else if (xhr.status === 409) {
+                    titulo = 'Conflicto de Stock';
+                    mensaje = 'Otro vendedor modificó el stock. Por favor actualice la página e intente nuevamente.';
+                } else if (xhr.status === 500) {
+                    titulo = 'Error del Servidor';
+                    mensaje = 'Ocurrió un error interno. Por favor contacte al administrador.';
+                } else if (xhr.status === 0) {
+                    titulo = 'Sin Conexión';
+                    mensaje = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: titulo,
+                    text: mensaje,
+                    confirmButtonText: 'Entendido'
+                });
             }
         });
     }
@@ -582,6 +937,167 @@
             }
         });
     }
+
+    // =====================================
+    // CONSULTA DE DOCUMENTOS (SUNAT/RENIEC)
+    // Solo activo para FACTURAS
+    // =====================================
+
+    // Flag para controlar si el RUC fue validado y esta activo
+    let rucValidado = false;
+    let rucActivo = false;
+
+    // Mostrar/ocultar boton de busqueda segun tipo de comprobante
+    // Solo si la facturacion electronica esta activa
+    function actualizarVisibilidadBusqueda() {
+        let tipo = $("#tipoComprobante").val();
+        if (tipo === 'FACTURA' && facturaElectronicaActiva) {
+            $("#btnBuscarDoc").show();
+            $("#divDireccion").show();
+            // Resetear validacion al cambiar a FACTURA
+            rucValidado = false;
+            rucActivo = false;
+        } else {
+            $("#btnBuscarDoc").hide();
+            // Mostrar direccion en FACTURA aunque no haya validacion SUNAT
+            if (tipo === 'FACTURA') {
+                $("#divDireccion").show();
+            } else {
+                $("#divDireccion").hide();
+            }
+        }
+    }
+
+    // Evento cuando cambia el tipo de comprobante
+    $("#tipoComprobante").on('change', function() {
+        actualizarVisibilidadBusqueda();
+
+        // Limpiar campos si cambia de tipo
+        if ($(this).val() !== 'FACTURA') {
+            $("#clienteDireccion").val('');
+        }
+    });
+
+    // Evento cuando se ingresa documento (solo en FACTURA con facturacion electronica)
+    let timeoutBusqueda = null;
+    $("#clienteDoc").on('input', function() {
+        let doc = $(this).val().trim().replace(/[^0-9]/g, '');
+        let tipo = $("#tipoComprobante").val();
+
+        // Resetear validacion cuando cambia el documento (solo si facturacion activa)
+        if (tipo === 'FACTURA' && facturaElectronicaActiva) {
+            rucValidado = false;
+            rucActivo = false;
+        }
+
+        // Solo buscar automaticamente en FACTURA con RUC de 11 digitos
+        // Y solo si la facturacion electronica esta activa
+        if (tipo === 'FACTURA' && doc.length === 11 && facturaElectronicaActiva) {
+            // Cancelar busqueda anterior si existe
+            if (timeoutBusqueda) clearTimeout(timeoutBusqueda);
+
+            // Esperar 500ms antes de buscar (evitar multiples llamadas)
+            timeoutBusqueda = setTimeout(function() {
+                buscarDocumento();
+            }, 500);
+        }
+    });
+
+    // Funcion para buscar documento en SUNAT/RENIEC
+    function buscarDocumento() {
+        let doc = $("#clienteDoc").val().trim().replace(/[^0-9]/g, '');
+
+        if (!doc || (doc.length !== 8 && doc.length !== 11)) {
+            mostrarFeedback('Ingrese un DNI (8 digitos) o RUC (11 digitos)', 'warning');
+            return;
+        }
+
+        // Mostrar loading
+        $("#btnBuscarDoc").prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        mostrarFeedback('Consultando...', 'info');
+
+        $.ajax({
+            url: '/ventas/api/consultar-documento',
+            type: 'GET',
+            data: { documento: doc },
+            success: function(resp) {
+                if (resp.success) {
+                    // Llenar campos con datos obtenidos
+                    if (resp.razonSocial) {
+                        $("#cliente").val(resp.razonSocial);
+                    } else if (resp.nombreCompleto) {
+                        $("#cliente").val(resp.nombreCompleto);
+                    }
+
+                    if (resp.direccion) {
+                        $("#clienteDireccion").val(resp.direccion);
+                    }
+
+                    // Marcar RUC como validado
+                    rucValidado = true;
+
+                    // Verificar si esta ACTIVO/HABIDO
+                    let esActivo = resp.activo === true;
+                    rucActivo = esActivo;
+
+                    // Mostrar mensaje segun estado
+                    let estadoMsg = '';
+                    if (resp.estado && resp.condicion) {
+                        estadoMsg = ' - ' + resp.estado + '/' + resp.condicion;
+                    }
+
+                    if (esActivo) {
+                        mostrarFeedback('Contribuyente ACTIVO/HABIDO' + estadoMsg, 'success');
+                    } else {
+                        // BLOQUEAR: Contribuyente no activo
+                        mostrarFeedback('BLOQUEADO: ' + resp.estado + '/' + resp.condicion, 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'No se puede emitir Factura',
+                            html: '<p>El contribuyente <b>NO</b> cumple los requisitos de SUNAT:</p>' +
+                                  '<p><b>Estado:</b> ' + (resp.estado || 'N/A') + '</p>' +
+                                  '<p><b>Condicion:</b> ' + (resp.condicion || 'N/A') + '</p>' +
+                                  '<p class="text-danger"><b>Para emitir FACTURA el contribuyente debe estar ACTIVO y HABIDO.</b></p>',
+                            confirmButtonText: 'Entendido'
+                        });
+                    }
+                } else {
+                    rucValidado = true;
+                    rucActivo = false;
+                    mostrarFeedback(resp.error || 'No se encontraron datos', 'danger');
+                }
+            },
+            error: function(xhr) {
+                let msg = 'Error al consultar';
+                try {
+                    let resp = JSON.parse(xhr.responseText);
+                    msg = resp.error || msg;
+                } catch(e) {}
+                mostrarFeedback(msg, 'danger');
+            },
+            complete: function() {
+                $("#btnBuscarDoc").prop('disabled', false).html('<i class="fas fa-search"></i>');
+            }
+        });
+    }
+
+    // Mostrar feedback debajo del campo de documento
+    function mostrarFeedback(mensaje, tipo) {
+        let $feedback = $("#docFeedback");
+        $feedback.removeClass('text-success text-danger text-warning text-info text-muted');
+        $feedback.addClass('text-' + tipo);
+        $feedback.text(mensaje).show();
+
+        // Ocultar despues de 5 segundos si es exito
+        if (tipo === 'success') {
+            setTimeout(() => $feedback.fadeOut(), 5000);
+        }
+    }
+
+    // Inicializar visibilidad al cargar
+    $(document).ready(function() {
+        actualizarVisibilidadBusqueda();
+    });
 </script>
 </body>
 </html>

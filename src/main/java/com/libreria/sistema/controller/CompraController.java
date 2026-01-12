@@ -19,6 +19,7 @@ import java.util.Map;
 @Controller
 @RequestMapping("/compras")
 @Slf4j
+@PreAuthorize("hasPermission(null, 'COMPRAS_VER')")
 public class CompraController {
 
     private final CompraRepository compraRepository;
@@ -49,6 +50,7 @@ public class CompraController {
     }
 
     @GetMapping("/nueva")
+    @PreAuthorize("hasPermission(null, 'COMPRAS_CREAR')")
     public String nueva(Model model) {
         model.addAttribute("proveedores", proveedorRepository.findByActivoTrue());
         model.addAttribute("productos", productoRepository.findAll());
@@ -56,6 +58,7 @@ public class CompraController {
     }
 
     @PostMapping("/api/guardar")
+    @PreAuthorize("hasPermission(null, 'COMPRAS_CREAR')")
     public ResponseEntity<?> guardarCompra(@RequestBody CompraDTO dto) {
         try {
             Proveedor prov = proveedorRepository.findById(dto.getProveedorId())
@@ -105,23 +108,18 @@ public class CompraController {
             compra.setTotal(totalCompra);
             Compra guardada = compraRepository.save(compra);
 
-            // 4. CAJA (CORREGIDO: Usar Service para descontar del turno actual)
-            try {
-                cajaService.registrarMovimiento(
-                    "EGRESO", 
-                    "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(), 
-                    totalCompra
-                );
-            } catch (Exception e) {
-                // Si la caja está cerrada, permitimos la compra pero avisamos en consola
-                System.err.println("ADVERTENCIA: Compra registrada sin salida de caja (Caja Cerrada).");
-            }
+            // 4. CAJA - OBLIGATORIO: Si falla, debe abortar la transacción
+            cajaService.registrarMovimiento(
+                "EGRESO",
+                "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(),
+                totalCompra
+            );
 
             return ResponseEntity.ok(Map.of("message", "Compra registrada exitosamente"));
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            log.error("Error al guardar compra", e);
+            return ResponseEntity.badRequest().body("Error al procesar la compra. Por favor intente nuevamente.");
         }
     }
 
@@ -145,7 +143,7 @@ public class CompraController {
     }
 
     @PostMapping("/api/anular/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasPermission(null, 'COMPRAS_ELIMINAR')")
     @ResponseBody
     public ResponseEntity<?> anularCompra(@PathVariable Long id) {
         try {

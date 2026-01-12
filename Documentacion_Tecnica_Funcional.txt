@@ -1,0 +1,1059 @@
+================================================================================
+           DOCUMENTACION TECNICA Y FUNCIONAL - SISTEMA LIBRERIA ERP
+================================================================================
+                    Version: 1.0 | Fecha: Enero 2026
+================================================================================
+
+TABLA DE CONTENIDOS
+-------------------
+1. RESUMEN EJECUTIVO
+2. ARQUITECTURA DEL SISTEMA
+3. MODULOS Y FUNCIONALIDADES
+4. MODELO DE DATOS
+5. STACK TECNOLOGICO
+6. PUNTOS DE PERSONALIZACION
+7. FLUJOS DE NEGOCIO PRINCIPALES
+8. SEGURIDAD Y AUDITORIA
+9. INTEGRACIONES EXTERNAS
+10. REQUISITOS TECNICOS
+11. LICENCIAMIENTO Y SOPORTE
+
+================================================================================
+                          1. RESUMEN EJECUTIVO
+================================================================================
+
+Sistema Libreria ERP es una solucion integral de gestion empresarial disenada
+especificamente para librerias, papelerias y negocios de comercio minorista
+en Peru. El sistema implementa una arquitectura de MONOLITO HIBRIDO que combina:
+
+  - Backend robusto con Spring Boot 3.2
+  - Frontend moderno con Thymeleaf + AdminLTE
+  - API REST para operaciones asincronas
+  - Integracion nativa con SUNAT para facturacion electronica
+
+PROPUESTA DE VALOR:
+-------------------
+* Punto de Venta (POS) intuitivo y rapido
+* Facturacion electronica SUNAT integrada (Boletas y Facturas)
+* Control de inventario en tiempo real con Kardex automatico
+* Gestion de creditos y cobranzas
+* Sistema de roles y permisos granular
+* Reportes financieros avanzados con graficos
+* Auditoria completa de operaciones
+* Multi-metodo de pago (Efectivo, Yape, Plin, Tarjeta, Transferencia)
+
+USUARIOS OBJETIVO:
+------------------
+* Administradores de tienda
+* Vendedores de mostrador
+* Contadores
+* Almaceneros
+* Gerentes
+
+================================================================================
+                       2. ARQUITECTURA DEL SISTEMA
+================================================================================
+
+TIPO DE ARQUITECTURA: Monolito Hibrido (MVC + REST API)
+-------------------------------------------------------
+
+El sistema implementa un patron de arquitectura en 3 capas:
+
+  +------------------+
+  |   PRESENTACION   |  Thymeleaf Templates + JavaScript (jQuery, AdminLTE)
+  +------------------+
+           |
+           v
+  +------------------+
+  |   CONTROLADORES  |  28 Controllers (MVC + REST endpoints)
+  +------------------+
+           |
+           v
+  +------------------+
+  |    SERVICIOS     |  20 Services (Logica de negocio)
+  +------------------+
+           |
+           v
+  +------------------+
+  |   REPOSITORIOS   |  27 Repositories (Spring Data JPA)
+  +------------------+
+           |
+           v
+  +------------------+
+  |   BASE DE DATOS  |  PostgreSQL
+  +------------------+
+
+
+ESTRUCTURA DE CARPETAS:
+-----------------------
+src/main/java/com/libreria/sistema/
+  +-- config/          Configuracion de seguridad, inicializacion
+  +-- controller/      28 controladores MVC y REST
+  +-- model/           28 entidades JPA + DTOs
+  +-- repository/      27 repositorios Spring Data
+  +-- service/         20 servicios de negocio
+  +-- aspect/          Aspectos AOP (auditoria)
+  +-- util/            Utilidades y constantes
+
+src/main/resources/
+  +-- templates/       53 templates HTML/Thymeleaf
+  +-- static/          CSS, JS, imagenes
+  +-- docs/            Documentacion de integraciones
+  +-- application.properties
+
+
+CARACTERISTICAS TECNICAS:
+-------------------------
+* Manejo de concurrencia con Lock Pesimista en correlativos
+* Bloqueo optimista (@Version) en productos para control de stock
+* Transacciones ACID con @Transactional
+* Cascada de operaciones en entidades relacionadas
+* Lazy loading optimizado para evitar N+1
+* Cache de sesion de 2 horas
+
+
+================================================================================
+                    3. MODULOS Y FUNCIONALIDADES
+================================================================================
+
+3.1. MODULO DE PUNTO DE VENTA (POS)
+-----------------------------------
+Ruta: /ventas
+
+FUNCIONALIDADES:
+* Busqueda inteligente de productos (por codigo, nombre, marca)
+* Carrito de compras dinamico con calculo automatico
+* Seleccion de tipo de comprobante (Boleta, Factura, Nota de Venta)
+* Multiples metodos de pago (Efectivo, Yape, Plin, Tarjeta, Transferencia, Mixto)
+* Venta al contado o a credito
+* Consulta automatica de DNI/RUC en SUNAT/RENIEC
+* Impresion de comprobantes (formato A4 o Ticket 80mm)
+* Envio automatico a SUNAT (modo electronico)
+
+VALIDACIONES:
+* No permite vender sin caja abierta
+* Valida stock disponible antes de confirmar
+* Exige DNI para boletas mayores a S/ 700
+* Exige RUC y validacion SUNAT para facturas
+* Controla precio minimo (maximo 20% descuento)
+
+REPORTES:
+* Historial de ventas con filtros por fecha
+* Detalle de venta individual
+* Exportacion a PDF y Excel
+
+
+3.2. MODULO DE INVENTARIO Y PRODUCTOS
+-------------------------------------
+Ruta: /productos, /inventario, /kardex
+
+FUNCIONALIDADES:
+* CRUD completo de productos
+* Codigos de barra y SKU unicos
+* Gestion de precios (compra, venta, mayorista)
+* Control de stock con alertas de minimo
+* Ubicacion en almacen (estante, fila, columna)
+* Carga de imagenes de productos
+* Importacion/Exportacion masiva via Excel
+* Ajustes manuales de inventario
+* Historial Kardex automatico (entradas, salidas, ajustes)
+* Generacion de etiquetas de precios
+
+CAMPOS DEL PRODUCTO:
+* Codigo de barra (unico)
+* Codigo interno/SKU (unico)
+* Nombre, Marca, Modelo, Color
+* Categoria
+* Precio de compra, venta, mayorista
+* Stock actual, Stock minimo
+* Ubicacion (estante/fila/columna)
+* Tipo de afectacion IGV (Gravado, Exonerado, Inafecto)
+* Imagen
+* Estado (Activo/Inactivo)
+
+
+3.3. MODULO DE COMPRAS
+----------------------
+Ruta: /compras
+
+FUNCIONALIDADES:
+* Registro de compras a proveedores
+* Seleccion multiple de productos
+* Actualizacion automatica de stock
+* Registro automatico en Kardex (ENTRADA)
+* Registro de egreso en caja
+* Anulacion de compras (revierte stock)
+* Historial de compras por proveedor
+
+DOCUMENTOS SOPORTADOS:
+* Factura de compra
+* Boleta de compra
+* Guia de remision
+* Nota de pedido
+
+
+3.4. MODULO DE CLIENTES
+-----------------------
+Ruta: /clientes
+
+FUNCIONALIDADES:
+* CRUD completo de clientes
+* Validacion de DNI (8 digitos) y RUC (11 digitos)
+* Consulta automatica en SUNAT/RENIEC
+* Gestion de credito por cliente
+* Historial de compras del cliente
+* Estadisticas (total compras, frecuencia, ultima compra)
+* Categorizacion automatica (VIP, Frecuente, Nuevo, Moroso)
+* Limite de credito configurable
+* Control de deuda pendiente
+
+CAMPOS DEL CLIENTE:
+* Tipo de documento (DNI/RUC)
+* Numero de documento (unico)
+* Nombre/Razon Social
+* Direccion
+* Telefono, Email
+* Tiene credito (Si/No)
+* Dias de credito
+* Limite de credito
+* Saldo deudor actual
+
+
+3.5. MODULO DE COBRANZAS
+------------------------
+Ruta: /cobranzas
+
+FUNCIONALIDADES:
+* Busqueda de deudas por cliente (DNI/RUC)
+* Listado de ventas a credito pendientes
+* Registro de pagos parciales (amortizaciones)
+* Multiples metodos de pago
+* Actualizacion automatica de saldo
+* Generacion de ticket de pago
+* Historial de pagos por venta
+* Alertas de creditos vencidos
+
+PROCESO:
+1. Buscar cliente por documento
+2. Ver deudas pendientes con fechas de vencimiento
+3. Seleccionar venta a pagar
+4. Ingresar monto y metodo de pago
+5. Sistema registra amortizacion
+6. Actualiza saldo pendiente
+7. Registra ingreso en caja
+8. Genera comprobante de pago
+
+
+3.6. MODULO DE COTIZACIONES
+---------------------------
+Ruta: /cotizaciones
+
+FUNCIONALIDADES:
+* Creacion de cotizaciones/presupuestos
+* Edicion de cotizaciones pendientes
+* Conversion automatica a venta
+* Impresion de cotizacion (PDF)
+* Estados: Pendiente, Convertida, Expirada
+* Envio por WhatsApp (boton integrado)
+* Busqueda de productos igual que en POS
+* Validez configurable
+
+
+3.7. MODULO DE DEVOLUCIONES
+---------------------------
+Ruta: /devoluciones
+
+FUNCIONALIDADES:
+* Busqueda de venta a devolver
+* Seleccion de items devueltos (parcial o total)
+* Generacion automatica de Nota de Credito
+* Reversion de movimientos en Kardex
+* Actualizacion de stock
+* Registro de devolucion en caja
+* Historial de devoluciones
+* Motivos de devolucion
+
+ESTADOS DE VENTA POST-DEVOLUCION:
+* DEVUELTO_PARCIAL - Algunos items devueltos
+* DEVUELTO_TOTAL - Venta completamente anulada
+
+
+3.8. MODULO DE CAJA
+-------------------
+Ruta: /caja
+
+FUNCIONALIDADES:
+* Apertura de caja con monto inicial
+* Cierre de caja con arqueo
+* Registro de movimientos (ingresos/egresos)
+* Gastos administrativos
+* Balance en tiempo real
+* Deteccion de diferencias (faltantes/sobrantes)
+* Una caja activa por usuario
+* Historial de sesiones
+
+MOVIMIENTOS AUTOMATICOS:
+* Ingreso por venta al contado
+* Ingreso por pago de credito
+* Egreso por compra
+* Egreso por devolucion (si aplica)
+
+MOVIMIENTOS MANUALES:
+* Ingreso por otros conceptos
+* Egreso por gastos operativos
+* Retiro de efectivo
+
+
+3.9. MODULO DE PROVEEDORES
+--------------------------
+Ruta: /proveedores
+
+FUNCIONALIDADES:
+* CRUD de proveedores
+* Datos fiscales (RUC, Razon Social)
+* Datos de contacto
+* Estado activo/inactivo
+* Historial de compras por proveedor
+* Estadisticas de compras
+
+
+3.10. MODULO DE ORDENES DE SERVICIO
+-----------------------------------
+Ruta: /ordenes
+
+FUNCIONALIDADES:
+* Registro de servicios tecnicos
+* Datos del cliente y equipo
+* Items de servicio con costo
+* Pago a cuenta y saldo
+* Estados: Pendiente, En Proceso, Entregado
+* Impresion de orden (PDF)
+* Historial de ordenes
+
+
+3.11. MODULO DE REPORTES
+------------------------
+Ruta: /reportes, /reportes-financieros, /reportes-universal
+
+REPORTES DISPONIBLES:
+* Ventas por periodo (diario, semanal, mensual)
+* Ventas por vendedor
+* Ventas por producto
+* Ventas por cliente
+* Compras por periodo
+* Compras por proveedor
+* Movimientos de caja
+* Inventario valorizado
+* Productos mas vendidos
+* Productos sin movimiento
+* Clientes morosos
+* Creditos por vencer
+* Flujo de caja
+* Rentabilidad por producto
+* Analisis de tendencias
+
+FORMATOS DE EXPORTACION:
+* PDF (para impresion)
+* Excel (para analisis)
+
+
+3.12. MODULO DE CONFIGURACION
+-----------------------------
+Ruta: /configuracion
+
+FUNCIONALIDADES:
+* Datos de la empresa (nombre, RUC, direccion)
+* Logo de la empresa (para comprobantes)
+* Configuracion de impresion (A4 o Ticket)
+* Formato de moneda
+* Configuracion de IGV
+* Integracion SUNAT (token, modo)
+* Configuracion de creditos
+* Parametros del sistema
+
+
+3.13. MODULO DE USUARIOS Y ROLES
+--------------------------------
+Ruta: /usuarios, /roles
+
+FUNCIONALIDADES:
+* CRUD de usuarios
+* Asignacion de roles
+* Sistema de permisos granular por modulo
+* Roles predefinidos (Admin, Vendedor, Contador, Almacenero)
+* Creacion de roles personalizados
+* Bloqueo/Desbloqueo de usuarios
+* Cambio de contrasena
+* Auditoria de accesos
+
+PERMISOS POR MODULO:
+* VENTAS: Ver, Crear, Editar, Eliminar
+* COMPRAS: Ver, Crear, Editar, Eliminar
+* INVENTARIO: Ver, Crear, Editar, Eliminar
+* CAJA: Ver, Crear, Editar
+* CLIENTES: Ver, Crear, Editar, Eliminar
+* REPORTES: Ver, Exportar
+* CONFIGURACION: Ver, Editar
+* USUARIOS: Ver, Crear, Editar, Eliminar
+* AUDITORIA: Ver
+* [+15 modulos adicionales]
+
+
+3.14. MODULO DE AUDITORIA
+-------------------------
+Ruta: /auditoria
+
+FUNCIONALIDADES:
+* Registro de todas las operaciones
+* Filtro por usuario, modulo, accion, fecha
+* Detalle de cambios realizados
+* Exportacion de logs
+* Retencion configurable
+
+
+3.15. MODULO DE NOTIFICACIONES
+------------------------------
+Ruta: /notificaciones
+
+TIPOS DE ALERTAS:
+* Stock bajo (producto bajo minimo)
+* Stock agotado (producto en cero)
+* Creditos por vencer
+* Creditos vencidos
+* Incidencias del sistema
+
+
+3.16. MODULO DE INCIDENCIAS
+---------------------------
+Ruta: /incidencias
+
+FUNCIONALIDADES:
+* Reporte de problemas por usuarios
+* Asignacion y seguimiento
+* Estados: Pendiente, En Proceso, Resuelto
+* Prioridades: Baja, Media, Alta, Critica
+* Historial de incidencias
+
+
+================================================================================
+                         4. MODELO DE DATOS
+================================================================================
+
+4.1. ENTIDADES PRINCIPALES (28 Total)
+-------------------------------------
+
+VENTA
+-----
+Representa una transaccion de venta completa.
+Campos clave:
+  - tipoComprobante: BOLETA, FACTURA, NOTA_VENTA
+  - serie, numero: Identificador del comprobante
+  - formaPago: CONTADO, CREDITO
+  - metodoPago: EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA, MIXTO
+  - total, totalGravada, totalIgv
+  - montoPagado, saldoPendiente
+  - estado: EMITIDO, PAGADO_TOTAL, ANULADO, DEVUELTO_PARCIAL, DEVUELTO_TOTAL
+  - Datos SUNAT: sunatEstado, sunatHash, sunatXmlUrl, sunatCdrUrl, sunatPdfUrl
+Relaciones:
+  - Tiene muchos DetalleVenta
+  - Tiene muchas Amortizacion (pagos)
+  - Pertenece a un Cliente
+  - Pertenece a un Usuario
+
+
+PRODUCTO
+--------
+Representa un articulo del inventario.
+Campos clave:
+  - codigoBarra (unico), codigoInterno/SKU (unico)
+  - nombre, marca, modelo, color, categoria
+  - precioCompra, precioVenta, precioMayorista
+  - stockActual (con @Version para concurrencia)
+  - stockMinimo
+  - ubicacionEstante, ubicacionFila, ubicacionColumna
+  - tipoAfectacionIgv: GRAVADO, EXONERADO, INAFECTO
+  - imagen (URL)
+  - activo (boolean)
+Relaciones:
+  - Tiene muchos DetalleVenta
+  - Tiene muchos DetalleCompra
+  - Tiene muchos Kardex
+
+
+CLIENTE
+-------
+Representa un cliente de la tienda.
+Campos clave:
+  - tipoDocumento: 1 (DNI), 6 (RUC)
+  - numeroDocumento (unico)
+  - nombreRazonSocial
+  - direccion, telefono, email
+  - tieneCredito, diasCredito, limiteCredito
+  - saldoDeudor
+  - totalComprasHistorico, cantidadCompras
+  - categoria: VIP, FRECUENTE, NUEVO, MOROSO
+Relaciones:
+  - Tiene muchas Venta
+
+
+COMPRA
+------
+Representa una compra a proveedor.
+Campos clave:
+  - tipoComprobante, numeroComprobante
+  - total
+  - estado: REGISTRADA, ANULADA
+  - observaciones
+Relaciones:
+  - Pertenece a un Proveedor
+  - Tiene muchos DetalleCompra
+
+
+SESION_CAJA
+-----------
+Representa un turno de caja.
+Campos clave:
+  - montoInicial
+  - montoFinalCalculado (calculado por sistema)
+  - montoFinalReal (ingresado en cierre)
+  - diferencia
+  - estado: ABIERTA, CERRADA
+  - fechaInicio, fechaFin
+Relaciones:
+  - Pertenece a un Usuario
+  - Tiene muchos MovimientoCaja
+
+
+KARDEX
+------
+Representa un movimiento de inventario.
+Campos clave:
+  - tipo: ENTRADA, SALIDA, AJUSTE
+  - motivo (descripcion)
+  - cantidad
+  - stockAnterior, stockActual
+  - fecha
+Relaciones:
+  - Pertenece a un Producto
+
+
+USUARIO
+-------
+Representa un usuario del sistema.
+Campos clave:
+  - username (unico)
+  - password (encriptado BCrypt)
+  - nombreCompleto
+  - activo
+  - intentosFallidos
+  - cuentaBloqueada
+  - ultimoLoginExitoso
+Relaciones:
+  - Tiene muchos Rol (legacy)
+  - Tiene un Role (granular)
+
+
+ROLE (Sistema Granular)
+-----------------------
+Representa un rol con permisos especificos.
+Campos clave:
+  - nombre: ADMIN, VENDEDOR, CONTADOR, ALMACENERO
+  - descripcion
+  - activo
+Relaciones:
+  - Tiene muchos Permission
+  - Tiene muchos Usuario
+
+
+PERMISSION
+----------
+Representa un permiso granular.
+Campos clave:
+  - modulo: VENTAS, COMPRAS, INVENTARIO, etc.
+  - accion: VER, CREAR, EDITAR, ELIMINAR
+  - codigo: VENTAS_VER, VENTAS_CREAR, etc. (unico)
+  - descripcion
+
+
+CORRELATIVO
+-----------
+Genera series y numeros para comprobantes.
+Campos clave:
+  - codigo: BOLETA, FACTURA, COTIZACION, NOTA_CREDITO
+  - serie: B001, F001, C001, NC01
+  - ultimoNumero
+
+
+CONFIGURACION
+-------------
+Almacena datos de la empresa.
+Campos clave:
+  - nombreEmpresa
+  - ruc
+  - direccion
+  - telefono, email
+  - logoBase64
+  - formatoMoneda
+  - formatoImpresion: A4, TICKET
+  - igvPorcentaje
+  - facturaElectronicaActiva
+
+
+4.2. RELACIONES PRINCIPALES
+---------------------------
+
+[Usuario] 1----N [Venta]
+[Usuario] 1----N [SesionCaja]
+[Usuario] N----M [Rol] (legacy)
+[Usuario] N----1 [Role] (granular)
+[Role] N----M [Permission]
+
+[Cliente] 1----N [Venta]
+[Venta] 1----N [DetalleVenta]
+[Venta] 1----N [Amortizacion]
+[DetalleVenta] N----1 [Producto]
+
+[Proveedor] 1----N [Compra]
+[Compra] 1----N [DetalleCompra]
+[DetalleCompra] N----1 [Producto]
+
+[Producto] 1----N [Kardex]
+[SesionCaja] 1----N [MovimientoCaja]
+
+[Cotizacion] 1----N [DetalleCotizacion]
+[DevolucionVenta] 1----N [DetalleDevolucion]
+[OrdenServicio] 1----N [OrdenItem]
+
+
+================================================================================
+                        5. STACK TECNOLOGICO
+================================================================================
+
+5.1. BACKEND
+------------
+* Java 17 (LTS)
+* Spring Boot 3.2.0
+* Spring Security 6 (autenticacion y autorizacion)
+* Spring Data JPA (acceso a datos)
+* Hibernate 6 (ORM)
+* Lombok (reduccion de boilerplate)
+* Jakarta Validation (validaciones)
+
+5.2. BASE DE DATOS
+------------------
+* PostgreSQL 14+ (recomendado 15)
+* Modo DDL: update (auto-crea/actualiza tablas)
+* Encoding: UTF-8
+* Timezone: America/Lima
+
+5.3. FRONTEND
+-------------
+* Thymeleaf 3.0 (motor de plantillas)
+* AdminLTE 3.2 (framework de admin)
+* Bootstrap 4.6 (estilos base)
+* jQuery 3.6 (manipulacion DOM)
+* Select2 4.1 (autocompletado avanzado)
+* DataTables 1.11 (tablas interactivas)
+* Chart.js 3.x (graficos)
+* SweetAlert2 (alertas bonitas)
+* Font Awesome 5.15 (iconos)
+
+5.4. GENERACION DE DOCUMENTOS
+-----------------------------
+* OpenPDF 1.3.30 (generacion de PDFs)
+* Apache POI 5.2.3 (Excel import/export)
+
+5.5. INTEGRACIONES
+------------------
+* APISUNAT (consulta RUC/DNI, facturacion electronica)
+* RestTemplate (cliente HTTP)
+
+5.6. SEGURIDAD
+--------------
+* BCrypt (encriptacion de contrasenas)
+* CSRF Protection (tokens)
+* Spring Method Security (@PreAuthorize)
+* Custom Permission Evaluator
+
+5.7. DESARROLLO
+---------------
+* Maven 3.9+ (gestion de dependencias)
+* Spring DevTools (hot reload)
+* SLF4J + Logback (logging)
+
+
+================================================================================
+                     6. PUNTOS DE PERSONALIZACION
+================================================================================
+
+6.1. AREAS FIJAS (Nucleo del Sistema)
+-------------------------------------
+Estas areas son estables y no requieren cambios frecuentes:
+
+* Modelo de seguridad (autenticacion, roles, permisos)
+* Estructura de entidades core (Venta, Producto, Cliente)
+* Flujo de caja (apertura, cierre, movimientos)
+* Generacion de correlativos
+* Auditoria de operaciones
+
+6.2. AREAS PREPARADAS PARA EXPANSION
+------------------------------------
+
+MODULO DE PRODUCTOS:
+* Facil agregar nuevos campos (talla, peso, lote)
+* Sistema de categorias expandible
+* Soporte para multiples imagenes
+* Campos para e-commerce
+
+MODULO DE VENTAS:
+* Nuevos tipos de comprobante
+* Nuevas formas de pago
+* Descuentos por cliente/producto
+* Promociones y ofertas
+* Integracion con balanzas
+
+MODULO DE CLIENTES:
+* Programa de fidelizacion
+* Puntos por compra
+* Descuentos personalizados
+* Comunicacion (email, SMS)
+
+MODULO DE REPORTES:
+* Nuevos indicadores KPI
+* Graficos personalizados
+* Tableros por rol
+* Exportacion a nuevos formatos
+
+INTEGRACIONES:
+* Pasarelas de pago (Niubiz, Izipay)
+* E-commerce (WooCommerce, Shopify)
+* Contabilidad (CONTAnet, SAP)
+* Mensajeria (WhatsApp Business API)
+* Delivery (Rappi, PedidosYa)
+
+6.3. CONFIGURACIONES PERSONALIZABLES
+------------------------------------
+Sin necesidad de modificar codigo:
+
+* Logo e informacion de empresa
+* Formato de impresion (A4/Ticket)
+* Porcentaje de IGV
+* Dias de credito por defecto
+* Stock minimo por defecto
+* Intentos de login antes de bloqueo
+* Duracion de bloqueo de cuenta
+* Timeout de sesion
+* Roles y permisos personalizados
+
+
+================================================================================
+                    7. FLUJOS DE NEGOCIO PRINCIPALES
+================================================================================
+
+7.1. FLUJO DE VENTA AL CONTADO
+------------------------------
+1. Vendedor abre caja con monto inicial
+2. Cliente solicita productos
+3. Vendedor busca productos en POS
+4. Agrega items al carrito
+5. Selecciona tipo de comprobante:
+   - BOLETA: DNI opcional (obligatorio si > S/700)
+   - FACTURA: RUC obligatorio + validacion SUNAT
+   - NOTA DE VENTA: Sin envio a SUNAT
+6. Selecciona metodo de pago
+7. Confirma venta
+8. Sistema:
+   - Valida stock
+   - Genera correlativo
+   - Crea venta y detalles
+   - Registra en Kardex (SALIDA)
+   - Actualiza stock
+   - Registra ingreso en caja
+   - Envia a SUNAT (si aplica)
+9. Imprime comprobante
+
+7.2. FLUJO DE VENTA A CREDITO
+-----------------------------
+1-7. Igual que venta al contado
+8. Selecciona forma de pago CREDITO
+9. Ingresa monto inicial (opcional)
+10. Sistema registra:
+    - Venta con saldo pendiente
+    - Amortizacion inicial (si hay pago)
+    - Fecha de vencimiento
+    - Ingreso en caja (solo monto inicial)
+11. Cliente recibe comprobante
+12. Posteriormente, cliente paga cuotas en /cobranzas
+
+7.3. FLUJO DE COBRANZA
+----------------------
+1. Cliente acude a pagar
+2. Vendedor busca por DNI/RUC
+3. Sistema muestra deudas pendientes
+4. Selecciona venta a pagar
+5. Ingresa monto y metodo de pago
+6. Sistema:
+   - Crea amortizacion
+   - Actualiza saldo pendiente
+   - Registra ingreso en caja
+   - Genera ticket de pago
+7. Si saldo = 0, marca venta como PAGADO_TOTAL
+
+7.4. FLUJO DE COMPRA
+--------------------
+1. Usuario accede a /compras/nueva
+2. Selecciona proveedor
+3. Busca y agrega productos
+4. Ingresa cantidades y costos
+5. Confirma compra
+6. Sistema:
+   - Crea compra y detalles
+   - Actualiza precio de compra de productos
+   - Aumenta stock
+   - Registra en Kardex (ENTRADA)
+   - Registra egreso en caja
+7. Genera nota de compra
+
+7.5. FLUJO DE DEVOLUCION
+------------------------
+1. Usuario busca venta a devolver
+2. Selecciona items a devolver
+3. Indica motivo de devolucion
+4. Confirma devolucion
+5. Sistema:
+   - Genera Nota de Credito
+   - Revierte Kardex (ENTRADA)
+   - Aumenta stock de productos
+   - Actualiza estado de venta
+   - Registra movimiento en caja (si aplica)
+6. Imprime Nota de Credito
+
+7.6. FLUJO DE CIERRE DE CAJA
+----------------------------
+1. Usuario accede a /caja/cierre
+2. Sistema muestra:
+   - Monto inicial
+   - Total ingresos
+   - Total egresos
+   - Monto final calculado
+3. Usuario ingresa monto real en caja
+4. Sistema calcula diferencia
+5. Confirma cierre
+6. Sistema:
+   - Cierra sesion de caja
+   - Registra diferencia (sobrante/faltante)
+   - Genera reporte de cierre
+
+
+================================================================================
+                       8. SEGURIDAD Y AUDITORIA
+================================================================================
+
+8.1. AUTENTICACION
+------------------
+* Login con username/password
+* Contrasenas encriptadas con BCrypt (fuerza 10)
+* Bloqueo progresivo por intentos fallidos:
+  - 5 intentos maximos
+  - Bloqueo de 15 minutos
+  - Desbloqueo automatico o manual
+* Sesion unica por usuario (maximo 1 concurrente)
+* Timeout de sesion: 2 horas
+
+8.2. AUTORIZACION
+-----------------
+* Sistema de permisos granular
+* 50+ permisos organizados por modulo
+* Roles predefinidos:
+  - ADMIN: Acceso total
+  - VENDEDOR: POS, cotizaciones, cobranzas
+  - CONTADOR: Reportes, visualizacion
+  - ALMACENERO: Inventario, compras
+* Roles personalizables
+* Evaluacion de permisos en cada endpoint
+
+8.3. PROTECCION CSRF
+--------------------
+* Token CSRF en todas las peticiones POST/PUT/DELETE
+* Validacion automatica por Spring Security
+* Excepcion para rutas publicas
+
+8.4. AUDITORIA
+--------------
+* Registro de todas las operaciones
+* Campos: usuario, modulo, accion, descripcion, fecha, IP
+* Anotacion @Auditable en servicios
+* Retencion configurable
+* Exportacion de logs
+
+8.5. VALIDACIONES DE DATOS
+--------------------------
+* Validacion en backend (Jakarta Validation)
+* Validacion en frontend (JavaScript)
+* Sanitizacion de entradas
+* Prevencion de inyeccion SQL (parametros tipados)
+
+
+================================================================================
+                      9. INTEGRACIONES EXTERNAS
+================================================================================
+
+9.1. APISUNAT - CONSULTA DE DOCUMENTOS
+--------------------------------------
+Endpoint: https://api.apisunat.pe/api/v1/
+Funcionalidades:
+* Consulta de RUC (11 digitos)
+  - Razon social
+  - Direccion fiscal
+  - Estado (Activo/Inactivo)
+  - Condicion (Habido/No Habido)
+* Consulta de DNI (8 digitos)
+  - Nombres completos
+  - Direccion (si disponible)
+
+Validaciones automaticas:
+* Para FACTURA: Contribuyente debe estar ACTIVO y HABIDO
+* Para BOLETA > S/700: DNI obligatorio
+
+9.2. APISUNAT - FACTURACION ELECTRONICA
+---------------------------------------
+Endpoint: https://api.apisunat.pe/api/v1/invoice/
+Funcionalidades:
+* Envio de comprobantes a SUNAT
+* Recepcion de CDR (Constancia de Recepcion)
+* Generacion de PDF con formato SUNAT
+* Hash del comprobante
+
+Tipos soportados:
+* Boleta electronica (serie B001)
+* Factura electronica (serie F001)
+* Nota de credito (serie NC01)
+
+Modo dual:
+* ACTIVO: Envio automatico a SUNAT
+* INACTIVO: Series internas (I001, IF001) sin envio
+
+9.3. CONFIGURACION
+------------------
+Ubicacion: /configuracion/sunat
+Datos requeridos:
+* Token de APISUNAT
+* RUC de la empresa
+* Modo de operacion (activo/inactivo)
+
+
+================================================================================
+                       10. REQUISITOS TECNICOS
+================================================================================
+
+10.1. SERVIDOR
+--------------
+MINIMO:
+* CPU: 2 cores
+* RAM: 4 GB
+* Disco: 50 GB SSD
+* SO: Windows Server 2019+ / Ubuntu 20.04+
+
+RECOMENDADO:
+* CPU: 4 cores
+* RAM: 8 GB
+* Disco: 100 GB SSD
+* SO: Ubuntu 22.04 LTS
+
+10.2. SOFTWARE
+--------------
+* Java JDK 17 (LTS)
+* PostgreSQL 14 o superior
+* Navegador moderno (Chrome, Firefox, Edge)
+
+10.3. RED
+---------
+* Conexion a internet (para SUNAT)
+* Puerto 8080 disponible
+* HTTPS recomendado para produccion
+
+10.4. IMPRESORAS
+----------------
+* Impresora termica 80mm (para tickets)
+* Impresora laser/inkjet (para A4)
+* Driver instalado en equipo cliente
+
+10.5. BASE DE DATOS
+-------------------
+Configuracion por defecto:
+* Host: localhost
+* Puerto: 5432
+* Base de datos: libreria_db
+* Usuario: postgres
+* Password: 1234 (cambiar en produccion)
+
+
+================================================================================
+                      11. LICENCIAMIENTO Y SOPORTE
+================================================================================
+
+11.1. MODELO DE LICENCIA
+------------------------
+[A definir segun estrategia comercial]
+
+Opciones sugeridas:
+* Licencia perpetua por instalacion
+* Suscripcion mensual/anual
+* SaaS multi-tenant
+
+11.2. NIVELES DE SOPORTE
+------------------------
+BASICO:
+* Instalacion inicial
+* Capacitacion (4 horas)
+* Soporte email (respuesta 48h)
+* Actualizaciones menores
+
+ESTANDAR:
+* Todo lo de Basico
+* Soporte telefonico (L-V 9-18h)
+* Respuesta en 24h
+* Actualizaciones mayores
+* Backup mensual
+
+PREMIUM:
+* Todo lo de Estandar
+* Soporte 24/7
+* Respuesta en 4h
+* Personalizaciones menores
+* Backup semanal
+* Servidor dedicado
+
+11.3. SERVICIOS ADICIONALES
+---------------------------
+* Migracion de datos desde otros sistemas
+* Personalizaciones a medida
+* Integraciones con terceros
+* Capacitacion adicional
+* Consultoria de procesos
+
+================================================================================
+                           ANEXOS
+================================================================================
+
+A. USUARIOS POR DEFECTO
+-----------------------
+Usuario: admin | Contrasena: admin | Rol: ADMIN
+Usuario: vendedor | Contrasena: 1234 | Rol: VENDEDOR
+
+B. SERIES DE COMPROBANTES
+-------------------------
+B001 - Boletas electronicas
+F001 - Facturas electronicas
+I001 - Boletas internas
+IF001 - Facturas internas
+C001 - Cotizaciones
+NC01 - Notas de credito
+
+C. CONTACTO TECNICO
+-------------------
+[Completar con datos de la empresa]
+
+================================================================================
+                     FIN DEL DOCUMENTO
+================================================================================

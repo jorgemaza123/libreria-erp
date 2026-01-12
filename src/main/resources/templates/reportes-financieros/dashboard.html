@@ -196,8 +196,46 @@
     <script>
         let chartVentasGastos, chartVendedores, chartTopProductos;
 
+        // Intervalo de polling en milisegundos (30 segundos)
+        const POLLING_INTERVAL = 30000;
+        let pollingTimer = null;
+
         $(document).ready(function() {
             cargarDashboard();
+            iniciarPolling();
+        });
+
+        // ============================================
+        // POLLING - REFRESCO AUTOMATICO
+        // ============================================
+        function iniciarPolling() {
+            // Limpiar timer previo si existe
+            if (pollingTimer) clearInterval(pollingTimer);
+
+            pollingTimer = setInterval(function() {
+                console.log('[Dashboard] Actualizando datos...');
+                cargarDashboard();
+            }, POLLING_INTERVAL);
+
+            console.log('[Dashboard] Polling iniciado - refresco cada ' + (POLLING_INTERVAL/1000) + ' segundos');
+        }
+
+        function detenerPolling() {
+            if (pollingTimer) {
+                clearInterval(pollingTimer);
+                pollingTimer = null;
+                console.log('[Dashboard] Polling detenido');
+            }
+        }
+
+        // Detener polling cuando la pestaña no está visible (ahorro de recursos)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                detenerPolling();
+            } else {
+                cargarDashboard(); // Actualizar inmediatamente al volver
+                iniciarPolling();
+            }
         });
 
         function cargarDashboard() {

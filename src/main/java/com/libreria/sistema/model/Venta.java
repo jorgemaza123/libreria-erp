@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entidad Venta con soporte para:
+ * - Múltiples métodos de pago (EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA)
+ * - Facturación electrónica SUNAT
+ * - Control de deudas y créditos
+ */
 @Data
 @Entity
 @Table(name = "ventas")
@@ -24,37 +30,45 @@ public class Venta {
 
     private LocalDate fechaEmision;
     private LocalDate fechaVencimiento; // Importante para Crédito
-    private String moneda = "PEN";  
-    private String tipoOperacion = "0101"; 
+    private String moneda = "PEN";
+    private String tipoOperacion = "0101";
 
-    // --- NUEVO: CONDICIÓN DE PAGO (SUNAT) ---
+    // --- CONDICIÓN DE PAGO (SUNAT) ---
     private String formaPago; // "Contado" o "Crédito"
+
+    // --- MÉTODO DE PAGO (NUEVO) ---
+    /**
+     * Método de pago utilizado en la venta.
+     * Valores: EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA, MIXTO
+     */
+    @Column(name = "metodo_pago", length = 20)
+    private String metodoPago = "EFECTIVO";
 
     // --- DATOS CLIENTE (SNAPSHOT) ---
     // Guardamos los datos en texto por si el cliente cambia de dirección en el futuro,
     // la factura histórica no se altere.
-    private String clienteTipoDocumento; 
+    private String clienteTipoDocumento;
     private String clienteNumeroDocumento;
     private String clienteDenominacion;
     private String clienteDireccion;
 
-    // --- NUEVO: RELACIÓN CON CLIENTE ---
+    // --- RELACIÓN CON CLIENTE ---
     // Para poder buscar "Todas las ventas de Juan" o "Deudas de Juan"
     @ManyToOne
     @JoinColumn(name = "cliente_id")
-    private Cliente clienteEntity; 
+    private Cliente clienteEntity;
 
     // --- TOTALES ---
     @Column(precision = 10, scale = 2)
-    private BigDecimal totalGravada; 
+    private BigDecimal totalGravada;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal totalIgv;    
+    private BigDecimal totalIgv;
 
     @Column(precision = 10, scale = 2)
-    private BigDecimal total;       
+    private BigDecimal total;
 
-    // --- NUEVO: CONTROL DE DEUDA ---
+    // --- CONTROL DE DEUDA ---
     @Column(precision = 10, scale = 2)
     private BigDecimal montoPagado; // Suma de amortizaciones
 
@@ -86,15 +100,15 @@ public class Venta {
 
     // --- AUDITORÍA ---
     private LocalDateTime fechaCreacion;
-    
+
     @ManyToOne
     @JoinColumn(name = "usuario_id")
-    private Usuario usuario; 
+    private Usuario usuario;
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DetalleVenta> items = new ArrayList<>();
 
-    // --- NUEVO: LISTA DE PAGOS ---
+    // --- LISTA DE PAGOS ---
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Amortizacion> amortizaciones = new ArrayList<>();
 
@@ -106,5 +120,6 @@ public class Venta {
         if(this.estado == null) this.estado = "EMITIDO";
         if(this.montoPagado == null) this.montoPagado = BigDecimal.ZERO;
         if(this.saldoPendiente == null) this.saldoPendiente = BigDecimal.ZERO;
+        if(this.metodoPago == null) this.metodoPago = "EFECTIVO";
     }
 }

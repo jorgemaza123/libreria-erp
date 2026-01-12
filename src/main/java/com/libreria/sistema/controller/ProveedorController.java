@@ -6,9 +6,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Controller
 @RequestMapping("/proveedores")
+@PreAuthorize("hasPermission(null, 'PROVEEDORES_VER')")
 public class ProveedorController {
 
     private final ProveedorRepository proveedorRepository;
@@ -24,6 +26,7 @@ public class ProveedorController {
     }
 
     @GetMapping("/nuevo")
+    @PreAuthorize("hasPermission(null, 'PROVEEDORES_CREAR')")
     public String nuevo(Model model) {
         model.addAttribute("proveedor", new Proveedor());
         model.addAttribute("titulo", "Registrar Proveedor");
@@ -31,6 +34,7 @@ public class ProveedorController {
     }
 
     @PostMapping("/guardar")
+    @PreAuthorize("hasPermission(null, 'PROVEEDORES_CREAR') or hasPermission(null, 'PROVEEDORES_EDITAR')")
     public String guardar(@ModelAttribute Proveedor proveedor, RedirectAttributes attributes) {
         try {
             if (proveedor.getId() == null) proveedor.setActivo(true);
@@ -44,6 +48,7 @@ public class ProveedorController {
     }
 
     @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'PROVEEDORES_EDITAR')")
     public String editar(@PathVariable Long id, Model model) {
         return proveedorRepository.findById(id).map(p -> {
             model.addAttribute("proveedor", p);
@@ -53,6 +58,7 @@ public class ProveedorController {
     }
 
     @GetMapping("/eliminar/{id}")
+    @PreAuthorize("hasPermission(null, 'PROVEEDORES_ELIMINAR')")
     public String eliminar(@PathVariable Long id, RedirectAttributes attributes) {
         // Borrado lógico
         proveedorRepository.findById(id).ifPresent(p -> {

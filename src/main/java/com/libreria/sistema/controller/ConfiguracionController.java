@@ -13,7 +13,7 @@ import java.util.Base64;
 
 @Controller
 @RequestMapping("/configuracion")
-@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+@PreAuthorize("hasPermission(null, 'CONFIGURACION_VER')")
 public class ConfiguracionController {
 
     private final ConfiguracionService configuracionService;

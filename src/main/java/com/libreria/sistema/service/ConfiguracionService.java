@@ -81,6 +81,39 @@ public class ConfiguracionService {
         repository.save(config);
     }
 
+    // ========== MÉTODOS HELPER PARA IGV ==========
+
+    /**
+     * Obtiene el porcentaje de IGV (ej: 18.00)
+     */
+    public BigDecimal getIgvPorcentaje() {
+        Configuracion config = obtenerConfiguracion();
+        return config.getIgvPorcentaje() != null ? config.getIgvPorcentaje() : new BigDecimal("18.00");
+    }
+
+    /**
+     * Obtiene el factor de IGV para cálculos (ej: 1.18)
+     */
+    public BigDecimal getIgvFactor() {
+        BigDecimal porcentaje = getIgvPorcentaje();
+        return BigDecimal.ONE.add(porcentaje.divide(new BigDecimal("100")));
+    }
+
+    /**
+     * Obtiene el label para mostrar en reportes (ej: "IGV (18%)")
+     */
+    public String getIgvLabel() {
+        BigDecimal porcentaje = getIgvPorcentaje();
+        return "IGV (" + porcentaje.stripTrailingZeros().toPlainString() + "%)";
+    }
+
+    /**
+     * Obtiene el porcentaje como string para SUNAT (ej: "18.00")
+     */
+    public String getIgvPorcentajeString() {
+        return getIgvPorcentaje().setScale(2).toPlainString();
+    }
+
     public void restaurarColoresPorDefecto() {
         Configuracion config = obtenerConfiguracion();
         config.setColorPrimario("#007bff");

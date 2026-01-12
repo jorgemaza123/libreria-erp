@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/auditoria")
-@PreAuthorize("hasAuthority('ROLE_ADMIN')") // Ajustado a hasAuthority para consistencia
+@PreAuthorize("hasPermission(null, 'AUDITORIA_VER')")
 public class AuditoriaController {
 
     @Autowired

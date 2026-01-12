@@ -1,0 +1,278 @@
+GET
+Consulta RUC - SUNAT
+https://dev.apisunat.pe/api/v1/business/ruc/20553300429
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Example
+Sunat RUC
+Request
+Postman CLI
+postman request 'https://dev.apisunat.pe/api/v1/business/ruc/20553300429' \
+  --header 'Authorization: Bearer {{TOKEN}}'
+
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "Datos procesados correctamente",
+    "payload": {
+        "ruc": "20553300429",
+        "razon_social": "TECNIGAS CORPORACION S.A. - TECNICOR S.A.",
+        "condicion": "HABIDO",
+        "nombre_comercial": "-",
+        "tipo": "SOCIEDAD ANONIMA",
+        "fecha_inscripcion": "2013-06-17",
+        "estado": "ACTIVO",
+        "direccion_fiscal": "AV. LURIGANCHO NRO. 626 URB. AZCARRUZ BAJO ",
+        "sistema_emision": "MANUAL",
+        "actividad_exterior": "SIN ACTIVIDAD",
+        "sistema_contabilidad": "MANUAL/COMPUTARIZADO",
+        "fecha_emision_electronica": "-",
+        "fecha_ple": "2015-01-01",
+        "oficio": "",
+        "actividades_economicas": [
+            "74996 - OTRAS ACTIVIDADES EMPRESARIALES NCP.",
+            "52391 - OTROS TIPOS DE VENTA AL POR MENOR."
+        ],
+        "comprobante_pago": [
+            "FACTURA",
+            "BOLETA DE VENTA",
+            "NOTA DE CREDITO",
+            "GUIA DE REMISION - REMITENTE"
+        ],
+        "sistema_emision_electronica": [
+            "NINGUNO"
+        ],
+        "padrones": [
+            "NINGUNO"
+        ],
+        "departamento": "LIMA",
+        "provincia": "LIMA",
+        "distrito": "SAN JUAN DE LURIGANCHO",
+        "representantes_legales": [
+            {
+                "tipo_documento": "DNI",
+                "numero_documento": "10267707",
+                "nombres": "MARROQUIN FARFAN ROEMER NEIL",
+                "cargo": "GERENTE GENERAL",
+                "desde": "2013-05-06"
+            }
+        ]
+    }
+}
+GET
+GET
+Consulta DNI - RENIEC
+https://dev.apisunat.pe/api/v1/person/dni/15692156
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Example
+Ejemplo de respuesta OK
+Request
+Postman CLI
+postman request 'https://dev.apisunat.pe/api/v1/business/ruc/20553300429' \
+  --header 'Authorization: Bearer {{TOKEN}}'
+200 OK
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "Datos procesados correctamente",
+    "payload": {
+        "ruc": "20553300429",
+        "razon_social": "TECNIGAS CORPORACION S.A. - TECNICOR S.A.",
+        "condicion": "HABIDO",
+        "nombre_comercial": "-",
+        "tipo": "SOCIEDAD ANONIMA",
+        "fecha_inscripcion": "2013-06-17",
+        "estado": "ACTIVO",
+        "direccion_fiscal": "AV. LURIGANCHO NRO. 626 URB. AZCARRUZ BAJO ",
+        "sistema_emision": "MANUAL",
+        "actividad_exterior": "SIN ACTIVIDAD",
+        "sistema_contabilidad": "MANUAL/COMPUTARIZADO",
+        "fecha_emision_electronica": "-",
+        "fecha_ple": "2015-01-01",
+        "oficio": "",
+        "actividades_economicas": [
+            "74996 - OTRAS ACTIVIDADES EMPRESARIALES NCP.",
+            "52391 - OTROS TIPOS DE VENTA AL POR MENOR."
+        ],
+        "comprobante_pago": [
+            "FACTURA",
+            "BOLETA DE VENTA",
+            "NOTA DE CREDITO",
+            "GUIA DE REMISION - REMITENTE"
+        ],
+        "sistema_emision_electronica": [
+            "NINGUNO"
+        ],
+        "padrones": [
+            "NINGUNO"
+        ],
+        "departamento": "LIMA",
+        "provincia": "LIMA",
+        "distrito": "SAN JUAN DE LURIGANCHO",
+        "representantes_legales": [
+            {
+                "tipo_documento": "DNI",
+                "numero_documento": "10267707",
+                "nombres": "MARROQUIN FARFAN ROEMER NEIL",
+                "cargo": "GERENTE GENERAL",
+                "desde": "2013-05-06"
+            }
+        ]
+    }
+}
+GET
+Tipo de cambio - Actual
+https://dev.apisunat.pe/api/v1/exchange_rate
+﻿
+
+Authorization
+Bearer Token
+Token
+{{TOKEN}}
+Example
+200 OK
+Request
+Postman CLI
+postman request 'https://dev.apisunat.pe/api/v1/exchange_rate'
+200 OK
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "Tipos de cambio obtenido correctamente",
+    "payload": {
+        "USD": {
+            "currency_description": "Dólar de N.A.",
+            "date": "2025-06-11",
+            "purchase": "3.6270",
+            "sale": "3.6360"
+        },
+        "CAD": {
+            "currency_description": "Dólar Canadiense",
+            "date": "2025-06-11",
+            "purchase": null,
+            "sale": "2.6740"
+        },
+        "GBP": {
+            "currency_description": "Libra Esterlina",
+            "date": "2025-06-11",
+            "purchase": "4.6190",
+            "sale": "5.1530"
+        },
+        "MXN": {
+            "currency_description": "Peso Mexicano",
+            "date": "2025-06-11",
+            "purchase": "0.1910",
+            "sale": "0.1930"
+        },
+        "CHF": {
+            "currency_description": "Franco Suizo",
+            "date": "2025-06-11",
+            "purchase": "4.2560",
+            "sale": "4.4420"
+        },
+        "EUR": {
+            "currency_description": "Euro",
+            "date": "2025-06-11",
+            "purchase": "3.9700",
+            "sale": "4.4100"
+        },
+        "JPY": {
+            "currency_description": "Yen Japonés",
+            "date": "2025-06-11",
+            "purchase": null,
+            "sale": "0.0260"
+        }
+    }
+}
+GET
+Tipo de cambio - Por Fecha
+https://dev.apisunat.pe/api/v1/exchange_rate?date=2025-06-11
+﻿
+
+Authorization
+Bearer Token
+Token
+{{TOKEN}}
+Query Params
+date
+2025-06-11
+Example
+200 OK
+Request
+Postman CLI
+postman request 'https://dev.apisunat.pe/api/v1/exchange_rate?date=2025-06-11'
+200 OK
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "Tipos de cambio obtenido correctamente",
+    "payload": {
+        "USD": {
+            "currency_description": "Dólar de N.A.",
+            "date": "2025-06-11",
+            "purchase": "3.6270",
+            "sale": "3.6360"
+        },
+        "CAD": {
+            "currency_description": "Dólar Canadiense",
+            "date": "2025-06-11",
+            "purchase": null,
+            "sale": "2.6740"
+        },
+        "GBP": {
+            "currency_description": "Libra Esterlina",
+            "date": "2025-06-11",
+            "purchase": "4.6190",
+            "sale": "5.1530"
+        },
+        "MXN": {
+            "currency_description": "Peso Mexicano",
+            "date": "2025-06-11",
+            "purchase": "0.1910",
+            "sale": "0.1930"
+        },
+        "CHF": {
+            "currency_description": "Franco Suizo",
+            "date": "2025-06-11",
+            "purchase": "4.2560",
+            "sale": "4.4420"
+        },
+        "EUR": {
+            "currency_description": "Euro",
+            "date": "2025-06-11",
+            "purchase": "3.9700",
+            "sale": "4.4100"
+        },
+        "JPY": {
+            "currency_description": "Yen Japonés",
+            "date": "2025-06-11",
+            "purchase": null,
+            "sale": "0.0260"
+        }
+    }
+}

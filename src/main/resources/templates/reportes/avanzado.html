@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='reportes_avanzados')}"></aside>
+
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1><i class="fas fa-chart-bar text-primary"></i> Reportes Avanzados</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="/reportes">Reportes</a></li>
+                            <li class="breadcrumb-item active">Avanzados</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- FILTROS GLOBALES -->
+                <div class="card card-outline card-primary mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Fecha</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label><i class="fas fa-calendar"></i> Fecha Inicio</label>
+                                    <input type="date" id="fechaInicio" class="form-control"
+                                           th:value="${#temporals.format(#temporals.createNow().minusDays(30), 'yyyy-MM-dd')}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label><i class="fas fa-calendar-check"></i> Fecha Fin</label>
+                                    <input type="date" id="fechaFin" class="form-control"
+                                           th:value="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label><i class="fas fa-clock"></i> Rango Rápido</label>
+                                    <select id="rangoRapido" class="form-control" onchange="aplicarRangoRapido()">
+                                        <option value="">-- Seleccionar --</option>
+                                        <option value="hoy">Hoy</option>
+                                        <option value="ayer">Ayer</option>
+                                        <option value="semana">Esta Semana</option>
+                                        <option value="mes" selected>Este Mes</option>
+                                        <option value="trimestre">Último Trimestre</option>
+                                        <option value="anio">Este Año</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-secondary btn-block" onclick="aplicarRangoRapido()">
+                                    <i class="fas fa-sync"></i> Aplicar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABS DE REPORTES -->
+                <div class="card card-primary card-outline card-tabs">
+                    <div class="card-header p-0 pt-1 border-bottom-0">
+                        <ul class="nav nav-tabs" id="reportes-tabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="tab-productos" data-toggle="pill" href="#productos" role="tab">
+                                    <i class="fas fa-boxes"></i> Productos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="tab-ventas" data-toggle="pill" href="#ventas" role="tab">
+                                    <i class="fas fa-shopping-cart"></i> Ventas
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="tab-kardex" data-toggle="pill" href="#kardex" role="tab">
+                                    <i class="fas fa-exchange-alt"></i> Kardex
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="reportes-tabs-content">
+
+                            <!-- TAB PRODUCTOS -->
+                            <div class="tab-pane fade show active" id="productos" role="tabpanel">
+                                <div class="row">
+                                    <!-- Stock Actual -->
+                                    <div class="col-md-6 col-lg-3">
+                                        <div class="card bg-gradient-info">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-cubes"></i> Stock Actual</h5>
+                                                <p class="text-sm">Inventario completo con precios y valorización</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargar('/reportes/avanzados/productos/stock-actual/excel')">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                                <button class="btn btn-sm btn-light" onclick="descargar('/reportes/avanzados/productos/stock-actual/pdf')">
+                                                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Stock Bajo -->
+                                    <div class="col-md-6 col-lg-3">
+                                        <div class="card bg-gradient-warning">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-exclamation-triangle"></i> Stock Bajo</h5>
+                                                <p class="text-sm">Productos con stock crítico o agotados</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargar('/reportes/avanzados/productos/stock-bajo/excel')">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Más Vendidos -->
+                                    <div class="col-md-6 col-lg-3">
+                                        <div class="card bg-gradient-success">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-trophy"></i> Más Vendidos</h5>
+                                                <p class="text-sm">Ranking de productos por cantidad vendida</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargarConFechas('/reportes/avanzados/productos/mas-vendidos/excel')">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                                <button class="btn btn-sm btn-light" onclick="descargarConFechas('/reportes/avanzados/productos/mas-vendidos/pdf')">
+                                                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Valorizado -->
+                                    <div class="col-md-6 col-lg-3">
+                                        <div class="card bg-gradient-primary">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-dollar-sign"></i> Valorizado</h5>
+                                                <p class="text-sm">Valor total del inventario actual</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargar('/reportes/avanzados/productos/stock-actual/pdf')">
+                                                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB VENTAS -->
+                            <div class="tab-pane fade" id="ventas" role="tabpanel">
+                                <div class="row">
+                                    <!-- Por Fecha -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card bg-gradient-olive">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-calendar-alt"></i> Por Fecha</h5>
+                                                <p class="text-sm">Listado detallado de ventas en el período</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargarConFechas('/reportes/avanzados/ventas/por-fecha/excel')">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Por Usuario -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card bg-gradient-purple">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-user-tie"></i> Por Usuario/Cajero</h5>
+                                                <p class="text-sm">Ventas agrupadas por vendedor</p>
+                                                <select id="selectUsuario" class="form-control form-control-sm mt-2">
+                                                    <option value="">-- Todos los usuarios --</option>
+                                                    <option th:each="u : ${usuarios}" th:value="${u.id}" th:text="${u.nombreCompleto}"></option>
+                                                </select>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargarVentasPorUsuario()">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Por Método de Pago -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card bg-gradient-teal">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-credit-card"></i> Por Método Pago</h5>
+                                                <p class="text-sm">Resumen por tipo de pago (Efectivo, Yape, etc)</p>
+                                                <select id="selectMetodoPago" class="form-control form-control-sm mt-2">
+                                                    <option value="">-- Todos los métodos --</option>
+                                                    <option value="EFECTIVO">Efectivo</option>
+                                                    <option value="YAPE">Yape</option>
+                                                    <option value="PLIN">Plin</option>
+                                                    <option value="TRANSFERENCIA">Transferencia</option>
+                                                    <option value="TARJETA">Tarjeta</option>
+                                                </select>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargarVentasPorMetodo()">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Con Ganancia -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card bg-gradient-maroon">
+                                            <div class="card-body">
+                                                <h5><i class="fas fa-chart-line"></i> Detalle de Ganancia</h5>
+                                                <p class="text-sm">Análisis de rentabilidad por producto vendido</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-0">
+                                                <button class="btn btn-sm btn-light" onclick="descargarConFechas('/reportes/avanzados/ventas/ganancia/excel')">
+                                                    <i class="fas fa-file-excel text-success"></i> Excel
+                                                </button>
+                                                <button class="btn btn-sm btn-light" onclick="descargarConFechas('/reportes/avanzados/ventas/ganancia/pdf')">
+                                                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB KARDEX -->
+                            <div class="tab-pane fade" id="kardex" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-8 offset-md-2">
+                                        <div class="card bg-gradient-indigo">
+                                            <div class="card-header">
+                                                <h5 class="mb-0"><i class="fas fa-history"></i> Kardex por Producto</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <p>Historial detallado de movimientos de inventario (entradas, salidas, ajustes) para un producto específico.</p>
+
+                                                <div class="form-group">
+                                                    <label>Seleccionar Producto</label>
+                                                    <select id="selectProducto" class="form-control select2" style="width: 100%;">
+                                                        <option value="">-- Buscar producto --</option>
+                                                        <option th:each="p : ${productos}"
+                                                                th:value="${p.id}"
+                                                                th:text="${p.codigoInterno + ' - ' + p.nombre + ' (Stock: ' + p.stockActual + ')'}">
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="card-footer">
+                                                <button class="btn btn-light" onclick="descargarKardex('excel')" id="btnKardexExcel" disabled>
+                                                    <i class="fas fa-file-excel text-success"></i> Descargar Excel
+                                                </button>
+                                                <button class="btn btn-light" onclick="descargarKardex('pdf')" id="btnKardexPdf" disabled>
+                                                    <i class="fas fa-file-pdf text-danger"></i> Descargar PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PREVIEW PANEL (Opcional - Para vista previa en la misma página) -->
+                <div class="card card-outline card-secondary" id="previewPanel" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-eye"></i> Vista Previa</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" onclick="cerrarPreview()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <iframe id="previewFrame" style="width: 100%; height: 600px; border: none;"></iframe>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<script>
+    $(document).ready(function() {
+        // Inicializar Select2 para productos
+        $('#selectProducto').select2({
+            theme: 'bootstrap4',
+            placeholder: 'Buscar producto...',
+            allowClear: true
+        });
+
+        // Habilitar botones de Kardex cuando se selecciona producto
+        $('#selectProducto').on('change', function() {
+            var selected = $(this).val();
+            $('#btnKardexExcel, #btnKardexPdf').prop('disabled', !selected);
+        });
+
+        // Aplicar rango inicial
+        aplicarRangoRapido();
+    });
+
+    function aplicarRangoRapido() {
+        var rango = document.getElementById('rangoRapido').value;
+        var hoy = new Date();
+        var inicio = new Date();
+        var fin = new Date();
+
+        switch(rango) {
+            case 'hoy':
+                inicio = hoy;
+                fin = hoy;
+                break;
+            case 'ayer':
+                inicio.setDate(hoy.getDate() - 1);
+                fin.setDate(hoy.getDate() - 1);
+                break;
+            case 'semana':
+                inicio.setDate(hoy.getDate() - hoy.getDay());
+                break;
+            case 'mes':
+                inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                break;
+            case 'trimestre':
+                inicio.setMonth(hoy.getMonth() - 3);
+                break;
+            case 'anio':
+                inicio = new Date(hoy.getFullYear(), 0, 1);
+                break;
+        }
+
+        document.getElementById('fechaInicio').value = formatDate(inicio);
+        document.getElementById('fechaFin').value = formatDate(fin);
+    }
+
+    function formatDate(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        var day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function getFechas() {
+        return {
+            inicio: document.getElementById('fechaInicio').value,
+            fin: document.getElementById('fechaFin').value
+        };
+    }
+
+    function descargar(url) {
+        window.location.href = url;
+    }
+
+    function descargarConFechas(url) {
+        var fechas = getFechas();
+        window.location.href = url + '?inicio=' + fechas.inicio + '&fin=' + fechas.fin;
+    }
+
+    function descargarVentasPorUsuario() {
+        var fechas = getFechas();
+        var usuarioId = document.getElementById('selectUsuario').value;
+        var url = '/reportes/avanzados/ventas/por-usuario/excel?inicio=' + fechas.inicio + '&fin=' + fechas.fin;
+        if (usuarioId) {
+            url += '&usuarioId=' + usuarioId;
+        }
+        window.location.href = url;
+    }
+
+    function descargarVentasPorMetodo() {
+        var fechas = getFechas();
+        var metodo = document.getElementById('selectMetodoPago').value;
+        var url = '/reportes/avanzados/ventas/por-metodo-pago/excel?inicio=' + fechas.inicio + '&fin=' + fechas.fin;
+        if (metodo) {
+            url += '&metodoPago=' + metodo;
+        }
+        window.location.href = url;
+    }
+
+    function descargarKardex(formato) {
+        var productoId = document.getElementById('selectProducto').value;
+        if (!productoId) {
+            Swal.fire('Atención', 'Debe seleccionar un producto', 'warning');
+            return;
+        }
+        var fechas = getFechas();
+        var url = '/reportes/avanzados/kardex/' + formato + '?productoId=' + productoId + '&inicio=' + fechas.inicio + '&fin=' + fechas.fin;
+        window.location.href = url;
+    }
+
+    function mostrarPreview(url) {
+        document.getElementById('previewFrame').src = url;
+        document.getElementById('previewPanel').style.display = 'block';
+        document.getElementById('previewPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cerrarPreview() {
+        document.getElementById('previewPanel').style.display = 'none';
+        document.getElementById('previewFrame').src = '';
+    }
+</script>
+</body>
+</html>

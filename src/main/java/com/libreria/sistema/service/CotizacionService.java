@@ -3,6 +3,8 @@ package com.libreria.sistema.service;
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
+import com.libreria.sistema.util.Constants;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,18 +17,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 public class CotizacionService {
 
     private final CotizacionRepository cotizacionRepository;
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
-    private final MovimientoCajaRepository movimientoCajaRepository; // Nombre correcto
+    private final MovimientoCajaRepository movimientoCajaRepository;
     private final KardexRepository kardexRepository;
     private final UsuarioRepository usuarioRepository;
     private final CorrelativoRepository correlativoRepository;
     private final CajaService cajaService;
+    private final ConfiguracionService configuracionService;
 
-    // Constructor corregido para inyectar todo bien
     public CotizacionService(CotizacionRepository cotizacionRepository,
                              ProductoRepository productoRepository,
                              VentaRepository ventaRepository,
@@ -34,7 +37,8 @@ public class CotizacionService {
                              KardexRepository kardexRepository,
                              UsuarioRepository usuarioRepository,
                              CorrelativoRepository correlativoRepository,
-                             CajaService cajaService) {
+                             CajaService cajaService,
+                             ConfiguracionService configuracionService) {
         this.cotizacionRepository = cotizacionRepository;
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
@@ -43,6 +47,7 @@ public class CotizacionService {
         this.usuarioRepository = usuarioRepository;
         this.correlativoRepository = correlativoRepository;
         this.cajaService = cajaService;
+        this.configuracionService = configuracionService;
     }
 
     public Page<Cotizacion> listar(Pageable pageable) {
@@ -56,14 +61,18 @@ public class CotizacionService {
     @Transactional
     public Cotizacion crearCotizacion(VentaDTO dto) throws Exception {
         Cotizacion c = new Cotizacion();
-        
-        Correlativo correlativo = correlativoRepository.findByCodigoAndSerie("COTIZACION", "C001")
-                .orElse(new Correlativo("COTIZACION", "C001", 0));
 
-        // PROTECCIÓN CONTRA NULOS 1
-        int ultimoNum = correlativo.getUltimoNumero() != null ? correlativo.getUltimoNumero() : 0;
-        Integer nuevoNumero = ultimoNum + 1;
-        
+        // Usar lock pesimista para correlativos
+        // Si la serie no existe, se crea automáticamente con ultimoNumero = 0
+        Correlativo correlativo = correlativoRepository.findByCodigoAndSerieWithLock("COTIZACION", "C001")
+                .orElseGet(() -> {
+                    Correlativo nuevo = new Correlativo("COTIZACION", "C001", 0);
+                    return correlativoRepository.save(nuevo);
+                });
+
+        // SAFE UNBOXING DEFENSIVO: Triple protección contra NPE
+        Integer ultimoActual = correlativo.getUltimoNumero();
+        int nuevoNumero = (ultimoActual != null ? ultimoActual : 0) + 1;
         correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
@@ -154,14 +163,18 @@ public class CotizacionService {
         v.setClienteTipoDocumento(tipoComprobante.equals("FACTURA") ? "6" : "1");
         
         String serie = tipoComprobante.equals("FACTURA") ? "F001" : "B001";
-        
-        Correlativo correlativo = correlativoRepository.findByCodigoAndSerie(tipoComprobante, serie)
-                .orElse(new Correlativo(tipoComprobante, serie, 0));
 
-        // PROTECCIÓN CONTRA NULOS 2 (Aquí solía fallar)
-        int ultimoNumVenta = correlativo.getUltimoNumero() != null ? correlativo.getUltimoNumero() : 0;
-        Integer nuevoNumero = ultimoNumVenta + 1;
-        
+        // Usar lock pesimista para correlativos
+        // Si la serie no existe, se crea automáticamente con ultimoNumero = 0
+        Correlativo correlativo = correlativoRepository.findByCodigoAndSerieWithLock(tipoComprobante, serie)
+                .orElseGet(() -> {
+                    Correlativo nuevo = new Correlativo(tipoComprobante, serie, 0);
+                    return correlativoRepository.save(nuevo);
+                });
+
+        // SAFE UNBOXING DEFENSIVO: Triple protección contra NPE
+        Integer ultimoActual = correlativo.getUltimoNumero();
+        int nuevoNumero = (ultimoActual != null ? ultimoActual : 0) + 1;
         correlativo.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativo);
 
@@ -179,6 +192,10 @@ public class CotizacionService {
         BigDecimal totalGravada = BigDecimal.ZERO;
         BigDecimal totalIgv = BigDecimal.ZERO;
 
+        // Obtener IGV configurable
+        BigDecimal igvFactor = configuracionService.getIgvFactor();
+        BigDecimal igvPorcentaje = configuracionService.getIgvPorcentaje();
+
         for (DetalleCotizacion itemCoti : c.getItems()) {
             Producto p = itemCoti.getProducto();
 
@@ -186,11 +203,11 @@ public class CotizacionService {
             if (!"SERV-001".equals(p.getCodigoInterno())) {
                 // PROTECCIÓN CONTRA NULOS 3 (Stock)
                 int stockActual = p.getStockActual() != null ? p.getStockActual() : 0;
-                
+
                 if (stockActual < itemCoti.getCantidad().intValue()) {
                     throw new Exception("Stock insuficiente: " + p.getNombre());
                 }
-                
+
                 p.setStockActual(stockActual - itemCoti.getCantidad().intValue());
                 productoRepository.save(p);
 
@@ -207,26 +224,27 @@ public class CotizacionService {
             DetalleVenta dv = new DetalleVenta();
             dv.setVenta(v);
             dv.setProducto(p);
-            dv.setDescripcion(itemCoti.getDescripcion()); 
-            dv.setCantidad(itemCoti.getCantidad()); 
+            dv.setDescripcion(itemCoti.getDescripcion());
+            dv.setCantidad(itemCoti.getCantidad());
             dv.setUnidadMedida("NIU");
 
             BigDecimal precioFinal = itemCoti.getPrecioUnitario();
             BigDecimal cantidad = itemCoti.getCantidad();
             BigDecimal subtotal = precioFinal.multiply(cantidad);
 
-            BigDecimal valorUnitario = precioFinal.divide(new BigDecimal("1.18"), 2, RoundingMode.HALF_UP);
+            // Cálculos con IGV configurable
+            BigDecimal valorUnitario = precioFinal.divide(igvFactor, 2, RoundingMode.HALF_UP);
             BigDecimal valorVentaItem = valorUnitario.multiply(cantidad);
             BigDecimal igvItem = subtotal.subtract(valorVentaItem);
 
             dv.setPrecioUnitario(precioFinal);
             dv.setValorUnitario(valorUnitario);
             dv.setSubtotal(subtotal);
-            dv.setPorcentajeIgv(new BigDecimal("18.00"));
-            dv.setCodigoTipoAfectacionIgv("10");
+            dv.setPorcentajeIgv(igvPorcentaje);
+            dv.setCodigoTipoAfectacionIgv(Constants.AFECTACION_GRAVADO);
 
             v.getItems().add(dv);
-            
+
             totalVenta = totalVenta.add(subtotal);
             totalGravada = totalGravada.add(valorVentaItem);
             totalIgv = totalIgv.add(igvItem);

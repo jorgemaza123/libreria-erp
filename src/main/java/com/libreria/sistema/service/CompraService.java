@@ -55,10 +55,11 @@ public class CompraService {
 
                 // Verificar que hay suficiente stock para reversar
                 if (producto.getStockActual() < cantidadComprada) {
-                    log.warn("Stock insuficiente para reversar compra. Producto: {}, Stock actual: {}, Cantidad a reversar: {}",
+                    log.error("Stock insuficiente para reversar compra. Producto: {}, Stock actual: {}, Cantidad a reversar: {}",
                             producto.getNombre(), producto.getStockActual(), cantidadComprada);
-                    // Ajustamos al stock disponible
-                    cantidadComprada = producto.getStockActual();
+                    throw new RuntimeException("Stock insuficiente para reversar la compra del producto: " +
+                            producto.getNombre() + ". Stock actual: " + producto.getStockActual() +
+                            ", Se requiere: " + cantidadComprada);
                 }
 
                 // Decrementar stock

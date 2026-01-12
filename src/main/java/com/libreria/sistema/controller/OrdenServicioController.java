@@ -1,17 +1,17 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Configuracion;
-import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.OrdenItem;
 import com.libreria.sistema.model.OrdenServicio;
 import com.libreria.sistema.model.dto.OrdenDTO;
-import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.repository.OrdenServicioRepository;
-import com.libreria.sistema.service.ConfiguracionService; // IMPORTANTE
+import com.libreria.sistema.service.CajaService;
+import com.libreria.sistema.service.ConfiguracionService;
 
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,23 +20,23 @@ import org.springframework.web.bind.annotation.*;
 import java.awt.Color;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Controller
 @RequestMapping("/ordenes")
+@Slf4j
 public class OrdenServicioController {
 
     private final OrdenServicioRepository ordenRepository;
-    private final CajaRepository cajaRepository;
-    private final ConfiguracionService configuracionService; // Inyectado
+    private final CajaService cajaService;
+    private final ConfiguracionService configuracionService;
 
-    public OrdenServicioController(OrdenServicioRepository ordenRepository, 
-                                   CajaRepository cajaRepository,
+    public OrdenServicioController(OrdenServicioRepository ordenRepository,
+                                   CajaService cajaService,
                                    ConfiguracionService configuracionService) {
         this.ordenRepository = ordenRepository;
-        this.cajaRepository = cajaRepository;
+        this.cajaService = cajaService;
         this.configuracionService = configuracionService;
     }
 
@@ -85,27 +85,38 @@ public String nuevaOrden(Model model) {
             OrdenServicio guardada = ordenRepository.save(orden);
 
             if (orden.getACuenta().compareTo(BigDecimal.ZERO) > 0) {
-                registrarEnCaja("INGRESO", "ADELANTO SERV #" + guardada.getId(), orden.getACuenta());
+                cajaService.registrarMovimiento("INGRESO", "ADELANTO SERV #" + guardada.getId(), orden.getACuenta());
             }
             return ResponseEntity.ok(Map.of("message", "Orden registrada", "id", guardada.getId()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            log.error("Error al guardar orden de servicio", e);
+            return ResponseEntity.badRequest().body("Error al procesar la orden. Por favor intente nuevamente.");
         }
     }
 
     // API FINALIZAR
     @PostMapping("/api/finalizar/{id}")
     public ResponseEntity<?> finalizarOrden(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean cobrarSaldo) {
-        return ordenRepository.findById(id).map(orden -> {
-            if (cobrarSaldo && orden.getSaldo().compareTo(BigDecimal.ZERO) > 0) {
-                registrarEnCaja("INGRESO", "SALDO FINAL SERV #" + orden.getId(), orden.getSaldo());
-                orden.setACuenta(orden.getTotal());
-                orden.setSaldo(BigDecimal.ZERO);
-            }
-            orden.setEstado("ENTREGADO");
-            ordenRepository.save(orden);
-            return ResponseEntity.ok("Orden finalizada");
-        }).orElse(ResponseEntity.badRequest().body("No encontrado"));
+        try {
+            return ordenRepository.findById(id).map(orden -> {
+                try {
+                    if (cobrarSaldo && orden.getSaldo().compareTo(BigDecimal.ZERO) > 0) {
+                        cajaService.registrarMovimiento("INGRESO", "SALDO FINAL SERV #" + orden.getId(), orden.getSaldo());
+                        orden.setACuenta(orden.getTotal());
+                        orden.setSaldo(BigDecimal.ZERO);
+                    }
+                    orden.setEstado("ENTREGADO");
+                    ordenRepository.save(orden);
+                    return ResponseEntity.ok("Orden finalizada");
+                } catch (Exception e) {
+                    log.error("Error al finalizar orden", e);
+                    return ResponseEntity.badRequest().body("Error al finalizar: " + e.getMessage());
+                }
+            }).orElse(ResponseEntity.badRequest().body("Orden no encontrada"));
+        } catch (Exception e) {
+            log.error("Error al procesar finalización de orden", e);
+            return ResponseEntity.badRequest().body("Error al procesar la solicitud");
+        }
     }
 
     // ==========================================
@@ -267,14 +278,6 @@ public String nuevaOrden(Model model) {
         table.addCell(cVal);
     }
 
-    private void registrarEnCaja(String tipo, String concepto, BigDecimal monto) {
-        MovimientoCaja mov = new MovimientoCaja();
-        mov.setFecha(LocalDateTime.now());
-        mov.setTipo(tipo);
-        mov.setConcepto(concepto);
-        mov.setMonto(monto);
-        cajaRepository.save(mov);
-    }
 
     @GetMapping("/editar/{id}")
 public String editarOrden(@PathVariable Long id, Model model) {

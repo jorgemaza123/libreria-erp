@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+
+<head>
+    <title>Clientes - Sistema</title>
+</head>
+
+<body>
+<section layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><i class="fas fa-users text-primary mr-2"></i>Gestion de Clientes</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Clientes</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Alertas -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <!-- Dashboard de estadisticas -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${dashboard.totalClientes}">0</h3>
+                            <p>Total Clientes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-users"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${dashboard.clientesConCredito}">0</h3>
+                            <p>Con Credito</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-credit-card"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${dashboard.clientesConDeuda}">0</h3>
+                            <p>Con Deuda</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${#numbers.formatDecimal(dashboard.deudaTotal, 1, 2)}">0.00</h3>
+                            <p>Deuda Total (S/)</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de acciones -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <form th:action="@{/clientes}" method="get" class="form-inline">
+                                <div class="input-group">
+                                    <input type="text" name="buscar" class="form-control" placeholder="Buscar por nombre, DNI, telefono..."
+                                           th:value="${buscar}" style="width: 300px;">
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <a th:href="@{/clientes}" class="btn btn-secondary" title="Limpiar">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a th:href="@{/clientes/creditos}" class="btn btn-warning">
+                                <i class="fas fa-credit-card mr-1"></i>Gestionar Creditos
+                            </a>
+                            <a th:href="@{/clientes/nuevo}" class="btn btn-success">
+                                <i class="fas fa-plus mr-1"></i>Nuevo Cliente
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de clientes -->
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Nombre / Razon Social</th>
+                                    <th>Telefono</th>
+                                    <th>Categoria</th>
+                                    <th class="text-center">Credito</th>
+                                    <th class="text-right">Deuda</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${clientes.content}" th:classappend="${!c.activo} ? 'table-secondary'">
+                                    <td>
+                                        <span class="badge badge-secondary" th:text="${c.tipoDocumento == '6' ? 'RUC' : 'DNI'}"></span>
+                                        <span th:text="${c.numeroDocumento}"></span>
+                                    </td>
+                                    <td>
+                                        <strong th:text="${c.nombreRazonSocial}"></strong>
+                                        <small th:if="${c.email}" class="d-block text-muted" th:text="${c.email}"></small>
+                                    </td>
+                                    <td th:text="${c.telefono}">-</td>
+                                    <td>
+                                        <span class="badge"
+                                              th:classappend="${c.categoria == 'VIP'} ? 'badge-success' :
+                                                             (${c.categoria == 'FRECUENTE'} ? 'badge-info' :
+                                                             (${c.categoria == 'MOROSO'} ? 'badge-danger' : 'badge-secondary'))"
+                                              th:text="${c.categoria ?: 'NUEVO'}">NUEVO</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span th:if="${c.tieneCredito}" class="badge badge-success">
+                                            <i class="fas fa-check mr-1"></i>S/ <span th:text="${#numbers.formatDecimal(c.limiteCredito, 1, 2)}">0</span>
+                                        </span>
+                                        <span th:unless="${c.tieneCredito}" class="badge badge-secondary">No</span>
+                                    </td>
+                                    <td class="text-right">
+                                        <span th:if="${c.saldoDeudor != null and c.saldoDeudor > 0}"
+                                              class="text-danger font-weight-bold">
+                                            S/ <span th:text="${#numbers.formatDecimal(c.saldoDeudor, 1, 2)}">0.00</span>
+                                        </span>
+                                        <span th:unless="${c.saldoDeudor != null and c.saldoDeudor > 0}" class="text-muted">-</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a th:href="@{/clientes/ver/{id}(id=${c.id})}" class="btn btn-info" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a th:href="@{/clientes/editar/{id}(id=${c.id})}" class="btn btn-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a th:if="${c.activo}" th:href="@{/clientes/eliminar/{id}(id=${c.id})}"
+                                               class="btn btn-danger" title="Desactivar"
+                                               onclick="return confirm('Esta seguro de desactivar este cliente?')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                            <a th:unless="${c.activo}" th:href="@{/clientes/activar/{id}(id=${c.id})}"
+                                               class="btn btn-success" title="Activar">
+                                                <i class="fas fa-check"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${clientes.content.isEmpty()}">
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-users fa-3x mb-3"></i>
+                                        <p class="mb-0">No se encontraron clientes</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Paginacion -->
+                <div class="card-footer" th:if="${clientes.totalPages > 1}">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 justify-content-center">
+                            <li class="page-item" th:classappend="${clientes.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/clientes(buscar=${buscar}, page=${clientes.number - 1})}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            <li th:each="i : ${#numbers.sequence(0, clientes.totalPages - 1)}"
+                                class="page-item" th:classappend="${i == clientes.number} ? 'active'">
+                                <a class="page-link" th:href="@{/clientes(buscar=${buscar}, page=${i})}" th:text="${i + 1}">1</a>
+                            </li>
+                            <li class="page-item" th:classappend="${clientes.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/clientes(buscar=${buscar}, page=${clientes.number + 1})}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+</body>
+</html>

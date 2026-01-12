@@ -4,11 +4,15 @@ import com.libreria.sistema.model.Rol;
 import com.libreria.sistema.model.Usuario;
 import com.libreria.sistema.repository.RolRepository;
 import com.libreria.sistema.repository.UsuarioRepository;
+import com.libreria.sistema.util.PasswordValidator;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +20,8 @@ import java.util.Set;
 
 @Controller
 @RequestMapping("/usuarios")
+@Slf4j
+@PreAuthorize("hasPermission(null, 'USUARIOS_VER')")
 public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
@@ -35,6 +41,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/nuevo")
+    @PreAuthorize("hasPermission(null, 'USUARIOS_CREAR')")
     public String nuevo(Model model) {
         Usuario usuario = new Usuario();
         usuario.setActivo(true);
@@ -45,6 +52,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'USUARIOS_EDITAR')")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes attr) {
         return usuarioRepository.findById(id).map(u -> {
             model.addAttribute("usuario", u);
@@ -58,7 +66,8 @@ public class UsuarioController {
     }
 
     @PostMapping("/guardar")
-    public String guardar(@ModelAttribute Usuario usuario, 
+    @PreAuthorize("hasPermission(null, 'USUARIOS_CREAR') or hasPermission(null, 'USUARIOS_EDITAR')")
+    public String guardar(@ModelAttribute Usuario usuario,
                           @RequestParam(required = false) List<Long> rolesIds,
                           RedirectAttributes attr) {
         try {
@@ -80,12 +89,28 @@ public class UsuarioController {
                     }
                 }
             } else {
-                // Creación: Contraseña obligatoria
-                if (usuario.getPassword() != null && !usuario.getPassword().isEmpty()) {
-                    usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-                } else {
+                // Creación: Contraseña obligatoria y fuerte
+                if (usuario.getPassword() == null || usuario.getPassword().isEmpty()) {
                     attr.addFlashAttribute("error", "La contraseña es obligatoria para nuevos usuarios");
                     return "redirect:/usuarios/nuevo";
+                }
+
+                // Validar fortaleza de contraseña
+                String validationError = PasswordValidator.validateAndGetMessage(usuario.getPassword());
+                if (validationError != null) {
+                    attr.addFlashAttribute("error", validationError);
+                    return "redirect:/usuarios/nuevo";
+                }
+
+                usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+            }
+
+            // Si se está cambiando la contraseña en una edición, también validar
+            if (usuario.getId() != null && usuario.getPassword() != null && !usuario.getPassword().isEmpty()) {
+                String validationError = PasswordValidator.validateAndGetMessage(usuario.getPassword());
+                if (validationError != null) {
+                    attr.addFlashAttribute("error", validationError);
+                    return "redirect:/usuarios/editar/" + usuario.getId();
                 }
             }
 

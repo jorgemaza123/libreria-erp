@@ -36,8 +36,9 @@
     </div>
 
     <div class="center">
-        <img th:if="${config.logoBase64 != null}" 
-             th:src="'data:image/png;base64,' + ${config.logoBase64}" 
+        <!-- Logo condicional según configuración -->
+        <img th:if="${config.mostrarLogoEnTicket != false and config.logoBase64 != null}"
+             th:src="'data:image/png;base64,' + ${config.logoBase64}"
              class="logo-ticket">
              
         <div class="bold" style="font-size: 14px;" th:text="${config.nombreEmpresa}">EMPRESA</div>
@@ -77,10 +78,26 @@
         <div class="bold">TOTAL: S/ <span th:text="${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
     </div>
 
+    <!-- Mostrar método de pago si está disponible -->
+    <div th:if="${venta.metodoPago != null and venta.metodoPago != 'EFECTIVO'}" class="center" style="margin-top: 5px;">
+        <small th:text="'Pago: ' + ${venta.metodoPago}"></small>
+    </div>
+
+    <!-- CUENTAS BANCARIAS -->
+    <div th:if="${config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" style="margin-top: 8px;">
+        <div class="divider"></div>
+        <div class="center bold" style="font-size: 10px;">CUENTAS BANCARIAS:</div>
+        <div class="center" style="font-size: 9px; white-space: pre-line;" th:text="${config.cuentasBancarias}"></div>
+    </div>
+
     <br>
-    <div class="center">
-        Gracias por su compra<br>
-        Vuelva pronto
+    <div class="center" th:text="${config.mensajePieTicket != null ? config.mensajePieTicket : 'Gracias por su compra. Vuelva pronto!'}">
+        Gracias por su compra
+    </div>
+
+    <!-- USUARIO CAJERO -->
+    <div th:if="${venta.usuario != null}" class="center" style="margin-top: 5px; font-size: 9px;">
+        <span th:text="'Atendido por: ' + ${venta.usuario.nombreCompleto}"></span>
     </div>
 
 </body>

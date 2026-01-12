@@ -1,0 +1,590 @@
+FACTURACION ELECTRONICA Documentation
+API SUNAT: Emite de manera rápida y sencilla.
+
+Más información en: https://docs.apisunat.pe﻿
+
+Factura
+﻿
+
+POST
+Factura al contado
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "factura",
+    "serie": "F001",
+    "numero": 1,
+    "fecha_de_emision": "2024-05-08",
+    "fecha_de_vencimiento": "2024-07-07",
+    "moneda": "PEN",
+    "orden_compra_servicio": "4500520555",
+    "tipo_operacion": "1001",
+    "cliente_tipo_de_documento": "6",
+    "cliente_numero_de_documento": "20545699550",
+    "cliente_denominacion": "EP DE RESTAURANTES S.A.C.",
+    "cliente_direccion": "JR. CAMINO REAL 1801 LIMA SANTIAGO DE SURCO",
+    "total_gravada": "1950",
+    "total_igv": "351",
+    "total": "2301",
+    "items": [
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA PLAZA NORTE",
+            "cantidad": "4",
+            "valor_unitario": "300",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        },
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA REAL PLAZA PRO",
+            "cantidad": "3",
+            "valor_unitario": "250",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ]
+}
+POST
+Factura a crédito
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "factura",
+    "serie": "F001",
+    "numero": 1,
+    "fecha_de_emision": "2024-05-08",
+    "fecha_de_vencimiento": "2024-07-07",
+    "moneda": "PEN",
+    "orden_compra_servicio": "4500520555",
+    "tipo_operacion": "1001",
+    "cliente_tipo_de_documento": "6",
+    "cliente_numero_de_documento": "20545699550",
+    "cliente_denominacion": "EP DE RESTAURANTES S.A.C.",
+    "cliente_direccion": "JR. CAMINO REAL 1801 LIMA SANTIAGO DE SURCO",
+    "total_gravada": "1950",
+    "total_igv": "351",
+    "total": "2301",
+    "items": [
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA PLAZA NORTE",
+            "cantidad": "4",
+            "valor_unitario": "300",
+            "precio_unitario": "354",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        },
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA REAL PLAZA PRO",
+            "cantidad": "3",
+            "valor_unitario": "250",
+            "precio_unitario": "295",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ],
+    "cuotas": [
+        {
+            "importe": "2301",
+            "fecha_de_pago": "2024-07-07"
+        }
+    ]
+}
+POST
+Factura con detracción
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "factura",
+    "serie": "F001",
+    "numero": 1,
+    "fecha_de_emision": "2024-05-08",
+    "fecha_de_vencimiento": "2024-07-07",
+    "moneda": "PEN",
+    "orden_compra_servicio": "4500520555",
+    "tipo_operacion": "1001",
+    "cliente_tipo_de_documento": "6",
+    "cliente_numero_de_documento": "20545699550",
+    "cliente_denominacion": "EP DE RESTAURANTES S.A.C.",
+    "cliente_direccion": "JR. CAMINO REAL 1801 LIMA SANTIAGO DE SURCO",
+    "total_gravada": "1950",
+    "total_igv": "351",
+    "total": "2301",
+    "items": [
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA PLAZA NORTE",
+            "cantidad": "4",
+            "valor_unitario": "300",
+            "precio_unitario": "354",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        },
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "MANTEN PREVENTIVO DB TDA REAL PLAZA PRO",
+            "cantidad": "3",
+            "valor_unitario": "250",
+            "precio_unitario": "295",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ],
+    "detraccion": {
+        "detraccion_tipo": "020",
+        "detraccion_porcentaje": "12.00",
+        "detraccion_total": "276",
+        "medio_de_pago": "001",
+        "numero_cuenta_banco_nacion": "00004070992"
+    },
+    "cuotas": [
+        {
+            "importe": "2025",
+            "fecha_de_pago": "2024-07-07"
+        }
+    ],
+}
+POST
+Factura- Descuento Item
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Body
+raw (json)
+View More
+json
+{
+    "documento": "factura",
+    "serie": "F001",
+    "numero": 172,
+    "fecha_de_emision": "2025-07-31",
+    "fecha_de_vencimiento": "2025-07-31",
+    "moneda": "PEN",
+    "orden_compra_servicio": null,
+    "cliente_tipo_de_documento": "6",
+    "cliente_numero_de_documento": "20553300429",
+    "cliente_denominacion": "EMPRESA CLIENTE S.A.C.",
+    "cliente_direccion": "Av. Prueba - Lima - Perú",
+    "total_gravada": "100",
+    "total_igv": "18",
+    "total": "118",
+    "items": [
+        {
+            "unidad_de_medida": "NIU",
+            "descripcion": "Producto de prueba",
+            "cantidad": "2",
+            "valor_unitario": "55",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10",
+            "descuentos": [
+                {
+                    "monto": "10",
+                    "codigo": "00"
+                }
+            ]
+        }
+    ]
+}
+Boleta
+﻿
+
+POST
+Boleta - Simple
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "boleta",
+    "serie": "B001",
+    "numero": 1,
+    "fecha_de_emision": "2025-01-17",
+    "fecha_de_vencimiento": "2025-01-17",
+    "moneda": "PEN",
+    "tipo_operacion": "0101",
+    "cliente_tipo_de_documento": "1",
+    "cliente_numero_de_documento": "75413819",
+    "cliente_denominacion": "JIMENEZ ALVAREZ JUAN ALBERTO",
+    "cliente_direccion": "-",
+    "total_gravada": "5.00",
+    "total_igv": "0.90",
+    "total": "5.90",
+    "items": [
+        {
+            "unidad_de_medida": "NIU",
+            "descripcion": "PRODUCTO 01",
+            "cantidad": "1",
+            "valor_unitario": "5.00",
+            "precio_unitario": "5.90",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ]
+}
+Example
+Pendiente
+Request
+View More
+Postman CLI
+postman request POST 'https://app.apisunat.pe/api/test/documents' \
+  --body '{
+    "documento": "boleta",
+    "serie": "B001",
+    "numero": 1,
+    "fecha_de_emision": "2025-01-17",
+    "fecha_de_vencimiento": "2025-01-17",
+    "moneda": "PEN",
+    "tipo_operacion": "0101",
+    "cliente_tipo_de_documento": "1",
+    "cliente_numero_de_documento": "75413819",
+    "cliente_denominacion": "JIMENEZ ALVAREZ JUAN ALBERTO",
+    "cliente_direccion": "-",
+    "total_gravada": "5.00",
+    "total_igv": "0.90",
+    "total": "5.90",
+    "items": [
+        {
+            "unidad_de_medida": "NIU",
+            "descripcion": "PRODUCTO 01",
+            "cantidad": "1",
+            "valor_unitario": "5.00",
+            "precio_unitario": "5.90",
+            "porcentaje_igv": "18",
+            "descuento": "0",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ]
+}'
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "Su comprobante fue enviado correctamente, pero aún no ha sido validado por la SUNAT. Por favor, espere unos minutos y vuelva a consultar el estado de su comprobante.",
+    "payload": {
+        "estado": "PENDIENTE",
+        "hash": "MlrpqjwLbqn31VFCofLnmNPHAQITXJfaslf0iSGPoBE=",
+        "xml": "https://api.lucode.pe/invoice-xml/46485.titrVwQRYE/20611284838-03-B003-2886.xml",
+        "cdr": null,
+        "pdf": {
+            "ticket": "https://api.lucode.pe/pdf/ticket/46485/titrVwQRYE/20611284838-03-B003-2886"
+        }
+    }
+}
+POST
+Boleta - Cliente varios
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "boleta",
+    "serie": "B001",
+    "numero": 2,
+    "fecha_de_emision": "2024-09-04",
+    "fecha_de_vencimiento": "2024-09-04",
+    "moneda": "PEN",
+    "tipo_operacion": "0101",
+    "cliente_tipo_de_documento": "1",
+    "cliente_numero_de_documento": "99999999",
+    "cliente_denominacion": "CLIENTE VARIOS",
+    "cliente_direccion": "-",
+    "total_gravada": "5.00",
+    "total_igv": "0.90",
+    "total": "5.90",
+    "items": [
+        {
+            "unidad_de_medida": "NIU",
+            "descripcion": "PRODUCTO 01",
+            "cantidad": "1",
+            "valor_unitario": "5.00",
+            "precio_unitario": "5.90",
+            "porcentaje_igv": "18",
+            "descuento": "0",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ]
+}
+POST
+Boleta - Descuento Item
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Body
+raw (json)
+View More
+json
+{
+    "documento": "boleta",
+    "serie": "B001",
+    "numero": 25,
+    "fecha_de_emision": "2025-07-31",
+    "fecha_de_vencimiento": "2025-07-31",
+    "moneda": "PEN",
+    "orden_compra_servicio": null,
+    "cliente_tipo_de_documento": "1",
+    "cliente_numero_de_documento": "75413877",
+    "cliente_denominacion": "NOMBRE DEL CLIENTE",
+    "cliente_direccion": "CALLE SAN MARTIN - LIMA",
+    "total_gravada": "100",
+    "total_igv": "18",
+    "total": "118",
+    "items": [
+        {
+            "unidad_de_medida": "NIU",
+            "descripcion": "Producto de prueba",
+            "cantidad": "2",
+            "valor_unitario": "55",
+            "porcentaje_igv": "18",
+            "codigo_tipo_afectacion_igv": "10",
+            "descuentos": [
+                {
+                    "monto": "10",
+                    "codigo": "00"
+                }
+            ]
+        }
+    ]
+}
+Nota de Crédito
+﻿
+
+POST
+NC - Anulación de la operación
+https://app.apisunat.pe/api/test/documents
+﻿
+
+Authorization
+Bearer Token
+Token
+{{token}}
+Body
+raw (json)
+View More
+json
+{
+    "documento": "nota_credito",
+    "serie": "F001",
+    "numero": 1,
+    "fecha_de_emision": "2025-03-05",
+    "fecha_de_vencimiento": "2025-03-05",
+    "moneda": "PEN",
+    "orden_compra_servicio": null,
+    "cliente_tipo_de_documento": "6",
+    "cliente_numero_de_documento": "20494586850",
+    "cliente_denominacion": "EMPRESA DE SERVICIOS S.A.C.",
+    "cliente_direccion": "CAL.CONTRALMIRANTE MONTERO NRO. 411 MAGDALENA DEL MAR",
+    "total_gravada": "629.41",
+    "total_igv": "113.29",
+    "total": "742.70",
+    "items": [
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "SERVICIO 01",
+            "cantidad": "5810",
+            "valor_unitario": "0.084746",
+            "precio_unitario": "0.10",
+            "porcentaje_igv": "18",
+            "descuento": "0",
+            "codigo_tipo_afectacion_igv": "10"
+        },
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "SERVICIO 02",
+            "cantidad": "1569",
+            "valor_unitario": "0.084746",
+            "precio_unitario": "0.10",
+            "porcentaje_igv": "18",
+            "descuento": "0",
+            "codigo_tipo_afectacion_igv": "10"
+        },
+        {
+            "unidad_de_medida": "ZZ",
+            "descripcion": "SERVICIO 03",
+            "cantidad": "48",
+            "valor_unitario": "0.084746",
+            "precio_unitario": "0.10",
+            "porcentaje_igv": "18",
+            "descuento": "0",
+            "codigo_tipo_afectacion_igv": "10"
+        }
+    ],
+    "nota_credito_codigo_tipo": "01",
+    "nota_credito_motivo": "Anulación de la operación",
+    "documento_afectado": {
+        "documento": "factura",
+        "serie": "F001",
+        "numero": 128
+    }
+}
+Resumen Diario
+﻿
+
+POST
+Anular Boleta
+https://app.apisunat.pe/api/v3/daily-summary
+﻿
+
+Authorization
+Bearer Token
+Token
+{{APIKEY}}
+Body
+raw (json)
+json
+{
+    "documento": "resumen_diario",
+    "documentos_afectados": [
+        {
+            "documento": "boleta",
+            "serie": "B001",
+            "numero": "1",
+            "tipo_operacion": "anular"
+        }
+    ]
+}
+Example
+ESTADO PENDIENTE
+Request
+View More
+Postman CLI
+postman request POST 'https://app.apisunat.pe/api/v3/daily-summary' \
+  --body '{
+    "documento": "resumen_diario",
+    "documentos_afectados": [
+        {
+            "documento": "boleta",
+            "serie": "B001",
+            "numero": "1",
+            "tipo_operacion": "anular"
+        }
+    ]
+}'
+200 OK
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "message": "El resumen diario fue recepcionado correctamente por SUNAT",
+    "payload": {
+        "estado": "PENDIENTE",
+        "hash": "Zsz/Ouz1qKy1W/9tmXFEtEFwy3Az/O6QJqf/YwDu+0I=",
+        "xml": "https://app.apisunat.pe/xml/daily-summary/246.0aFk9KXK4p/20602819991-RC-20250815-00001.xml",
+        "cdr": null
+    }
+}
+POST
+Estado de envío
+https://app.apisunat.pe/api/test/status
+﻿
+
+Authorization
+Bearer Token
+Token
+{{TOKEN}}
+Body
+raw (json)
+json
+{
+    "documento": "factura",
+    "serie": "F001",
+    "numero": 1
+}
+POST
+Anular Comprobante
+https://app.apisunat.pe/api/test/voided
+﻿
+
+Authorization
+Bearer Token
+Token
+{{TOKEN}}
+Body
+raw (json)
+json
+{
+    "documento": "comunicacion_baja",
+    "motivo": "ANULACIÓN DE OPERACIÓN",
+    "documento_afectado": {
+        "documento": "factura",
+        "serie": "F001",
+        "numero": 1
+    }
+}
+Example
+PENDIENTE
+Request
+Postman CLI
+postman request POST 'https://app.apisunat.pe/api/test/voided' \
+  --body '{
+    "documento": "comunicacion_baja",
+    "motivo": "ANULACIÓN DE OPERACIÓN",
+    "documento_afectado": {
+        "documento": "factura",
+        "serie": "F001",
+        "numero": 1
+    }
+}'
+200 OK
+Response
+Body
+Headers (1)
+View More
+json
+{
+    "success": true,
+    "message": "La comunicación de baja fue recepcionada correctamente por SUNAT",
+    "payload": {
+        "estado": "PENDIENTE",
+        "hash": "X2GCea3DVp5OGlwo/NEJ9O6bmmE61IJz+AdbZBfJmkI=",
+        "xml": "https://app.apisunat.pe/xml/low-communication/184.vpwkDoyE2k/20602819991-RA-20250826-37.xml",
+        "cdr": null
+    }
+}
