@@ -76,6 +76,7 @@ public class VentaController {
 
         model.addAttribute("ventas", ventas);
         model.addAttribute("buscar", buscar);
+        model.addAttribute("currentPage", page);
         return "ventas/lista";
     }
 
@@ -482,5 +483,22 @@ public class VentaController {
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * Muestra el detalle de venta en el modal.
+     * IMPORTANTE: Usa ":: contenido" para devolver solo el fragmento HTML sin el layout.
+     */
+    @GetMapping("/detalle/{id}")
+    @PreAuthorize("hasPermission(null, 'VENTAS_VER')")
+    public String verDetalle(@PathVariable Long id, Model model) {
+        // Buscamos la venta (asegúrate de que traiga los items/detalles)
+        Venta venta = ventaRepository.findById(id).orElse(null);
+        
+        model.addAttribute("venta", venta);
+        
+        // "ventas/modal_detalle" es el nombre del archivo HTML (sin .html)
+        // ":: contenido" es el nombre del th:fragment que está en tu archivo
+        return "ventas/modal_detalle :: contenido"; 
     }
 }

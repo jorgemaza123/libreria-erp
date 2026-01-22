@@ -16,7 +16,7 @@ public class Producto {
 
     // --- BLOQUEO OPTIMISTA ---
     @Version
-    private Long version;
+    private Long version = 0L;
 
     @Column(unique = true) 
     private String codigoBarra;

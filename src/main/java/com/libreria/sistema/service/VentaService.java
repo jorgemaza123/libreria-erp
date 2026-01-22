@@ -239,35 +239,44 @@ public class VentaService {
      *
      * @return Array [totalVenta, totalGravada, totalIgv]
      */
+    // =========================================================
+    // ACTUALIZAR SOLO ESTE MÉTODO PRIVADO EN VentaService.java
+    // =========================================================
     private BigDecimal[] procesarDetalles(Venta venta, VentaDTO dto) {
         BigDecimal totalVenta = BigDecimal.ZERO;
         BigDecimal totalGravada = BigDecimal.ZERO;
         BigDecimal totalIgv = BigDecimal.ZERO;
 
-        // Obtener IGV configurable
         BigDecimal igvFactor = configuracionService.getIgvFactor();
         BigDecimal igvPorcentaje = configuracionService.getIgvPorcentaje();
 
         for (VentaDTO.DetalleDTO item : dto.getItems()) {
-            // CRÍTICO: Usar findByIdWithLock para bloqueo pesimista
-            // Esto evita que dos ventas simultáneas vendan el mismo último ítem
+            // Mantenemos tu Lock Pesimista (¡Muy bien implementado!)
             Producto prod = productoRepository.findByIdWithLock(item.getProductoId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: ID " + item.getProductoId()));
 
-            // CONTROL DE PRECIOS: Validar que el precio sea autorizado
+            // Mantenemos tu validación de seguridad de precios
             validarPrecioVenta(prod, item.getPrecioVenta());
 
-            // Validación estricta de Stock
+            // --- NUEVA LÓGICA AGREGADA AQUÍ ---
+            // Verificamos si es un servicio basándonos en tu modelo Producto.java (campo 'tipo')
+            // Asumimos que en BD guardas "SERVICIO" o "PRODUCTO" en ese campo.
+            boolean esServicio = prod.getTipo() != null && "SERVICIO".equalsIgnoreCase(prod.getTipo());
+            
             int cantidadRequerida = item.getCantidad().intValue();
             int stockDisponible = prod.getStockActual() != null ? prod.getStockActual() : 0;
 
-            if (stockDisponible < cantidadRequerida) {
-                throw new RuntimeException(String.format(
-                        "Stock insuficiente para '%s'. Disponible: %d, Requerido: %d",
-                        prod.getNombre(), stockDisponible, cantidadRequerida));
+            // SOLO validamos stock si NO es un servicio
+            if (!esServicio) {
+                if (stockDisponible < cantidadRequerida) {
+                    throw new RuntimeException(String.format(
+                            "Stock insuficiente para '%s'. Disponible: %d, Requerido: %d",
+                            prod.getNombre(), stockDisponible, cantidadRequerida));
+                }
             }
+            // ----------------------------------
 
-            // Cálculos con IGV configurable
+            // Cálculos matemáticos (Mantenemos tu lógica original)
             BigDecimal precioFinal = item.getPrecioVenta();
             BigDecimal cantidad = item.getCantidad();
             BigDecimal subtotalItem = precioFinal.multiply(cantidad);
@@ -275,7 +284,7 @@ public class VentaService {
             BigDecimal valorVenta = valorUnitario.multiply(cantidad);
             BigDecimal igvItem = subtotalItem.subtract(valorVenta);
 
-            // Crear detalle
+            // Creación del detalle (Mantenemos tu lógica original)
             DetalleVenta det = new DetalleVenta();
             det.setVenta(venta);
             det.setProducto(prod);
@@ -286,27 +295,33 @@ public class VentaService {
             det.setValorUnitario(valorUnitario);
             det.setSubtotal(subtotalItem);
             det.setPorcentajeIgv(igvPorcentaje);
-            det.setCodigoTipoAfectacionIgv(prod.getTipoAfectacionIgv() != null ?
-                mapearTipoAfectacion(prod.getTipoAfectacionIgv()) : Constants.AFECTACION_GRAVADO);
+            
+            // Corrección segura para mapear la afectación sin perder lógica
+            String codigoAfectacion = Constants.AFECTACION_GRAVADO; // Valor por defecto
+            if (prod.getTipoAfectacionIgv() != null) {
+                codigoAfectacion = mapearTipoAfectacion(prod.getTipoAfectacionIgv());
+            }
+            det.setCodigoTipoAfectacionIgv(codigoAfectacion);
 
             venta.getItems().add(det);
 
-            // Acumular totales
+            // Acumuladores
             totalVenta = totalVenta.add(subtotalItem);
             totalGravada = totalGravada.add(valorVenta);
             totalIgv = totalIgv.add(igvItem);
 
-            // Kardex (registrar ANTES de actualizar stock para tener stockAnterior correcto)
-            registrarKardex(prod, cantidadRequerida, venta);
-
-            // Actualizar Stock
-            prod.setStockActual(stockDisponible - cantidadRequerida);
-            productoRepository.save(prod);
+            // --- LÓGICA KARDEX Y STOCK ---
+            // Si es servicio, NO descontamos stock, pero opcionalmente registramos Kardex informativo
+            // o simplemente no hacemos nada. Aquí asumo que quieres registrar la venta pero no mover stock.
+            if (!esServicio) {
+                registrarKardex(prod, cantidadRequerida, venta);
+                prod.setStockActual(stockDisponible - cantidadRequerida);
+                productoRepository.save(prod);
+            }
         }
 
         return new BigDecimal[]{totalVenta, totalGravada, totalIgv};
     }
-
     /**
      * Registra movimiento en Kardex
      */

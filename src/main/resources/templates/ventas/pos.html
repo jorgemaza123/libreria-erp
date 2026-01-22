@@ -255,6 +255,17 @@
                                 <option value="CREDITO">CRÉDITO / CUOTAS</option>
                             </select>
                         </div>
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Método de Pago</label>
+                            <select id="metodoPago" class="form-control form-control-sm font-weight-bold text-navy">
+                                <option value="EFECTIVO" selected>EFECTIVO (S/)</option>
+                                <option value="YAPE">YAPE</option>
+                                <option value="PLIN">PLIN</option>
+                                <option value="TARJETA">TARJETA (Débito/Crédito)</option>
+                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                <option value="MIXTO">MIXTO / OTRO</option>
+                            </select>
+                        </div>
 
                         <div class="div-credito d-none">
                             <div class="form-group mb-2">
@@ -414,37 +425,58 @@
      * @param {string} nombre - Nombre a mostrar en el carrito
      * @param {number} precio - Precio unitario
      */
-    function agregarRapido(id, nombre, precio) {
-        let index = carrito.findIndex(i => i.id === id);
+    // =========================================================
+// REEMPLAZAR SOLO LA FUNCIÓN agregarRapido EN TU SCRIPT
+// =========================================================
 
-        if (index !== -1) {
-            // Si ya existe en el carrito, incrementar cantidad
-            carrito[index].cantidad += 1;
-            dibujarCarrito(true, index);
-        } else {
-            // Agregar nuevo item al carrito
-            carrito.push({
-                id: id,
-                nombre: nombre,
-                precio: parseFloat(precio),
-                precioMin: parseFloat(precio) * 0.8, // Mínimo 80% del precio
-                cantidad: 1,
-                stock: 99999, // Stock ilimitado para servicios
-                esServicio: true
-            });
-            dibujarCarrito(true, carrito.length - 1);
+function agregarRapido(codigoBusqueda) {
+    // 1. Usamos tu API existente para buscar el producto por su código interno (ej: 'FOTOCOPIA_BN')
+    $.ajax({
+        url: '/ventas/api/buscar-productos',
+        data: { term: codigoBusqueda },
+        success: function(resultados) {
+            // 2. Buscamos coincidencia exacta o tomamos el primero que devuelva la API
+            // La API devuelve objetos con {id: 123, text: '...', ...}
+            let prodEncontrado = resultados.find(p => p.text.includes(codigoBusqueda)) || resultados[0];
+
+            if (prodEncontrado) {
+                // 3. ¡CRÍTICO! Aquí obtenemos el ID numérico real (ej: 45) en lugar del texto
+                // Esto soluciona el error "InvalidFormatException" en el backend
+                
+                // Creamos un objeto compatible con tu función agregarAlCarrito
+                let productoParaCarrito = {
+                    id: prodEncontrado.id, // ES UN NÚMERO (Long)
+                    nombre: prodEncontrado.nombre,
+                    precio: parseFloat(prodEncontrado.precio),
+                    precioMin: parseFloat(prodEncontrado.precioMin),
+                    stock: prodEncontrado.stock
+                };
+
+                // Llamamos a tu función existente
+                agregarAlCarrito(productoParaCarrito);
+                
+                // Feedback visual
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: prodEncontrado.nombre + ' agregado',
+                    showConfirmButton: false,
+                    timer: 800
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Producto no encontrado',
+                    text: 'El código "' + codigoBusqueda + '" no está registrado en el inventario. Créalo con tipo "SERVICIO".'
+                });
+            }
+        },
+        error: function() {
+            Swal.fire('Error', 'No se pudo consultar el producto rápido', 'error');
         }
-
-        // Feedback visual rápido
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: nombre + ' agregado',
-            showConfirmButton: false,
-            timer: 800
-        });
-    }
+    });
+}
 
     // =============================================
     // ATAJOS DE TECLADO - FUNCIONES
@@ -821,6 +853,7 @@
             clienteDireccion: $("#clienteDireccion").val() || '',
             tipoComprobante: tipoComprobante,
             formaPago: formaPago,
+            metodoPago: $("#metodoPago").val(),
             montoInicial: parseFloat($("#montoInicial").val()) || 0,
             diasCredito: parseInt($("#diasCredito").val()) || 7,
             items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))

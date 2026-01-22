@@ -1,0 +1,17 @@
+-- 1. Asegurarnos que existan (si no existen, créalos)
+INSERT INTO productos (codigo_interno, nombre, precio_venta, tipo, activo, stock_actual, stock_minimo)
+VALUES 
+('FOTOCOPIA_BN', 'Fotocopia B/N', 0.10, 'SERVICIO', true, 99999, 0),
+('IMPRESION_A4', 'Impresión A4', 0.50, 'SERVICIO', true, 99999, 0),
+('ANILLADO', 'Anillado', 3.50, 'SERVICIO', true, 99999, 0),
+('BOLSA_PLASTICA', 'Bolsa Plástica', 0.10, 'PRODUCTO', true, 100, 10), -- Ojo: La bolsa SÍ es producto físico
+('LAPICERO_AZUL', 'Lapicero Azul', 1.00, 'PRODUCTO', true, 50, 5)   -- El lapicero SÍ es producto físico
+ON CONFLICT (codigo_interno) DO NOTHING;
+
+-- 2. IMPORTANTE: Marcar los que son intangibles como 'SERVICIO'
+UPDATE productos SET tipo = 'SERVICIO' 
+WHERE codigo_interno IN ('FOTOCOPIA_BN', 'IMPRESION_A4', 'ANILLADO', 'SCANNER', 'INTERNET');
+
+-- 3. IMPORTANTE: Marcar los físicos como 'PRODUCTO' (o null, según tu lógica actual)
+UPDATE productos SET tipo = 'PRODUCTO' 
+WHERE codigo_interno IN ('BOLSA_PLASTICA', 'LAPICERO_AZUL');

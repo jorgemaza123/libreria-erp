@@ -17,13 +17,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Configuration
 public class DataInitializer {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Bean
     CommandLineRunner initData(UsuarioRepository usuarioRepo,
@@ -39,7 +46,28 @@ public class DataInitializer {
             new TransactionTemplate(transactionManager).execute(status -> {
                 
                 System.out.println(">>> Inicializando sistema...");
+
+                // =================================================================================
+                // 0.1 SANITIZACIÓN DE DATOS (CRÍTICO PARA @Version)
+                // =================================================================================
                 
+                // Arreglar productos con version NULL
+                int productosActualizados = entityManager
+                    .createNativeQuery("UPDATE productos SET version = 0 WHERE version IS NULL")
+                    .executeUpdate();
+                if (productosActualizados > 0) {
+                    System.out.println(">>> SANITIZACIÓN: " + productosActualizados + " productos con version NULL corregidos.");
+                }
+
+                // NUEVO: Arreglar correlativos con version NULL (SOLUCIÓN A TU ERROR)
+                int correlativosActualizados = entityManager
+                    .createNativeQuery("UPDATE correlativos SET version = 0 WHERE version IS NULL")
+                    .executeUpdate();
+                if (correlativosActualizados > 0) {
+                    System.out.println(">>> SANITIZACIÓN: " + correlativosActualizados + " correlativos con version NULL corregidos.");
+                }
+                // =================================================================================
+
                 // 0. Permisos y Roles
                 rolePermissionService.crearPermisosPorDefecto();
                 rolePermissionService.crearRolesPredefinidos();
@@ -54,7 +82,6 @@ public class DataInitializer {
                     admin.setUsername("admin");
                     admin.setPassword(passwordEncoder.encode("admin"));
                     admin.setNombreCompleto("Administrador del Sistema");
-                    // CORRECCIÓN AQUÍ: Usar new HashSet para que sea mutable
                     admin.setRoles(new HashSet<>(Set.of(rolAdmin)));
                     admin.setActivo(true);
                     usuarioRepo.save(admin);
@@ -66,15 +93,16 @@ public class DataInitializer {
                     vend.setUsername("vendedor");
                     vend.setPassword(passwordEncoder.encode("1234"));
                     vend.setNombreCompleto("Vendedor de Tienda");
-                    // CORRECCIÓN AQUÍ: Usar new HashSet para que sea mutable
                     vend.setRoles(new HashSet<>(Set.of(rolVendedor)));
                     vend.setActivo(true);
                     usuarioRepo.save(vend);
                     System.out.println(">>> USUARIO VENDEDOR CREADO");
                 }
 
-                // 3. Correlativos - Inicialización segura para TODOS los tipos de documento y series
-                // MODO SUNAT (Facturación Electrónica Activa)
+                // 3. Correlativos - Inicialización segura respectando tu lógica Dual
+                // Si ya existen en BD, no los toca (respeta la secuencia actual)
+                
+                // MODO SUNAT
                 if (correlativoRepo.findByCodigoAndSerie("BOLETA", "B001").isEmpty()) {
                     correlativoRepo.save(new Correlativo("BOLETA", "B001", 0));
                 }
@@ -88,7 +116,7 @@ public class DataInitializer {
                     correlativoRepo.save(new Correlativo("NOTA_VENTA", "N001", 0));
                 }
 
-                // MODO INTERNO (Facturación Electrónica Desactivada)
+                // MODO INTERNO
                 if (correlativoRepo.findByCodigoAndSerie("BOLETA", "I001").isEmpty()) {
                     correlativoRepo.save(new Correlativo("BOLETA", "I001", 0));
                 }
@@ -102,12 +130,12 @@ public class DataInitializer {
                     correlativoRepo.save(new Correlativo("NOTA_CREDITO", "NC01", 0));
                 }
 
-                // COTIZACIONES (Independiente del modo)
+                // COTIZACIONES
                 if (correlativoRepo.findByCodigoAndSerie("COTIZACION", "C001").isEmpty()) {
                     correlativoRepo.save(new Correlativo("COTIZACION", "C001", 0));
                 }
 
-                // 4. Producto Servicio
+                // 4. Producto Servicio Genérico (Existente)
                 if (productoRepo.findByCodigoInterno("SERV-001").isEmpty()) {
                     Producto servicio = new Producto();
                     servicio.setCodigoInterno("SERV-001");
@@ -120,15 +148,29 @@ public class DataInitializer {
                     servicio.setUnidadMedida("UNIDAD");
                     servicio.setTipoAfectacionIgv("GRAVADO");
                     servicio.setActivo(true);
+                    servicio.setTipo("SERVICIO");
                     productoRepo.save(servicio);
                 }
+
+                // 4.1 SERVICIOS POS Y PRODUCTOS RÁPIDOS
+                System.out.println(">>> Inicializando Servicios Rápidos del POS...");
+                
+                // Servicios Intangibles (Sin control de stock)
+                crearProductoSiNoExiste(productoRepo, "FOTOCOPIA_BN", "Fotocopia B/N", new BigDecimal("0.10"), "SERVICIO");
+                crearProductoSiNoExiste(productoRepo, "IMPRESION_A4", "Impresión A4", new BigDecimal("0.50"), "SERVICIO");
+                crearProductoSiNoExiste(productoRepo, "ANILLADO", "Anillado", new BigDecimal("3.50"), "SERVICIO");
+                crearProductoSiNoExiste(productoRepo, "SCANNER", "Escaneo Documento", new BigDecimal("1.00"), "SERVICIO");
+                crearProductoSiNoExiste(productoRepo, "INTERNET", "Alquiler Internet (Hora)", new BigDecimal("2.00"), "SERVICIO");
+
+                // Productos Rápidos Físicos (Con control de stock)
+                crearProductoSiNoExiste(productoRepo, "BOLSA_PLASTICA", "Bolsa Plástica", new BigDecimal("0.10"), "PRODUCTO");
+                crearProductoSiNoExiste(productoRepo, "LAPICERO_AZUL", "Lapicero Azul Std", new BigDecimal("1.00"), "PRODUCTO");
 
                 // 5. Migración de Roles
                 System.out.println(">>> Verificando migración de roles...");
                 List<Usuario> todosUsuarios = usuarioRepo.findAll();
                 
                 for (Usuario usuario : todosUsuarios) {
-                    // Solo migrar si no tiene el nuevo rol asignado
                     if (usuario.getRole() == null) {
                         boolean esAdmin = usuario.getRoles().stream()
                                 .anyMatch(r -> r.getNombre().equals("ROLE_ADMIN"));
@@ -142,7 +184,6 @@ public class DataInitializer {
                             roleRepo.findByNombre("VENDEDOR").ifPresent(usuario::setRole);
                             System.out.println("  - Usuario '" + usuario.getUsername() + "' migrado a rol VENDEDOR");
                         }
-                        // Aquí es donde fallaba antes, ahora con HashSet no fallará
                         usuarioRepo.save(usuario);
                     }
                 }
@@ -151,5 +192,36 @@ public class DataInitializer {
                 return null;
             });
         };
+    }
+
+    private void crearProductoSiNoExiste(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo) {
+        Optional<Producto> existente = repo.findByCodigoInterno(codigoInterno);
+
+        if (existente.isEmpty()) {
+            Producto p = new Producto();
+            p.setCodigoInterno(codigoInterno);
+            p.setCodigoBarra(tipo.equals("SERVICIO") ? "SRV-" + codigoInterno : codigoInterno);
+            p.setNombre(nombre);
+            p.setPrecioVenta(precio);
+            p.setPrecioCompra(BigDecimal.ZERO);
+            p.setPrecioMayorista(precio);
+            p.setTipo(tipo); 
+            p.setActivo(true);
+            p.setCategoria(tipo.equals("SERVICIO") ? "SERVICIOS" : "GENERAL");
+            p.setDescripcion("Item rápido del sistema");
+            p.setTipoAfectacionIgv("GRAVADO");
+            p.setStockActual(tipo.equals("SERVICIO") ? 99999 : 100); 
+            p.setStockMinimo(5);
+
+            repo.save(p);
+            System.out.println(" > Creado item POS: " + nombre + " [" + tipo + "]");
+        } else {
+            Producto p = existente.get();
+            if (p.getTipo() == null || !p.getTipo().equals(tipo)) {
+                p.setTipo(tipo);
+                repo.save(p);
+                System.out.println(" > Actualizado tipo de item: " + nombre + " a " + tipo);
+            }
+        }
     }
 }

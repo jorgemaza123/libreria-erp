@@ -165,8 +165,8 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
                                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -177,18 +177,18 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="/ventas/lista" class="nav-link" th:classappend="${active == 'ventas' ? 'active' : ''}">
+                                    <a href="/ventas/lista" class="nav-link" th:classappend="${active == 'ventas' or active == 'historial_ventas' ? 'active' : ''}">
                                         <i class="fas fa-list-alt nav-icon"></i><p>Historial de Ventas</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'cotizaciones' ? 'active' : ''}">
-                                        <i class="fas fa-file-invoice nav-icon"></i><p>Cotizaciones</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="/cotizaciones/nueva" class="nav-link" th:classappend="${active == 'nueva_cotizacion' ? 'active' : ''}">
                                         <i class="fas fa-plus nav-icon"></i><p>Nueva Cotización</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'cotizaciones' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice nav-icon"></i><p>Cotizaciones</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">

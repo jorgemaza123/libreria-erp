@@ -54,10 +54,23 @@
                                         <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
                                         <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
                                     </td>
-                                    <td>
+                                    <td class="text-right">
                                         <button class="btn btn-primary btn-sm btn-detalle" th:data-id="${v.id}" title="Ver Detalle">
                                             <i class="fas fa-eye"></i>
                                         </button>
+
+                                        <button class="btn btn-success btn-sm"
+                                                th:onclick="enviarWhatsappVenta([[${v.clienteDenominacion}]], [[${v.serie}]], [[${v.numero}]], [[${v.total}]], [[${v.clienteEntity != null ? v.clienteEntity.telefono : ''}]])"
+                                                title="Enviar por WhatsApp">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </button>
+
+                                        <button class="btn btn-default btn-sm" 
+                                                th:onclick="abrirPdfVenta([[${v.id}]])" 
+                                                title="Imprimir Comprobante">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+
                                         <form th:if="${v.estado == 'EMITIDO'}" th:action="@{/ventas/anular/{id}(id=${v.id})}" method="post" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Esta acción devolverá el stock.');">
                                             <button type="submit" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-ban"></i></button>
                                         </form>
@@ -102,7 +115,7 @@
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
-                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -112,16 +125,48 @@
 
 <script>
     $(function () {
+        // Lógica del modal detalle
         $(".btn-detalle").click(function(){
             var id = $(this).data("id");
-            // Nota: Debes crear un endpoint en VentaController que devuelva el fragmento HTML del detalle
-            // O usar una llamada AJAX JSON y construir la tabla con JS.
-            // Si no tienes ese endpoint '/ventas/detalle/{id}', esto dará 404.
-            // Para solucionarlo rápido, te sugiero crear ese método en el controller similar al de cotizaciones.
             $("#modalBodyContent").load("/ventas/detalle/" + id);
             $("#modalDetalle").modal("show");
         });
     });
+
+    // --- FUNCIÓN IMPRIMIR PDF ---
+    function abrirPdfVenta(id) {
+        window.open('/ventas/imprimir/' + id, '_blank', 'width=900,height=700');
+    }
+
+    // --- FUNCIÓN ENVIAR WHATSAPP ---
+    async function enviarWhatsappVenta(nombre, serie, numero, total, telefono) {
+        let mensaje = `Hola *${nombre}*, le enviamos su comprobante de venta *${serie}-${numero}*.\n`;
+        mensaje += `Importe Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
+        mensaje += `Gracias por su preferencia.`;
+
+        // SweetAlert inteligente: Si ya hay teléfono lo sugiere, si no, pide ingresarlo
+        const { value: nuevoNumero } = await Swal.fire({
+            title: 'Enviar Comprobante',
+            text: 'Confirme el número de WhatsApp:',
+            input: 'text',
+            inputValue: telefono || '', // Pre-llena si existe, vacío si es null
+            showCancelButton: true,
+            confirmButtonText: '<i class="fab fa-whatsapp"></i> Enviar',
+            confirmButtonColor: '#25D366',
+            cancelButtonText: 'Cancelar',
+            inputPlaceholder: 'Ej: 999888777',
+            inputValidator: (value) => {
+                if (!value) {
+                    return '¡Necesitas escribir un número para enviar!';
+                }
+            }
+        });
+
+        if (nuevoNumero) {
+            // Abre WhatsApp Web/App con el mensaje preformateado
+            window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+        }
+    }
 </script>
 </body>
 </html>
