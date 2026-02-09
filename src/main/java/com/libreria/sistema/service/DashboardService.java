@@ -16,6 +16,17 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * ESTADOS VÁLIDOS PARA KPIs FINANCIEROS:
+ * - EMITIDO: Venta activa (pendiente de cobro total si es crédito)
+ * - PAGADO_TOTAL: Venta completamente cobrada
+ * - DEVUELTO_PARCIAL: Venta con devolución parcial (el resto cuenta)
+ *
+ * ESTADOS EXCLUIDOS:
+ * - ANULADO: Venta cancelada, no cuenta
+ * - DEVUELTO_TOTAL: Todo el dinero fue devuelto
+ */
+
 @Service
 public class DashboardService {
 
@@ -42,8 +53,15 @@ public class DashboardService {
         LocalDate inicioMes = hoy.withDayOfMonth(1);
 
         // --- 1. KPIs PRINCIPALES ---
+        // CORREGIDO: Incluir TODOS los estados que representan "Dinero Real"
+        // Excluir solo: ANULADO, DEVUELTO_TOTAL
+        Set<String> estadosValidos = Set.of("EMITIDO", "PAGADO_TOTAL", "DEVUELTO_PARCIAL");
+
         List<Venta> ventasMes = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null && !v.getFechaEmision().isBefore(inicioMes) && "EMITIDO".equals(v.getEstado()))
+                .filter(v -> v.getFechaEmision() != null
+                        && !v.getFechaEmision().isBefore(inicioMes)
+                        && v.getEstado() != null
+                        && estadosValidos.contains(v.getEstado()))
                 .collect(Collectors.toList());
 
         BigDecimal totalVentasMes = ventasMes.stream()
@@ -85,8 +103,12 @@ public class DashboardService {
             YearMonth mes = YearMonth.now().minusMonths(i);
             String etiqueta = mes.format(DateTimeFormatter.ofPattern("MMM yyyy")); 
             
+            // CORREGIDO: Usar mismos estados válidos en la comparativa
             BigDecimal ingresos = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null && YearMonth.from(v.getFechaEmision()).equals(mes))
+                .filter(v -> v.getFechaEmision() != null
+                        && YearMonth.from(v.getFechaEmision()).equals(mes)
+                        && v.getEstado() != null
+                        && estadosValidos.contains(v.getEstado()))
                 .map(v -> v.getTotal() != null ? v.getTotal() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
                 

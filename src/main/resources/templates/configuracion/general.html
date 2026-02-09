@@ -97,8 +97,18 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" id="tab-diseno" data-toggle="pill" href="#diseno" role="tab">
+                                <i class="fas fa-receipt"></i> Diseño Comprobante
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" id="tab-facturacion" data-toggle="pill" href="#facturacion" role="tab">
                                 <i class="fas fa-file-invoice"></i> Facturación Electrónica
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-seguridad" data-toggle="pill" href="#seguridad" role="tab">
+                                <i class="fas fa-shield-alt"></i> Seguridad de Datos
                             </a>
                         </li>
                     </ul>
@@ -507,6 +517,235 @@
                                 </div>
                             </div>
 
+                            <!-- ============================================== -->
+                            <!--        DISEÑO DE COMPROBANTE - VISTA PREVIA  -->
+                            <!-- ============================================== -->
+                            <div class="tab-pane fade" id="diseno" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-receipt text-success"></i> Diseño de Comprobante con Vista Previa</h4>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    Personalice el contenido de sus tickets y comprobantes. Los cambios se reflejan en tiempo real en la vista previa.
+                                </div>
+
+                                <div class="row">
+                                    <!-- COLUMNA IZQUIERDA: Formulario -->
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-primary">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-edit"></i> Personalización</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <!-- Logo -->
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-switch">
+                                                        <input type="checkbox" class="custom-control-input" id="previewMostrarLogo"
+                                                               th:checked="${config.mostrarLogoEnTicket}"
+                                                               onchange="actualizarVistaPrevia()">
+                                                        <label class="custom-control-label" for="previewMostrarLogo">
+                                                            <i class="fas fa-image text-info"></i> Mostrar Logo en Tickets
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <hr>
+                                                <h6><i class="fas fa-building text-primary"></i> Datos de Contacto en Ticket</h6>
+                                                <small class="text-muted mb-2 d-block">Deje vacío para usar los datos de empresa</small>
+
+                                                <!-- Dirección Ticket -->
+                                                <div class="form-group">
+                                                    <label>Dirección (alternativa para ticket)</label>
+                                                    <input type="text" class="form-control" id="previewDireccion"
+                                                           name="direccionTicket"
+                                                           th:value="${config.direccionTicket}"
+                                                           placeholder="Usar dirección de empresa"
+                                                           oninput="actualizarVistaPrevia()">
+                                                </div>
+
+                                                <!-- Teléfono Ticket -->
+                                                <div class="form-group">
+                                                    <label>Teléfono (alternativo para ticket)</label>
+                                                    <input type="text" class="form-control" id="previewTelefono"
+                                                           name="telefonoTicket"
+                                                           th:value="${config.telefonoTicket}"
+                                                           placeholder="Usar teléfono de empresa"
+                                                           oninput="actualizarVistaPrevia()">
+                                                </div>
+
+                                                <hr>
+                                                <h6><i class="fas fa-comment text-success"></i> Mensajes</h6>
+
+                                                <!-- Mensaje de pie -->
+                                                <div class="form-group">
+                                                    <label>Mensaje de Pie (despedida)</label>
+                                                    <textarea class="form-control" id="previewMensajePie"
+                                                              name="mensajePieTicket" rows="2"
+                                                              th:text="${config.mensajePieTicket}"
+                                                              placeholder="Gracias por su compra. Vuelva pronto!"
+                                                              oninput="actualizarVistaPrevia()"></textarea>
+                                                </div>
+
+                                                <!-- Mensaje promocional -->
+                                                <div class="form-group">
+                                                    <label>Mensaje Promocional (opcional)</label>
+                                                    <input type="text" class="form-control" id="previewMensajePromo"
+                                                           name="mensajePromoTicket"
+                                                           th:value="${config.mensajePromoTicket}"
+                                                           placeholder="Ej: 10% descuento en tu próxima compra"
+                                                           oninput="actualizarVistaPrevia()">
+                                                </div>
+
+                                                <hr>
+                                                <h6><i class="fas fa-university text-warning"></i> Información Adicional</h6>
+
+                                                <!-- Mostrar cuentas bancarias -->
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-switch">
+                                                        <input type="checkbox" class="custom-control-input" id="previewMostrarCuentas"
+                                                               name="mostrarCuentasBancariasEnTicket"
+                                                               th:checked="${config.mostrarCuentasBancariasEnTicket != false}"
+                                                               onchange="actualizarVistaPrevia()">
+                                                        <label class="custom-control-label" for="previewMostrarCuentas">
+                                                            Mostrar Cuentas Bancarias
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Mostrar redes sociales -->
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-switch">
+                                                        <input type="checkbox" class="custom-control-input" id="previewMostrarRedes"
+                                                               name="mostrarRedesSocialesEnTicket"
+                                                               th:checked="${config.mostrarRedesSocialesEnTicket}"
+                                                               onchange="actualizarVistaPrevia()">
+                                                        <label class="custom-control-label" for="previewMostrarRedes">
+                                                            Mostrar Redes Sociales
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- COLUMNA DERECHA: Vista Previa -->
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-success">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-eye"></i> Vista Previa del Ticket</h5>
+                                            </div>
+                                            <div class="card-body p-2" style="background: #f0f0f0;">
+                                                <!-- Simulación de papel térmico 80mm -->
+                                                <div id="ticketPreview" style="
+                                                    width: 280px;
+                                                    margin: 0 auto;
+                                                    background: white;
+                                                    padding: 15px;
+                                                    font-family: 'Courier New', monospace;
+                                                    font-size: 12px;
+                                                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                                                    border-radius: 0 0 5px 5px;
+                                                    border-top: 3px dashed #ccc;
+                                                ">
+                                                    <!-- Logo -->
+                                                    <div id="ticketLogo" class="text-center mb-2">
+                                                        <img th:if="${config.logoBase64 != null}"
+                                                             th:src="'data:image/png;base64,' + ${config.logoBase64}"
+                                                             style="max-width: 150px; max-height: 60px;">
+                                                        <div th:unless="${config.logoBase64 != null}"
+                                                             class="text-muted" style="border: 1px dashed #ccc; padding: 10px;">
+                                                            [LOGO]
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Nombre empresa -->
+                                                    <div class="text-center font-weight-bold" style="font-size: 14px;"
+                                                         th:text="${config.nombreEmpresa}">MI EMPRESA S.A.C.</div>
+                                                    <div class="text-center" th:text="'RUC: ' + ${config.ruc}">RUC: 20000000001</div>
+                                                    <div class="text-center" id="ticketDireccion"
+                                                         th:text="${config.direccionTicket ?: config.direccion}">Dirección</div>
+                                                    <div class="text-center" id="ticketTelefono"
+                                                         th:text="'Tel: ' + ${config.telefonoTicket ?: config.telefono}">Tel: 000-0000</div>
+
+                                                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+                                                    <!-- Tipo documento -->
+                                                    <div class="text-center font-weight-bold">BOLETA DE VENTA</div>
+                                                    <div class="text-center">B001-000001</div>
+                                                    <div class="text-center text-muted" style="font-size: 10px;">28/01/2024</div>
+
+                                                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+                                                    <!-- Cliente -->
+                                                    <div>CLIENTE: CLIENTE EJEMPLO</div>
+                                                    <div>DOC: 12345678</div>
+
+                                                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+                                                    <!-- Items ejemplo -->
+                                                    <table style="width: 100%; font-size: 11px;">
+                                                        <tr>
+                                                            <td>Producto ejemplo 1</td>
+                                                            <td class="text-right">x2</td>
+                                                            <td class="text-right">20.00</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Producto ejemplo 2</td>
+                                                            <td class="text-right">x1</td>
+                                                            <td class="text-right">15.00</td>
+                                                        </tr>
+                                                    </table>
+
+                                                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+
+                                                    <!-- Total -->
+                                                    <div class="text-right font-weight-bold" style="font-size: 14px;">
+                                                        TOTAL: S/ 35.00
+                                                    </div>
+
+                                                    <!-- Cuentas bancarias -->
+                                                    <div id="ticketCuentas" style="margin-top: 10px; display: block;">
+                                                        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+                                                        <div class="text-center font-weight-bold" style="font-size: 10px;">CUENTAS BANCARIAS:</div>
+                                                        <div class="text-center" style="font-size: 9px; white-space: pre-line;"
+                                                             th:text="${config.cuentasBancarias}">BCP: 123-456789</div>
+                                                    </div>
+
+                                                    <!-- Redes sociales -->
+                                                    <div id="ticketRedes" style="margin-top: 8px; display: none;">
+                                                        <div class="text-center" style="font-size: 9px;">
+                                                            <span th:if="${config.facebook}"><i class="fab fa-facebook"></i> <span th:text="${config.facebook}"></span></span>
+                                                            <span th:if="${config.instagram}"> | <i class="fab fa-instagram"></i> <span th:text="${config.instagram}"></span></span>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Mensaje promo -->
+                                                    <div id="ticketPromo" class="text-center"
+                                                         style="margin-top: 8px; font-size: 10px; background: #fff3cd; padding: 5px; display: none;">
+                                                    </div>
+
+                                                    <!-- Mensaje pie -->
+                                                    <div class="text-center" style="margin-top: 10px;" id="ticketMensajePie"
+                                                         th:text="${config.mensajePieTicket}">Gracias por su compra</div>
+
+                                                    <!-- Cajero -->
+                                                    <div class="text-center text-muted" style="margin-top: 5px; font-size: 9px;">
+                                                        Atendido por: Admin
+                                                    </div>
+
+                                                    <!-- Borde inferior tipo ticket -->
+                                                    <div style="border-top: 3px dashed #ccc; margin-top: 15px;"></div>
+                                                </div>
+
+                                                <div class="text-center mt-3">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle"></i> Vista previa aproximada. El resultado final puede variar según la impresora.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="tab-pane fade" id="facturacion" role="tabpanel">
                                 <h4 class="mb-3"><i class="fas fa-file-invoice text-info"></i> Facturación Electrónica (Proveedor)</h4>
                                 <div class="alert alert-warning">
@@ -531,6 +770,101 @@
                                         <h5 class="text-danger">Certificado Digital (Solo facturación directa)</h5>
                                         <div class="form-group"><label>Ruta .pfx</label><input type="text" class="form-control" th:field="*{certificadoDigitalRuta}"></div>
                                         <div class="form-group"><label>Clave Certificado</label><input type="password" class="form-control" th:field="*{claveCertificado}"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ============================================== -->
+                            <!--        SEGURIDAD DE DATOS - BACKUP            -->
+                            <!-- ============================================== -->
+                            <div class="tab-pane fade" id="seguridad" role="tabpanel">
+                                <h4 class="mb-3"><i class="fas fa-shield-alt text-success"></i> Seguridad de Datos</h4>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-success">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-database"></i> Copia de Seguridad</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="text-muted">
+                                                    Descargue una copia completa de su base de datos en formato SQL.
+                                                    Este archivo contiene toda la información del sistema: productos, ventas,
+                                                    clientes, configuraciones, etc.
+                                                </p>
+
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    <strong>Recomendación:</strong> Realice copias de seguridad periódicas
+                                                    (diarias o semanales) y guárdelas en un lugar seguro fuera del servidor.
+                                                </div>
+
+                                                <button type="button" id="btnBackup" class="btn btn-success btn-lg btn-block" onclick="descargarBackup()">
+                                                    <i class="fas fa-download"></i> Descargar Copia de Seguridad
+                                                </button>
+
+                                                <div id="backupProgress" class="mt-3 d-none">
+                                                    <div class="progress">
+                                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                                             role="progressbar" style="width: 100%">
+                                                            Generando backup...
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div id="backupError" class="alert alert-danger mt-3 d-none">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    <span id="backupErrorText"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-info">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-question-circle"></i> Instrucciones de Restauración</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <p>Para restaurar un backup descargado:</p>
+                                                <ol>
+                                                    <li>Detenga el sistema ERP</li>
+                                                    <li>Abra una terminal o línea de comandos</li>
+                                                    <li>Ejecute el comando:
+                                                        <pre class="bg-dark text-white p-2 rounded mt-2">psql -U postgres -d libreria_db -f backup_FECHA.sql</pre>
+                                                    </li>
+                                                    <li>Reinicie el sistema ERP</li>
+                                                </ol>
+
+                                                <div class="alert alert-warning mt-3">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    <strong>Importante:</strong> La restauración sobrescribirá todos los datos actuales.
+                                                    Asegúrese de tener un backup reciente antes de restaurar.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card card-outline card-secondary mt-3">
+                                            <div class="card-header">
+                                                <h5 class="card-title"><i class="fas fa-server"></i> Información del Sistema</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm table-borderless">
+                                                    <tr>
+                                                        <td><strong>Motor de BD:</strong></td>
+                                                        <td>PostgreSQL</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Formato Backup:</strong></td>
+                                                        <td>SQL (.sql)</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>Sistema Operativo:</strong></td>
+                                                        <td id="sistemaOperativo">Detectando...</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -640,21 +974,176 @@
 
         $(document).ready(function() {
             updatePreview();
-            
+
             // Fix para tabs en AdminLTE si es necesario
             $('#custom-tabs a').on('click', function (e) {
                 e.preventDefault()
                 $(this).tab('show')
             });
-            
+
             // Activar tab si viene en URL hash
             var hash = window.location.hash;
             if (hash) {
                 $('#custom-tabs a[href="' + hash + '"]').tab('show');
             }
-            // SOLUCIÓN PARA EL ERROR DE VALIDACIÓN EN TABS OCULTOS
-    
+
+            // Detectar sistema operativo para mostrar en la UI
+            detectarSistemaOperativo();
+
+            // Inicializar vista previa del ticket
+            actualizarVistaPrevia();
         });
+
+        // =====================================================
+        //  FUNCIONES DE VISTA PREVIA DE TICKET
+        // =====================================================
+
+        function actualizarVistaPrevia() {
+            // Logo
+            const mostrarLogo = document.getElementById('previewMostrarLogo').checked;
+            const logoDiv = document.getElementById('ticketLogo');
+            if (logoDiv) {
+                logoDiv.style.display = mostrarLogo ? 'block' : 'none';
+            }
+
+            // Dirección
+            const direccionInput = document.getElementById('previewDireccion');
+            const direccionDiv = document.getElementById('ticketDireccion');
+            if (direccionDiv && direccionInput) {
+                const valorDireccion = direccionInput.value.trim();
+                direccionDiv.textContent = valorDireccion || /*[[${config.direccion}]]*/ 'Dirección por configurar';
+            }
+
+            // Teléfono
+            const telefonoInput = document.getElementById('previewTelefono');
+            const telefonoDiv = document.getElementById('ticketTelefono');
+            if (telefonoDiv && telefonoInput) {
+                const valorTelefono = telefonoInput.value.trim();
+                telefonoDiv.textContent = 'Tel: ' + (valorTelefono || /*[[${config.telefono}]]*/ '(01) 000-0000');
+            }
+
+            // Mensaje de pie
+            const mensajePieInput = document.getElementById('previewMensajePie');
+            const mensajePieDiv = document.getElementById('ticketMensajePie');
+            if (mensajePieDiv && mensajePieInput) {
+                mensajePieDiv.textContent = mensajePieInput.value || 'Gracias por su compra. Vuelva pronto!';
+            }
+
+            // Mensaje promocional
+            const mensajePromoInput = document.getElementById('previewMensajePromo');
+            const promoDiv = document.getElementById('ticketPromo');
+            if (promoDiv && mensajePromoInput) {
+                const valorPromo = mensajePromoInput.value.trim();
+                if (valorPromo) {
+                    promoDiv.textContent = valorPromo;
+                    promoDiv.style.display = 'block';
+                } else {
+                    promoDiv.style.display = 'none';
+                }
+            }
+
+            // Cuentas bancarias
+            const mostrarCuentas = document.getElementById('previewMostrarCuentas').checked;
+            const cuentasDiv = document.getElementById('ticketCuentas');
+            if (cuentasDiv) {
+                cuentasDiv.style.display = mostrarCuentas ? 'block' : 'none';
+            }
+
+            // Redes sociales
+            const mostrarRedes = document.getElementById('previewMostrarRedes').checked;
+            const redesDiv = document.getElementById('ticketRedes');
+            if (redesDiv) {
+                redesDiv.style.display = mostrarRedes ? 'block' : 'none';
+            }
+        }
+
+        // =====================================================
+        //  FUNCIONES DE BACKUP
+        // =====================================================
+
+        function detectarSistemaOperativo() {
+            fetch('/configuracion/backup/verificar')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('sistemaOperativo').textContent =
+                        data.sistemaOperativo || 'Desconocido';
+                })
+                .catch(err => {
+                    document.getElementById('sistemaOperativo').textContent = 'Error al detectar';
+                });
+        }
+
+        function descargarBackup() {
+            const btn = document.getElementById('btnBackup');
+            const progress = document.getElementById('backupProgress');
+            const errorDiv = document.getElementById('backupError');
+            const errorText = document.getElementById('backupErrorText');
+
+            // Ocultar errores previos
+            errorDiv.classList.add('d-none');
+
+            // Mostrar progreso
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando backup...';
+            progress.classList.remove('d-none');
+
+            // Usar fetch para manejar errores y descargar
+            fetch('/configuracion/backup')
+                .then(response => {
+                    if (!response.ok) {
+                        // Si hay error, leer el JSON de error
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Error desconocido al generar backup');
+                        });
+                    }
+                    // Si es exitoso, obtener el blob y nombre del archivo
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'backup.sql';
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="(.+)"/);
+                        if (match) filename = match[1];
+                    }
+                    return response.blob().then(blob => ({ blob, filename }));
+                })
+                .then(({ blob, filename }) => {
+                    // Crear link de descarga
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+
+                    // Mostrar éxito
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Backup Generado',
+                        html: `<p>El archivo <strong>${filename}</strong> se está descargando.</p>
+                               <p class="text-muted">Guárdelo en un lugar seguro.</p>`,
+                        confirmButtonColor: '#28a745'
+                    });
+                })
+                .catch(error => {
+                    // Mostrar error
+                    errorText.textContent = error.message;
+                    errorDiv.classList.remove('d-none');
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al generar backup',
+                        text: error.message,
+                        confirmButtonColor: '#dc3545'
+                    });
+                })
+                .finally(() => {
+                    // Restaurar botón
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download"></i> Descargar Copia de Seguridad';
+                    progress.classList.add('d-none');
+                });
+        }
     </script>
 </th:block>
 

@@ -1,10 +1,12 @@
 package com.libreria.sistema.controller;
 
+import com.libreria.sistema.aspect.RequerirCajaAbierta;
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.service.ConfiguracionService;
 import com.libreria.sistema.service.ConsultaDocumentoService;
+import com.libreria.sistema.service.ProductoBusquedaService;
 import com.libreria.sistema.service.ReporteService;
 import com.libreria.sistema.service.VentaService;
 import com.libreria.sistema.util.Constants;
@@ -35,26 +37,32 @@ public class VentaController {
 
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
+    private final ClienteRepository clienteRepository;
     private final ConfiguracionService configuracionService;
     private final VentaService ventaService;
     private final ReporteService reporteService;
     private final ConsultaDocumentoService consultaDocumentoService;
+    private final ProductoBusquedaService productoBusquedaService;
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
 
     public VentaController(ProductoRepository productoRepository,
                            VentaRepository ventaRepository,
+                           ClienteRepository clienteRepository,
                            ConfiguracionService configuracionService,
                            VentaService ventaService,
                            ReporteService reporteService,
-                           ConsultaDocumentoService consultaDocumentoService) {
+                           ConsultaDocumentoService consultaDocumentoService,
+                           ProductoBusquedaService productoBusquedaService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
+        this.clienteRepository = clienteRepository;
         this.configuracionService = configuracionService;
         this.ventaService = ventaService;
         this.reporteService = reporteService;
         this.consultaDocumentoService = consultaDocumentoService;
+        this.productoBusquedaService = productoBusquedaService;
     }
 
     @GetMapping("/lista")
@@ -82,6 +90,7 @@ public class VentaController {
 
     @GetMapping("/nueva")
     @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
+    @RequerirCajaAbierta(mensaje = "Debe abrir caja antes de realizar ventas.")
     public String nuevaVenta(Model model) {
         // Obtener estado de facturación electrónica
         boolean facturaElectronicaActiva = ventaService.isFacturacionElectronicaActiva();
@@ -94,22 +103,111 @@ public class VentaController {
         return "ventas/pos";
     }
 
+    /**
+     * OMNIBUSCADOR V3: Búsqueda avanzada de productos con soporte visual.
+     *
+     * Características:
+     * - Búsqueda multi-campo: nombre, marca, categoría, códigos, descripción, TAGS
+     * - Tokenizada: "cuaderno loro" encuentra "LORO CUADERNO ARIMANY"
+     * - Búsqueda por sinónimos: "pegamento" encuentra "CINTA SCOTCH" si tiene tag
+     * - Case-insensitive con normalización de acentos
+     * - Ordenada por relevancia: stock > 0 primero, códigos exactos priorizados
+     * - Incluye datos para panel visual (imagen, ubicación, stock mínimo)
+     *
+     * @param term Término de búsqueda
+     * @return Lista de productos formateados para Select2 con datos visuales
+     */
     @GetMapping("/api/buscar-productos")
     @ResponseBody
     public List<Map<String, Object>> buscarProductos(@RequestParam String term) {
-        return productoRepository.buscarInteligente(term).stream().map(p -> {
+        return productoBusquedaService.buscar(term, 20).stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
-            map.put("text", p.getCodigoBarra() + " - " + p.getNombre() + " (Stock: " + p.getStockActual() + ")");
+
+            // Texto enriquecido con marca y stock para mejor identificación
+            StringBuilder textBuilder = new StringBuilder();
+            if (p.getCodigoBarra() != null && !p.getCodigoBarra().isEmpty()) {
+                textBuilder.append(p.getCodigoBarra()).append(" - ");
+            }
+            textBuilder.append(p.getNombre());
+            if (p.getMarca() != null && !p.getMarca().isEmpty()) {
+                textBuilder.append(" [").append(p.getMarca()).append("]");
+            }
+            textBuilder.append(" (Stock: ").append(p.getStockActual()).append(")");
+
+            map.put("text", textBuilder.toString());
             map.put("precio", p.getPrecioVenta());
-            map.put("precioMin", p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA));
+            map.put("precioMin", p.getPrecioVenta() != null
+                    ? p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA)
+                    : null);
             map.put("stock", p.getStockActual());
+            map.put("stockMinimo", p.getStockMinimo());
             map.put("nombre", p.getNombre());
             map.put("marca", p.getMarca());
+            map.put("categoria", p.getCategoria());
+            map.put("descripcion", p.getDescripcion());
             map.put("imagen", p.getImagen());
-            map.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-" + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
+            map.put("codigoBarra", p.getCodigoBarra());
+            map.put("codigoInterno", p.getCodigoInterno());
+            map.put("tags", p.getTags());
+
+            // Ubicación detallada
+            String ubicacionEstante = p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "";
+            String ubicacionFila = p.getUbicacionFila() != null ? p.getUbicacionFila() : "";
+            String ubicacionColumna = p.getUbicacionColumna() != null ? p.getUbicacionColumna() : "";
+            map.put("ubicacion", ubicacionEstante + "-" + ubicacionFila);
+            map.put("ubicacionEstante", ubicacionEstante);
+            map.put("ubicacionFila", ubicacionFila);
+            map.put("ubicacionColumna", ubicacionColumna);
+
+            // Flags de estado
+            map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
+            map.put("stockBajo", p.getStockActual() != null && p.getStockMinimo() != null
+                    && p.getStockActual() <= p.getStockMinimo());
+
             return map;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * AUTOCOMPLETE: Sugerencias rápidas en tiempo real.
+     * Optimizado para velocidad, retorna máximo 10 resultados.
+     *
+     * @param q Query de búsqueda (mínimo 1 carácter)
+     * @return Top 10 productos sugeridos
+     */
+    @GetMapping("/api/autocomplete-productos")
+    @ResponseBody
+    public List<Map<String, Object>> autocompleteProductos(@RequestParam String q) {
+        return productoBusquedaService.autocompleteParaSelect2(q);
+    }
+
+    /**
+     * PRODUCTOS RELACIONADOS: Busca productos similares por categoría y tags.
+     *
+     * @param id ID del producto actual
+     * @return Lista de hasta 6 productos relacionados
+     */
+    @GetMapping("/api/productos-relacionados/{id}")
+    @ResponseBody
+    public List<Map<String, Object>> productosRelacionados(@PathVariable Long id) {
+        return productoRepository.findById(id).map(producto -> {
+            return productoBusquedaService.buscarRelacionados(
+                    producto.getId(),
+                    producto.getCategoria(),
+                    producto.getTags(),
+                    6
+            ).stream().map(p -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", p.getId());
+                map.put("nombre", p.getNombre());
+                map.put("precio", p.getPrecioVenta());
+                map.put("stock", p.getStockActual());
+                map.put("imagen", p.getImagen());
+                map.put("marca", p.getMarca());
+                return map;
+            }).collect(Collectors.toList());
+        }).orElse(List.of());
     }
 
     /**
@@ -146,6 +244,19 @@ public class VentaController {
         // Consultar en APISUNAT
         Map<String, Object> resultado = consultaDocumentoService.consultarDocumento(docLimpio);
 
+        // Buscar si el cliente ya existe localmente para agregar su teléfono
+        clienteRepository.findByNumeroDocumento(docLimpio).ifPresent(clienteLocal -> {
+            if (clienteLocal.getTelefono() != null && !clienteLocal.getTelefono().isBlank()) {
+                resultado.put("telefono", clienteLocal.getTelefono());
+            }
+            // Si la API no devolvió dirección pero el cliente local la tiene
+            if (resultado.get("direccion") == null || resultado.get("direccion").toString().isBlank()) {
+                if (clienteLocal.getDireccion() != null && !clienteLocal.getDireccion().isBlank()) {
+                    resultado.put("direccion", clienteLocal.getDireccion());
+                }
+            }
+        });
+
         if (Boolean.TRUE.equals(resultado.get("success"))) {
             return ResponseEntity.ok(resultado);
         } else {
@@ -160,6 +271,7 @@ public class VentaController {
      */
     @PostMapping("/api/guardar")
     @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
+    @RequerirCajaAbierta(mensaje = "CAJA CERRADA: Debe abrir caja antes de registrar ventas.")
     public ResponseEntity<?> guardarVenta(@Valid @RequestBody VentaDTO dto, BindingResult bindingResult) {
         Map<String, Object> errorResponse = new HashMap<>();
 

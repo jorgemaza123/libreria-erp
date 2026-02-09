@@ -84,8 +84,9 @@ public class DataInitializer {
                     admin.setNombreCompleto("Administrador del Sistema");
                     admin.setRoles(new HashSet<>(Set.of(rolAdmin)));
                     admin.setActivo(true);
+                    admin.setPasswordChanged(false); // Forzar cambio en primer login
                     usuarioRepo.save(admin);
-                    System.out.println(">>> USUARIO ADMIN CREADO");
+                    System.out.println(">>> USUARIO ADMIN CREADO (debe cambiar contraseña)");
                 }
 
                 if (usuarioRepo.findByUsername("vendedor").isEmpty()) {
@@ -95,8 +96,9 @@ public class DataInitializer {
                     vend.setNombreCompleto("Vendedor de Tienda");
                     vend.setRoles(new HashSet<>(Set.of(rolVendedor)));
                     vend.setActivo(true);
+                    vend.setPasswordChanged(false); // Forzar cambio en primer login
                     usuarioRepo.save(vend);
-                    System.out.println(">>> USUARIO VENDEDOR CREADO");
+                    System.out.println(">>> USUARIO VENDEDOR CREADO (debe cambiar contraseña)");
                 }
 
                 // 3. Correlativos - Inicialización segura respectando tu lógica Dual

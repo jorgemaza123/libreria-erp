@@ -68,6 +68,49 @@ public class Usuario {
     private LocalDateTime ultimoLoginExitoso;
 
     // =====================================================
+    //  CAMPOS PARA CAMBIO DE CONTRASEÑA OBLIGATORIO
+    // =====================================================
+
+    /**
+     * Indica si el usuario ya cambió su contraseña inicial.
+     * Los usuarios nuevos deben cambiar su contraseña antes de usar el sistema.
+     */
+    @Column(name = "password_changed")
+    private Boolean passwordChanged = false;
+
+    /**
+     * Email para recuperación de contraseña (opcional).
+     */
+    @Column(name = "email")
+    private String email;
+
+    /**
+     * Token único para recuperación de contraseña.
+     * Se genera cuando el usuario solicita recuperar su clave.
+     */
+    @Column(name = "token_recuperacion")
+    private String tokenRecuperacion;
+
+    /**
+     * Fecha de expiración del token de recuperación.
+     * Por seguridad, los tokens expiran después de un tiempo limitado.
+     */
+    @Column(name = "token_expiracion")
+    private LocalDateTime tokenExpiracion;
+
+    /**
+     * Pregunta de seguridad para recuperación sin email.
+     */
+    @Column(name = "pregunta_seguridad")
+    private String preguntaSeguridad;
+
+    /**
+     * Respuesta a la pregunta de seguridad (almacenada en hash).
+     */
+    @Column(name = "respuesta_seguridad")
+    private String respuestaSeguridad;
+
+    // =====================================================
     //  SISTEMA DE ROLES
     // =====================================================
 
@@ -147,5 +190,42 @@ public class Usuario {
      */
     public boolean puedeIntentarLogin() {
         return activo && !cuentaBloqueada;
+    }
+
+    // =====================================================
+    //  MÉTODOS PARA CAMBIO DE CONTRASEÑA
+    // =====================================================
+
+    /**
+     * Verifica si el usuario necesita cambiar su contraseña inicial.
+     * @return true si debe cambiar la contraseña
+     */
+    public boolean requiereCambioPassword() {
+        return !Boolean.TRUE.equals(passwordChanged);
+    }
+
+    /**
+     * Marca que el usuario ha cambiado su contraseña.
+     */
+    public void marcarPasswordCambiado() {
+        this.passwordChanged = true;
+    }
+
+    /**
+     * Verifica si el token de recuperación es válido (no expirado).
+     * @return true si el token es válido
+     */
+    public boolean tieneTokenValido() {
+        return tokenRecuperacion != null
+            && tokenExpiracion != null
+            && LocalDateTime.now().isBefore(tokenExpiracion);
+    }
+
+    /**
+     * Limpia el token de recuperación después de usarlo.
+     */
+    public void limpiarTokenRecuperacion() {
+        this.tokenRecuperacion = null;
+        this.tokenExpiracion = null;
     }
 }

@@ -36,3 +36,9 @@ build/
 
 *.db
 *.sqlite
+
+### SSL/HTTPS ###
+keystore.p12
+*.p12
+*.jks
+*.keystore

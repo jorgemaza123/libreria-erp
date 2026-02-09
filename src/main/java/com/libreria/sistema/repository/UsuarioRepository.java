@@ -8,5 +8,11 @@ import java.util.Optional;
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByUsername(String username);
 
+    /**
+     * Búsqueda de usuario insensible a mayúsculas/minúsculas.
+     * Útil para login desde dispositivos móviles donde el teclado auto-capitaliza.
+     */
+    Optional<Usuario> findByUsernameIgnoreCase(String username);
+
     long countByRole(Role role);
 }

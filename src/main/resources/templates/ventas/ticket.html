@@ -40,10 +40,17 @@
         <img th:if="${config.mostrarLogoEnTicket != false and config.logoBase64 != null}"
              th:src="'data:image/png;base64,' + ${config.logoBase64}"
              class="logo-ticket">
-             
+
         <div class="bold" style="font-size: 14px;" th:text="${config.nombreEmpresa}">EMPRESA</div>
         <div th:text="'RUC: ' + ${config.ruc}">RUC</div>
-        <div th:text="${config.direccion}">Dirección</div>
+        <!-- Usar dirección de ticket si está definida, sino usar la de empresa -->
+        <div th:text="${config.direccionTicket != null and !config.direccionTicket.isEmpty()} ? ${config.direccionTicket} : ${config.direccion}">Dirección</div>
+        <!-- Usar teléfono de ticket si está definido, sino usar el de empresa -->
+        <div th:if="${config.telefonoTicket != null and !config.telefonoTicket.isEmpty()}"
+             th:text="'Tel: ' + ${config.telefonoTicket}"></div>
+        <div th:unless="${config.telefonoTicket != null and !config.telefonoTicket.isEmpty()}"
+             th:if="${config.telefono != null}"
+             th:text="'Tel: ' + ${config.telefono}"></div>
         <br>
         <div class="bold" th:text="${venta.tipoComprobante} + ' DE VENTA'">BOLETA</div>
         <div th:text="${venta.serie} + '-' + ${#numbers.formatInteger(venta.numero, 6)}">B001-000001</div>
@@ -83,15 +90,28 @@
         <small th:text="'Pago: ' + ${venta.metodoPago}"></small>
     </div>
 
-    <!-- CUENTAS BANCARIAS -->
-    <div th:if="${config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" style="margin-top: 8px;">
+    <!-- CUENTAS BANCARIAS (condicional) -->
+    <div th:if="${(config.mostrarCuentasBancariasEnTicket == null or config.mostrarCuentasBancariasEnTicket == true) and config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" style="margin-top: 8px;">
         <div class="divider"></div>
         <div class="center bold" style="font-size: 10px;">CUENTAS BANCARIAS:</div>
         <div class="center" style="font-size: 9px; white-space: pre-line;" th:text="${config.cuentasBancarias}"></div>
     </div>
 
+    <!-- REDES SOCIALES (condicional) -->
+    <div th:if="${config.mostrarRedesSocialesEnTicket == true}" class="center" style="margin-top: 5px; font-size: 9px;">
+        <span th:if="${config.facebook != null and !config.facebook.isEmpty()}" th:text="'FB: ' + ${config.facebook}"></span>
+        <span th:if="${config.instagram != null and !config.instagram.isEmpty()}" th:text="' | IG: ' + ${config.instagram}"></span>
+        <span th:if="${config.whatsapp != null and !config.whatsapp.isEmpty()}" th:text="' | WA: ' + ${config.whatsapp}"></span>
+    </div>
+
+    <!-- MENSAJE PROMOCIONAL -->
+    <div th:if="${config.mensajePromoTicket != null and !config.mensajePromoTicket.isEmpty()}"
+         class="center bold" style="margin-top: 5px; font-size: 10px; padding: 3px; border: 1px dashed #000;">
+        <span th:text="${config.mensajePromoTicket}"></span>
+    </div>
+
     <br>
-    <div class="center" th:text="${config.mensajePieTicket != null ? config.mensajePieTicket : 'Gracias por su compra. Vuelva pronto!'}">
+    <div class="center" th:text="${config.mensajePieTicket != null and !config.mensajePieTicket.isEmpty() ? config.mensajePieTicket : 'Gracias por su compra. Vuelva pronto!'}">
         Gracias por su compra
     </div>
 

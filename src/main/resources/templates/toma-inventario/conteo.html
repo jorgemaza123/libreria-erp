@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='toma-inventario'">
+<head>
+    <title>Conteo de Inventario</title>
+    <style>
+        .tabla-conteo td { vertical-align: middle !important; }
+        .tabla-conteo .input-conteo {
+            width: 80px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .tabla-conteo .diferencia-negativa {
+            background-color: #f8d7da !important;
+        }
+        .tabla-conteo .diferencia-positiva {
+            background-color: #d4edda !important;
+        }
+        .tabla-conteo .sin-contar {
+            background-color: #fff3cd !important;
+        }
+        .tabla-conteo .contado {
+            background-color: #e2e3e5 !important;
+        }
+        .badge-diferencia {
+            min-width: 60px;
+            font-size: 0.9em;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .progress-bar-striped {
+            animation: progress-bar-stripes 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+
+<div layout:fragment="content">
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>
+                        <i class="fas fa-clipboard-check"></i>
+                        Toma: <span th:text="${toma.codigo}">TI-2024-0001</span>
+                        <small th:if="${toma.estado == 'ABIERTO'}" class="badge badge-warning ml-2">EN PROCESO</small>
+                        <small th:if="${toma.estado == 'PROCESADO'}" class="badge badge-success ml-2">PROCESADO</small>
+                        <small th:if="${toma.estado == 'CANCELADO'}" class="badge badge-secondary ml-2">CANCELADO</small>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/toma-inventario">Toma de Inventario</a></li>
+                        <li class="breadcrumb-item active">Conteo</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Banner de Conexión Móvil para Escaneo -->
+            <div class="callout callout-info" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); border-left: 5px solid #0c5460;">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <i class="fas fa-mobile-alt fa-3x text-white"></i>
+                    </div>
+                    <div class="col text-white">
+                        <h5 class="mb-1"><i class="fas fa-qrcode mr-2"></i>Use su Celular como Escáner</h5>
+                        <p class="mb-1">
+                            Conéctese al mismo <strong>WiFi</strong> y entre a:
+                            <a th:href="${serverUrl}" class="text-warning font-weight-bold"
+                               style="font-size: 1.1em; text-decoration: underline;" target="_blank"
+                               th:text="${serverUrl}">https://192.168.1.100:8443</a>
+                            <button class="btn btn-xs btn-light ml-2" onclick="copiarUrlConteo()" title="Copiar URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </p>
+                        <small class="text-white-50">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Si aparece advertencia de seguridad: "Opciones Avanzadas" → "Continuar". Es normal en red local.
+                        </small>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-light btn-lg" onclick="mostrarQRConteo()">
+                            <i class="fas fa-qrcode fa-2x"></i>
+                            <br><small>Ver QR</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${warning}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+            <div th:if="${info}" class="alert alert-info alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-info-circle mr-2"></i><span th:text="${info}"></span>
+            </div>
+
+            <!-- Tarjetas de estadísticas -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${stats.totalProductos}">0</h3>
+                            <p>Total Productos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-boxes"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${stats.productosContados}">0</h3>
+                            <p>Contados</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${stats.totalFaltantes}">0</h3>
+                            <p>Faltantes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-arrow-down"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${stats.totalSobrantes}">0</h3>
+                            <p>Sobrantes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-arrow-up"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="card mb-3">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Progreso del Conteo</span>
+                        <span th:text="${stats.productosContados + '/' + stats.totalProductos + ' (' + #numbers.formatDecimal(stats.porcentajeAvance, 1, 1) + '%)'}">0/0 (0%)</span>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-success progress-bar-striped"
+                             th:style="'width: ' + ${stats.porcentajeAvance} + '%'"
+                             th:text="${#numbers.formatDecimal(stats.porcentajeAvance, 1, 1) + '%'}">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Conteo -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h3 class="card-title">
+                                <i class="fas fa-table"></i> Hoja de Conteo
+                            </h3>
+                        </div>
+                        <div class="col-md-4">
+                            <form method="get" th:action="@{/toma-inventario/conteo/{id}(id=${toma.id})}">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="filtro" class="form-control"
+                                           placeholder="Buscar por nombre o código..."
+                                           th:value="${filtro}">
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <a th:href="@{/toma-inventario/conteo/{id}(id=${toma.id})}" class="btn btn-default">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4 text-right" th:if="${esEditable}">
+                            <button type="button" class="btn btn-success btn-sm" onclick="guardarTodosConteos()">
+                                <i class="fas fa-save"></i> Guardar Avance
+                            </button>
+                            <a th:href="@{/toma-inventario/resumen/{id}(id=${toma.id})}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-flag-checkered"></i> Finalizar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body table-responsive p-0" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-bordered table-hover tabla-conteo" id="tablaConteo">
+                        <thead class="thead-dark sticky-header">
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 120px;">Código</th>
+                                <th>Producto</th>
+                                <th class="text-center" style="width: 100px;">Stock Sistema</th>
+                                <th class="text-center" style="width: 120px;">Stock Físico</th>
+                                <th class="text-center" style="width: 100px;">Diferencia</th>
+                                <th style="width: 150px;">Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="detalle, iter : ${detalles}"
+                                th:id="'row-' + ${detalle.id}"
+                                th:classappend="${detalle.contado ? (detalle.diferencia < 0 ? 'diferencia-negativa' : (detalle.diferencia > 0 ? 'diferencia-positiva' : 'contado')) : 'sin-contar'}">
+
+                                <td class="text-center text-muted" th:text="${iter.index + 1}">1</td>
+
+                                <td>
+                                    <small th:text="${detalle.producto.codigoBarra ?: detalle.producto.codigoInterno}">COD001</small>
+                                </td>
+
+                                <td>
+                                    <strong th:text="${detalle.producto.nombre}">Producto X</strong>
+                                    <br>
+                                    <small class="text-muted" th:text="${detalle.producto.marca}">Marca</small>
+                                </td>
+
+                                <td class="text-center">
+                                    <span class="badge badge-secondary badge-diferencia"
+                                          th:text="${detalle.stockSistema}">0</span>
+                                </td>
+
+                                <td class="text-center">
+                                    <input th:if="${esEditable}"
+                                           type="number" min="0"
+                                           class="form-control form-control-sm input-conteo"
+                                           th:id="'input-' + ${detalle.id}"
+                                           th:data-detalle-id="${detalle.id}"
+                                           th:data-stock-sistema="${detalle.stockSistema}"
+                                           th:value="${detalle.stockFisico}"
+                                           onchange="calcularDiferenciaFila(this)"
+                                           placeholder="-">
+                                    <span th:unless="${esEditable}"
+                                          th:text="${detalle.stockFisico != null ? detalle.stockFisico : '-'}">-</span>
+                                </td>
+
+                                <td class="text-center" th:id="'dif-' + ${detalle.id}">
+                                    <span th:if="${detalle.diferencia != null}">
+                                        <span th:if="${detalle.diferencia < 0}" class="badge badge-danger badge-diferencia"
+                                              th:text="${detalle.diferencia}">-5</span>
+                                        <span th:if="${detalle.diferencia > 0}" class="badge badge-success badge-diferencia"
+                                              th:text="'+' + ${detalle.diferencia}">+3</span>
+                                        <span th:if="${detalle.diferencia == 0}" class="badge badge-secondary badge-diferencia">0</span>
+                                    </span>
+                                    <span th:unless="${detalle.diferencia != null}" class="text-muted">-</span>
+                                </td>
+
+                                <td>
+                                    <input th:if="${esEditable}"
+                                           type="text" maxlength="100"
+                                           class="form-control form-control-sm"
+                                           th:id="'obs-' + ${detalle.id}"
+                                           th:value="${detalle.observacion}"
+                                           placeholder="Obs...">
+                                    <small th:unless="${esEditable}" th:text="${detalle.observacion}"></small>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(detalles)}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No se encontraron productos
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer" th:if="${esEditable}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <form th:action="@{/toma-inventario/cancelar/{id}(id=${toma.id})}" method="post"
+                                  onsubmit="return confirm('¿Cancelar esta toma de inventario? No se aplicarán cambios al stock.');">
+                                <button type="submit" class="btn btn-outline-danger">
+                                    <i class="fas fa-ban"></i> Cancelar Toma
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-8 text-right">
+                            <button type="button" class="btn btn-success" onclick="guardarTodosConteos()">
+                                <i class="fas fa-save"></i> Guardar Avance
+                            </button>
+                            <a th:href="@{/toma-inventario/resumen/{id}(id=${toma.id})}" class="btn btn-primary">
+                                <i class="fas fa-flag-checkered"></i> Ver Resumen y Finalizar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info de la toma -->
+            <div class="card card-outline card-info">
+                <div class="card-header">
+                    <h3 class="card-title">Información de la Toma</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Código:</strong> <span th:text="${toma.codigo}">TI-2024-0001</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fecha Inicio:</strong>
+                            <span th:text="${#temporals.format(toma.fechaInicio, 'dd/MM/yyyy HH:mm')}">01/01/2024</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Usuario:</strong>
+                            <span th:text="${toma.usuario?.nombreCompleto ?: toma.usuario?.username}">Admin</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Estado:</strong>
+                            <span th:text="${toma.estado}">ABIERTO</span>
+                        </div>
+                    </div>
+                    <div class="row mt-2" th:if="${toma.observaciones}">
+                        <div class="col-12">
+                            <strong>Observaciones:</strong> <span th:text="${toma.observaciones}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        const tomaId = /*[[${toma.id}]]*/ 0;
+        const esEditable = /*[[${esEditable}]]*/ false;
+        const serverUrlConteo = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+
+        // Funciones de conexión móvil para esta página
+        function copiarUrlConteo() {
+            navigator.clipboard.writeText(serverUrlConteo).then(function() {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'URL copiada al portapapeles',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }).catch(function(err) {
+                var tempInput = document.createElement('input');
+                tempInput.value = serverUrlConteo;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                alert('URL copiada: ' + serverUrlConteo);
+            });
+        }
+
+        function mostrarQRConteo() {
+            Swal.fire({
+                title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
+                html: '<div class="text-center mb-3">' +
+                      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(serverUrlConteo + '/toma-inventario/conteo/' + tomaId) + '" ' +
+                      'alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
+                      '</div>' +
+                      '<p class="mb-2"><strong>URL directa al conteo:</strong></p>' +
+                      '<code style="font-size: 0.85em; word-break: break-all;">' + serverUrlConteo + '/toma-inventario/conteo/' + tomaId + '</code>' +
+                      '<hr>' +
+                      '<div class="alert alert-info small text-left mb-0">' +
+                      '<i class="fas fa-lightbulb mr-1"></i>' +
+                      '<strong>Tip:</strong> Use la cámara del celular para escanear códigos de barra de productos. ' +
+                      'El sistema detectará el producto automáticamente.' +
+                      '</div>' +
+                      '<div class="alert alert-warning small text-left mt-2 mb-0">' +
+                      '<i class="fas fa-exclamation-triangle mr-1"></i>' +
+                      '<strong>Nota:</strong> Si ve advertencia de seguridad, es normal. ' +
+                      'Clic en: <code>Opciones Avanzadas → Continuar</code>' +
+                      '</div>',
+                width: 450,
+                showCloseButton: true,
+                showConfirmButton: true,
+                confirmButtonText: '<i class="fas fa-copy mr-1"></i> Copiar URL',
+                confirmButtonColor: '#17a2b8'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    navigator.clipboard.writeText(serverUrlConteo + '/toma-inventario/conteo/' + tomaId);
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'URL copiada',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            });
+        }
+
+        // Calcular diferencia al cambiar el input
+        function calcularDiferenciaFila(input) {
+            const detalleId = input.getAttribute('data-detalle-id');
+            const stockSistema = parseInt(input.getAttribute('data-stock-sistema')) || 0;
+            const stockFisico = parseInt(input.value);
+
+            const row = document.getElementById('row-' + detalleId);
+            const difCell = document.getElementById('dif-' + detalleId);
+
+            if (isNaN(stockFisico) || input.value === '') {
+                difCell.innerHTML = '<span class="text-muted">-</span>';
+                row.className = row.className.replace(/diferencia-\w+|contado|sin-contar/g, '') + ' sin-contar';
+                return;
+            }
+
+            const diferencia = stockFisico - stockSistema;
+
+            let badge = '';
+            let rowClass = 'contado';
+
+            if (diferencia < 0) {
+                badge = '<span class="badge badge-danger badge-diferencia">' + diferencia + '</span>';
+                rowClass = 'diferencia-negativa';
+            } else if (diferencia > 0) {
+                badge = '<span class="badge badge-success badge-diferencia">+' + diferencia + '</span>';
+                rowClass = 'diferencia-positiva';
+            } else {
+                badge = '<span class="badge badge-secondary badge-diferencia">0</span>';
+            }
+
+            difCell.innerHTML = badge;
+            row.className = row.className.replace(/diferencia-\w+|contado|sin-contar/g, '') + ' ' + rowClass;
+        }
+
+        // Guardar todos los conteos
+        function guardarTodosConteos() {
+            const inputs = document.querySelectorAll('.input-conteo');
+            const conteos = [];
+
+            inputs.forEach(function(input) {
+                const detalleId = input.getAttribute('data-detalle-id');
+                const valor = input.value;
+
+                if (valor !== '' && !isNaN(parseInt(valor))) {
+                    conteos.push({
+                        detalleId: parseInt(detalleId),
+                        cantidadFisica: parseInt(valor)
+                    });
+                }
+            });
+
+            if (conteos.length === 0) {
+                alert('No hay conteos para guardar');
+                return;
+            }
+
+            // Mostrar loading
+            const btnGuardar = document.querySelector('.btn-success');
+            const textoOriginal = btnGuardar.innerHTML;
+            btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            btnGuardar.disabled = true;
+
+            fetch('/toma-inventario/guardar-conteos-masivo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tomaId: tomaId,
+                    conteos: conteos
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    alert('Conteos guardados correctamente: ' + conteos.length + ' productos');
+                    // Recargar página para actualizar estadísticas
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al guardar los conteos');
+            })
+            .finally(() => {
+                btnGuardar.innerHTML = textoOriginal;
+                btnGuardar.disabled = false;
+            });
+        }
+
+        // Navegación con Enter entre inputs
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.classList.contains('input-conteo')) {
+                e.preventDefault();
+                const inputs = Array.from(document.querySelectorAll('.input-conteo'));
+                const currentIndex = inputs.indexOf(e.target);
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                    inputs[currentIndex + 1].select();
+                }
+            }
+        });
+    </script>
+</th:block>
+
+</body>
+</html>

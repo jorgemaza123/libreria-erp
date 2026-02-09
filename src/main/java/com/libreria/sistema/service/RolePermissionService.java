@@ -304,6 +304,11 @@ public class RolePermissionService {
         // KARDEX
         permisos.add(crearPermisoSiNoExiste("KARDEX", "VER", "KARDEX_VER", "Ver movimientos de kardex"));
 
+        // TOMA DE INVENTARIO
+        permisos.add(crearPermisoSiNoExiste("TOMA_INVENTARIO", "VER", "TOMA_INVENTARIO_VER", "Ver tomas de inventario"));
+        permisos.add(crearPermisoSiNoExiste("TOMA_INVENTARIO", "CREAR", "TOMA_INVENTARIO_CREAR", "Crear tomas de inventario"));
+        permisos.add(crearPermisoSiNoExiste("TOMA_INVENTARIO", "PROCESAR", "TOMA_INVENTARIO_PROCESAR", "Procesar/cerrar tomas de inventario"));
+
         // ORDENES DE SERVICIO
         permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "VER", "ORDENES_SERVICIO_VER", "Ver órdenes de servicio"));
         permisos.add(crearPermisoSiNoExiste("ORDENES_SERVICIO", "CREAR", "ORDENES_SERVICIO_CREAR", "Crear órdenes de servicio"));
@@ -402,18 +407,25 @@ public class RolePermissionService {
         roleRepository.save(contador);
 
         // ALMACENERO
-        if (!roleRepository.existsByNombre("ALMACENERO")) {
-            Role almacenero = new Role("ALMACENERO", "Almacenero - Gestión de inventario y compras");
-            Set<Permission> permisosAlmacenero = new HashSet<>();
-            agregarPermiso(permisosAlmacenero, "INVENTARIO_VER");
-            agregarPermiso(permisosAlmacenero, "INVENTARIO_CREAR");
-            agregarPermiso(permisosAlmacenero, "INVENTARIO_EDITAR");
-            agregarPermiso(permisosAlmacenero, "COMPRAS_VER");
-            agregarPermiso(permisosAlmacenero, "COMPRAS_CREAR");
-            almacenero.setPermissions(permisosAlmacenero);
-            roleRepository.save(almacenero);
+        Role almacenero = roleRepository.findByNombre("ALMACENERO").orElse(null);
+        if (almacenero == null) {
+            almacenero = new Role("ALMACENERO", "Almacenero - Gestión de inventario, compras y tomas de inventario");
             log.info("Rol ALMACENERO creado");
+        } else {
+            log.info("Rol ALMACENERO actualizado con nuevos permisos");
         }
+        Set<Permission> permisosAlmacenero = new HashSet<>();
+        agregarPermiso(permisosAlmacenero, "INVENTARIO_VER");
+        agregarPermiso(permisosAlmacenero, "INVENTARIO_CREAR");
+        agregarPermiso(permisosAlmacenero, "INVENTARIO_EDITAR");
+        agregarPermiso(permisosAlmacenero, "COMPRAS_VER");
+        agregarPermiso(permisosAlmacenero, "COMPRAS_CREAR");
+        agregarPermiso(permisosAlmacenero, "KARDEX_VER");
+        agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_VER");
+        agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_CREAR");
+        agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_PROCESAR");
+        almacenero.setPermissions(permisosAlmacenero);
+        roleRepository.save(almacenero);
 
         log.info("Roles predefinidos verificados/creados");
     }

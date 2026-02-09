@@ -1,231 +1,234 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='caja')}"></aside>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='caja'">
+<head>
+    <title>Control de Caja</title>
+</head>
+<body>
 
-    <div class="content-wrapper">
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6"><h1>Control de Caja Chica</h1></div>
-                    <div class="col-sm-6 text-right">
-                        <a href="/caja/cierre" class="btn btn-danger"><i class="fas fa-lock"></i> CERRAR CAJA (ARQUEO)</a>
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6"><h1>Control de Caja Chica</h1></div>
+                <div class="col-sm-6 text-right">
+                    <a href="/caja/cierre" class="btn btn-danger"><i class="fas fa-lock"></i> CERRAR CAJA (ARQUEO)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-info"><i class="fas fa-money-bill-wave"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Saldo Inicial</span>
+                            <span class="info-box-number" id="balanceInicial" th:text="'S/ ' + ${balance.inicial}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-success"><i class="fas fa-arrow-up"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ventas/Ingresos</span>
+                            <span class="info-box-number" id="balanceIngresos" th:text="'S/ ' + ${balance.ingresos}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Gastos/Salidas</span>
+                            <span class="info-box-number" id="balanceEgresos" th:text="'S/ ' + ${balance.egresos}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-box bg-navy">
+                        <span class="info-box-icon"><i class="fas fa-wallet"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">SALDO ACTUAL</span>
+                            <span class="info-box-number" id="balanceSaldo" style="font-size: 1.5em;" th:text="'S/ ' + ${balance.saldo}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card card-warning">
+                        <div class="card-header"><h3 class="card-title">Registrar Gasto / Salida</h3></div>
+                        <div class="card-body">
+                            <form action="/caja/movimiento" method="post">
+                                <input type="hidden" name="tipo" value="EGRESO">
+                                <div class="form-group">
+                                    <label>Concepto</label>
+                                    <input type="text" name="concepto" class="form-control" placeholder="Ej: Pago de Luz, Almuerzo..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Monto (S/)</label>
+                                    <input type="number" step="0.10" name="monto" class="form-control" placeholder="0.00" required>
+                                </div>
+                                <button class="btn btn-warning btn-block">Registrar Salida</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card card-success mt-3">
+                        <div class="card-header"><h3 class="card-title">Ingreso Manual (Extra)</h3></div>
+                        <div class="card-body">
+                            <form action="/caja/movimiento" method="post">
+                                <input type="hidden" name="tipo" value="INGRESO">
+                                <div class="form-group">
+                                    <label>Concepto</label>
+                                    <input type="text" name="concepto" class="form-control" placeholder="Ej: Cambio, Sencillo..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Monto (S/)</label>
+                                    <input type="number" step="0.10" name="monto" class="form-control" placeholder="0.00" required>
+                                </div>
+                                <button class="btn btn-success btn-block">Registrar Ingreso</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Movimientos del Turno</h3></div>
+                        <div class="card-body table-responsive p-0" style="height: 400px;">
+                            <table class="table table-head-fixed text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Concepto</th>
+                                        <th>Tipo</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyMovimientos">
+                                    <tr th:each="m : ${movimientos}">
+                                        <td th:text="${#temporals.format(m.fecha, 'HH:mm')}"></td>
+                                        <td th:text="${m.concepto}"></td>
+                                        <td>
+                                            <span th:if="${m.tipo == 'INGRESO'}" class="badge badge-success">INGRESO</span>
+                                            <span th:if="${m.tipo == 'EGRESO'}" class="badge badge-danger">EGRESO</span>
+                                        </td>
+                                        <td class="text-right font-weight-bold" th:text="'S/ ' + ${m.monto}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="info-box">
-                            <span class="info-box-icon bg-info"><i class="fas fa-money-bill-wave"></i></span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Saldo Inicial</span>
-                                <span class="info-box-number" id="balanceInicial" th:text="'S/ ' + ${balance.inicial}"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="info-box">
-                            <span class="info-box-icon bg-success"><i class="fas fa-arrow-up"></i></span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Ventas/Ingresos</span>
-                                <span class="info-box-number" id="balanceIngresos" th:text="'S/ ' + ${balance.ingresos}"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="info-box">
-                            <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Gastos/Salidas</span>
-                                <span class="info-box-number" id="balanceEgresos" th:text="'S/ ' + ${balance.egresos}"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="info-box bg-navy">
-                            <span class="info-box-icon"><i class="fas fa-wallet"></i></span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">SALDO ACTUAL</span>
-                                <span class="info-box-number" id="balanceSaldo" style="font-size: 1.5em;" th:text="'S/ ' + ${balance.saldo}"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card card-warning">
-                            <div class="card-header"><h3 class="card-title">Registrar Gasto / Salida</h3></div>
-                            <div class="card-body">
-                                <form action="/caja/movimiento" method="post">
-                                    <input type="hidden" name="tipo" value="EGRESO">
-                                    <div class="form-group">
-                                        <label>Concepto</label>
-                                        <input type="text" name="concepto" class="form-control" placeholder="Ej: Pago de Luz, Almuerzo..." required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Monto (S/)</label>
-                                        <input type="number" step="0.10" name="monto" class="form-control" placeholder="0.00" required>
-                                    </div>
-                                    <button class="btn btn-warning btn-block">Registrar Salida</button>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <div class="card card-success mt-3">
-                            <div class="card-header"><h3 class="card-title">Ingreso Manual (Extra)</h3></div>
-                            <div class="card-body">
-                                <form action="/caja/movimiento" method="post">
-                                    <input type="hidden" name="tipo" value="INGRESO">
-                                    <div class="form-group">
-                                        <label>Concepto</label>
-                                        <input type="text" name="concepto" class="form-control" placeholder="Ej: Cambio, Sencillo..." required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Monto (S/)</label>
-                                        <input type="number" step="0.10" name="monto" class="form-control" placeholder="0.00" required>
-                                    </div>
-                                    <button class="btn btn-success btn-block">Registrar Ingreso</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-8">
-                        <div class="card">
-                            <div class="card-header"><h3 class="card-title">Movimientos del Turno</h3></div>
-                            <div class="card-body table-responsive p-0" style="height: 400px;">
-                                <table class="table table-head-fixed text-nowrap">
-                                    <thead>
-                                        <tr>
-                                            <th>Hora</th>
-                                            <th>Concepto</th>
-                                            <th>Tipo</th>
-                                            <th class="text-right">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyMovimientos">
-                                        <tr th:each="m : ${movimientos}">
-                                            <td th:text="${#temporals.format(m.fecha, 'HH:mm')}"></td>
-                                            <td th:text="${m.concepto}"></td>
-                                            <td>
-                                                <span th:if="${m.tipo == 'INGRESO'}" class="badge badge-success">INGRESO</span>
-                                                <span th:if="${m.tipo == 'EGRESO'}" class="badge badge-danger">EGRESO</span>
-                                            </td>
-                                            <td class="text-right font-weight-bold" th:text="'S/ ' + ${m.monto}"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
+    </section>
 </div>
-<div th:replace="~{fragments/layout :: scripts}"></div>
 
-<script>
-    // ============================================
-    // POLLING - REFRESCO AUTOMATICO DE CAJA
-    // ============================================
-    const CAJA_POLLING_INTERVAL = 15000; // 15 segundos (más frecuente por ser crítico)
-    let cajaPollingTimer = null;
+<th:block layout:fragment="scripts">
+    <script>
+        // ============================================
+        // POLLING - REFRESCO AUTOMATICO DE CAJA
+        // ============================================
+        const CAJA_POLLING_INTERVAL = 15000; // 15 segundos (más frecuente por ser crítico)
+        let cajaPollingTimer = null;
 
-    $(document).ready(function() {
-        iniciarPollingCaja();
-    });
-
-    function iniciarPollingCaja() {
-        if (cajaPollingTimer) clearInterval(cajaPollingTimer);
-
-        cajaPollingTimer = setInterval(function() {
-            console.log('[Caja] Actualizando datos...');
-            actualizarCaja();
-        }, CAJA_POLLING_INTERVAL);
-
-        console.log('[Caja] Polling iniciado - refresco cada ' + (CAJA_POLLING_INTERVAL/1000) + ' segundos');
-    }
-
-    function detenerPollingCaja() {
-        if (cajaPollingTimer) {
-            clearInterval(cajaPollingTimer);
-            cajaPollingTimer = null;
-            console.log('[Caja] Polling detenido');
-        }
-    }
-
-    // Detener polling cuando la pestaña no está visible
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-            detenerPollingCaja();
-        } else {
-            actualizarCaja();
+        $(document).ready(function() {
             iniciarPollingCaja();
+        });
+
+        function iniciarPollingCaja() {
+            if (cajaPollingTimer) clearInterval(cajaPollingTimer);
+
+            cajaPollingTimer = setInterval(function() {
+                console.log('[Caja] Actualizando datos...');
+                actualizarCaja();
+            }, CAJA_POLLING_INTERVAL);
+
+            console.log('[Caja] Polling iniciado - refresco cada ' + (CAJA_POLLING_INTERVAL/1000) + ' segundos');
         }
-    });
 
-    function actualizarCaja() {
-        $.ajax({
-            url: '/caja/api/datos',
-            method: 'GET',
-            success: function(data) {
-                if (!data.sesionActiva) {
-                    // Si la sesión se cerró, recargar la página
-                    window.location.reload();
-                    return;
-                }
+        function detenerPollingCaja() {
+            if (cajaPollingTimer) {
+                clearInterval(cajaPollingTimer);
+                cajaPollingTimer = null;
+                console.log('[Caja] Polling detenido');
+            }
+        }
 
-                // Actualizar balance
-                if (data.balance) {
-                    $('#balanceInicial').text('S/ ' + parseFloat(data.balance.inicial || 0).toFixed(2));
-                    $('#balanceIngresos').text('S/ ' + parseFloat(data.balance.ingresos || 0).toFixed(2));
-                    $('#balanceEgresos').text('S/ ' + parseFloat(data.balance.egresos || 0).toFixed(2));
-                    $('#balanceSaldo').text('S/ ' + parseFloat(data.balance.saldo || 0).toFixed(2));
-                }
-
-                // Actualizar tabla de movimientos
-                if (data.movimientos) {
-                    actualizarTablaMovimientos(data.movimientos);
-                }
-
-                console.log('[Caja] Actualizado a las ' + (data.ultimaActualizacion || new Date().toLocaleTimeString()));
-            },
-            error: function(xhr) {
-                console.log('[Caja] Error al actualizar:', xhr.statusText);
+        // Detener polling cuando la pestaña no está visible
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                detenerPollingCaja();
+            } else {
+                actualizarCaja();
+                iniciarPollingCaja();
             }
         });
-    }
 
-    function actualizarTablaMovimientos(movimientos) {
-        var tbody = $('#tbodyMovimientos');
-        tbody.empty();
+        function actualizarCaja() {
+            $.ajax({
+                url: '/caja/api/datos',
+                method: 'GET',
+                success: function(data) {
+                    if (!data.sesionActiva) {
+                        // Si la sesión se cerró, recargar la página
+                        window.location.reload();
+                        return;
+                    }
 
-        if (!movimientos || movimientos.length === 0) {
-            tbody.html('<tr><td colspan="4" class="text-center text-muted">No hay movimientos registrados</td></tr>');
-            return;
+                    // Actualizar balance
+                    if (data.balance) {
+                        $('#balanceInicial').text('S/ ' + parseFloat(data.balance.inicial || 0).toFixed(2));
+                        $('#balanceIngresos').text('S/ ' + parseFloat(data.balance.ingresos || 0).toFixed(2));
+                        $('#balanceEgresos').text('S/ ' + parseFloat(data.balance.egresos || 0).toFixed(2));
+                        $('#balanceSaldo').text('S/ ' + parseFloat(data.balance.saldo || 0).toFixed(2));
+                    }
+
+                    // Actualizar tabla de movimientos
+                    if (data.movimientos) {
+                        actualizarTablaMovimientos(data.movimientos);
+                    }
+
+                    console.log('[Caja] Actualizado a las ' + (data.ultimaActualizacion || new Date().toLocaleTimeString()));
+                },
+                error: function(xhr) {
+                    console.log('[Caja] Error al actualizar:', xhr.statusText);
+                }
+            });
         }
 
-        movimientos.forEach(function(m) {
-            var badgeClass = m.tipo === 'INGRESO' ? 'badge-success' : 'badge-danger';
-            tbody.append(
-                '<tr>' +
-                    '<td>' + m.hora + '</td>' +
-                    '<td>' + m.concepto + '</td>' +
-                    '<td><span class="badge ' + badgeClass + '">' + m.tipo + '</span></td>' +
-                    '<td class="text-right font-weight-bold">S/ ' + parseFloat(m.monto).toFixed(2) + '</td>' +
-                '</tr>'
-            );
-        });
-    }
-</script>
+        function actualizarTablaMovimientos(movimientos) {
+            var tbody = $('#tbodyMovimientos');
+            tbody.empty();
+
+            if (!movimientos || movimientos.length === 0) {
+                tbody.html('<tr><td colspan="4" class="text-center text-muted">No hay movimientos registrados</td></tr>');
+                return;
+            }
+
+            movimientos.forEach(function(m) {
+                var badgeClass = m.tipo === 'INGRESO' ? 'badge-success' : 'badge-danger';
+                tbody.append(
+                    '<tr>' +
+                        '<td>' + m.hora + '</td>' +
+                        '<td>' + m.concepto + '</td>' +
+                        '<td><span class="badge ' + badgeClass + '">' + m.tipo + '</span></td>' +
+                        '<td class="text-right font-weight-bold">S/ ' + parseFloat(m.monto).toFixed(2) + '</td>' +
+                    '</tr>'
+                );
+            });
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

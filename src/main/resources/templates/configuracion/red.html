@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='configuracion'">
+<head>
+    <title>Configuración de Red</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-network-wired"></i> Configuración de Red</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/configuracion/general">Configuración</a></li>
+                        <li class="breadcrumb-item active">Red</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Tarjeta principal con URL de conexión -->
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-mobile-alt mr-2"></i>Conexión Móvil</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="callout callout-info">
+                                <h5><i class="fas fa-link mr-2"></i>URL del Servidor</h5>
+                                <p class="h3 text-primary" th:text="${serverUrl}">https://192.168.1.100:8443</p>
+                                <button class="btn btn-primary btn-sm" onclick="copiarUrl()">
+                                    <i class="fas fa-copy mr-1"></i> Copiar URL
+                                </button>
+                                <button class="btn btn-info btn-sm ml-2" onclick="mostrarQR()">
+                                    <i class="fas fa-qrcode mr-1"></i> Ver Código QR
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="callout callout-success">
+                                <h5><i class="fas fa-qrcode mr-2"></i>Código QR</h5>
+                                <div class="text-center">
+                                    <img th:src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + ${#uris.escapeQueryParam(serverUrl)}"
+                                         alt="QR Code" class="img-thumbnail" style="max-width: 150px;">
+                                </div>
+                                <p class="small text-muted mt-2 text-center">Escanee con la cámara de su celular</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle mr-2"></i>Nota sobre Seguridad</h5>
+                        <p class="mb-0">
+                            Al acceder desde un dispositivo móvil, verá una advertencia de seguridad del navegador.
+                            Esto es <strong>normal</strong> en redes locales con certificados auto-firmados.
+                        </p>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Para continuar:</strong> Haga clic en <code>Opciones Avanzadas</code> (o "Mostrar detalles")
+                            y luego en <code>Continuar de todos modos</code> (o "Ir al sitio").
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de Red -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-server mr-2"></i>Información del Servidor</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-striped mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>IP Detectada</strong></td>
+                                        <td class="text-primary" th:text="${serverIp}">192.168.1.100</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Puerto</strong></td>
+                                        <td th:text="${serverPort}">8443</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Protocolo</strong></td>
+                                        <td>
+                                            <span th:if="${sslEnabled}" class="badge badge-success">
+                                                <i class="fas fa-lock mr-1"></i> HTTPS (SSL Activo)
+                                            </span>
+                                            <span th:unless="${sslEnabled}" class="badge badge-warning">
+                                                <i class="fas fa-unlock mr-1"></i> HTTP
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>URL Completa</strong></td>
+                                        <td>
+                                            <a th:href="${serverUrl}" target="_blank" th:text="${serverUrl}"></a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-wifi mr-2"></i>Instrucciones de Conexión</h3>
+                        </div>
+                        <div class="card-body">
+                            <ol class="pl-3">
+                                <li class="mb-2">
+                                    <strong>Conecte el celular al mismo WiFi</strong> que la computadora donde está instalado el sistema.
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Abra el navegador</strong> del celular (Chrome, Safari, etc.)
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Escriba la URL</strong> mostrada arriba o escanee el código QR.
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Acepte la advertencia de seguridad</strong> (normal en red local).
+                                </li>
+                                <li>
+                                    <strong>Inicie sesión</strong> con su usuario y contraseña.
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interfaces de Red (Diagnóstico) -->
+            <div class="card collapsed-card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-diagnoses mr-2"></i>Diagnóstico de Interfaces de Red</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Interfaz</th>
+                                <th>Nombre</th>
+                                <th>IP</th>
+                                <th>Activa</th>
+                                <th>Loopback</th>
+                                <th>Virtual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="iface : ${interfaces}"
+                                th:class="${iface.ip == serverIp ? 'table-success' : ''}">
+                                <td th:text="${iface.interface}">eth0</td>
+                                <td th:text="${iface.name}">eth0</td>
+                                <td>
+                                    <code th:text="${iface.ip}">192.168.1.100</code>
+                                    <span th:if="${iface.ip == serverIp}" class="badge badge-primary ml-1">DETECTADA</span>
+                                </td>
+                                <td>
+                                    <i th:if="${iface.isUp == 'true'}" class="fas fa-check text-success"></i>
+                                    <i th:unless="${iface.isUp == 'true'}" class="fas fa-times text-danger"></i>
+                                </td>
+                                <td>
+                                    <i th:if="${iface.isLoopback == 'true'}" class="fas fa-check text-warning"></i>
+                                    <i th:unless="${iface.isLoopback == 'true'}" class="fas fa-times text-muted"></i>
+                                </td>
+                                <td>
+                                    <i th:if="${iface.isVirtual == 'true'}" class="fas fa-check text-info"></i>
+                                    <i th:unless="${iface.isVirtual == 'true'}" class="fas fa-times text-muted"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer text-muted small">
+                    La IP resaltada en verde es la que el sistema detectó automáticamente para conexiones de red local.
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        const serverUrl = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+
+        function copiarUrl() {
+            navigator.clipboard.writeText(serverUrl).then(function() {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'URL copiada al portapapeles',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            });
+        }
+
+        function mostrarQR() {
+            Swal.fire({
+                title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
+                html: '<div class="text-center mb-3">' +
+                      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(serverUrl) + '" ' +
+                      'alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
+                      '</div>' +
+                      '<p><strong>URL:</strong> <code>' + serverUrl + '</code></p>',
+                width: 400,
+                showCloseButton: true,
+                confirmButtonText: '<i class="fas fa-copy mr-1"></i> Copiar URL',
+                confirmButtonColor: '#17a2b8'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    copiarUrl();
+                }
+            });
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

@@ -1,240 +1,549 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='productos'">
+<head>
+    <title th:text="${titulo}">Producto</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='inventario')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1 th:text="${titulo}">Gestión Producto</h1></div>
-        </section>
-
-        <section class="content">
-            <div class="container-fluid">
-                <div class="card card-primary card-outline">
-                    
-                    <form th:action="@{/productos/guardar}" th:object="${producto}" method="post" enctype="multipart/form-data">
-                        <input type="hidden" th:field="*{id}" />
-                        <input type="hidden" th:field="*{activo}" />
-                        <div class="card-body">
-                            
-                            <div class="row">
-                                <div class="col-md-3 text-center">
-                                    <label>Imagen del Producto</label>
-                                    <div class="mt-2 mb-3 border rounded p-2 bg-light">
-                                        <img th:if="${producto.imagen != null}" th:src="@{'/images/' + ${producto.imagen}}" 
-                                             class="img-fluid" style="max-height: 180px; object-fit: contain;">
-                                        
-                                        <img th:unless="${producto.imagen != null}" 
-                                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0PSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGR5PSIuM2VtIiBmaWxsPSIjNTU1IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MSUI8L3RleHQ+PC9zdmc+" 
-                                             class="img-fluid" style="max-height: 180px; opacity: 0.5;">
-                                    </div>
-                                    <div class="custom-file text-left">
-                                        <input type="file" name="file" class="custom-file-input" id="customFile" accept="image/*">
-                                        <label class="custom-file-label" for="customFile" data-browse="Buscar">Subir Foto...</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-9">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Cód. Barras (Scan)</label>
-                                                <div class="input-group">
-                                                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div>
-                                                    <input type="text" class="form-control" th:field="*{codigoBarra}" placeholder="Escanea aquí...">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Cód. Interno (SKU)</label>
-                                                <input type="text" class="form-control" th:field="*{codigoInterno}">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label>Categoría</label>
-                                                <input type="text" class="form-control" th:field="*{categoria}" list="listaCategorias">
-                                                <datalist id="listaCategorias">
-                                                    <option value="UTILES ESCOLARES">
-                                                    <option value="OFICINA">
-                                                    <option value="PAPELERÍA">
-                                                    <option value="TECNOLOGÍA">
-                                                    <option value="ARTE Y DISEÑO">
-                                                    <option value="REGALOS">
-                                                </datalist>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-12">
-                                            <div class="form-group">
-                                                <label>Nombre del Producto *</label>
-                                                <input type="text" class="form-control form-control-lg font-weight-bold" th:field="*{nombre}" required style="text-transform: uppercase;">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-12">
-                                            <div class="form-group">
-                                                <label>Descripción Extendida</label>
-                                                <textarea class="form-control" th:field="*{descripcion}" rows="2" placeholder="Detalles adicionales..."></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <hr>
-
-                            <h5 class="text-info"><i class="fas fa-info-circle"></i> Especificaciones</h5>
-                            <div class="row bg-light p-3 rounded mb-3">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Marca</label>
-                                        <input type="text" class="form-control" th:field="*{marca}" placeholder="Ej: Faber Castell">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Modelo</label>
-                                        <input type="text" class="form-control" th:field="*{modelo}">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Color</label>
-                                        <input type="text" class="form-control" th:field="*{color}">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Generación</label>
-                                        <input type="text" class="form-control" th:field="*{generacion}">
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Tipo</label>
-                                        <select class="form-control" th:field="*{tipo}">
-                                            <option value="ESTANDAR">Estándar</option>
-                                            <option value="PREMIUM">Premium</option>
-                                            <option value="ECONOMICO">Económico</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h5 class="text-success"><i class="fas fa-coins"></i> Precios y Stock</h5>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="text-secondary">Precio Compra</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
-                                            <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="text-success font-weight-bold">Precio Venta (Público) *</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
-                                            <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="text-primary">Precio Mayorista</label>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
-                                            <input type="number" step="0.01" class="form-control" th:field="*{precioMayorista}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Afectación IGV</label>
-                                        <select class="form-control" th:field="*{tipoAfectacionIgv}">
-                                            <option value="GRAVADO">GRAVADO (18%)</option>
-                                            <option value="EXONERADO">EXONERADO</option>
-                                            <option value="INAFECTO">INAFECTO</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row mt-2">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Stock Actual</label>
-                                        <input type="number" class="form-control" th:field="*{stockActual}" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label class="text-danger">Stock Mínimo</label>
-                                        <input type="number" class="form-control" th:field="*{stockMinimo}">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Unidad Medida</label>
-                                        <select class="form-control" th:field="*{unidadMedida}">
-                                            <option value="UNIDAD">UNIDAD</option>
-                                            <option value="PAQUETE">PAQUETE</option>
-                                            <option value="CAJA">CAJA</option>
-                                            <option value="METRO">METRO</option>
-                                            <option value="LITRO">LITRO</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <hr>
-                            <h6 class="text-muted">Ubicación Física en Almacén</h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="input-group mb-3">
-                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-layer-group"></i> Estante</span></div>
-                                        <input type="text" class="form-control" th:field="*{ubicacionEstante}">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="input-group mb-3">
-                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-ellipsis-h"></i> Fila</span></div>
-                                        <input type="text" class="form-control" th:field="*{ubicacionFila}">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="input-group mb-3">
-                                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-columns"></i> Columna</span></div>
-                                        <input type="text" class="form-control" th:field="*{ubicacionColumna}">
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div class="card-footer text-right">
-                            <a href="/productos" class="btn btn-default">Cancelar</a>
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Producto</button>
-                        </div>
-                    </form>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 th:text="${titulo}">Gestión Producto</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/productos}">Productos</a></li>
+                        <li class="breadcrumb-item active" th:text="${titulo}">Formulario</li>
+                    </ol>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-primary card-outline">
+
+                <form th:action="@{/productos/guardar}" th:object="${producto}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" th:field="*{id}" />
+                    <input type="hidden" th:field="*{activo}" />
+                    <div class="card-body">
+
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <label>Imagen del Producto</label>
+                                <div class="mt-2 mb-3 border rounded p-2 bg-light">
+                                    <img th:if="${producto.imagen != null}" th:src="@{'/uploads/' + ${producto.imagen}}"
+                                         class="img-fluid" style="max-height: 180px; object-fit: contain;">
+
+                                    <img th:unless="${producto.imagen != null}"
+                                         src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pjwvc3ZnPg=="
+                                         class="img-fluid" style="max-height: 180px; opacity: 0.5;">
+                                </div>
+                                <div class="custom-file text-left">
+                                    <input type="file" name="file" class="custom-file-input" id="customFile" accept="image/*">
+                                    <label class="custom-file-label" for="customFile" data-browse="Buscar">Subir Foto...</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-9">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Cód. Barras (Scan)</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div>
+                                                <input type="text" class="form-control" th:field="*{codigoBarra}" id="codigoBarra" placeholder="Escanea o escribe...">
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-info" onclick="iniciarEscanerProducto()" title="Escanear con cámara">
+                                                        <i class="fas fa-camera"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted"><i class="fas fa-mobile-alt"></i> Usa la cámara del celular para escanear</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Cód. Interno (SKU)</label>
+                                            <input type="text" class="form-control" th:field="*{codigoInterno}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Categoría</label>
+                                            <input type="text" class="form-control" th:field="*{categoria}" list="listaCategorias">
+                                            <datalist id="listaCategorias">
+                                                <option value="UTILES ESCOLARES">
+                                                <option value="OFICINA">
+                                                <option value="PAPELERÍA">
+                                                <option value="TECNOLOGÍA">
+                                                <option value="ARTE Y DISEÑO">
+                                                <option value="REGALOS">
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Nombre del Producto *</label>
+                                            <input type="text" class="form-control form-control-lg font-weight-bold" th:field="*{nombre}" required style="text-transform: uppercase;">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Descripción Extendida</label>
+                                            <textarea class="form-control" th:field="*{descripcion}" rows="2" placeholder="Detalles adicionales..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h5 class="text-info"><i class="fas fa-info-circle"></i> Especificaciones</h5>
+                        <div class="row bg-light p-3 rounded mb-3">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Marca</label>
+                                    <input type="text" class="form-control" th:field="*{marca}" placeholder="Ej: Faber Castell">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Modelo</label>
+                                    <input type="text" class="form-control" th:field="*{modelo}">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Color</label>
+                                    <input type="text" class="form-control" th:field="*{color}">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Generación</label>
+                                    <input type="text" class="form-control" th:field="*{generacion}">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select class="form-control" th:field="*{tipo}">
+                                        <option value="ESTANDAR">Estándar</option>
+                                        <option value="PREMIUM">Premium</option>
+                                        <option value="ECONOMICO">Económico</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="text-success"><i class="fas fa-coins"></i> Precios y Stock</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="text-secondary">Precio Compra</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="text-success font-weight-bold">Precio Venta (Público) *</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="text-primary">Precio Mayorista</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" class="form-control" th:field="*{precioMayorista}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Afectación IGV</label>
+                                    <select class="form-control" th:field="*{tipoAfectacionIgv}">
+                                        <option value="GRAVADO">GRAVADO (18%)</option>
+                                        <option value="EXONERADO">EXONERADO</option>
+                                        <option value="INAFECTO">INAFECTO</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Stock Actual</label>
+                                    <input type="number" class="form-control" th:field="*{stockActual}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="text-danger">Stock Mínimo</label>
+                                    <input type="number" class="form-control" th:field="*{stockMinimo}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Unidad Medida</label>
+                                    <select class="form-control" th:field="*{unidadMedida}">
+                                        <option value="UNIDAD">UNIDAD</option>
+                                        <option value="PAQUETE">PAQUETE</option>
+                                        <option value="CAJA">CAJA</option>
+                                        <option value="METRO">METRO</option>
+                                        <option value="LITRO">LITRO</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="text-muted">Ubicación Física en Almacén</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-layer-group"></i> Estante</span></div>
+                                    <input type="text" class="form-control" th:field="*{ubicacionEstante}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-ellipsis-h"></i> Fila</span></div>
+                                    <input type="text" class="form-control" th:field="*{ubicacionFila}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-columns"></i> Columna</span></div>
+                                    <input type="text" class="form-control" th:field="*{ubicacionColumna}">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="card-footer text-right">
+                        <a th:href="@{/productos}" class="btn btn-default">Cancelar</a>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Producto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal Escáner de Código de Barras -->
+    <div class="modal fade" id="modalEscaner" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white py-2">
+                    <h5 class="modal-title">
+                        <i class="fas fa-camera mr-2"></i>Escanear Código de Barras
+                    </h5>
+                    <button type="button" class="close text-white" onclick="cerrarModalEscaner()">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Área de la cámara -->
+                    <div id="reader" style="width: 100%; min-height: 300px;"></div>
+
+                    <!-- Instrucciones -->
+                    <div class="p-3 bg-light" id="instruccionesEscaner">
+                        <div class="text-center mb-2">
+                            <i class="fas fa-hand-point-up fa-2x text-info"></i>
+                        </div>
+                        <p class="text-center small mb-0">
+                            Apunta la cámara al código de barras.<br>
+                            El escaneo es automático.
+                        </p>
+                    </div>
+
+                    <!-- Estado del escáner -->
+                    <div id="escanerEstado" class="alert alert-info m-3 text-center" style="display: none;">
+                        <i class="fas fa-spinner fa-spin mr-2" id="escanerSpinner"></i>
+                        <span id="escanerMensaje">Iniciando cámara...</span>
+                    </div>
+
+                    <!-- Mensaje de error con botón de cerrar -->
+                    <div id="escanerError" class="alert alert-danger m-3 text-center" style="display: none;">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p id="escanerErrorMensaje" class="mb-2">No se encontró cámara</p>
+                        <small class="d-block text-muted mb-3">
+                            Posibles causas:<br>
+                            - No hay cámara conectada<br>
+                            - Permisos denegados<br>
+                            - Cámara en uso por otra app
+                        </small>
+                        <button type="button" class="btn btn-danger" onclick="cerrarModalEscaner()">
+                            <i class="fas fa-times mr-1"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModalEscaner()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-<script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.min.js"></script>
-<script>
-    $(document).ready(function () {
-        bsCustomFileInput.init();
-    });
-</script>
+<th:block layout:fragment="scripts">
+    <script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input/dist/bs-custom-file-input.min.js"></script>
+    <!-- Librería html5-qrcode para escaneo de códigos de barras -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        // Variables globales para el escáner
+        let html5QrCode = null;
+        let escanerActivo = false;
+        let escanerIniciado = false;
+
+        $(document).ready(function () {
+            bsCustomFileInput.init();
+        });
+
+        /**
+         * Inicia el escáner de código de barras usando la cámara del dispositivo
+         */
+        function iniciarEscanerProducto() {
+            // Resetear estado visual
+            $('#escanerEstado').show().removeClass('alert-danger').addClass('alert-info');
+            $('#escanerSpinner').show();
+            $('#escanerMensaje').text('Iniciando cámara...');
+            $('#escanerError').hide();
+            $('#instruccionesEscaner').show();
+            $('#reader').empty();
+
+            // Mostrar modal
+            $('#modalEscaner').modal('show');
+
+            // Inicializar escáner después de que el modal esté visible
+            $('#modalEscaner').off('shown.bs.modal').on('shown.bs.modal', function () {
+                if (!escanerActivo) {
+                    inicializarHtml5QrCode();
+                }
+            });
+        }
+
+        /**
+         * Inicializa la librería html5-qrcode
+         */
+        function inicializarHtml5QrCode() {
+            // Limpiar instancia anterior si existe
+            if (html5QrCode) {
+                try {
+                    html5QrCode.clear();
+                } catch(e) {}
+                html5QrCode = null;
+            }
+
+            html5QrCode = new Html5Qrcode("reader");
+            escanerActivo = true;
+            escanerIniciado = false;
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 100 },
+                aspectRatio: 1.0,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+
+            // Preferir cámara trasera en móviles
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).then(() => {
+                $('#escanerEstado').hide();
+                escanerIniciado = true;
+                console.log("Escáner iniciado correctamente");
+            }).catch((err) => {
+                console.error("Error al iniciar escáner:", err);
+
+                // Intentar con cualquier cámara disponible
+                html5QrCode.start(
+                    { facingMode: "user" },
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                ).then(() => {
+                    $('#escanerEstado').hide();
+                    escanerIniciado = true;
+                    console.log("Escáner iniciado con cámara frontal");
+                }).catch((err2) => {
+                    console.error("Error con cámara frontal:", err2);
+                    mostrarErrorCamara(err2.message || err2);
+                });
+            });
+        }
+
+        /**
+         * Muestra el error de cámara con opción de cerrar
+         */
+        function mostrarErrorCamara(mensaje) {
+            escanerActivo = false;
+            escanerIniciado = false;
+
+            // Ocultar estado de carga y mostrar error
+            $('#escanerEstado').hide();
+            $('#instruccionesEscaner').hide();
+            $('#escanerError').show();
+            $('#escanerErrorMensaje').text('No se pudo acceder a la cámara');
+
+            console.log("Error de cámara:", mensaje);
+        }
+
+        /**
+         * Cierra el modal del escáner (siempre funciona)
+         */
+        function cerrarModalEscaner() {
+            // Intentar detener el escáner si estaba activo
+            if (html5QrCode && escanerIniciado) {
+                html5QrCode.stop().then(() => {
+                    try { html5QrCode.clear(); } catch(e) {}
+                    console.log("Escáner detenido");
+                }).catch((err) => {
+                    console.log("Escáner no estaba corriendo:", err);
+                });
+            }
+
+            // Resetear estado
+            escanerActivo = false;
+            escanerIniciado = false;
+
+            // Cerrar modal
+            $('#modalEscaner').modal('hide');
+
+            // Limpiar el event listener
+            $('#modalEscaner').off('shown.bs.modal');
+        }
+
+        /**
+         * Callback cuando se detecta un código exitosamente
+         */
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log("Código detectado:", decodedText);
+
+            // Detener el escáner
+            cerrarModalEscaner();
+
+            // Escribir el código en el input
+            const inputCodigo = document.getElementById('codigoBarra');
+            inputCodigo.value = decodedText;
+
+            // Efecto visual de éxito
+            inputCodigo.classList.add('is-valid');
+            inputCodigo.style.transition = 'all 0.3s ease';
+            inputCodigo.style.backgroundColor = '#d4edda';
+            inputCodigo.style.borderColor = '#28a745';
+
+            // Reproducir sonido de beep (opcional)
+            reproducirBeep();
+
+            // Quitar efecto después de 2 segundos
+            setTimeout(() => {
+                inputCodigo.classList.remove('is-valid');
+                inputCodigo.style.backgroundColor = '';
+                inputCodigo.style.borderColor = '';
+            }, 2000);
+
+            // Mostrar notificación de éxito
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Código escaneado: ' + decodedText,
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true
+            });
+
+            // Enfocar el siguiente campo
+            setTimeout(() => {
+                document.getElementById('codigoInterno')?.focus();
+            }, 300);
+        }
+
+        /**
+         * Callback para errores de escaneo (se ignoran, es normal)
+         */
+        function onScanFailure(error) {
+            // Ignorar - es normal que falle mientras busca un código
+        }
+
+        /**
+         * Detiene el escáner y cierra el modal (alias para compatibilidad)
+         */
+        function detenerEscaner() {
+            cerrarModalEscaner();
+        }
+
+        /**
+         * Reproduce un sonido de beep para confirmar el escaneo
+         */
+        function reproducirBeep() {
+            try {
+                // Crear un contexto de audio
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 1200; // Frecuencia del beep
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3; // Volumen
+
+                oscillator.start();
+
+                // Duración del beep: 150ms
+                setTimeout(() => {
+                    oscillator.stop();
+                    audioContext.close();
+                }, 150);
+            } catch (e) {
+                console.log("Audio no soportado:", e);
+            }
+        }
+
+        // Limpiar escáner cuando se cierra el modal manualmente
+        $('#modalEscaner').on('hidden.bs.modal', function () {
+            if (escanerActivo || escanerIniciado) {
+                cerrarModalEscaner();
+            }
+            // Limpiar contenedor del reader
+            $('#reader').empty();
+        });
+    </script>
+</th:block>
+
 </body>
 </html>

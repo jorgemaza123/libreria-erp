@@ -2,68 +2,855 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}"></head>
 <style>
-    /* FONDO Y CENTRADO */
-    .content-wrapper { background-color: #e9ecef; }
-    
-    /* RECTÁNGULO CENTRAL (PRODUCTOS) */
+    /* ============================================
+       POS ENTERPRISE - DISEÑO NIVEL 10/10
+       Inspirado en Square POS, Lightspeed, Odoo
+       ============================================ */
+
+    /* === VARIABLES DE DISEÑO === */
+    :root {
+        --pos-bg: #f4f6f8;
+        --pos-card: #ffffff;
+        --pos-border: #e8eaed;
+        --pos-text: #1a1a2e;
+        --pos-text-muted: #6b7280;
+        --pos-primary: #2563eb;
+        --pos-success: #10b981;
+        --pos-total-bg: #0f172a;
+        --pos-total-color: #22c55e;
+        --pos-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+        --pos-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        --pos-radius: 8px;
+        --pos-radius-sm: 4px;
+    }
+
+    /* === LAYOUT BASE === */
+    .content-wrapper {
+        background: var(--pos-bg) !important;
+        padding: 8px !important;
+        min-height: 100vh;
+    }
+
+    /* === PANEL PRINCIPAL (CARRITO) === */
     .card-main {
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: none;
-        min-height: 75vh;
+        background: var(--pos-card);
+        border-radius: var(--pos-radius);
+        border: 1px solid var(--pos-border);
+        box-shadow: var(--pos-shadow);
+        min-height: calc(100vh - 80px);
         display: flex;
         flex-direction: column;
+        overflow: hidden;
     }
 
-    /* RECTÁNGULO LATERAL */
+    .card-main .card-header {
+        background: transparent !important;
+        border-bottom: 1px solid var(--pos-border) !important;
+        padding: 12px 16px !important;
+    }
+
+    .card-main .card-header h5 {
+        display: none; /* Ocultar título redundante */
+    }
+
+    .card-main .card-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 !important;
+    }
+
+    .card-main .card-footer {
+        background: #f8fafc !important;
+        border-top: 1px solid var(--pos-border) !important;
+        padding: 8px 12px !important;
+        font-size: 0.75rem;
+        color: var(--pos-text-muted);
+    }
+
+    /* === PANEL LATERAL (ACCIÓN) === */
     .card-side {
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: none;
-        background: white;
+        background: var(--pos-card);
+        border-radius: var(--pos-radius);
+        border: 1px solid var(--pos-border);
+        box-shadow: var(--pos-shadow);
         position: sticky;
-        top: 10px;
+        top: 8px;
     }
 
-    /* TOTAL GIGANTE */
+    /* === TOTAL DOMINANTE ABSOLUTO === */
     .total-box {
-        background: #2c3e50;
-        color: #2ecc71;
-        padding: 12px;
+        background: var(--pos-total-bg);
+        color: var(--pos-total-color);
+        padding: 20px 16px;
         text-align: center;
-        border-radius: 6px;
-        margin-bottom: 15px;
+        border-radius: var(--pos-radius) var(--pos-radius) 0 0;
+        margin: -1px -1px 0 -1px;
+        position: relative;
     }
-    .total-amount { font-size: 2rem; font-weight: 800; font-family: monospace; }
-    .total-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #bdc3c7; }
 
-    /* TABLA COMPACTA */
-    .table-pos thead th { background-color: #34495e; color: white; padding: 8px; }
-    .table-pos td { vertical-align: middle !important; padding: 5px !important; }
-    
-    /* INPUTS EN TABLA (CANTIDAD) */
+    .total-box::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 16px;
+        right: 16px;
+        height: 1px;
+        background: rgba(255,255,255,0.1);
+    }
+
+    .total-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #64748b;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+
+    .total-amount {
+        font-size: 2.75rem;
+        font-weight: 800;
+        font-family: 'SF Mono', 'Consolas', monospace;
+        line-height: 1;
+        text-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+    }
+
+    /* === BUSCADOR SELECT2 LIMPIO === */
+    .select2-container .select2-selection--single {
+        height: 48px !important;
+        border: 2px solid var(--pos-border) !important;
+        border-radius: var(--pos-radius) !important;
+        background: #f8fafc !important;
+    }
+
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+        line-height: 44px !important;
+        font-size: 1rem;
+        padding-left: 16px;
+        color: var(--pos-text);
+    }
+
+    .select2-container--bootstrap4.select2-container--focus .select2-selection {
+        border-color: var(--pos-primary) !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+    }
+
+    .select2-producto-img {
+        width: 36px;
+        height: 36px;
+        object-fit: cover;
+        border-radius: var(--pos-radius-sm);
+        margin-right: 10px;
+        background: #f1f5f9;
+        border: none;
+    }
+
+    .select2-producto-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 0;
+    }
+
+    .select2-producto-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .select2-producto-stats {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    /* === TABLA ULTRALIGERA === */
+    .table-pos {
+        margin: 0 !important;
+        font-size: 0.875rem;
+    }
+
+    .table-pos thead th {
+        background: #f8fafc !important;
+        color: var(--pos-text-muted) !important;
+        font-weight: 600 !important;
+        font-size: 0.7rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 10px 12px !important;
+        border-bottom: 1px solid var(--pos-border) !important;
+        border-top: none !important;
+    }
+
+    .table-pos tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .table-pos tbody tr:hover {
+        background: #fafbfc !important;
+    }
+
+    .table-pos td {
+        vertical-align: middle !important;
+        padding: 10px 12px !important;
+        border: none !important;
+    }
+
+    .table-pos .table-active-row {
+        background: #fffbeb !important;
+        border-left: 3px solid #f59e0b;
+    }
+
+    /* === INPUTS DE CANTIDAD === */
     .input-qty {
+        width: 64px;
+        height: 36px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1rem;
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+        background: #f8fafc;
+        transition: all 0.15s ease;
+    }
+
+    .input-qty:focus {
+        border-color: var(--pos-primary);
+        background: white;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .input-qty.is-invalid {
+        border-color: #ef4444 !important;
+        background: #fef2f2 !important;
+        animation: shake 0.3s ease;
+    }
+
+    .input-qty.is-warning {
+        border-color: #f59e0b !important;
+        background: #fffbeb !important;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-3px); }
+        75% { transform: translateX(3px); }
+    }
+
+    /* === TOOLTIP STOCK === */
+    .td-cantidad { position: relative; }
+
+    .stock-tooltip {
+        position: absolute;
+        top: calc(100% + 2px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ef4444;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        z-index: 100;
+    }
+
+    /* === METADATOS PRODUCTO === */
+    .producto-meta {
+        font-size: 0.7rem;
+        color: var(--pos-text-muted);
+        margin-top: 2px;
+        opacity: 0.8;
+    }
+
+    .producto-meta .stock-cero { color: #ef4444; font-weight: 600; }
+    .producto-meta .stock-bajo { color: #f59e0b; }
+
+    /* === VISOR DE PRODUCTO - CONTEXTUAL === */
+    .visor-producto {
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius);
+        margin-bottom: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .visor-producto.colapsado .visor-body { display: none; }
+    .visor-producto.colapsado .visor-header { padding: 10px 12px !important; }
+    .visor-producto.colapsado #visorImagen { width: 40px !important; height: 40px !important; }
+    .visor-producto.colapsado #visorNombre { font-size: 0.9rem !important; }
+
+    .visor-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        color: white;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .visor-header img {
+        width: 56px;
+        height: 56px;
+        border-radius: 6px;
+        object-fit: cover;
+        background: white;
+        flex-shrink: 0;
+        cursor: pointer;
+        border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .visor-header-info { flex: 1; min-width: 0; }
+    .visor-header-info h6 { margin: 0; font-weight: 600; font-size: 0.95rem; }
+    .visor-header-info small { opacity: 0.85; font-size: 0.75rem; }
+
+    .visor-body {
+        padding: 12px;
+        background: #f8fafc;
+    }
+
+    .visor-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        text-align: center;
+        margin-bottom: 12px;
+    }
+
+    .visor-stat {
+        background: white;
+        padding: 8px;
+        border-radius: var(--pos-radius-sm);
+        border: 1px solid var(--pos-border);
+    }
+
+    .visor-stat small { font-size: 0.65rem; color: var(--pos-text-muted); display: block; }
+    .visor-stat span { font-weight: 700; font-size: 0.9rem; }
+
+    /* Barra de stock compacta */
+    .stock-progress {
+        height: 4px;
+        border-radius: 2px;
+        background: #e2e8f0;
+        overflow: hidden;
+        margin: 8px 0;
+    }
+
+    .stock-progress-bar {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+    }
+
+    .stock-high { background: var(--pos-success); }
+    .stock-medium { background: #f59e0b; }
+    .stock-low { background: #ef4444; }
+
+    .visor-agregar {
+        display: flex;
+        gap: 8px;
+    }
+
+    .visor-agregar input {
         width: 70px;
         text-align: center;
-        font-weight: bold;
-        font-size: 1.1rem;
-        border: 2px solid #ddd;
-        border-radius: 4px;
-    }
-    .input-qty:focus {
-        border-color: #3498db;
-        background-color: #ebf5fb;
-        outline: none;
+        font-weight: 700;
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
     }
 
-    /* BUSCADOR SELECT2 */
-    .select2-container .select2-selection--single { height: 45px !important; }
-    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered { 
-        line-height: 43px !important; font-size: 1.2rem; 
+    .visor-agregar button {
+        flex: 1;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
-    
-    /* Resaltar fila activa */
-    .table-active-row { background-color: #fff3cd !important; }
+
+    /* === FORMULARIO CLIENTE COMPACTO === */
+    .form-section {
+        padding: 12px;
+        border-bottom: 1px solid var(--pos-border);
+    }
+
+    .form-section:last-child { border-bottom: none; }
+
+    .form-section-title {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--pos-text-muted);
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .form-row-compact {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .form-row-compact.full { grid-template-columns: 1fr; }
+
+    .form-group-compact {
+        margin-bottom: 0;
+    }
+
+    .form-group-compact label {
+        font-size: 0.7rem;
+        color: var(--pos-text-muted);
+        margin-bottom: 3px;
+        display: block;
+    }
+
+    .form-group-compact .form-control {
+        height: 32px;
+        font-size: 0.8rem;
+        padding: 4px 8px;
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+    }
+
+    .form-group-compact select.form-control {
+        background-position: right 6px center;
+    }
+
+    /* === BOTONES DE ACCIÓN === */
+    .btn-cobrar {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 14px 20px;
+        border-radius: var(--pos-radius);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-cobrar:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+
+    .btn-cobrar:disabled {
+        background: #94a3b8;
+        box-shadow: none;
+        transform: none;
+    }
+
+    .btn-limpiar {
+        background: transparent;
+        border: 1px solid var(--pos-border);
+        color: var(--pos-text-muted);
+        font-size: 0.75rem;
+        padding: 8px;
+        margin-top: 8px;
+        width: 100%;
+        border-radius: var(--pos-radius-sm);
+    }
+
+    .btn-limpiar:hover {
+        background: #f1f5f9;
+        color: var(--pos-text);
+    }
+
+    /* === TECLAS DE ATAJO VISUAL (KBD) === */
+    .kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        height: 22px;
+        padding: 0 6px;
+        font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #374151;
+        background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0 -1px 0 rgba(0,0,0,0.05);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .kbd-dark {
+        color: #e5e7eb;
+        background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+        border-color: #1f2937;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(0,0,0,0.1);
+    }
+
+    .kbd-primary {
+        color: white;
+        background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #1d4ed8;
+        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3), inset 0 -1px 0 rgba(0,0,0,0.1);
+    }
+
+    .kbd-success {
+        color: white;
+        background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+        border-color: #15803d;
+        box-shadow: 0 1px 2px rgba(22, 163, 74, 0.3), inset 0 -1px 0 rgba(0,0,0,0.1);
+    }
+
+    .kbd-warning {
+        color: #78350f;
+        background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+        border-color: #d97706;
+        box-shadow: 0 1px 2px rgba(245, 158, 11, 0.3), inset 0 -1px 0 rgba(0,0,0,0.1);
+    }
+
+    .kbd-danger {
+        color: white;
+        background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+        border-color: #b91c1c;
+        box-shadow: 0 1px 2px rgba(220, 38, 38, 0.3), inset 0 -1px 0 rgba(0,0,0,0.1);
+    }
+
+    /* === BARRA DE ATAJOS MEJORADA === */
+    .shortcuts-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        border-top: 1px solid var(--pos-border);
+        font-size: 0.75rem;
+        color: var(--pos-text-muted);
+    }
+
+    .shortcut-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .shortcut-item .shortcut-action {
+        color: var(--pos-text);
+        font-weight: 500;
+    }
+
+    .shortcuts-bar .shortcut-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--pos-border);
+    }
+
+    /* Botones con indicador de tecla */
+    .btn-with-kbd {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .btn-kbd-indicator {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        transform: scale(0.85);
+    }
+
+    /* Badge de tecla en botón */
+    .btn-cobrar .kbd,
+    .btn-limpiar .kbd {
+        margin-left: 8px;
+        transform: scale(0.9);
+    }
+
+    /* === PRODUCTOS RÁPIDOS - ESTILO TECLADO === */
+    #panelRapido {
+        background: #f8fafc !important;
+        border-top: 1px solid var(--pos-border) !important;
+        padding: 10px 12px !important;
+    }
+
+    #panelRapido h6 {
+        font-size: 0.7rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--pos-text-muted);
+        margin-bottom: 8px !important;
+    }
+
+    #panelRapido .btn-app {
+        background: white !important;
+        border: 1px solid var(--pos-border) !important;
+        box-shadow: none !important;
+        border-radius: var(--pos-radius-sm) !important;
+        padding: 8px 12px !important;
+        margin: 3px !important;
+        min-width: auto !important;
+        height: auto !important;
+        font-size: 0.75rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    #panelRapido .btn-app:hover {
+        background: #f1f5f9 !important;
+        border-color: var(--pos-primary) !important;
+    }
+
+    #panelRapido .btn-app i { font-size: 0.85rem; }
+    #panelRapido .btn-app span.d-block { display: none !important; }
+    #panelRapido .btn-app .badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        background: var(--pos-success) !important;
+    }
+
+    /* === MENSAJE VACÍO === */
+    #msgVacio {
+        padding: 40px 20px;
+        text-align: center;
+    }
+
+    #msgVacio i {
+        font-size: 2.5rem !important;
+        color: #cbd5e1 !important;
+        margin-bottom: 12px !important;
+    }
+
+    #msgVacio p {
+        color: var(--pos-text-muted);
+        font-size: 0.9rem;
+    }
+
+    /* === PRODUCTOS RELACIONADOS === */
+    #panelRelacionados {
+        margin-bottom: 12px;
+    }
+
+    .related-product-card {
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 1px solid var(--pos-border) !important;
+        border-radius: var(--pos-radius-sm) !important;
+        padding: 8px !important;
+    }
+
+    .related-product-card:hover {
+        border-color: var(--pos-primary) !important;
+        background: #f8fafc;
+    }
+
+    .related-product-img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: var(--pos-radius-sm);
+        background: #f1f5f9;
+    }
+
+    /* === SECCIÓN CRÉDITO === */
+    .div-credito {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        border-radius: var(--pos-radius-sm);
+        padding: 10px;
+        margin-top: 8px;
+    }
+
+    .div-credito .form-group { margin-bottom: 8px; }
+    .div-credito .form-group:last-child { margin-bottom: 0; }
+
+    /* === AJUSTES RESPONSIVE === */
+    @media (max-width: 1400px) {
+        .total-amount { font-size: 2.25rem; }
+        .visor-header img { width: 48px; height: 48px; }
+    }
+
+    /* === OCULTAR ELEMENTOS INNECESARIOS === */
+    #visorTags, #visorDescripcion, #visorStockLabel, #visorStockPorcentaje,
+    .stock-progress + small { display: none !important; }
+
+    /* === SCROLLBAR CUSTOM === */
+    .card-body::-webkit-scrollbar { width: 6px; }
+    .card-body::-webkit-scrollbar-track { background: transparent; }
+    .card-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .card-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* === VISOR COLAPSADO (cuando hay productos en carrito) === */
+    .visor-producto.colapsado {
+        margin: 12px;
+        border-radius: var(--pos-radius);
+    }
+
+    .visor-producto.colapsado .visor-header {
+        border-radius: var(--pos-radius);
+        padding: 8px 12px !important;
+    }
+
+    .visor-producto.colapsado .visor-header img {
+        width: 32px !important;
+        height: 32px !important;
+        border-width: 1px;
+    }
+
+    .visor-producto.colapsado .visor-header h6 {
+        font-size: 0.8rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .visor-producto.colapsado .visor-header small {
+        display: none;
+    }
+
+    .visor-producto.colapsado .visor-body {
+        display: none !important;
+    }
+
+    /* === TRANSICIONES SUAVES === */
+    .visor-producto,
+    .visor-header,
+    .visor-body,
+    .visor-header img {
+        transition: all 0.25s ease;
+    }
+
+    /* === OCULTAR VISOR COMPLETAMENTE SI PREFIERES === */
+    /* body.carrito-lleno .visor-producto { display: none; } */
+
+    /* === AJUSTES PARA PANTALLAS PEQUEÑAS === */
+    @media (max-height: 768px) {
+        .total-box { padding: 14px 12px; }
+        .total-amount { font-size: 2rem; }
+        .form-section { padding: 10px; }
+        .visor-body { padding: 10px; }
+        .visor-stats { gap: 6px; }
+        .visor-stat { padding: 6px; }
+        .btn-cobrar { padding: 12px 16px; font-size: 0.95rem; }
+    }
+
+    /* === FIX PARA SELECT2 DROPDOWN === */
+    .select2-dropdown {
+        border: 1px solid var(--pos-border) !important;
+        box-shadow: var(--pos-shadow) !important;
+        border-radius: var(--pos-radius) !important;
+    }
+
+    .select2-results__option--highlighted {
+        background: #f1f5f9 !important;
+        color: var(--pos-text) !important;
+    }
+
+    .select2-results__option--selected {
+        background: #e0f2fe !important;
+    }
+
+    /* === TOTAL STICKY - ANCLA PERCEPTIVA === */
+    .total-box {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        transition: box-shadow 0.2s ease;
+    }
+
+    /* Feedback visual cuando está en estado sticky */
+    .total-box.is-sticky {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* === ESTADO DE CAJA - CONFORT OPERATIVO === */
+    .estado-caja {
+        background: #f0fdf4;
+        border-bottom: 1px solid #bbf7d0;
+        padding: 6px 12px;
+        font-size: 0.7rem;
+        color: #166534;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: var(--pos-radius) var(--pos-radius) 0 0;
+        margin: -1px -1px 0 -1px;
+    }
+
+    .estado-caja i { color: #22c55e; }
+    .estado-caja .separator { color: #86efac; }
+
+    /* Cuando hay estado de caja, el total no tiene border-radius superior */
+    .estado-caja + .total-box {
+        border-radius: 0;
+        margin-top: 0;
+    }
+
+    /* === CLIENTE BADGE - METADATO NO FORMULARIO === */
+    .cliente-badge-container {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--pos-border);
+    }
+
+    .cliente-badge {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f8fafc;
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+        padding: 8px 12px;
+    }
+
+    .cliente-badge-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: var(--pos-text);
+    }
+
+    .cliente-badge-info i { color: var(--pos-text-muted); }
+    .cliente-badge-info .cliente-nombre { font-weight: 600; }
+    .cliente-badge-info .cliente-doc { color: var(--pos-text-muted); font-size: 0.75rem; }
+
+    .cliente-badge-btn {
+        background: none;
+        border: none;
+        color: var(--pos-primary);
+        font-size: 0.7rem;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: var(--pos-radius-sm);
+    }
+
+    .cliente-badge-btn:hover {
+        background: #eff6ff;
+    }
+
+    /* Formulario cliente (oculto por defecto cuando hay badge) */
+    .form-section.cliente-form { display: none; }
+    .form-section.cliente-form.expanded { display: block; }
+
+    /* === PRECIO READONLY ABSOLUTO === */
+    .precio-readonly {
+        background: transparent !important;
+        border: none !important;
+        font-weight: 600;
+        color: var(--pos-text);
+        cursor: default;
+        pointer-events: none;
+        text-align: right;
+        padding: 0 !important;
+        height: auto !important;
+        font-size: 0.875rem;
+    }
+
+    .precio-readonly:focus {
+        box-shadow: none !important;
+        outline: none !important;
+    }
 </style>
 <body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
 <div class="wrapper">
@@ -72,8 +859,21 @@
 
     <div class="content-wrapper pt-3 px-3">
         <div class="container-fluid">
+            <!-- Mini banner conexión móvil (colapsado por defecto) -->
+            <div id="minibannerMovilPOS" class="alert alert-info py-2 mb-2" style="display: none; font-size: 0.85rem;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <i class="fas fa-mobile-alt mr-2"></i>
+                        <strong>Escanear desde celular:</strong>
+                        <a th:href="${serverUrl}" class="text-primary font-weight-bold" target="_blank" th:text="${serverUrl}"></a>
+                        <button class="btn btn-xs btn-outline-primary ml-2" onclick="mostrarQRPOS()"><i class="fas fa-qrcode"></i></button>
+                    </div>
+                    <button type="button" class="close" onclick="$('#minibannerMovilPOS').slideUp()">&times;</button>
+                </div>
+            </div>
+
             <div class="row justify-content-center">
-                
+
                 <!-- COLUMNA IZQUIERDA: PRODUCTOS -->
                 <div class="col-xl-7 col-lg-7">
                     <div class="card card-main">
@@ -82,6 +882,11 @@
                             <div class="row">
                                 <div class="col-md-12">
                                     <select id="busquedaAjax" class="form-control" style="width: 100%;"></select>
+                                    <small class="text-muted d-flex align-items-center gap-2 mt-1" style="font-size: 0.7rem;">
+                                        <span class="kbd" style="transform: scale(0.85);">TAB</span> volver aqui
+                                        <span class="mx-1">|</span>
+                                        <span class="kbd" style="transform: scale(0.85);">ESC</span> cancelar
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -100,200 +905,295 @@
                                 </thead>
                                 <tbody id="tbodyCarrito"></tbody>
                             </table>
-                            <div id="msgVacio" class="text-center mt-5 text-muted">
-                                <i class="fas fa-search fa-3x mb-3 text-gray-300"></i>
-                                <p>Busque un producto para comenzar...</p>
+                            <div id="msgVacio" class="text-center py-4 text-muted">
+                                <i class="fas fa-keyboard fa-2x mb-3 text-gray-300"></i>
+                                <p class="mb-3">Busque un producto para comenzar</p>
+                                <div class="d-flex justify-content-center flex-wrap gap-3" style="gap: 12px;">
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-success">F2</span> Cobrar
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-primary">F4</span> Comprobante
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-danger">F8</span> Limpiar
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd">ESC</span> Cancelar
+                                    </small>
+                                </div>
                             </div>
 
                             <!-- PANEL DE PRODUCTOS RÁPIDOS (Quick Pick) -->
-                            <div id="panelRapido" class="p-3 border-top bg-light">
-                                <h6 class="text-secondary mb-3">
-                                    <i class="fas fa-bolt text-warning"></i> Productos Rápidos (sin código)
-                                </h6>
-                                <div class="d-flex flex-wrap justify-content-start">
-                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
-                                       onclick="agregarRapido('FOTOCOPIA_BN', 'Fotocopia B/N', 0.10)">
-                                        <i class="fas fa-copy text-secondary"></i>
-                                        <span class="d-block small">Fotocopia B/N</span>
-                                        <span class="badge bg-success">S/ 0.10</span>
+                            <div id="panelRapido">
+                                <h6><i class="fas fa-bolt text-warning"></i> Productos Rápidos</h6>
+                                <div class="d-flex flex-wrap">
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('FOTOCOPIA_BN')">
+                                        <i class="fas fa-copy"></i> Fotocopia <span class="badge">0.10</span>
                                     </a>
-                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
-                                       onclick="agregarRapido('IMPRESION_A4', 'Impresión A4', 0.50)">
-                                        <i class="fas fa-print text-primary"></i>
-                                        <span class="d-block small">Impresión A4</span>
-                                        <span class="badge bg-success">S/ 0.50</span>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('IMPRESION_A4')">
+                                        <i class="fas fa-print"></i> Impresión <span class="badge">0.50</span>
                                     </a>
-                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
-                                       onclick="agregarRapido('ANILLADO', 'Anillado', 3.50)">
-                                        <i class="fas fa-ring text-info"></i>
-                                        <span class="d-block small">Anillado</span>
-                                        <span class="badge bg-success">S/ 3.50</span>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('ANILLADO')">
+                                        <i class="fas fa-ring"></i> Anillado <span class="badge">3.50</span>
                                     </a>
-                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
-                                       onclick="agregarRapido('BOLSA_PLASTICA', 'Bolsa Plástica', 0.10)">
-                                        <i class="fas fa-shopping-bag text-warning"></i>
-                                        <span class="d-block small">Bolsa Plástica</span>
-                                        <span class="badge bg-success">S/ 0.10</span>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('BOLSA_PLASTICA')">
+                                        <i class="fas fa-shopping-bag"></i> Bolsa <span class="badge">0.10</span>
                                     </a>
-                                    <a class="btn btn-app bg-white shadow-sm m-1" href="javascript:void(0)"
-                                       onclick="agregarRapido('LAPICERO_AZUL', 'Lapicero Azul', 1.00)">
-                                        <i class="fas fa-pen text-primary"></i>
-                                        <span class="d-block small">Lapicero Azul</span>
-                                        <span class="badge bg-success">S/ 1.00</span>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('LAPICERO_AZUL')">
+                                        <i class="fas fa-pen"></i> Lapicero <span class="badge">1.00</span>
                                     </a>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="card-footer bg-light text-muted small">
-                            <i class="fas fa-keyboard"></i>
-                            <b>F2</b> Preparar Cobro |
-                            <b>F4</b> Cambiar Comprobante |
-                            <b>Enter</b> Suma +1 |
-                            <b>Tab</b> Volver a buscar
+                        <div class="shortcuts-bar">
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-success">F2</span>
+                                <span class="shortcut-action">Cobrar</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-primary">F4</span>
+                                <span class="shortcut-action">Cambiar Comprobante</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-danger">F8</span>
+                                <span class="shortcut-action">Limpiar Venta</span>
+                            </span>
+                            <span class="shortcut-divider"></span>
+                            <span class="shortcut-item">
+                                <span class="kbd">ESC</span>
+                                <span class="shortcut-action">Cancelar</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd">TAB</span>
+                                <span class="shortcut-action">Volver a Buscar</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-warning">ENTER</span>
+                                <span class="shortcut-action">Agregar +1</span>
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- COLUMNA DERECHA: VISOR + DATOS + ACCIONES -->
+                <!-- COLUMNA DERECHA: PANEL DE ACCIÓN COMPACTO -->
                 <div class="col-xl-4 col-lg-5">
-                    
-                    <!-- VISOR DE PRODUCTO -->
-                    <div class="card card-side mb-3">
-                        <div class="card-header bg-info text-white p-3">
-                            <div class="d-flex align-items-center">
-                                <img class="rounded-circle mr-3 elevation-2" id="visorImagen" 
-                                     src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pjwvc3ZnPg==" 
-                                     alt="Img" style="width: 70px; height: 70px; object-fit: cover; background: white;">
-                                <div class="flex-grow-1">
-                                    <h5 class="mb-0 font-weight-bold" id="visorNombre">Seleccione un producto</h5>
-                                    <span class="opacity-75" style="font-size: 1rem;" id="visorMarca">-</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card-body p-3">
-                            <div class="row text-center mb-3">
-                                <div class="col-4">
-                                    <small class="text-muted d-block mb-1">Precio</small>
-                                    <span class="badge bg-primary font-weight-bold" style="font-size: 1.1rem;" id="visorPrecio">S/ 0.00</span>
-                                </div>
-                                <div class="col-4">
-                                    <small class="text-muted d-block mb-1">Stock</small>
-                                    <span class="badge bg-success font-weight-bold" style="font-size: 1.1rem;" id="visorStock">0</span>
-                                </div>
-                                <div class="col-4">
-                                    <small class="text-muted d-block mb-1">Ubicación</small>
-                                    <span class="text-dark font-weight-bold" style="font-size: 1rem;" id="visorUbicacion">-</span>
-                                </div>
-                            </div>
-                            
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text font-weight-bold">Cant.</span>
-                                </div>
-                                <input type="number" id="inputCantidad" class="form-control form-control-lg text-center font-weight-bold" value="1" min="1" style="font-size: 1.3rem;">
-                                <div class="input-group-append">
-                                    <button class="btn btn-success btn-lg px-4" type="button" onclick="agregarDesdeVisor()">
-                                        <i class="fas fa-plus"></i> AGREGAR
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- TOTAL + DATOS DEL CLIENTE + ACCIONES -->
-                    <div class="card card-side p-3">
-                        
-                        <!-- TOTAL GIGANTE -->
+                    <!-- PANEL PRINCIPAL: TOTAL + PAGO + CLIENTE -->
+                    <div class="card card-side">
+
+                        <!-- ESTADO DE CAJA - CONFORT OPERATIVO -->
+                        <div class="estado-caja">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Caja: <strong>Abierta</strong></span>
+                            <span class="separator">·</span>
+                            <span sec:authentication="name">Usuario</span>
+                        </div>
+
+                        <!-- TOTAL DOMINANTE (STICKY) -->
                         <div class="total-box">
                             <div class="total-label">Total a Pagar</div>
                             <div class="total-amount" id="totalPantalla">S/ 0.00</div>
                         </div>
 
-                        <!-- DATOS DEL CLIENTE -->
-                        <h6 class="font-weight-bold text-secondary border-bottom pb-2">Datos del Cliente</h6>
-                        
-                        <div class="form-group mb-2">
-                            <label class="small mb-1">Tipo Comprobante</label>
-                            <select id="tipoComprobante" class="form-control form-control-sm">
-                                <option value="BOLETA">BOLETA</option>
-                                <option value="FACTURA">FACTURA</option>
-                                <option value="NOTA_VENTA">NOTA VENTA</option>
-                            </select>
+                        <!-- CLIENTE BADGE - METADATO (visible por defecto) -->
+                        <div class="cliente-badge-container" id="clienteBadgeContainer">
+                            <div class="cliente-badge">
+                                <div class="cliente-badge-info">
+                                    <i class="fas fa-user"></i>
+                                    <span class="cliente-nombre" id="clienteBadgeNombre">Consumidor Final</span>
+                                    <span class="cliente-doc" id="clienteBadgeDoc"></span>
+                                </div>
+                                <button type="button" class="cliente-badge-btn" onclick="expandirFormCliente()">
+                                    <i class="fas fa-pen"></i> Cambiar
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="form-group mb-2">
-                            <label class="small mb-1">DNI / RUC</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="clienteDoc" class="form-control" placeholder="00000000" maxlength="11">
-                                <div class="input-group-append">
-                                    <button type="button" id="btnBuscarDoc" class="btn btn-info" onclick="buscarDocumento()" title="Buscar en SUNAT/RENIEC" style="display: none;">
-                                        <i class="fas fa-search"></i>
-                                    </button>
+                        <!-- VISOR CONTEXTUAL (se oculta con carrito lleno) -->
+                        <div class="visor-producto" id="visorProducto">
+                            <div class="visor-header">
+                                <img id="visorImagen"
+                                     src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pjwvc3ZnPg=="
+                                     alt="Img" onclick="ampliarImagen()">
+                                <div class="visor-header-info">
+                                    <h6 id="visorNombre">Busque un producto...</h6>
+                                    <small id="visorMarca">-</small>
+                                    <div id="visorTags" style="display: none;"><span id="visorTagsText"></span></div>
                                 </div>
                             </div>
-                            <small id="docFeedback" class="text-muted" style="display: none;"></small>
-                        </div>
-
-                        <div class="form-group mb-2">
-                            <label class="small mb-1">Cliente *</label>
-                            <input type="text" id="cliente" class="form-control form-control-sm font-weight-bold" placeholder="Nombre / Razón Social">
-                        </div>
-
-                        <div class="form-group mb-2" id="divDireccion" style="display: none;">
-                            <label class="small mb-1">Direccion</label>
-                            <input type="text" id="clienteDireccion" class="form-control form-control-sm" placeholder="Direccion fiscal">
-                        </div>
-
-                        <!-- CONDICIÓN DE PAGO -->
-                        <h6 class="font-weight-bold text-secondary border-bottom pb-2 mt-3">Condición de Pago</h6>
-                        
-                        <div class="form-group mb-2">
-                            <select id="formaPago" class="form-control form-control-sm font-weight-bold" onchange="toggleCredito()">
-                                <option value="CONTADO">CONTADO</option>
-                                <option value="CREDITO">CRÉDITO / CUOTAS</option>
-                            </select>
-                        </div>
-                        <div class="form-group mb-2">
-                            <label class="small mb-1">Método de Pago</label>
-                            <select id="metodoPago" class="form-control form-control-sm font-weight-bold text-navy">
-                                <option value="EFECTIVO" selected>EFECTIVO (S/)</option>
-                                <option value="YAPE">YAPE</option>
-                                <option value="PLIN">PLIN</option>
-                                <option value="TARJETA">TARJETA (Débito/Crédito)</option>
-                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                                <option value="MIXTO">MIXTO / OTRO</option>
-                            </select>
-                        </div>
-
-                        <div class="div-credito d-none">
-                            <div class="form-group mb-2">
-                                <label class="small mb-1">Días Crédito</label>
-                                <select id="diasCredito" class="form-control form-control-sm">
-                                    <option value="7">7 Días</option>
-                                    <option value="15">15 Días</option>
-                                    <option value="30">30 Días</option>
-                                </select>
+                            <div class="visor-body">
+                                <div id="visorDescripcion" style="display: none;"><small id="visorDescripcionText"></small></div>
+                                <div class="visor-stats">
+                                    <div class="visor-stat">
+                                        <small>Precio</small>
+                                        <span id="visorPrecio" class="text-primary">S/ 0.00</span>
+                                    </div>
+                                    <div class="visor-stat">
+                                        <small>Stock</small>
+                                        <span id="visorStock" class="badge bg-success">0</span>
+                                    </div>
+                                    <div class="visor-stat">
+                                        <small>Ubicación</small>
+                                        <span id="visorUbicacion">-</span>
+                                    </div>
+                                </div>
+                                <div class="stock-progress">
+                                    <div id="visorStockBar" class="stock-progress-bar stock-high" style="width: 0%"></div>
+                                </div>
+                                <small id="visorStockPorcentaje" style="display:none;">0%</small>
+                                <small id="visorStockLabel" style="display:none;">Stock mínimo: 0</small>
+                                <div class="visor-agregar">
+                                    <input type="number" id="inputCantidad" value="1" min="1">
+                                    <button class="btn btn-success" type="button" onclick="agregarDesdeVisor()">
+                                        <i class="fas fa-plus"></i> Agregar
+                                    </button>
+                                </div>
+                                <button id="btnRelacionados" class="btn btn-outline-secondary btn-sm btn-block mt-2" onclick="mostrarRelacionados()" style="display: none;">
+                                    <i class="fas fa-th-large"></i> Relacionados
+                                </button>
                             </div>
-                            <div class="form-group mb-2">
-                                <label class="small mb-1">A Cuenta (S/)</label>
-                                <input type="number" id="montoInicial" class="form-control form-control-sm text-right" value="0.00" onkeyup="calcularSaldo()">
+                        </div>
+
+                        <!-- Panel relacionados (oculto) -->
+                        <div id="panelRelacionados" class="card card-side" style="display: none; margin: 0 12px 12px;">
+                            <div class="card-header bg-secondary text-white py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span style="font-size:0.8rem;"><i class="fas fa-th-large mr-1"></i> Relacionados</span>
+                                    <button type="button" class="close text-white" onclick="$('#panelRelacionados').slideUp()" style="font-size:1rem;">&times;</button>
+                                </div>
                             </div>
-                            <div class="text-right mb-3">
-                                <small>Saldo Pendiente:</small>
-                                <h5 class="text-danger font-weight-bold mb-0" id="lblSaldo">S/ 0.00</h5>
+                            <div class="card-body p-2" id="listaRelacionados">
+                                <div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin"></i></div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN: COMPROBANTE Y CLIENTE (colapsable) -->
+                        <div class="form-section cliente-form" id="clienteFormSection">
+                            <div class="form-section-title d-flex justify-content-between align-items-center">
+                                <span>Comprobante y Cliente</span>
+                                <button type="button" class="btn btn-sm btn-link p-0 text-muted" onclick="colapsarFormCliente()" style="font-size:0.7rem;">
+                                    <i class="fas fa-times"></i> Cerrar
+                                </button>
+                            </div>
+
+                            <div class="form-row-compact">
+                                <div class="form-group-compact">
+                                    <label class="d-flex align-items-center gap-1">
+                                        Tipo
+                                        <span class="kbd kbd-primary" style="transform: scale(0.8);" title="Presiona F4 para cambiar">F4</span>
+                                    </label>
+                                    <select id="tipoComprobante" class="form-control">
+                                        <option value="BOLETA">BOLETA</option>
+                                        <option value="FACTURA">FACTURA</option>
+                                        <option value="NOTA_VENTA">NOTA VENTA</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-compact">
+                                    <label>DNI / RUC</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" id="clienteDoc" class="form-control" placeholder="00000000" maxlength="11">
+                                        <div class="input-group-append">
+                                            <button type="button" id="btnBuscarDoc" class="btn btn-info btn-sm" onclick="buscarDocumento()" title="Buscar" style="display: none;">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <small id="docFeedback" class="text-muted d-block mb-2" style="display: none; font-size: 0.7rem;"></small>
+
+                            <div class="form-row-compact full">
+                                <div class="form-group-compact">
+                                    <label>Cliente</label>
+                                    <input type="text" id="cliente" class="form-control" placeholder="Nombre / Razón Social">
+                                </div>
+                            </div>
+
+                            <div class="form-row-compact full" id="divDireccion" style="display: none;">
+                                <div class="form-group-compact">
+                                    <label>Dirección</label>
+                                    <input type="text" id="clienteDireccion" class="form-control" placeholder="Dirección fiscal">
+                                </div>
+                            </div>
+
+                            <div class="form-row-compact full">
+                                <div class="form-group-compact">
+                                    <label><i class="fab fa-whatsapp text-success"></i> WhatsApp</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" style="font-size:0.7rem;">+51</span>
+                                        </div>
+                                        <input type="tel" id="clienteTelefono" class="form-control"
+                                               placeholder="999888777" maxlength="9"
+                                               pattern="[0-9]{9}"
+                                               oninput="this.value = this.value.replace(/[^0-9]/g, ''); clienteTelefonoActual = this.value;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN: FORMA DE PAGO -->
+                        <div class="form-section">
+                            <div class="form-section-title">Forma de Pago</div>
+
+                            <div class="form-row-compact">
+                                <div class="form-group-compact">
+                                    <label>Condición</label>
+                                    <select id="formaPago" class="form-control" onchange="toggleCredito()">
+                                        <option value="CONTADO">CONTADO</option>
+                                        <option value="CREDITO">CRÉDITO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-compact">
+                                    <label>Método</label>
+                                    <select id="metodoPago" class="form-control">
+                                        <option value="EFECTIVO">EFECTIVO</option>
+                                        <option value="YAPE">YAPE</option>
+                                        <option value="PLIN">PLIN</option>
+                                        <option value="TARJETA">TARJETA</option>
+                                        <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                        <option value="MIXTO">MIXTO</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="div-credito d-none">
+                                <div class="form-row-compact">
+                                    <div class="form-group-compact">
+                                        <label>Días Crédito</label>
+                                        <select id="diasCredito" class="form-control">
+                                            <option value="7">7 Días</option>
+                                            <option value="15">15 Días</option>
+                                            <option value="30">30 Días</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group-compact">
+                                        <label>A Cuenta (S/)</label>
+                                        <input type="number" id="montoInicial" class="form-control text-right" value="0.00" onkeyup="calcularSaldo()">
+                                    </div>
+                                </div>
+                                <div class="text-right mt-2">
+                                    <small class="text-muted">Saldo:</small>
+                                    <span class="text-danger font-weight-bold" id="lblSaldo">S/ 0.00</span>
+                                </div>
                             </div>
                         </div>
 
                         <!-- BOTONES DE ACCIÓN -->
-                        <button class="btn btn-success btn-block btn-lg font-weight-bold shadow-sm mb-2" onclick="procesarVenta()">
-                            <i class="fas fa-cash-register"></i> COBRAR (F2)
-                        </button>
-                        
-                        <button class="btn btn-default btn-block btn-sm" onclick="limpiar()">
-                            <i class="fas fa-eraser"></i> Limpiar Todo
-                        </button>
+                        <div class="form-section" style="padding-bottom: 16px;">
+                            <button class="btn-cobrar" onclick="procesarVenta()" id="btnCobrar">
+                                <i class="fas fa-cash-register"></i>
+                                <span>COBRAR</span>
+                                <span class="kbd kbd-dark">F2</span>
+                            </button>
+                            <button class="btn-limpiar" onclick="limpiarConConfirmacion()">
+                                <i class="fas fa-eraser"></i>
+                                <span>Limpiar Venta</span>
+                                <span class="kbd">F8</span>
+                            </button>
+                        </div>
 
                     </div>
                 </div>
@@ -316,29 +1216,71 @@
     // FACTURACION ELECTRONICA: Determina si las validaciones SUNAT estan activas
     const facturaElectronicaActiva = /*[[${facturaElectronicaActiva}]]*/ false;
 
+    // URL del servidor para conexión móvil
+    const serverUrlPOS = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+
     const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tk88L3RleHQ+PC9zdmc+";
 
     $(document).ready(function() {
-        // --- CONFIGURACIÓN DEL BUSCADOR (SELECT2) ---
+        // --- CONFIGURACIÓN DEL OMNIBUSCADOR (SELECT2) ---
+        // Búsqueda avanzada: multi-campo, tokenizada, case-insensitive
         $('#busquedaAjax').select2({
             theme: 'bootstrap4',
-            placeholder: 'Escanear código o buscar...',
+            placeholder: '🔍 Buscar por nombre, código, marca...',
             allowClear: true,
             minimumInputLength: 1,
             ajax: {
                 url: '/ventas/api/buscar-productos',
                 dataType: 'json',
-                delay: 50,
+                delay: 100, // Delay optimizado para búsqueda tokenizada
                 data: function (params) { return { term: params.term }; },
-                processResults: function (data) { 
-                    return { 
+                processResults: function (data) {
+                    return {
                         results: data.map(p => ({
                             id: p.id,
-                            text: p.text + " (Stock: " + p.stock + ")",
-                            producto: p
-                        })) 
-                    }; 
+                            text: p.text,
+                            producto: p,
+                            disabled: false // Permitir selección aunque stock = 0
+                        }))
+                    };
                 }
+            },
+            // Formateo enriquecido de resultados con IMAGEN y indicador de stock
+            templateResult: function(data) {
+                if (!data.producto) return data.text;
+                let p = data.producto;
+                let stockClass = p.tieneStock ? 'text-success' : 'text-danger';
+                let stockIcon = p.tieneStock ? '✓' : '⚠';
+                let stockBadge = p.stockBajo ? 'bg-warning text-dark' : (p.tieneStock ? 'bg-success' : 'bg-danger');
+
+                // Imagen del producto (40x40px)
+                let imgSrc = p.imagen ? '/images/' + p.imagen : IMG_PLACEHOLDER;
+
+                let html = `<div class="select2-producto-item">
+                    <img src="${imgSrc}" class="select2-producto-img" alt="" onerror="this.src='${IMG_PLACEHOLDER}'">
+                    <div class="select2-producto-info">
+                        <div class="font-weight-bold text-truncate">${p.nombre}</div>
+                        <div class="small text-muted">
+                            ${p.marca ? '<span class="mr-2">' + p.marca + '</span>' : ''}
+                            ${p.codigoBarra ? '<code>' + p.codigoBarra + '</code>' : ''}
+                        </div>
+                    </div>
+                    <div class="select2-producto-stats ml-2">
+                        <span class="badge ${stockBadge}">${stockIcon} ${p.stock}</span>
+                        <div class="text-primary font-weight-bold">S/ ${parseFloat(p.precio).toFixed(2)}</div>
+                    </div>
+                </div>`;
+                return $(html);
+            },
+            // Formateo del item seleccionado
+            templateSelection: function(data) {
+                if (!data.producto) return data.text;
+                return data.producto.nombre;
+            },
+            language: {
+                inputTooShort: function() { return "Escriba para buscar..."; },
+                searching: function() { return "Buscando..."; },
+                noResults: function() { return "No encontrado. Intente con otras palabras."; }
             }
         });
 
@@ -350,49 +1292,248 @@
             $('#busquedaAjax').val(null).trigger('change');
         });
 
-        // Foco inicial al buscador
-        setTimeout(() => $('#busquedaAjax').select2('open'), 300);
+        // === AUTOFOCUS ENTERPRISE: Abrir Select2 Y enfocar campo de búsqueda ===
+        // El operador debe poder escribir/escanear inmediatamente sin usar mouse
+        abrirBuscadorConFoco();
 
         // =============================================
-        // ATAJOS DE TECLADO GLOBALES
+        // ATAJOS DE TECLADO POS ENTERPRISE
+        // Mapeo estándar para operación 100% sin mouse
         // =============================================
         $(document).keydown(function(e) {
-            // F2: Preparar cobro (enfocar campo según tipo de pago)
+            // Ignorar si está en un modal de SweetAlert activo
+            if (document.querySelector('.swal2-container')) {
+                return;
+            }
+
+            // F2: Preparar cobro INMEDIATAMENTE (no pregunta, no navega)
             if (e.key === 'F2') {
                 e.preventDefault();
                 prepararCobro();
+                return;
             }
 
             // F4: Cambiar tipo de comprobante cíclicamente
             if (e.key === 'F4') {
                 e.preventDefault();
                 cambiarTipoComprobante();
+                return;
+            }
+
+            // F8: Limpiar venta (SIEMPRE con confirmación)
+            if (e.key === 'F8') {
+                e.preventDefault();
+                limpiarConConfirmacion();
+                return;
+            }
+
+            // ESC: Cancelar acción actual de forma segura
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                manejarEscape();
+                return;
             }
         });
+
+        // =============================================
+        // INTERSECTION OBSERVER - TOTAL STICKY FEEDBACK
+        // Sombra visual cuando el total está pegado arriba
+        // =============================================
+        initStickyObserver();
     });
 
-    // --- FUNCIONES DEL VISOR ---
+    // --- FUNCIONES DEL VISOR MEJORADO ---
 
     function cargarVisor(data) {
         productoActual = data;
         $("#visorNombre").text(data.nombre);
         $("#visorMarca").text(data.marca || 'Genérico');
         $("#visorPrecio").text('S/ ' + parseFloat(data.precio).toFixed(2));
-        $("#visorStock").text(data.stock);
+
+        // Stock con badge de color según nivel
+        let stock = parseInt(data.stock) || 0;
+        let stockMinimo = parseInt(data.stockMinimo) || 5;
+        let stockBadgeClass = 'bg-success';
+        if (stock <= 0) stockBadgeClass = 'bg-danger';
+        else if (stock <= stockMinimo) stockBadgeClass = 'bg-warning text-dark';
+
+        $("#visorStock").removeClass('bg-success bg-warning bg-danger text-dark').addClass(stockBadgeClass).text(stock);
+
+        // Barra de progreso de stock
+        let maxStock = Math.max(stockMinimo * 3, stock, 10); // Referencia para el 100%
+        let porcentaje = Math.min(Math.round((stock / maxStock) * 100), 100);
+        let barClass = 'stock-high';
+        if (stock <= 0) barClass = 'stock-low';
+        else if (stock <= stockMinimo) barClass = 'stock-medium';
+        else if (stock <= stockMinimo * 1.5) barClass = 'stock-medium';
+
+        $("#visorStockBar").removeClass('stock-high stock-medium stock-low').addClass(barClass).css('width', porcentaje + '%');
+        $("#visorStockPorcentaje").text(porcentaje + '%');
+        $("#visorStockLabel").text('Stock mínimo: ' + stockMinimo);
+
+        // Ubicación
         $("#visorUbicacion").text(data.ubicacion || '-');
-        
-        if(data.imagen) $("#visorImagen").attr("src", "/images/" + data.imagen);
-        else $("#visorImagen").attr("src", IMG_PLACEHOLDER);
+
+        // Imagen
+        if (data.imagen) {
+            $("#visorImagen").attr("src", "/images/" + data.imagen);
+        } else {
+            $("#visorImagen").attr("src", IMG_PLACEHOLDER);
+        }
+
+        // Descripción
+        if (data.descripcion && data.descripcion.trim()) {
+            $("#visorDescripcionText").text(data.descripcion);
+            $("#visorDescripcion").show();
+        } else {
+            $("#visorDescripcion").hide();
+        }
+
+        // Tags/sinónimos
+        if (data.tags && data.tags.trim()) {
+            $("#visorTagsText").text(data.tags);
+            $("#visorTags").show();
+        } else {
+            $("#visorTags").hide();
+        }
+
+        // Mostrar botón de productos relacionados si tiene categoría o tags
+        if ((data.categoria && data.categoria.trim()) || (data.tags && data.tags.trim())) {
+            $("#btnRelacionados").show();
+        } else {
+            $("#btnRelacionados").hide();
+        }
+
+        // Ocultar panel de relacionados al cambiar de producto
+        $("#panelRelacionados").hide();
 
         $("#inputCantidad").val(1);
+    }
+
+    // Ampliar imagen del producto
+    function ampliarImagen() {
+        if (!productoActual) return;
+        let imgSrc = productoActual.imagen ? '/images/' + productoActual.imagen : IMG_PLACEHOLDER;
+        Swal.fire({
+            title: productoActual.nombre,
+            imageUrl: imgSrc,
+            imageWidth: 300,
+            imageHeight: 300,
+            imageAlt: productoActual.nombre,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+    }
+
+    // Mostrar productos relacionados
+    function mostrarRelacionados() {
+        if (!productoActual || !productoActual.id) return;
+
+        $("#panelRelacionados").slideDown();
+        $("#listaRelacionados").html('<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Buscando relacionados...</div>');
+
+        $.ajax({
+            url: '/ventas/api/productos-relacionados/' + productoActual.id,
+            type: 'GET',
+            success: function(productos) {
+                if (productos.length === 0) {
+                    $("#listaRelacionados").html('<div class="text-center text-muted py-3"><i class="fas fa-info-circle"></i> No hay productos relacionados</div>');
+                    return;
+                }
+
+                let html = '<div class="row">';
+                productos.forEach(function(p) {
+                    let imgSrc = p.imagen ? '/images/' + p.imagen : IMG_PLACEHOLDER;
+                    let stockClass = p.stock <= 0 ? 'text-danger' : (p.stock <= 5 ? 'text-warning' : 'text-muted');
+                    html += `
+                        <div class="col-6 col-md-4 mb-2">
+                            <div class="card related-product-card p-2" onclick="agregarRelacionado(${p.id}, '${escapeHtml(p.nombre)}', ${p.precio}, ${p.stock}, '${escapeHtml(p.marca || '')}', '${escapeHtml(p.ubicacion || '')}')">
+                                <div class="d-flex align-items-center">
+                                    <img src="${imgSrc}" class="related-product-img mr-2" alt="" onerror="this.src='${IMG_PLACEHOLDER}'">
+                                    <div class="flex-grow-1 min-width-0">
+                                        <div class="font-weight-bold small text-truncate">${p.nombre}</div>
+                                        <div class="text-primary font-weight-bold">S/ ${parseFloat(p.precio).toFixed(2)}</div>
+                                        <small class="${stockClass}">Stock: ${p.stock}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                $("#listaRelacionados").html(html);
+            },
+            error: function() {
+                $("#listaRelacionados").html('<div class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle"></i> Error al cargar</div>');
+            }
+        });
+    }
+
+    // Agregar producto relacionado al carrito
+    function agregarRelacionado(id, nombre, precio, stock, marca, ubicacion) {
+        let prod = {
+            id: id,
+            nombre: nombre,
+            precio: precio,
+            precioMin: 0,
+            stock: stock,
+            marca: marca || '',
+            ubicacion: ubicacion || '',
+            stockMinimo: 5
+        };
+        agregarAlCarrito(prod);
+
+        // === NOTIFICACIÓN CON STOCK CRÍTICO PROACTIVO ===
+        const stockCritico = stock <= 5 && stock > 0;
+        const stockAgotado = stock <= 0;
+
+        if (stockAgotado) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: nombre + ' agregado',
+                html: '<small class="d-block text-danger"><i class="fas fa-exclamation-circle"></i> Sin stock disponible</small>',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        } else if (stockCritico) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: nombre + ' agregado',
+                html: '<small class="d-block"><i class="fas fa-exclamation-triangle"></i> Stock bajo: quedan ' + stock + ' unidades</small>',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        } else {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: nombre + ' agregado',
+                showConfirmButton: false,
+                timer: 800
+            });
+        }
+    }
+
+    // Escape HTML para evitar XSS
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m];
+        });
     }
 
     function agregarDesdeVisor() {
         if(!productoActual) return;
         let cant = parseInt($("#inputCantidad").val());
+        const stockActual = parseInt(productoActual.stock) || 0;
 
-        if(cant > productoActual.stock) {
-            Swal.fire('Stock Insuficiente', 'Solo quedan ' + productoActual.stock, 'warning');
+        if(cant > stockActual && stockActual > 0) {
+            Swal.fire('Stock Insuficiente', 'Solo quedan ' + stockActual, 'warning');
             return;
         }
 
@@ -408,9 +1549,49 @@
                 precio: parseFloat(productoActual.precio),
                 precioMin: parseFloat(productoActual.precioMin) || 0,
                 cantidad: cant,
-                stock: productoActual.stock
+                stock: stockActual,
+                // Metadatos adicionales para UX mejorada
+                marca: productoActual.marca || '',
+                ubicacion: productoActual.ubicacion || '',
+                stockMinimo: parseInt(productoActual.stockMinimo) || 5
             });
             dibujarCarrito(true, carrito.length - 1);
+        }
+
+        // === NOTIFICACIÓN CON STOCK CRÍTICO PROACTIVO ===
+        const stockRestante = stockActual - cant;
+        const stockCritico = stockRestante <= 5 && stockRestante > 0;
+        const stockAgotado = stockRestante <= 0;
+
+        if (stockAgotado) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Agregado al carrito',
+                html: '<small class="d-block text-danger"><i class="fas fa-exclamation-circle"></i> Stock agotado tras esta venta</small>',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        } else if (stockCritico) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Agregado al carrito',
+                html: '<small class="d-block"><i class="fas fa-exclamation-triangle"></i> Stock bajo: quedarán ' + stockRestante + ' unidades</small>',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        } else {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Agregado al carrito',
+                showConfirmButton: false,
+                timer: 800
+            });
         }
     }
 
@@ -454,16 +1635,42 @@ function agregarRapido(codigoBusqueda) {
 
                 // Llamamos a tu función existente
                 agregarAlCarrito(productoParaCarrito);
-                
-                // Feedback visual
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: prodEncontrado.nombre + ' agregado',
-                    showConfirmButton: false,
-                    timer: 800
-                });
+
+                // === NOTIFICACIÓN CON STOCK CRÍTICO PROACTIVO ===
+                const stock = parseInt(prodEncontrado.stock) || 0;
+                const stockCritico = stock <= 5 && stock > 0;
+                const stockAgotado = stock <= 0;
+
+                if (stockAgotado) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'warning',
+                        title: prodEncontrado.nombre + ' agregado',
+                        html: '<small class="d-block text-danger"><i class="fas fa-exclamation-circle"></i> Sin stock disponible</small>',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                } else if (stockCritico) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'warning',
+                        title: prodEncontrado.nombre + ' agregado',
+                        html: '<small class="d-block"><i class="fas fa-exclamation-triangle"></i> Stock bajo: quedan ' + stock + ' unidades</small>',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: prodEncontrado.nombre + ' agregado',
+                        showConfirmButton: false,
+                        timer: 800
+                    });
+                }
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -497,7 +1704,7 @@ function agregarRapido(codigoBusqueda) {
                 timer: 1500,
                 showConfirmButton: false
             });
-            $('#busquedaAjax').select2('open');
+            abrirBuscadorConFoco();
             return;
         }
 
@@ -515,8 +1722,11 @@ function agregarRapido(codigoBusqueda) {
                 timer: 1500
             });
         } else {
-            // Contado: Enfocar documento del cliente
-            $("#clienteDoc").focus().select();
+            // Contado: Expandir formulario y enfocar documento del cliente
+            expandirFormCliente();
+            setTimeout(() => {
+                $("#clienteDoc").focus().select();
+            }, 100);
             Swal.fire({
                 toast: true,
                 position: 'top',
@@ -568,27 +1778,35 @@ function agregarRapido(codigoBusqueda) {
 
     function agregarAlCarrito(prod) {
         let index = carrito.findIndex(i => i.id == prod.id);
-        
+
         if(index !== -1) {
             // Si existe, mover foco ahí
             dibujarCarrito(true, index);
         } else {
-            // Nuevo item
+            // Nuevo item con metadatos enriquecidos
             carrito.push({
                 id: prod.id,
                 nombre: prod.nombre,
                 precio: parseFloat(prod.precio) || 0,
                 precioMin: parseFloat(prod.precioMin) || 0,
                 cantidad: 1,
-                stock: prod.stock
+                stock: parseInt(prod.stock) || 0,
+                // Metadatos adicionales para UX mejorada
+                marca: prod.marca || '',
+                ubicacion: prod.ubicacion || '',
+                stockMinimo: parseInt(prod.stockMinimo) || 5
             });
             dibujarCarrito(true, carrito.length - 1);
         }
     }
 
+    // Variable global para controlar si el botón cobrar está bloqueado
+    let cobrarBloqueado = false;
+
     function dibujarCarrito(enfocar = false, indexFocus = -1) {
         let html = '';
         totalVenta = 0;
+        cobrarBloqueado = false; // Reset al redibujar
 
         if (carrito.length === 0) $('#msgVacio').show();
         else $('#msgVacio').hide();
@@ -596,24 +1814,56 @@ function agregarRapido(codigoBusqueda) {
         carrito.forEach((item, index) => {
             let subtotal = item.cantidad * item.precio;
             totalVenta += subtotal;
-            
+
             let activeClass = (index === indexFocus) ? 'table-active-row' : '';
+
+            // === METADATOS DEL PRODUCTO ===
+            let stockClass = '';
+            if (item.stock <= 0) {
+                stockClass = 'stock-cero';
+            } else if (item.stock <= item.stockMinimo) {
+                stockClass = 'stock-bajo';
+            }
+
+            let metaInfo = [];
+            if (item.marca) metaInfo.push(`Marca: ${escapeHtml(item.marca)}`);
+            metaInfo.push(`Stock: <span class="${stockClass}">${item.stock}</span>`);
+            if (item.ubicacion) metaInfo.push(`Ubic: ${escapeHtml(item.ubicacion)}`);
+
+            let metaHtml = `<small class="producto-meta d-block">${metaInfo.join(' | ')}</small>`;
+
+            // === VALIDACIÓN DE CANTIDAD ===
+            let cantidadExcedeStock = item.cantidad > item.stock;
+            let inputQtyClass = 'input-qty';
+            let stockTooltip = '';
+
+            if (cantidadExcedeStock && item.stock > 0) {
+                inputQtyClass += ' is-invalid';
+                stockTooltip = `<span class="stock-tooltip">Máx: ${item.stock}</span>`;
+                cobrarBloqueado = true; // Bloquear cobro
+            } else if (item.stock <= 0 && item.cantidad > 0) {
+                inputQtyClass += ' is-warning';
+                stockTooltip = `<span class="stock-tooltip" style="background:#ffc107;color:#333;">Sin stock</span>`;
+            }
 
             html += `<tr class="${activeClass}">
                 <td class="text-center text-muted">${index + 1}</td>
-                <td><span class="font-weight-bold text-dark">${item.nombre}</span></td>
-                <td class="text-right">
-                    <input type="number" step="0.10"
-                           class="form-control form-control-sm text-right border-0 ${esAdminGlobal ? '' : 'bg-light'}"
-                           value="${item.precio.toFixed(2)}"
-                           ${esAdminGlobal ? '' : 'readonly'}
-                           onchange="cambiarPrecio(${index}, this.value)">
+                <td>
+                    <span class="font-weight-bold text-dark">${escapeHtml(item.nombre)}</span>
+                    ${metaHtml}
                 </td>
-                <td class="text-center">
-                    <input type="number" id="cant_${index}" class="input-qty" 
-                           value="${item.cantidad}" 
+                <td class="text-right">
+                    <span class="precio-readonly" data-precio="${item.precio}" data-producto-id="${item.id}">S/ ${item.precio.toFixed(2)}</span>
+                </td>
+                <td class="text-center td-cantidad">
+                    <input type="number" id="cant_${index}" class="${inputQtyClass}"
+                           value="${item.cantidad}"
+                           data-stock="${item.stock}"
+                           data-index="${index}"
                            onkeydown="handleCantidadKey(event, ${index})"
+                           oninput="validarCantidadEnTiempoReal(${index}, this)"
                            onchange="cambiarCantidad(${index}, this.value)">
+                    ${stockTooltip}
                 </td>
                 <td class="text-right font-weight-bold text-success">S/ ${subtotal.toFixed(2)}</td>
                 <td class="text-center">
@@ -623,10 +1873,20 @@ function agregarRapido(codigoBusqueda) {
                 </td>
             </tr>`;
         });
-        
+
         $('#tbodyCarrito').html(html);
         $('#totalPantalla').text(`S/ ${totalVenta.toFixed(2)}`);
-        
+
+        // Actualizar estado del botón cobrar y visor contextual
+        actualizarBotonCobrar();
+
+        // Mostrar/ocultar mensaje vacío
+        if (carrito.length === 0) {
+            $('#msgVacio').show();
+        } else {
+            $('#msgVacio').hide();
+        }
+
         if($("#formaPago").val() === 'CREDITO') {
             calcularSaldo();
         }
@@ -640,6 +1900,127 @@ function agregarRapido(codigoBusqueda) {
                     input.select();
                 }
             }, 50);
+        }
+    }
+
+    // === VALIDACIÓN DE CANTIDAD EN TIEMPO REAL ===
+    function validarCantidadEnTiempoReal(index, input) {
+        let cantidad = parseInt(input.value) || 0;
+        let stock = parseInt(input.dataset.stock) || 0;
+        let $input = $(input);
+        let $td = $input.closest('.td-cantidad');
+
+        // Eliminar tooltip anterior si existe
+        $td.find('.stock-tooltip').remove();
+
+        if (cantidad > stock && stock > 0) {
+            // Cantidad excede stock disponible
+            $input.addClass('is-invalid').removeClass('is-warning');
+
+            // Agregar tooltip de máximo
+            let tooltip = $('<span class="stock-tooltip">Máx: ' + stock + '</span>');
+            $td.append(tooltip);
+
+            cobrarBloqueado = true;
+            actualizarBotonCobrar();
+        } else if (stock <= 0 && cantidad > 0) {
+            // Sin stock (advertencia para servicios)
+            $input.addClass('is-warning').removeClass('is-invalid');
+            cobrarBloqueado = false; // Permitir para servicios
+            actualizarBotonCobrar();
+        } else {
+            // Válido
+            $input.removeClass('is-invalid is-warning');
+            cobrarBloqueado = false;
+            actualizarBotonCobrar();
+        }
+
+        // Actualizar subtotal en tiempo real
+        let precio = carrito[index].precio;
+        let subtotal = cantidad * precio;
+        $input.closest('tr').find('td:eq(4)').text('S/ ' + subtotal.toFixed(2));
+
+        // Actualizar total global
+        recalcularTotalGlobal();
+    }
+
+    // === VALIDACIÓN DE PRECIO MÍNIMO ===
+    function validarPrecioMinimo(index, valor) {
+        if (!esAdminGlobal) return; // Solo admin puede cambiar precios
+
+        let item = carrito[index];
+        let precio = parseFloat(valor) || 0;
+        let precioMin = item.precioMin || 0;
+
+        // Si precioMin es 0, no validar (permite cualquier precio)
+        if (precioMin <= 0) return;
+
+        if (precio < precioMin) {
+            // Toast de advertencia
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Precio mínimo: S/ ' + precioMin.toFixed(2),
+                text: 'Se restauró al precio mínimo permitido',
+                showConfirmButton: false,
+                timer: 3000
+            });
+
+            // Restaurar al precio mínimo
+            item.precio = precioMin;
+            dibujarCarrito(false, index);
+        }
+    }
+
+    // === ACTUALIZAR ESTADO DEL BOTÓN COBRAR ===
+    function actualizarBotonCobrar() {
+        let $btnCobrar = $('#btnCobrar');
+
+        // Verificar si algún item excede el stock
+        let hayErrorStock = false;
+        carrito.forEach(item => {
+            if (item.cantidad > item.stock && item.stock > 0) {
+                hayErrorStock = true;
+            }
+        });
+
+        if (hayErrorStock) {
+            $btnCobrar.prop('disabled', true)
+                      .html('<i class="fas fa-exclamation-triangle"></i> <span>REVISAR STOCK</span>');
+        } else {
+            $btnCobrar.prop('disabled', false)
+                      .html('<i class="fas fa-cash-register"></i> <span>COBRAR</span> <span class="kbd kbd-dark">F2</span>');
+        }
+
+        // Colapsar/expandir visor según estado del carrito
+        actualizarVisorContextual();
+    }
+
+    // === VISOR CONTEXTUAL: Se colapsa cuando hay productos ===
+    function actualizarVisorContextual() {
+        let $visor = $('#visorProducto');
+        if (carrito.length > 0) {
+            $visor.addClass('colapsado');
+            $('body').addClass('carrito-lleno');
+        } else {
+            $visor.removeClass('colapsado');
+            $('body').removeClass('carrito-lleno');
+        }
+    }
+
+    // === RECALCULAR TOTAL GLOBAL ===
+    function recalcularTotalGlobal() {
+        totalVenta = 0;
+        carrito.forEach((item, index) => {
+            let $input = $(`#cant_${index}`);
+            let cantidad = parseInt($input.val()) || item.cantidad;
+            totalVenta += cantidad * item.precio;
+        });
+        $('#totalPantalla').text(`S/ ${totalVenta.toFixed(2)}`);
+
+        if($("#formaPago").val() === 'CREDITO') {
+            calcularSaldo();
         }
     }
 
@@ -659,16 +2040,8 @@ function agregarRapido(codigoBusqueda) {
         
         if (e.key === 'Tab') {
             e.preventDefault();
-            
-            // TAB = VOLVER AL BUSCADOR Y ENFOCAR PARA ESCRIBIR
-            $('#busquedaAjax').select2('open');
-            
-            setTimeout(() => {
-                let searchField = document.querySelector('.select2-container--open .select2-search__field');
-                if (searchField) {
-                    searchField.focus();
-                }
-            }, 50);
+            // TAB = VOLVER AL BUSCADOR CON AUTOFOCUS ENTERPRISE
+            abrirBuscadorConFoco();
         }
     }
 
@@ -676,11 +2049,21 @@ function agregarRapido(codigoBusqueda) {
         let cant = parseInt(val);
         if(cant < 1) cant = 1;
         carrito[index].cantidad = cant;
-        
+
         // Recalcular total sin perder foco
         totalVenta = carrito.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
         $('#totalPantalla').text(`S/ ${totalVenta.toFixed(2)}`);
-        
+
+        // Verificar si excede stock y actualizar botón cobrar
+        let item = carrito[index];
+        if (cant > item.stock && item.stock > 0) {
+            cobrarBloqueado = true;
+        } else {
+            // Verificar todos los items
+            cobrarBloqueado = carrito.some(i => i.cantidad > i.stock && i.stock > 0);
+        }
+        actualizarBotonCobrar();
+
         if($("#formaPago").val() === 'CREDITO') {
             calcularSaldo();
         }
@@ -748,14 +2131,30 @@ function agregarRapido(codigoBusqueda) {
             $("#cliente").val('');
             $("#clienteDoc").val('');
             $("#clienteDireccion").val('');
+            $("#clienteTelefono").val('');
             $("#docFeedback").hide();
             $("#formaPago").val("CONTADO").trigger('change');
             $("#montoInicial").val("0.00");
-            $('#busquedaAjax').select2('open');
+            clienteTelefonoActual = '';
+            // Mostrar visor y abrir buscador
+            $('#visorProducto').removeClass('colapsado');
+            $('body').removeClass('carrito-lleno');
+            // Resetear cliente badge y colapsar formulario
+            actualizarClienteBadge();
+            colapsarFormCliente();
+            // Autofocus enterprise
+            abrirBuscadorConFoco();
         }
     }
 
     function procesarVenta() {
+        // === PROTECCIÓN DOBLE ENTER ===
+        // Evita procesar la venta dos veces si el usuario presiona ENTER rápidamente
+        if (procesandoVenta) {
+            console.log('[POS] Venta ya en proceso, ignorando doble clic/enter');
+            return;
+        }
+
         // Validación 1: Carrito vacío
         if(carrito.length === 0) {
             return Swal.fire({
@@ -788,11 +2187,28 @@ function agregarRapido(codigoBusqueda) {
             });
         }
 
+        // Validación 4: Stock excedido (productos con stock > 0)
+        let stockExcedido = carrito.filter(i => i.cantidad > i.stock && i.stock > 0);
+        if (stockExcedido.length > 0) {
+            let detalles = stockExcedido.map(i =>
+                `• ${i.nombre}: pides ${i.cantidad}, disponible ${i.stock}`
+            ).join('\n');
+
+            return Swal.fire({
+                icon: 'error',
+                title: 'Stock Insuficiente',
+                html: `<p>Los siguientes productos exceden el stock disponible:</p>
+                       <pre style="text-align:left;font-size:0.85rem;background:#f8f9fa;padding:10px;border-radius:4px;">${detalles}</pre>
+                       <p class="text-muted small">Ajuste las cantidades antes de continuar.</p>`,
+                confirmButtonText: 'Revisar Carrito'
+            });
+        }
+
         let formaPago = $("#formaPago").val();
         let doc = $("#clienteDoc").val();
         let tipoComprobante = $("#tipoComprobante").val();
 
-        // Validación 4: Crédito requiere documento
+        // Validación 5: Crédito requiere documento
         if (formaPago === 'CREDITO' && (!doc || doc.length < 8)) {
             return Swal.fire({
                 icon: 'warning',
@@ -802,7 +2218,7 @@ function agregarRapido(codigoBusqueda) {
             });
         }
 
-        // Validación 5: Factura requiere RUC
+        // Validación 6: Factura requiere RUC
         if (tipoComprobante === 'FACTURA' && (!doc || doc.length !== 11)) {
             return Swal.fire({
                 icon: 'warning',
@@ -812,7 +2228,7 @@ function agregarRapido(codigoBusqueda) {
             });
         }
 
-        // Validación 6: Factura requiere RUC validado y ACTIVO/HABIDO
+        // Validación 7: Factura requiere RUC validado y ACTIVO/HABIDO
         // Solo aplica si la facturacion electronica esta activa
         if (tipoComprobante === 'FACTURA' && facturaElectronicaActiva) {
             if (!rucValidado) {
@@ -833,7 +2249,7 @@ function agregarRapido(codigoBusqueda) {
             }
         }
 
-        // Validación 7: Boleta con monto > S/ 700 requiere DNI
+        // Validación 8: Boleta con monto > S/ 700 requiere DNI
         // Solo aplica si la facturacion electronica esta activa
         if (tipoComprobante === 'BOLETA' && totalVenta > 700 && facturaElectronicaActiva) {
             if (!doc || doc.length !== 8) {
@@ -851,6 +2267,7 @@ function agregarRapido(codigoBusqueda) {
             clienteNombre: $("#cliente").val() || 'CLIENTE VARIOS',
             clienteDocumento: doc || '00000000',
             clienteDireccion: $("#clienteDireccion").val() || '',
+            clienteTelefono: $("#clienteTelefono").val() || clienteTelefonoActual || '',
             tipoComprobante: tipoComprobante,
             formaPago: formaPago,
             metodoPago: $("#metodoPago").val(),
@@ -858,6 +2275,9 @@ function agregarRapido(codigoBusqueda) {
             diasCredito: parseInt($("#diasCredito").val()) || 7,
             items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))
         };
+
+        // === ACTIVAR PROTECCIÓN DOBLE ENTER ===
+        procesandoVenta = true;
 
         // Mostrar loading
         Swal.fire({
@@ -868,32 +2288,29 @@ function agregarRapido(codigoBusqueda) {
             didOpen: () => { Swal.showLoading(); }
         });
 
+        // Guardar datos para WhatsApp antes del AJAX
+        const datosVentaWhatsApp = {
+            cliente: dto.clienteNombre,
+            total: totalVenta,
+            items: carrito.map(i => `${i.cantidad}x ${i.nombre}`).join('\n'),
+            tipoComprobante: dto.tipoComprobante
+        };
+
         $.ajax({
             url: '/ventas/api/guardar',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(dto),
             success: function(resp) {
-                Swal.fire({
-                    title: '¡Venta Exitosa!',
-                    html: '<strong>' + resp.serie + '-' + resp.numero + '</strong><br>Comprobante generado correctamente',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    imprimirPopup('/ventas/imprimir/' + resp.id);
-                    carrito = [];
-                    dibujarCarrito();
-                    $("#cliente").val('');
-                    $("#clienteDoc").val('');
-                    $("#clienteDireccion").val('');
-                    $("#docFeedback").hide();
-                    $("#formaPago").val("CONTADO").trigger('change');
-                    $("#montoInicial").val("0.00");
-                    $('#busquedaAjax').select2('open');
-                });
+                // === DESACTIVAR PROTECCIÓN DOBLE ENTER ===
+                procesandoVenta = false;
+                // Mostrar modal de éxito con opción de WhatsApp
+                mostrarModalVentaExitosa(resp, datosVentaWhatsApp);
             },
             error: function(xhr, status, error) {
+                // === DESACTIVAR PROTECCIÓN DOBLE ENTER ===
+                procesandoVenta = false;
+
                 let mensaje = 'Error desconocido. Por favor intente nuevamente.';
                 let titulo = 'Error';
 
@@ -981,15 +2398,25 @@ function agregarRapido(codigoBusqueda) {
     let rucActivo = false;
 
     // Mostrar/ocultar boton de busqueda segun tipo de comprobante
+    // MEJORADO: Ahora también soporta búsqueda de DNI para BOLETAS
     // Solo si la facturacion electronica esta activa
     function actualizarVisibilidadBusqueda() {
         let tipo = $("#tipoComprobante").val();
-        if (tipo === 'FACTURA' && facturaElectronicaActiva) {
+
+        // NUEVO: Habilitar búsqueda para FACTURA (RUC) y BOLETA (DNI) cuando facturación electrónica activa
+        if ((tipo === 'FACTURA' || tipo === 'BOLETA') && facturaElectronicaActiva) {
             $("#btnBuscarDoc").show();
-            $("#divDireccion").show();
-            // Resetear validacion al cambiar a FACTURA
+
+            // Resetear validacion al cambiar tipo
             rucValidado = false;
             rucActivo = false;
+
+            // Mostrar dirección solo para FACTURA
+            if (tipo === 'FACTURA') {
+                $("#divDireccion").show();
+            } else {
+                $("#divDireccion").hide();
+            }
         } else {
             $("#btnBuscarDoc").hide();
             // Mostrar direccion en FACTURA aunque no haya validacion SUNAT
@@ -1011,25 +2438,32 @@ function agregarRapido(codigoBusqueda) {
         }
     });
 
-    // Evento cuando se ingresa documento (solo en FACTURA con facturacion electronica)
+    // Evento cuando se ingresa documento (FACTURA con RUC o BOLETA con DNI)
+    // MEJORADO: Ahora también busca DNI automáticamente para BOLETAS
     let timeoutBusqueda = null;
     $("#clienteDoc").on('input', function() {
         let doc = $(this).val().trim().replace(/[^0-9]/g, '');
         let tipo = $("#tipoComprobante").val();
 
         // Resetear validacion cuando cambia el documento (solo si facturacion activa)
-        if (tipo === 'FACTURA' && facturaElectronicaActiva) {
+        if ((tipo === 'FACTURA' || tipo === 'BOLETA') && facturaElectronicaActiva) {
             rucValidado = false;
             rucActivo = false;
         }
 
-        // Solo buscar automaticamente en FACTURA con RUC de 11 digitos
-        // Y solo si la facturacion electronica esta activa
-        if (tipo === 'FACTURA' && doc.length === 11 && facturaElectronicaActiva) {
-            // Cancelar busqueda anterior si existe
-            if (timeoutBusqueda) clearTimeout(timeoutBusqueda);
+        // Cancelar busqueda anterior si existe
+        if (timeoutBusqueda) clearTimeout(timeoutBusqueda);
 
-            // Esperar 500ms antes de buscar (evitar multiples llamadas)
+        // CASO 1: FACTURA con RUC de 11 dígitos - buscar automáticamente
+        if (tipo === 'FACTURA' && doc.length === 11 && facturaElectronicaActiva) {
+            timeoutBusqueda = setTimeout(function() {
+                buscarDocumento();
+            }, 500);
+        }
+
+        // CASO 2: BOLETA con DNI de 8 dígitos - buscar automáticamente (NUEVO)
+        // Esto permite autocompletar datos del cliente al emitir boletas
+        if (tipo === 'BOLETA' && doc.length === 8 && facturaElectronicaActiva) {
             timeoutBusqueda = setTimeout(function() {
                 buscarDocumento();
             }, 500);
@@ -1037,8 +2471,10 @@ function agregarRapido(codigoBusqueda) {
     });
 
     // Funcion para buscar documento en SUNAT/RENIEC
+    // MEJORADO: Soporta DNI (RENIEC) para boletas y RUC (SUNAT) para facturas
     function buscarDocumento() {
         let doc = $("#clienteDoc").val().trim().replace(/[^0-9]/g, '');
+        let tipoComprobante = $("#tipoComprobante").val();
 
         if (!doc || (doc.length !== 8 && doc.length !== 11)) {
             mostrarFeedback('Ingrese un DNI (8 digitos) o RUC (11 digitos)', 'warning');
@@ -1047,7 +2483,7 @@ function agregarRapido(codigoBusqueda) {
 
         // Mostrar loading
         $("#btnBuscarDoc").prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-        mostrarFeedback('Consultando...', 'info');
+        mostrarFeedback('Consultando en ' + (doc.length === 8 ? 'RENIEC' : 'SUNAT') + '...', 'info');
 
         $.ajax({
             url: '/ventas/api/consultar-documento',
@@ -1066,10 +2502,24 @@ function agregarRapido(codigoBusqueda) {
                         $("#clienteDireccion").val(resp.direccion);
                     }
 
-                    // Marcar RUC como validado
+                    // Guardar teléfono del cliente para WhatsApp
+                    if (resp.telefono) {
+                        clienteTelefonoActual = resp.telefono;
+                        $("#clienteTelefono").val(resp.telefono);
+                    }
+
+                    // Marcar documento como validado
                     rucValidado = true;
 
-                    // Verificar si esta ACTIVO/HABIDO
+                    // BOLETA (DNI): No requiere validación ACTIVO/HABIDO
+                    if (tipoComprobante === 'BOLETA' && doc.length === 8) {
+                        rucActivo = true; // No aplica restricción para boletas
+                        let nombreEncontrado = resp.nombreCompleto || resp.razonSocial || 'Datos obtenidos';
+                        mostrarFeedback('Cliente encontrado: ' + nombreEncontrado, 'success');
+                        return;
+                    }
+
+                    // FACTURA (RUC): Requiere validación ACTIVO/HABIDO
                     let esActivo = resp.activo === true;
                     rucActivo = esActivo;
 
@@ -1082,7 +2532,7 @@ function agregarRapido(codigoBusqueda) {
                     if (esActivo) {
                         mostrarFeedback('Contribuyente ACTIVO/HABIDO' + estadoMsg, 'success');
                     } else {
-                        // BLOQUEAR: Contribuyente no activo
+                        // BLOQUEAR: Contribuyente no activo (solo para FACTURA)
                         mostrarFeedback('BLOQUEADO: ' + resp.estado + '/' + resp.condicion, 'danger');
                         Swal.fire({
                             icon: 'error',
@@ -1096,7 +2546,7 @@ function agregarRapido(codigoBusqueda) {
                     }
                 } else {
                     rucValidado = true;
-                    rucActivo = false;
+                    rucActivo = (tipoComprobante === 'BOLETA'); // Para boletas no bloquear
                     mostrarFeedback(resp.error || 'No se encontraron datos', 'danger');
                 }
             },
@@ -1131,6 +2581,401 @@ function agregarRapido(codigoBusqueda) {
     $(document).ready(function() {
         actualizarVisibilidadBusqueda();
     });
+
+    // =============================================
+    // WHATSAPP - ENVÍO DE COMPROBANTE
+    // =============================================
+
+    /**
+     * Muestra el modal de venta exitosa con opción de enviar por WhatsApp
+     * @param {Object} resp - Respuesta del servidor (id, serie, numero, etc)
+     * @param {Object} datosVenta - Datos de la venta para el mensaje
+     */
+    function mostrarModalVentaExitosa(resp, datosVenta) {
+        // Obtener teléfono del cliente del campo visible o de la variable
+        let telefonoCliente = $("#clienteTelefono").val() || clienteTelefonoActual || '';
+
+        Swal.fire({
+            title: '<i class="fas fa-check-circle text-success"></i> ¡Venta Exitosa!',
+            html: `
+                <div class="text-center mb-3">
+                    <h4 class="text-primary font-weight-bold">${resp.serie}-${resp.numero}</h4>
+                    <p class="text-muted mb-0">Comprobante generado correctamente</p>
+                </div>
+                <hr>
+                <div class="text-left">
+                    <p class="mb-2"><strong>Cliente:</strong> ${datosVenta.cliente}</p>
+                    <p class="mb-2"><strong>Total:</strong> <span class="text-success font-weight-bold">S/ ${datosVenta.total.toFixed(2)}</span></p>
+                </div>
+                <hr>
+                <div class="form-group text-left mb-0">
+                    <label class="font-weight-bold text-success">
+                        <i class="fab fa-whatsapp"></i> Enviar comprobante por WhatsApp
+                    </label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-success text-white">+51</span>
+                        </div>
+                        <input type="tel" id="inputWhatsAppCelular" class="form-control"
+                               placeholder="Ej: 999888777" maxlength="9"
+                               value="${telefonoCliente}"
+                               pattern="[0-9]{9}">
+                    </div>
+                    <small class="text-muted">Opcional: Ingrese el celular para enviar el comprobante</small>
+                </div>
+            `,
+            icon: null,
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: '<i class="fab fa-whatsapp"></i> Enviar WhatsApp',
+            confirmButtonColor: '#25D366',
+            denyButtonText: '<i class="fas fa-print"></i> Solo Imprimir',
+            denyButtonColor: '#6c757d',
+            cancelButtonText: 'Cerrar',
+            focusConfirm: false,
+            allowOutsideClick: false,
+            customClass: {
+                confirmButton: 'btn btn-success btn-lg mr-2',
+                denyButton: 'btn btn-secondary btn-lg mr-2',
+                cancelButton: 'btn btn-light btn-lg'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Enviar por WhatsApp
+                let celular = document.getElementById('inputWhatsAppCelular').value.trim();
+                if (celular && celular.length >= 9) {
+                    enviarComprobanteWhatsApp(celular, resp, datosVenta);
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Número requerido',
+                        text: 'Ingrese un número de celular válido (9 dígitos)',
+                        confirmButtonText: 'Entendido'
+                    });
+                    return; // No limpiar el carrito
+                }
+                // Imprimir también
+                imprimirPopup('/ventas/imprimir/' + resp.id);
+            } else if (result.isDenied) {
+                // Solo imprimir
+                imprimirPopup('/ventas/imprimir/' + resp.id);
+            }
+
+            // Limpiar carrito y formulario
+            limpiarDespuesDeVenta();
+        });
+    }
+
+    /**
+     * Construye y envía el mensaje de WhatsApp
+     */
+    function enviarComprobanteWhatsApp(celular, resp, datosVenta) {
+        // Obtener nombre de la empresa (puedes configurarlo)
+        const nombreEmpresa = /*[[${@environment.getProperty('app.empresa.nombre', 'Librería H & J')}]]*/ 'Librería H & J';
+
+        // Construir mensaje formateado
+        let mensaje = `*${nombreEmpresa}*\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n`;
+        mensaje += `📄 *Comprobante:* ${datosVenta.tipoComprobante}\n`;
+        mensaje += `🔢 *N°:* ${resp.serie}-${resp.numero}\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+        mensaje += `👤 *Cliente:* ${datosVenta.cliente}\n\n`;
+
+        mensaje += `📦 *Detalle:*\n`;
+        mensaje += `${datosVenta.items}\n\n`;
+
+        mensaje += `━━━━━━━━━━━━━━━━━━\n`;
+        mensaje += `💰 *TOTAL: S/ ${datosVenta.total.toFixed(2)}*\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+        mensaje += `¡Gracias por su compra! 🙏\n`;
+        mensaje += `Lo esperamos pronto.`;
+
+        // Limpiar número (solo dígitos)
+        celular = celular.replace(/\D/g, '');
+
+        // Abrir WhatsApp Web/App
+        const urlWhatsApp = `https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`;
+        window.open(urlWhatsApp, '_blank');
+
+        // Toast de confirmación
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Abriendo WhatsApp...',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+
+    /**
+     * Limpia el carrito y formulario después de una venta
+     */
+    function limpiarDespuesDeVenta() {
+        carrito = [];
+        dibujarCarrito();
+        $("#cliente").val('');
+        $("#clienteDoc").val('');
+        $("#clienteDireccion").val('');
+        $("#clienteTelefono").val('');
+        $("#docFeedback").hide();
+        $("#formaPago").val("CONTADO").trigger('change');
+        $("#montoInicial").val("0.00");
+        // Resetear teléfono del cliente
+        clienteTelefonoActual = '';
+        // Mostrar visor y abrir buscador
+        $('#visorProducto').removeClass('colapsado');
+        $('body').removeClass('carrito-lleno');
+        // Resetear cliente badge y colapsar formulario
+        actualizarClienteBadge();
+        colapsarFormCliente();
+        // Autofocus enterprise
+        abrirBuscadorConFoco();
+    }
+
+    // Variable global para guardar teléfono del cliente consultado
+    let clienteTelefonoActual = '';
+
+    // =============================================
+    // AUTOFOCUS ENTERPRISE - SIN MOUSE
+    // =============================================
+
+    /**
+     * Abre el buscador Select2 Y enfoca el campo de búsqueda
+     * para que el operador pueda escribir/escanear inmediatamente
+     */
+    function abrirBuscadorConFoco() {
+        setTimeout(function() {
+            // Abrir el dropdown
+            $('#busquedaAjax').select2('open');
+
+            // Esperar a que se abra y enfocar el campo de búsqueda
+            setTimeout(function() {
+                let searchField = document.querySelector('.select2-container--open .select2-search__field');
+                if (searchField) {
+                    searchField.focus();
+                }
+            }, 100);
+        }, 200);
+    }
+
+    // =============================================
+    // CLIENTE BADGE - METADATO NO FORMULARIO
+    // =============================================
+
+    /**
+     * Expande el formulario de cliente (oculta el badge)
+     */
+    function expandirFormCliente() {
+        $('#clienteBadgeContainer').hide();
+        $('#clienteFormSection').addClass('expanded');
+        $('#clienteDoc').focus();
+    }
+
+    /**
+     * Colapsa el formulario de cliente (muestra el badge)
+     */
+    function colapsarFormCliente() {
+        // Actualizar el badge con los datos actuales
+        actualizarClienteBadge();
+        $('#clienteFormSection').removeClass('expanded');
+        $('#clienteBadgeContainer').show();
+    }
+
+    /**
+     * Actualiza el badge del cliente con los datos del formulario
+     */
+    function actualizarClienteBadge() {
+        let nombre = $('#cliente').val() || 'Consumidor Final';
+        let doc = $('#clienteDoc').val();
+
+        $('#clienteBadgeNombre').text(nombre);
+
+        if (doc && doc.length >= 8) {
+            let tipoDoc = doc.length === 11 ? 'RUC' : 'DNI';
+            $('#clienteBadgeDoc').text('· ' + tipoDoc + ' ' + doc);
+        } else {
+            $('#clienteBadgeDoc').text('');
+        }
+    }
+
+    // Actualizar badge cuando cambian los campos
+    $(document).ready(function() {
+        $('#cliente, #clienteDoc').on('change blur', function() {
+            actualizarClienteBadge();
+        });
+    });
+
+    // =============================================
+    // TECLADO POS ENTERPRISE - FUNCIONES
+    // =============================================
+
+    /**
+     * IntersectionObserver para feedback visual del Total Sticky
+     * Agrega sombra cuando el total está pegado arriba
+     */
+    function initStickyObserver() {
+        const totalBox = document.querySelector('.total-box');
+        if (!totalBox) return;
+
+        // Crear un elemento sentinel arriba del total para detectar scroll
+        const sentinel = document.createElement('div');
+        sentinel.style.cssText = 'height: 1px; position: absolute; top: 0; left: 0; right: 0; pointer-events: none;';
+        totalBox.parentElement.insertBefore(sentinel, totalBox);
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                // Cuando el sentinel sale de vista, el total está sticky
+                totalBox.classList.toggle('is-sticky', !entry.isIntersecting);
+            },
+            { threshold: [0], rootMargin: '0px' }
+        );
+
+        observer.observe(sentinel);
+    }
+
+    /**
+     * F8: Limpiar venta con confirmación obligatoria
+     * NUNCA borra sin preguntar
+     */
+    function limpiarConConfirmacion() {
+        if (carrito.length === 0) {
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'info',
+                title: 'El carrito ya está vacío',
+                showConfirmButton: false,
+                timer: 1500
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: '¿Limpiar venta?',
+            html: `<p>Se eliminarán <strong>${carrito.length}</strong> productos del carrito.</p>
+                   <p class="text-danger"><strong>Total: S/ ${totalVenta.toFixed(2)}</strong></p>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, limpiar',
+            cancelButtonText: 'Cancelar',
+            focusCancel: true // Foco en cancelar por seguridad
+        }).then((result) => {
+            if (result.isConfirmed) {
+                carrito = [];
+                dibujarCarrito();
+                $("#cliente").val('');
+                $("#clienteDoc").val('');
+                $("#clienteDireccion").val('');
+                $("#clienteTelefono").val('');
+                $("#docFeedback").hide();
+                $("#formaPago").val("CONTADO").trigger('change');
+                $("#montoInicial").val("0.00");
+                clienteTelefonoActual = '';
+                $('#visorProducto').removeClass('colapsado');
+                $('body').removeClass('carrito-lleno');
+                actualizarClienteBadge();
+                colapsarFormCliente();
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top',
+                    icon: 'success',
+                    title: 'Venta limpiada',
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+
+                // Autofocus para siguiente venta
+                setTimeout(() => abrirBuscadorConFoco(), 300);
+            }
+        });
+    }
+
+    /**
+     * ESC: Manejar escape de forma segura
+     * - Cierra modales abiertos
+     * - Sale de inputs activos
+     * - Vuelve al buscador
+     */
+    function manejarEscape() {
+        // 1. Si hay un modal SweetAlert, dejarlo manejar el ESC
+        if (document.querySelector('.swal2-container')) {
+            return;
+        }
+
+        // 2. Si el formulario de cliente está expandido, colapsarlo
+        if ($('#clienteFormSection').hasClass('expanded')) {
+            colapsarFormCliente();
+            abrirBuscadorConFoco();
+            return;
+        }
+
+        // 3. Si el Select2 está abierto, cerrarlo y enfocar
+        if ($('.select2-container--open').length > 0) {
+            $('#busquedaAjax').select2('close');
+            return;
+        }
+
+        // 4. Si hay foco en algún input, quitarlo y volver al buscador
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT')) {
+            activeElement.blur();
+            abrirBuscadorConFoco();
+            return;
+        }
+
+        // 5. Por defecto, volver al buscador
+        abrirBuscadorConFoco();
+    }
+
+    /**
+     * Protección contra doble ENTER en cobro
+     * Evita procesar la venta dos veces
+     */
+    let procesandoVenta = false;
+
+    // =============================================
+    // CONEXIÓN MÓVIL - QR CODE
+    // =============================================
+    function mostrarQRPOS() {
+        Swal.fire({
+            title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
+            html: '<div class="text-center mb-3">' +
+                  '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(serverUrlPOS + '/ventas/nueva') + '" ' +
+                  'alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
+                  '</div>' +
+                  '<p class="mb-2"><strong>URL del POS:</strong></p>' +
+                  '<code>' + serverUrlPOS + '/ventas/nueva</code>' +
+                  '<hr>' +
+                  '<div class="alert alert-warning small text-left mb-0">' +
+                  '<i class="fas fa-exclamation-triangle mr-1"></i>' +
+                  '<strong>Nota:</strong> Si ve advertencia de seguridad, haga clic en: ' +
+                  '<code>Opciones Avanzadas → Continuar</code>' +
+                  '</div>',
+            width: 380,
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: '<i class="fas fa-copy mr-1"></i> Copiar URL',
+            confirmButtonColor: '#17a2b8'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                navigator.clipboard.writeText(serverUrlPOS + '/ventas/nueva');
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'URL copiada',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            }
+        });
+    }
 </script>
 </body>
 </html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='toma-inventario'">
+<head>
+    <title>Toma de Inventario</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-clipboard-check"></i> Toma de Inventario</h1>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <a th:if="${!hayTomaAbierta}" href="/toma-inventario/nueva" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Toma de Inventario
+                    </a>
+                    <span th:if="${hayTomaAbierta}" class="badge badge-warning p-2">
+                        <i class="fas fa-exclamation-triangle"></i> Hay una toma en proceso
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Alertas -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${warning}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+            <div th:if="${info}" class="alert alert-info alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-info-circle mr-2"></i><span th:text="${info}"></span>
+            </div>
+
+            <!-- Tarjetas de resumen -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="info-box bg-info">
+                        <span class="info-box-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Total Tomas</span>
+                            <span class="info-box-number" th:text="${totalItems}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Tomas -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Historial de Tomas de Inventario</h3>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Código</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Cierre</th>
+                                <th>Usuario</th>
+                                <th class="text-center">Productos</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="toma : ${tomas}">
+                                <td>
+                                    <strong th:text="${toma.codigo}">TI-2024-0001</strong>
+                                </td>
+                                <td th:text="${#temporals.format(toma.fechaInicio, 'dd/MM/yyyy HH:mm')}">01/01/2024</td>
+                                <td>
+                                    <span th:if="${toma.fechaCierre}" th:text="${#temporals.format(toma.fechaCierre, 'dd/MM/yyyy HH:mm')}"></span>
+                                    <span th:unless="${toma.fechaCierre}" class="text-muted">-</span>
+                                </td>
+                                <td th:text="${toma.usuario?.nombreCompleto ?: toma.usuario?.username}">Admin</td>
+                                <td class="text-center">
+                                    <span class="badge badge-secondary" th:text="${toma.totalProductos}">0</span>
+                                </td>
+                                <td class="text-center">
+                                    <span th:if="${toma.estado == 'ABIERTO'}" class="badge badge-warning">
+                                        <i class="fas fa-unlock"></i> ABIERTO
+                                    </span>
+                                    <span th:if="${toma.estado == 'PROCESADO'}" class="badge badge-success">
+                                        <i class="fas fa-check"></i> PROCESADO
+                                    </span>
+                                    <span th:if="${toma.estado == 'CANCELADO'}" class="badge badge-secondary">
+                                        <i class="fas fa-ban"></i> CANCELADO
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <a th:href="@{/toma-inventario/conteo/{id}(id=${toma.id})}"
+                                       class="btn btn-sm btn-info" title="Ver/Editar Conteo">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(tomas)}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                    No hay tomas de inventario registradas
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="card-footer" th:if="${totalPages > 1}">
+                    <nav>
+                        <ul class="pagination pagination-sm m-0 float-right">
+                            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                <a class="page-link" th:href="@{/toma-inventario(page=${currentPage - 1})}">&laquo;</a>
+                            </li>
+                            <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                                class="page-item" th:classappend="${i == currentPage} ? 'active'">
+                                <a class="page-link" th:href="@{/toma-inventario(page=${i})}" th:text="${i + 1}">1</a>
+                            </li>
+                            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                                <a class="page-link" th:href="@{/toma-inventario(page=${currentPage + 1})}">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+</body>
+</html>

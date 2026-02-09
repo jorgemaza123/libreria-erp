@@ -7,8 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-    <title>Librería H & J</title>
+    <title>Librería CHROMA</title>
 
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="icon" type="image/png" sizes="192x192" th:href="@{/images/logo.png}">
+    <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
@@ -53,6 +56,14 @@
             </div>
 
             <ul class="navbar-nav ml-auto">
+                <!-- Botón de conexión móvil -->
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="toggleBannerMovil()" title="Conexión Móvil" style="position: relative;">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span class="badge badge-info navbar-badge" style="font-size: 8px;">WiFi</span>
+                    </a>
+                </li>
+
                 <!-- Campana de Notificaciones -->
                 <li class="nav-item dropdown" id="notificacionesDropdown">
                     <a class="nav-link" data-toggle="dropdown" href="#" role="button" style="position: relative;">
@@ -165,8 +176,8 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'productos_faltantes' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'productos_faltantes' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
                                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -192,6 +203,16 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
+                                    <a href="/listas-escolares" class="nav-link" th:classappend="${active == 'listas_escolares' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon text-success"></i><p>Listas Escolares</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/listas-escolares/faltantes" class="nav-link" th:classappend="${active == 'productos_faltantes' ? 'active' : ''}">
+                                        <i class="fas fa-exclamation-circle nav-icon text-warning"></i><p>Productos Faltantes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a href="/ordenes/lista" class="nav-link" th:classappend="${active == 'servicios' ? 'active' : ''}">
                                         <i class="fas fa-tools nav-icon"></i><p>Lista Servicios</p>
                                     </a>
@@ -214,8 +235,8 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>
                                 <p>Logística <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -227,7 +248,12 @@
                                 </li>
                                 <li class="nav-item">
                                     <a href="/inventario/ajuste" class="nav-link text-warning" th:classappend="${active == 'ajuste' ? 'active' : ''}">
-                                        <i class="nav-icon fas fa-clipboard-check"></i><p>Ajuste de Inventario</p>
+                                        <i class="nav-icon fas fa-balance-scale"></i><p>Ajuste Individual</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/toma-inventario" class="nav-link text-info" th:classappend="${active == 'toma-inventario' ? 'active' : ''}">
+                                        <i class="nav-icon fas fa-clipboard-check"></i><p>Toma de Inventario</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -323,8 +349,8 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'configuracion' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'configuracion' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-cogs"></i>
                                 <p>Configuración <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -332,6 +358,11 @@
                                 <li class="nav-item">
                                     <a href="/configuracion/general" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
                                         <i class="far fa-circle nav-icon"></i><p>General</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/configuracion/red/diagnostico" class="nav-link" th:classappend="${active == 'red' ? 'active' : ''}">
+                                        <i class="fas fa-wifi nav-icon text-info"></i><p>Red / Conexión Móvil</p>
                                     </a>
                                 </li>
                                 <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
@@ -373,6 +404,39 @@
         </aside>
 
         <div class="content-wrapper">
+            <!-- Banner de conexión móvil (colapsable) -->
+            <div id="bannerMovil" class="alert alert-info alert-dismissible fade show m-2 mb-0"
+                 style="display: none; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); border: none; border-radius: 10px;">
+                <button type="button" class="close text-white" data-dismiss="alert" onclick="ocultarBannerMovil()">&times;</button>
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <i class="fas fa-mobile-alt fa-2x text-white"></i>
+                    </div>
+                    <div class="flex-grow-1 text-white">
+                        <strong><i class="fas fa-wifi mr-1"></i> Acceso desde Celular</strong>
+                        <p class="mb-1 small">
+                            Conéctese al mismo WiFi y entre a:
+                            <a th:href="${serverUrl}" class="text-warning font-weight-bold"
+                               style="text-decoration: underline;" target="_blank" th:text="${serverUrl}">
+                                https://192.168.1.100:8443
+                            </a>
+                            <button class="btn btn-xs btn-light ml-2" onclick="copiarUrl()" title="Copiar URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </p>
+                        <small class="text-white-50">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Si ve advertencia de seguridad: clic en "Opciones Avanzadas" → "Continuar". Es normal en red local.
+                        </small>
+                    </div>
+                    <div class="ml-3">
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="mostrarQR()">
+                            <i class="fas fa-qrcode mr-1"></i> Ver QR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <section layout:fragment="content"></section>
         </div>
 
@@ -728,7 +792,81 @@
             $(document).ready(function() {
                 cargarNotificaciones();
                 setInterval(cargarNotificaciones, 60000);
+
+                // Verificar si mostrar banner móvil al inicio
+                if (localStorage.getItem('mostrarBannerMovil') === 'true') {
+                    $('#bannerMovil').show();
+                }
             });
+
+            // ============================================
+            // FUNCIONES DE CONEXIÓN MÓVIL
+            // ============================================
+            var serverUrlGlobal = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+
+            function toggleBannerMovil() {
+                var banner = $('#bannerMovil');
+                if (banner.is(':visible')) {
+                    banner.slideUp(300);
+                    localStorage.setItem('mostrarBannerMovil', 'false');
+                } else {
+                    banner.slideDown(300);
+                    localStorage.setItem('mostrarBannerMovil', 'true');
+                }
+            }
+
+            function ocultarBannerMovil() {
+                localStorage.setItem('mostrarBannerMovil', 'false');
+            }
+
+            function copiarUrl() {
+                navigator.clipboard.writeText(serverUrlGlobal).then(function() {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'URL copiada al portapapeles',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                }).catch(function(err) {
+                    // Fallback para navegadores antiguos
+                    var tempInput = document.createElement('input');
+                    tempInput.value = serverUrlGlobal;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    alert('URL copiada: ' + serverUrlGlobal);
+                });
+            }
+
+            function mostrarQR() {
+                Swal.fire({
+                    title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
+                    html: '<div id="qrcode-container" class="text-center mb-3">' +
+                          '<div class="d-flex justify-content-center">' +
+                          '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(serverUrlGlobal) + '" alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
+                          '</div>' +
+                          '</div>' +
+                          '<p class="mb-2"><strong>URL:</strong> <code>' + serverUrlGlobal + '</code></p>' +
+                          '<div class="alert alert-warning small text-left mb-0">' +
+                          '<i class="fas fa-exclamation-triangle mr-1"></i>' +
+                          '<strong>Nota:</strong> Al entrar verá una advertencia de seguridad. ' +
+                          'Esto es normal en redes locales. Haga clic en:<br>' +
+                          '<code>Opciones Avanzadas → Continuar de todos modos</code>' +
+                          '</div>',
+                    width: 400,
+                    showCloseButton: true,
+                    showConfirmButton: true,
+                    confirmButtonText: '<i class="fas fa-copy mr-1"></i> Copiar URL',
+                    confirmButtonColor: '#17a2b8'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        copiarUrl();
+                    }
+                });
+            }
         </script>
 
         <th:block layout:fragment="scripts"></th:block>

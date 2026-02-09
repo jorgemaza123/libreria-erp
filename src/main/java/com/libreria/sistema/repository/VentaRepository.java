@@ -3,6 +3,7 @@ package com.libreria.sistema.repository;
 import com.libreria.sistema.model.Venta;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,25 @@ import java.util.List;
 import java.util.Optional;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
+
+    // =====================================================
+    //  CONSULTAS CON @EntityGraph PARA EVITAR N+1
+    // =====================================================
+
+    /**
+     * Lista ventas con items y productos pre-cargados (evita N+1).
+     * Usar para listados donde se necesita acceder a los detalles.
+     */
+    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin ORDER BY v.fechaEmision DESC")
+    List<Venta> findByFechaEmisionBetweenWithDetalles(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Lista ventas con items y productos para reportes paginados (evita N+1).
+     */
+    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
+    @Query("SELECT v FROM Venta v ORDER BY v.fechaEmision DESC, v.id DESC")
+    Page<Venta> findAllWithDetallesPaginated(Pageable pageable);
 
     // =====================================================
     //  CONSULTAS OPTIMIZADAS PARA REPORTES (FILTRO EN BD)

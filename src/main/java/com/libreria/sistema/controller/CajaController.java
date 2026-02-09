@@ -137,4 +137,14 @@ public class CajaController {
 
         return ResponseEntity.ok(datos);
     }
+
+    /**
+     * API endpoint para verificar créditos pendientes del día.
+     * Se usa antes de cerrar caja para alertar al usuario.
+     */
+    @GetMapping("/api/creditos-pendientes-hoy")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> obtenerCreditosPendientesHoy() {
+        return ResponseEntity.ok(cajaService.contarCreditosPendientesHoy());
+    }
 }

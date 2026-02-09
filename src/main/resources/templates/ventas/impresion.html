@@ -33,8 +33,10 @@
         <div class="row mb-4">
             <div class="col-8 company-info">
                 <h2 th:text="${config.nombreEmpresa}">NOMBRE DE LA EMPRESA S.A.C.</h2>
-                <p class="mb-0" th:text="${config.direccion}">Av. Principal 123, Lima</p>
-                <p class="mb-0" th:text="'Teléfono: ' + ${config.telefono}"></p>
+                <!-- Usar dirección de ticket si está definida, sino usar la de empresa -->
+                <p class="mb-0" th:text="${config.direccionTicket != null and !config.direccionTicket.isEmpty()} ? ${config.direccionTicket} : ${config.direccion}">Av. Principal 123, Lima</p>
+                <!-- Usar teléfono de ticket si está definido, sino usar el de empresa -->
+                <p class="mb-0" th:text="'Teléfono: ' + (${config.telefonoTicket != null and !config.telefonoTicket.isEmpty()} ? ${config.telefonoTicket} : ${config.telefono})"></p>
                 <p class="mb-0" th:text="'Email: ' + ${config.email}"></p>
             </div>
             <div class="col-4">
@@ -123,13 +125,44 @@
             </div>
         </div>
 
-        <!-- CUENTAS BANCARIAS -->
-        <div th:if="${config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" class="row mt-3">
+        <!-- CUENTAS BANCARIAS (condicional) -->
+        <div th:if="${(config.mostrarCuentasBancariasEnTicket == null or config.mostrarCuentasBancariasEnTicket == true) and config.cuentasBancarias != null and !config.cuentasBancarias.isEmpty()}" class="row mt-3">
             <div class="col-12">
                 <div class="p-2 border rounded text-center" style="background-color: #f8f9fa;">
                     <strong>CUENTAS BANCARIAS:</strong>
                     <p class="mb-0" style="white-space: pre-line; font-size: 0.9rem;" th:text="${config.cuentasBancarias}"></p>
                 </div>
+            </div>
+        </div>
+
+        <!-- REDES SOCIALES (condicional) -->
+        <div th:if="${config.mostrarRedesSocialesEnTicket == true}" class="row mt-2">
+            <div class="col-12 text-center" style="font-size: 0.85rem;">
+                <span th:if="${config.facebook != null and !config.facebook.isEmpty()}">
+                    <i class="fab fa-facebook text-primary"></i> <span th:text="${config.facebook}"></span>
+                </span>
+                <span th:if="${config.instagram != null and !config.instagram.isEmpty()}" class="ml-3">
+                    <i class="fab fa-instagram text-danger"></i> <span th:text="${config.instagram}"></span>
+                </span>
+                <span th:if="${config.whatsapp != null and !config.whatsapp.isEmpty()}" class="ml-3">
+                    <i class="fab fa-whatsapp text-success"></i> <span th:text="${config.whatsapp}"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- MENSAJE PROMOCIONAL -->
+        <div th:if="${config.mensajePromoTicket != null and !config.mensajePromoTicket.isEmpty()}" class="row mt-2">
+            <div class="col-12 text-center">
+                <div class="p-2 border rounded" style="background-color: #fff3cd;">
+                    <strong th:text="${config.mensajePromoTicket}"></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENSAJE DE PIE -->
+        <div th:if="${config.mensajePieTicket != null and !config.mensajePieTicket.isEmpty()}" class="row mt-2">
+            <div class="col-12 text-center text-muted" style="font-size: 0.9rem;">
+                <span th:text="${config.mensajePieTicket}"></span>
             </div>
         </div>
 

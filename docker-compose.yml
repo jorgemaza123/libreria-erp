@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: sistema-libreria:v1
+    container_name: sistema_app
+    ports:
+      - "8443:8443" # PUERTO HTTPS SEGURO
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/libreria_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=1234
+      - SERVER_PORT=8443
+      - SERVER_SSL_ENABLED=true
+    volumes:
+      # Persistir el certificado para que no pida confirmación cada vez que se reinicia
+      - ./datos_seguridad:/app/datos_seguridad
+    restart: always
+
+  db:
+    image: postgres:15
+    container_name: sistema_db
+    environment:
+      POSTGRES_DB: libreria_db
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_USER: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups_cliente:/backups # CARPETA QUE EL CLIENTE PUEDE SINCRONIZAR CON GOOGLE DRIVE
+      - ./scripts:/scripts
+    restart: always
+
+  # Cron para Backups Automáticos (Comprimidos)
+  backup-cron:
+    image: postgres:15
+    container_name: sistema_backup
+    volumes:
+      - ./backups_cliente:/backups
+      - ./scripts:/scripts
+    environment:
+      PGPASSWORD: 1234
+    command: >
+      bash -c "chmod +x /scripts/backup.sh && 
+      while true; do 
+        sleep 86400; # Respaldo cada 24 horas
+        /scripts/backup.sh; 
+      done"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

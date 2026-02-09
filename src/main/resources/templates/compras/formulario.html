@@ -1,242 +1,252 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='compras'">
+<head>
+    <title>Registrar Compra</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='compras')}"></aside>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Registrar Ingreso de Mercadería</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/compras/lista}">Compras</a></li>
+                        <li class="breadcrumb-item active">Nueva</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1>Registrar Ingreso de Mercadería</h1></div>
-        </section>
-
-        <section class="content">
-            <div class="container-fluid">
-                <form id="formCompra">
-                    <div class="card card-navy">
-                        <div class="card-header"><h3 class="card-title">Datos del Proveedor y Comprobante</h3></div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label>Proveedor</label>
-                                        <div class="input-group">
-                                            <select class="form-control select2" id="proveedor" required>
-                                                <option value="">Seleccione...</option>
-                                                <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
-                                            </select>
-                                            <div class="input-group-append">
-                                                <a href="/proveedores/nuevo" class="btn btn-success" title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
-                                            </div>
+    <section class="content">
+        <div class="container-fluid">
+            <form id="formCompra">
+                <div class="card card-navy">
+                    <div class="card-header"><h3 class="card-title">Datos del Proveedor y Comprobante</h3></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Proveedor</label>
+                                    <div class="input-group">
+                                        <select class="form-control select2" id="proveedor" required>
+                                            <option value="">Seleccione...</option>
+                                            <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <a th:href="@{/proveedores/nuevo}" class="btn btn-success" title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Tipo Doc.</label>
-                                        <select class="form-control" id="tipoDoc">
-                                            <option value="FACTURA">FACTURA</option>
-                                            <option value="BOLETA">BOLETA</option>
-                                            <option value="GUIA">GUÍA REMISIÓN</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Nro. Comprobante</label>
-                                        <input type="text" class="form-control" id="nroDoc" placeholder="Ej: F001-4520" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Observaciones</label>
-                                        <input type="text" class="form-control" id="obs" placeholder="Opcional">
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="card card-navy card-outline">
-                        <div class="card-header"><h3 class="card-title">Detalle de Productos</h3></div>
-                        <div class="card-body">
-                            <div class="row mb-3 align-items-end">
-                                <div class="col-md-6">
-                                    <label>Buscar Producto</label>
-                                    <select class="form-control select2" id="productoSelect">
-                                        <option value="">Buscar por nombre o código...</option>
-                                        <option th:each="prod : ${productos}" 
-                                                th:value="${prod.id}" 
-                                                th:data-costo="${prod.precioCompra}"
-                                                th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Tipo Doc.</label>
+                                    <select class="form-control" id="tipoDoc">
+                                        <option value="FACTURA">FACTURA</option>
+                                        <option value="BOLETA">BOLETA</option>
+                                        <option value="GUIA">GUÍA REMISIÓN</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
-                                    <label>Costo Unit. (S/)</label>
-                                    <input type="number" step="0.01" class="form-control" id="costoInput" placeholder="0.00">
-                                </div>
-                                <div class="col-md-2">
-                                    <label>Cantidad</label>
-                                    <input type="number" class="form-control" id="cantInput" value="1" min="1">
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-success btn-block" onclick="agregarItem()">
-                                        <i class="fas fa-plus"></i> Agregar
-                                    </button>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Nro. Comprobante</label>
+                                    <input type="text" class="form-control" id="nroDoc" placeholder="Ej: F001-4520" required>
                                 </div>
                             </div>
-
-                            <table class="table table-bordered table-striped">
-                                <thead class="bg-navy">
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th width="100">Cantidad</th>
-                                        <th width="150">Costo Unit.</th>
-                                        <th width="150">Subtotal</th>
-                                        <th width="50"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaItems"></tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
-                                        <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span id="totalVenta">0.00</span></td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        <div class="card-footer text-right">
-                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> REGISTRAR COMPRA</button>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Observaciones</label>
+                                    <input type="text" class="form-control" id="obs" placeholder="Opcional">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </form>
-            </div>
-        </section>
-    </div>
+                </div>
+
+                <div class="card card-navy card-outline">
+                    <div class="card-header"><h3 class="card-title">Detalle de Productos</h3></div>
+                    <div class="card-body">
+                        <div class="row mb-3 align-items-end">
+                            <div class="col-md-6">
+                                <label>Buscar Producto</label>
+                                <select class="form-control select2" id="productoSelect">
+                                    <option value="">Buscar por nombre o código...</option>
+                                    <option th:each="prod : ${productos}"
+                                            th:value="${prod.id}"
+                                            th:data-costo="${prod.precioCompra}"
+                                            th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Costo Unit. (S/)</label>
+                                <input type="number" step="0.01" class="form-control" id="costoInput" placeholder="0.00">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Cantidad</label>
+                                <input type="number" class="form-control" id="cantInput" value="1" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-success btn-block" onclick="agregarItem()">
+                                    <i class="fas fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered table-striped">
+                            <thead class="bg-navy">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th width="100">Cantidad</th>
+                                    <th width="150">Costo Unit.</th>
+                                    <th width="150">Subtotal</th>
+                                    <th width="50"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaItems"></tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
+                                    <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span id="totalVenta">0.00</span></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> REGISTRAR COMPRA</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<th:block layout:fragment="scripts">
+    <script>
+        let carrito = [];
 
-<script>
-    let carrito = [];
+        $(document).ready(function() {
+            $('.select2').select2({ theme: 'bootstrap4' });
 
-    $(document).ready(function() {
-        $('.select2').select2({ theme: 'bootstrap4' });
-        
-        // Al seleccionar producto, cargar su último costo
-        $('#productoSelect').on('change', function() {
-            let costo = $(this).find(':selected').data('costo');
-            $('#costoInput').val(costo || '');
-            $('#cantInput').focus();
-        });
-    });
-
-    function agregarItem() {
-        let id = $('#productoSelect').val();
-        let nombre = $('#productoSelect option:selected').text();
-        let cantidad = parseInt($('#cantInput').val());
-        let costo = parseFloat($('#costoInput').val());
-
-        if (!id || !cantidad || !costo) {
-            Swal.fire('Error', 'Complete todos los campos del producto', 'warning');
-            return;
-        }
-
-        // Verificar si ya existe en carrito
-        let existe = carrito.find(i => i.productoId == id);
-        if (existe) {
-            existe.cantidad += cantidad;
-            existe.costo = costo; // Actualizamos al nuevo costo
-        } else {
-            carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo });
-        }
-
-        renderizarTabla();
-        $('#productoSelect').val('').trigger('change');
-        $('#costoInput').val('');
-        $('#cantInput').val(1);
-    }
-
-    function renderizarTabla() {
-        let html = '';
-        let total = 0;
-
-        carrito.forEach((item, index) => {
-            let subtotal = item.cantidad * item.costo;
-            total += subtotal;
-            html += `<tr>
-                <td>${item.nombre}</td>
-                <td class="text-center">${item.cantidad}</td>
-                <td class="text-right">S/ ${item.costo.toFixed(2)}</td>
-                <td class="text-right">S/ ${subtotal.toFixed(2)}</td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(${index})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
+            // Al seleccionar producto, cargar su último costo
+            $('#productoSelect').on('change', function() {
+                let costo = $(this).find(':selected').data('costo');
+                $('#costoInput').val(costo || '');
+                $('#cantInput').focus();
+            });
         });
 
-        $('#tablaItems').html(html);
-        $('#totalVenta').text(total.toFixed(2));
-    }
+        function agregarItem() {
+            let id = $('#productoSelect').val();
+            let nombre = $('#productoSelect option:selected').text();
+            let cantidad = parseInt($('#cantInput').val());
+            let costo = parseFloat($('#costoInput').val());
 
-    function eliminarItem(index) {
-        carrito.splice(index, 1);
-        renderizarTabla();
-    }
-
-    $('#formCompra').submit(function(e) {
-        e.preventDefault();
-        
-        if (carrito.length === 0) {
-            Swal.fire('Error', 'Agregue al menos un producto a la compra', 'warning');
-            return;
-        }
-
-        let data = {
-            proveedorId: $('#proveedor').val(),
-            tipoComprobante: $('#tipoDoc').val(),
-            numeroComprobante: $('#nroDoc').val(),
-            observaciones: $('#obs').val(),
-            items: carrito
-        };
-
-        Swal.fire({
-            title: 'Procesando Compra',
-            text: 'Registrando ingreso de mercadería...',
-            didOpen: () => Swal.showLoading()
-        });
-
-        $.ajax({
-            url: '/compras/api/guardar',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function(resp) {
-                Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
-                    .then(() => window.location.href = '/compras/lista');
-            },
-            error: function(xhr) {
-                // Detectar error de caja cerrada
-                if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
-                    return;
-                }
-                // Otros errores
-                let mensaje = 'Ocurrió un error al guardar';
-                try {
-                    let resp = JSON.parse(xhr.responseText);
-                    mensaje = resp.error || resp.message || xhr.responseText;
-                } catch(e) {
-                    mensaje = xhr.responseText || mensaje;
-                }
-                Swal.fire('Error', mensaje, 'error');
+            if (!id || !cantidad || !costo) {
+                Swal.fire('Error', 'Complete todos los campos del producto', 'warning');
+                return;
             }
+
+            // Verificar si ya existe en carrito
+            let existe = carrito.find(i => i.productoId == id);
+            if (existe) {
+                existe.cantidad += cantidad;
+                existe.costo = costo;
+            } else {
+                carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo });
+            }
+
+            renderizarTabla();
+            $('#productoSelect').val('').trigger('change');
+            $('#costoInput').val('');
+            $('#cantInput').val(1);
+        }
+
+        function renderizarTabla() {
+            let html = '';
+            let total = 0;
+
+            carrito.forEach((item, index) => {
+                let subtotal = item.cantidad * item.costo;
+                total += subtotal;
+                html += `<tr>
+                    <td>${item.nombre}</td>
+                    <td class="text-center">${item.cantidad}</td>
+                    <td class="text-right">S/ ${item.costo.toFixed(2)}</td>
+                    <td class="text-right">S/ ${subtotal.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(${index})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+
+            $('#tablaItems').html(html);
+            $('#totalVenta').text(total.toFixed(2));
+        }
+
+        function eliminarItem(index) {
+            carrito.splice(index, 1);
+            renderizarTabla();
+        }
+
+        $('#formCompra').submit(function(e) {
+            e.preventDefault();
+
+            if (carrito.length === 0) {
+                Swal.fire('Error', 'Agregue al menos un producto a la compra', 'warning');
+                return;
+            }
+
+            let data = {
+                proveedorId: $('#proveedor').val(),
+                tipoComprobante: $('#tipoDoc').val(),
+                numeroComprobante: $('#nroDoc').val(),
+                observaciones: $('#obs').val(),
+                items: carrito
+            };
+
+            Swal.fire({
+                title: 'Procesando Compra',
+                text: 'Registrando ingreso de mercadería...',
+                didOpen: () => Swal.showLoading()
+            });
+
+            $.ajax({
+                url: '/compras/api/guardar',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(resp) {
+                    Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
+                        .then(() => window.location.href = '/compras/lista');
+                },
+                error: function(xhr) {
+                    if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+                        return;
+                    }
+                    let mensaje = 'Ocurrió un error al guardar';
+                    try {
+                        let resp = JSON.parse(xhr.responseText);
+                        mensaje = resp.error || resp.message || xhr.responseText;
+                    } catch(e) {
+                        mensaje = xhr.responseText || mensaje;
+                    }
+                    Swal.fire('Error', mensaje, 'error');
+                }
+            });
         });
-    });
-</script>
+    </script>
+</th:block>
+
 </body>
 </html>

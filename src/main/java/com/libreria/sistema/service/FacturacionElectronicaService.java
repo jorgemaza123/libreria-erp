@@ -377,6 +377,117 @@ public class FacturacionElectronicaService {
         }
     }
 
+    // =====================================================
+    //  COMUNICACIÓN DE BAJA - ANULACIÓN DE COMPROBANTES
+    // =====================================================
+
+    /**
+     * Envía una Comunicación de Baja a SUNAT para anular un comprobante electrónico.
+     *
+     * REGLAS DE NEGOCIO:
+     * - Solo aplica para comprobantes ACEPTADOS en SUNAT
+     * - Solo funciona si la facturación electrónica está activa
+     * - Solo para BOLETA y FACTURA (no NOTA_VENTA)
+     *
+     * MANEJO DE ERRORES (POLÍTICA "NO DAÑAR"):
+     * - Si SUNAT falla, NO bloquea la anulación local
+     * - Registra el error y marca la venta para reintento posterior
+     *
+     * @param venta La venta a anular en SUNAT
+     * @param motivo Motivo de la anulación
+     * @return Map con resultado: "success", "estado", "mensaje"
+     */
+    public Map<String, Object> enviarComunicacionBaja(Venta venta, String motivo) {
+        // 1. Validaciones previas
+        if (!isFacturacionElectronicaActiva()) {
+            return Map.of(
+                "success", false,
+                "estado", "NO_APLICA",
+                "mensaje", "Facturación electrónica no activa"
+            );
+        }
+
+        // 2. Solo para BOLETA o FACTURA
+        if (!"BOLETA".equals(venta.getTipoComprobante()) && !"FACTURA".equals(venta.getTipoComprobante())) {
+            return Map.of(
+                "success", false,
+                "estado", "NO_APLICA",
+                "mensaje", "Solo se puede comunicar baja de BOLETA o FACTURA"
+            );
+        }
+
+        // 3. Solo si fue ACEPTADO por SUNAT
+        if (!"ACEPTADO".equals(venta.getSunatEstado())) {
+            return Map.of(
+                "success", false,
+                "estado", "NO_APLICA",
+                "mensaje", "Solo se puede anular comprobantes ACEPTADOS por SUNAT. Estado actual: " + venta.getSunatEstado()
+            );
+        }
+
+        try {
+            // 4. Validar configuración
+            ConfiguracionSunat config = validarConfiguracion();
+
+            // 5. Preparar request según documentación de APISUNAT
+            Map<String, Object> request = Map.of(
+                "documento", "comunicacion_baja",
+                "motivo", motivo != null ? motivo : "ANULACIÓN DE OPERACIÓN",
+                "documento_afectado", Map.of(
+                    "documento", venta.getTipoComprobante().toLowerCase(),
+                    "serie", venta.getSerie(),
+                    "numero", String.valueOf(venta.getNumero())
+                )
+            );
+
+            // 6. Preparar headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(config.getTokenApiSunat());
+
+            // 7. Enviar a endpoint de baja (/api/v3/voided)
+            String baseUrl = config.getUrlApiSunat();
+            String voidedUrl = baseUrl.replace("/documents", "/voided");
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<SunatResponseDTO> response = restTemplate.exchange(
+                voidedUrl,
+                HttpMethod.POST,
+                entity,
+                SunatResponseDTO.class
+            );
+
+            SunatResponseDTO responseBody = response.getBody();
+
+            // 8. Procesar respuesta
+            if (responseBody != null && Boolean.TRUE.equals(responseBody.getSuccess())) {
+                String estadoBaja = responseBody.getPayload() != null ?
+                    responseBody.getPayload().getEstado() : "PENDIENTE";
+
+                return Map.of(
+                    "success", true,
+                    "estado", estadoBaja,
+                    "mensaje", responseBody.getMessage() != null ? responseBody.getMessage() : "Comunicación de baja enviada"
+                );
+            } else {
+                String errorMsg = responseBody != null ? responseBody.getMessage() : "Error desconocido";
+                return Map.of(
+                    "success", false,
+                    "estado", "ERROR",
+                    "mensaje", errorMsg
+                );
+            }
+
+        } catch (Exception e) {
+            // POLÍTICA "NO DAÑAR": No bloqueamos, solo informamos el error
+            return Map.of(
+                "success", false,
+                "estado", "ERROR_CONEXION",
+                "mensaje", "Error de conexión con SUNAT: " + e.getMessage()
+            );
+        }
+    }
+
     /**
      * Mapea una DevolucionVenta a SunatRequestDTO para nota de crédito
      */

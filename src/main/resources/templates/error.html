@@ -1,91 +1,355 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error del Sistema</title>
-    <link rel="stylesheet" th:href="@{/plugins/fontawesome-free/css/all.min.css}">
-    <link rel="stylesheet" th:href="@{/dist/css/adminlte.min.css}">
+    <title th:text="${titulo != null} ? ${titulo} + ' - Sistema' : 'Error - Sistema'">Error - Sistema</title>
+
+    <!-- Fuentes y estilos -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+
     <style>
+        :root {
+            --error-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --success-color: #28a745;
+        }
+
         body {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Source Sans Pro', sans-serif;
         }
-        .error-page {
+
+        .error-container {
+            max-width: 600px;
+            width: 90%;
+            margin: 20px;
+        }
+
+        .error-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-header {
+            padding: 40px 30px 30px;
             text-align: center;
-            color: white;
-            max-width: 500px;
-            padding: 20px;
+            position: relative;
         }
+
         .error-icon {
             font-size: 80px;
             margin-bottom: 20px;
+            animation: pulse 2s infinite;
         }
-        .error-title {
-            font-size: 32px;
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .error-code {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(0,0,0,0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 15px;
+            color: #666;
         }
+
+        .error-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
         .error-message {
             font-size: 16px;
-            opacity: 0.9;
-            margin-bottom: 30px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 0;
         }
-        .btn-home {
-            background: white;
-            color: #4facfe;
-            padding: 12px 30px;
+
+        .error-body {
+            padding: 0 30px 30px;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+
+        .btn-action {
+            padding: 12px 25px;
             border-radius: 25px;
+            font-weight: 600;
             text-decoration: none;
-            font-weight: bold;
-            transition: transform 0.2s;
-            margin: 5px;
-            display: inline-block;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
-        .btn-home:hover {
-            transform: scale(1.05);
-            color: #00f2fe;
+
+        .btn-primary-action {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
             text-decoration: none;
         }
+
+        .btn-secondary-action {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #dee2e6;
+        }
+
+        .btn-secondary-action:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            color: #333;
+            text-decoration: none;
+        }
+
         .error-details {
-            margin-top: 30px;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .details-toggle {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0 auto;
+            padding: 5px 15px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        .details-toggle:hover {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .details-content {
+            margin-top: 15px;
             padding: 15px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            font-size: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
             text-align: left;
+        }
+
+        .details-content table {
+            width: 100%;
+            margin: 0;
+        }
+
+        .details-content td {
+            padding: 5px 0;
+            vertical-align: top;
+        }
+
+        .details-content td:first-child {
+            font-weight: 600;
+            width: 100px;
+            color: #333;
+        }
+
+        .error-footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+
+        .support-info {
+            font-size: 14px;
+            color: #666;
+            margin: 0;
+        }
+
+        .support-info a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .support-info a:hover {
+            text-decoration: underline;
+        }
+
+        /* Colores según tipo de error */
+        .error-400 .error-icon { color: #ffc107; }
+        .error-401 .error-icon { color: #fd7e14; }
+        .error-403 .error-icon { color: #fd7e14; }
+        .error-404 .error-icon { color: #6c757d; }
+        .error-500 .error-icon { color: #dc3545; }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .error-icon { font-size: 60px; }
+            .error-title { font-size: 22px; }
+            .error-message { font-size: 14px; }
+            .error-actions { flex-direction: column; }
+            .btn-action { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
-    <div class="error-page">
-        <div class="error-icon">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <h1 class="error-title">Ocurrio un Error</h1>
-        <p class="error-message">
-            Ha ocurrido un error inesperado en el sistema.<br>
-            Por favor intente nuevamente o contacte soporte.
-        </p>
-        <div>
-            <a th:href="@{/}" class="btn-home">
-                <i class="fas fa-home mr-1"></i> Inicio
-            </a>
-            <a href="javascript:history.back()" class="btn-home">
-                <i class="fas fa-arrow-left mr-1"></i> Volver
-            </a>
+    <div class="error-container">
+        <div class="error-card" th:classappend="'error-' + ${status}">
+            <!-- Header con ícono y título -->
+            <div class="error-header">
+                <!-- Código de error -->
+                <span class="error-code" th:text="'Error ' + ${status}">Error 500</span>
+
+                <!-- Ícono dinámico -->
+                <div class="error-icon" th:style="'color: ' + ${iconoColor ?: '#dc3545'}">
+                    <i th:class="${icono ?: 'fas fa-exclamation-triangle'}"></i>
+                </div>
+
+                <!-- Título del error -->
+                <h1 class="error-title" th:text="${titulo ?: 'Algo salió mal'}">Algo salió mal</h1>
+
+                <!-- Mensaje descriptivo -->
+                <p class="error-message" th:text="${mensaje ?: 'Ha ocurrido un error inesperado. Por favor intente nuevamente.'}">
+                    Ha ocurrido un error inesperado.
+                </p>
+            </div>
+
+            <!-- Body con acciones -->
+            <div class="error-body">
+                <!-- Botones de acción -->
+                <div class="error-actions">
+                    <a th:href="@{/}" class="btn-action btn-primary-action">
+                        <i class="fas fa-home"></i> Ir al Inicio
+                    </a>
+                    <a href="javascript:history.back()" class="btn-action btn-secondary-action">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+
+                <!-- Detalles técnicos (colapsable) -->
+                <div class="error-details" th:if="${path != null or timestamp != null or detalles != null}">
+                    <button class="details-toggle" type="button" onclick="toggleDetails()">
+                        <i class="fas fa-chevron-down" id="toggleIcon"></i>
+                        <span>Detalles técnicos</span>
+                    </button>
+
+                    <div class="details-content" id="detailsContent" style="display: none;">
+                        <table>
+                            <tr th:if="${status != null}">
+                                <td>Código:</td>
+                                <td th:text="${status}">500</td>
+                            </tr>
+                            <tr th:if="${error != null}">
+                                <td>Estado:</td>
+                                <td th:text="${error}">Internal Server Error</td>
+                            </tr>
+                            <tr th:if="${path != null}">
+                                <td>Ruta:</td>
+                                <td th:text="${path}">/ruta</td>
+                            </tr>
+                            <tr th:if="${timestamp != null}">
+                                <td>Fecha:</td>
+                                <td th:text="${timestamp}">01/01/2024 12:00:00</td>
+                            </tr>
+                            <tr th:if="${detalles != null}">
+                                <td>Info:</td>
+                                <td th:text="${detalles}">Detalles adicionales</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer con información de soporte -->
+            <div class="error-footer">
+                <p class="support-info">
+                    <i class="fas fa-headset mr-1"></i>
+                    ¿Necesita ayuda?
+                    <a th:href="'mailto:' + ${config?.email ?: 'soporte@empresa.com'} + '?subject=Error ' + ${status} + ' - Soporte Técnico'">
+                        Contactar Soporte
+                    </a>
+                    <span th:if="${config?.telefono != null}">
+                        o llamar al <strong th:text="${config.telefono}">(01) 000-0000</strong>
+                    </span>
+                </p>
+            </div>
         </div>
 
-        <div class="error-details" th:if="${status != null}">
-            <strong>Codigo:</strong> <span th:text="${status}">500</span><br>
-            <strong>Error:</strong> <span th:text="${error}">Error interno</span><br>
-            <span th:if="${message != null}">
-                <strong>Mensaje:</strong> <span th:text="${message}">-</span>
-            </span>
+        <!-- Branding discreto -->
+        <div class="text-center mt-3">
+            <small style="color: rgba(255,255,255,0.6);">
+                <span th:text="${config?.nombreEmpresa ?: 'Sistema ERP'}">Sistema ERP</span>
+            </small>
         </div>
     </div>
+
+    <script>
+        function toggleDetails() {
+            const content = document.getElementById('detailsContent');
+            const icon = document.getElementById('toggleIcon');
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                content.style.display = 'none';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+
+        // Auto-redirigir al inicio después de cierto tiempo en errores 401
+        const statusCode = /*[[${status}]]*/ 500;
+        if (statusCode === 401) {
+            setTimeout(function() {
+                window.location.href = '/login';
+            }, 5000);
+        }
+    </script>
 </body>
 </html>

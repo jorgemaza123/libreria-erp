@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='listas_escolares')}"></aside>
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">
+                            <i class="fas fa-clipboard-list text-primary"></i>
+                            Lista <span th:text="${lista.codigoCompleto}">LE001-001</span>
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="/listas-escolares">Listas Escolares</a></li>
+                            <li class="breadcrumb-item active" th:text="${lista.codigoCompleto}">LE001-001</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row">
+                    <!-- Info General -->
+                    <div class="col-lg-4">
+                        <!-- Datos del Alumno -->
+                        <div class="card card-primary card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-user-graduate"></i> Datos del Alumno</h3>
+                                <div class="card-tools">
+                                    <span class="badge"
+                                          th:classappend="${lista.estado == 'PENDIENTE'} ? 'badge-secondary' :
+                                                          (${lista.estado == 'COTIZADA'} ? 'badge-info' :
+                                                          (${lista.estado == 'EN_PROCESO'} ? 'badge-warning' :
+                                                          (${lista.estado == 'COMPLETADA'} ? 'badge-success' : 'badge-dark')))"
+                                          th:text="${lista.estado}">ESTADO</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <dl class="row mb-0">
+                                    <dt class="col-5">Alumno:</dt>
+                                    <dd class="col-7" th:text="${lista.nombreAlumno}">Juan Pérez</dd>
+
+                                    <dt class="col-5">Grado:</dt>
+                                    <dd class="col-7" th:text="${lista.grado + (lista.seccion != null ? ' - ' + lista.seccion : '')}">3° Primaria - A</dd>
+
+                                    <dt class="col-5">Colegio:</dt>
+                                    <dd class="col-7" th:text="${lista.colegio ?: '-'}">San Martín</dd>
+
+                                    <dt class="col-5">Contacto:</dt>
+                                    <dd class="col-7" th:text="${lista.contactoNombre ?: '-'}">María López</dd>
+
+                                    <dt class="col-5">Teléfono:</dt>
+                                    <dd class="col-7">
+                                        <a th:href="'https://wa.me/51' + ${lista.contactoTelefono}"
+                                           target="_blank" class="text-success">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span th:text="${lista.contactoTelefono}">999999999</span>
+                                        </a>
+                                    </dd>
+
+                                    <dt class="col-5">Creación:</dt>
+                                    <dd class="col-7" th:text="${#temporals.format(lista.fechaCreacion, 'dd/MM/yyyy HH:mm')}">01/01/2025</dd>
+
+                                    <dt class="col-5">Vencimiento:</dt>
+                                    <dd class="col-7" th:text="${#temporals.format(lista.fechaVencimiento, 'dd/MM/yyyy')}">15/01/2025</dd>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <!-- Progreso -->
+                        <div class="card card-success card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-chart-pie"></i> Progreso</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="progress progress-lg mb-3">
+                                    <div class="progress-bar bg-success"
+                                         th:style="'width:' + ${lista.porcentajeAvance} + '%'"
+                                         th:text="${lista.porcentajeAvance} + '%'">50%</div>
+                                </div>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <h4 class="text-success" th:text="${lista.itemsVendidos}">5</h4>
+                                        <small>Vendidos</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="text-warning" th:text="${lista.itemsPendientes}">3</h4>
+                                        <small>Pendientes</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <h4 class="text-secondary" th:text="${lista.itemsTotal}">10</h4>
+                                        <small>Total</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <h5 class="text-success">S/ <span th:text="${#numbers.formatDecimal(lista.montoVendido, 1, 2)}">150.00</span></h5>
+                                        <small>Vendido</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <h5 class="text-warning">S/ <span th:text="${#numbers.formatDecimal(lista.montoPendiente, 1, 2)}">100.00</span></h5>
+                                        <small>Pendiente</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Totales por Nivel -->
+                        <div class="card card-info card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-layer-group"></i> Cotización por Nivel</h3>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <tr class="bg-light">
+                                        <td><i class="fas fa-coins text-secondary"></i> Económico</td>
+                                        <td class="text-right font-weight-bold">
+                                            S/ <span th:text="${#numbers.formatDecimal(lista.totalEconomico, 1, 2)}">200.00</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fas fa-balance-scale text-info"></i> Medio</td>
+                                        <td class="text-right font-weight-bold">
+                                            S/ <span th:text="${#numbers.formatDecimal(lista.totalMedio, 1, 2)}">280.00</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-light">
+                                        <td><i class="fas fa-star text-warning"></i> Premium</td>
+                                        <td class="text-right font-weight-bold">
+                                            S/ <span th:text="${#numbers.formatDecimal(lista.totalPremium, 1, 2)}">350.00</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Acciones -->
+                        <div class="card">
+                            <div class="card-body">
+                                <a href="/listas-escolares" class="btn btn-outline-secondary btn-block mb-3">
+                                    <i class="fas fa-arrow-left"></i> Volver al Listado
+                                </a>
+                                <div class="btn-group-vertical w-100">
+                                    <button type="button" class="btn btn-success btn-lg"
+                                            th:if="${lista.permiteVentas() and cajaAbierta}"
+                                            onclick="abrirPOSModal()">
+                                        <i class="fas fa-cash-register"></i> Abrir POS
+                                    </button>
+                                    <div class="alert alert-warning mb-2" th:if="${!cajaAbierta}">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Debe abrir caja para vender
+                                    </div>
+                                    <a th:href="@{/listas-escolares/{id}/editar(id=${lista.id})}"
+                                       class="btn btn-warning"
+                                       th:if="${lista.permiteVentas()}">
+                                        <i class="fas fa-edit"></i> Editar Cotizacion
+                                    </a>
+                                    <button type="button" class="btn btn-info" onclick="generarCotizaciones()">
+                                        <i class="fas fa-sync"></i> Regenerar Cotizaciones
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#modalTextoOriginal">
+                                        <i class="fas fa-file-alt"></i> Ver Texto Original
+                                    </button>
+                                    <hr class="my-2">
+                                    <button type="button" class="btn btn-danger" onclick="abrirModalPDF()">
+                                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                                    </button>
+                                    <button type="button" class="btn btn-success" onclick="abrirModalWhatsApp()">
+                                        <i class="fab fa-whatsapp"></i> Enviar WhatsApp
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Items de la Lista -->
+                    <div class="col-lg-8">
+                        <!-- Items Pendientes -->
+                        <div class="card card-warning card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="fas fa-shopping-cart"></i> Items Pendientes de Venta
+                                    <span class="badge badge-warning" th:text="${#lists.size(detallesVendibles)}">5</span>
+                                </h3>
+                            </div>
+                            <div class="card-body table-responsive p-0">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th style="width: 30px;">#</th>
+                                            <th>Item Original</th>
+                                            <th class="text-center">Cant</th>
+                                            <th>Producto Asignado</th>
+                                            <th class="text-center">Nivel</th>
+                                            <th class="text-right">Precio</th>
+                                            <th class="text-right">Subtotal</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="d, iter : ${detallesVendibles}">
+                                            <td th:text="${d.orden}">1</td>
+                                            <td>
+                                                <small class="text-muted" th:text="${d.textoOriginal}">2 cuadernos cuadriculados</small>
+                                            </td>
+                                            <td class="text-center" th:text="${d.cantidadSolicitada}">2</td>
+                                            <td>
+                                                <!-- Producto del inventario -->
+                                                <span th:if="${d.productoFinal != null}" th:text="${d.productoFinal.nombre}">Cuaderno Stanford A4</span>
+                                                <!-- Cotización de proveedor (sin producto vinculado) -->
+                                                <span th:if="${d.productoFinal == null and d.tieneCotizacionProveedor()}" class="text-info">
+                                                    <i class="fas fa-phone-alt mr-1" title="Cotizado con proveedor"></i>
+                                                    <span th:text="${d.getNombreMostrarPorNivel(d.nivelSeleccionado ?: 'MEDIO')}">Producto cotizado</span>
+                                                    <br th:if="${d.nombreProveedor != null}">
+                                                    <small th:if="${d.nombreProveedor != null}" class="text-muted">
+                                                        <i class="fas fa-store mr-1"></i><span th:text="${d.nombreProveedor}">Proveedor</span>
+                                                    </small>
+                                                </span>
+                                                <!-- Sin asignar -->
+                                                <span th:if="${d.productoFinal == null and !d.tieneCotizacionProveedor()}" class="text-danger">
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i>Sin asignar
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge"
+                                                      th:classappend="${d.nivelSeleccionado == 'ECONOMICO'} ? 'badge-secondary' :
+                                                                      (${d.nivelSeleccionado == 'MEDIO'} ? 'badge-info' : 'badge-warning')"
+                                                      th:text="${d.nivelSeleccionado ?: '-'}">MEDIO</span>
+                                            </td>
+                                            <td class="text-right">
+                                                S/ <span th:text="${d.precioFinal != null ? #numbers.formatDecimal(d.precioFinal, 1, 2) : '-'}">5.00</span>
+                                            </td>
+                                            <td class="text-right font-weight-bold">
+                                                S/ <span th:text="${#numbers.formatDecimal(d.subtotal, 1, 2)}">10.00</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge"
+                                                      th:classappend="${d.estado == 'COTIZADO'} ? 'badge-info' :
+                                                                      (${d.estado == 'PENDIENTE'} ? 'badge-warning' :
+                                                                      (${d.estado == 'REEMPLAZADO'} ? 'badge-primary' : 'badge-secondary'))"
+                                                      th:text="${d.estado}">COTIZADO</span>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(detallesVendibles)}">
+                                            <td colspan="8" class="text-center text-muted py-3">
+                                                <i class="fas fa-check-circle fa-2x text-success mb-2 d-block"></i>
+                                                Todos los items han sido vendidos
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Items Vendidos -->
+                        <div class="card card-success card-outline" th:if="${!#lists.isEmpty(detallesVendidos)}">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="fas fa-check-circle"></i> Items Vendidos
+                                    <span class="badge badge-success" th:text="${#lists.size(detallesVendidos)}">5</span>
+                                </h3>
+                                <div class="card-tools">
+                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body table-responsive p-0">
+                                <table class="table table-sm table-striped mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Item</th>
+                                            <th class="text-center">Cant</th>
+                                            <th>Producto</th>
+                                            <th class="text-right">Precio</th>
+                                            <th>Comprobante</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="d : ${detallesVendidos}">
+                                            <td><small th:text="${d.textoOriginal}">Item</small></td>
+                                            <td class="text-center" th:text="${d.cantidadSolicitada}">2</td>
+                                            <td th:text="${d.productoFinal?.nombre}">Producto</td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(d.subtotal, 1, 2)}">10.00</span></td>
+                                            <td>
+                                                <a th:if="${d.venta != null}"
+                                                   th:href="@{/ventas/imprimir/{id}(id=${d.venta.id})}"
+                                                   target="_blank" class="text-primary">
+                                                    <th:block th:text="${d.venta.serie + '-' + d.venta.numero}">B001-123</th:block>
+                                                </a>
+                                            </td>
+                                            <td><small th:text="${#temporals.format(d.fechaVenta, 'dd/MM HH:mm')}">01/01 10:30</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Historial de Ventas -->
+                        <div class="card" th:if="${!#lists.isEmpty(historialVentas)}">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-history"></i> Historial de Ventas</h3>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Comprobante</th>
+                                            <th class="text-center">Items</th>
+                                            <th class="text-right">Monto</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="vl : ${historialVentas}">
+                                            <td>
+                                                <a th:href="@{/ventas/imprimir/{id}(id=${vl.venta.id})}" target="_blank">
+                                                    <th:block th:text="${vl.comprobante}">B001-123</th:block>
+                                                </a>
+                                                <span th:if="${vl.esVentaParcial}" class="badge badge-info">Parcial</span>
+                                            </td>
+                                            <td class="text-center" th:text="${vl.itemsVendidos}">3</td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(vl.montoVendido, 1, 2)}">50.00</span></td>
+                                            <td><small th:text="${#temporals.format(vl.fechaRegistro, 'dd/MM/yyyy HH:mm')}">01/01/2025</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal Texto Original -->
+    <div class="modal fade" id="modalTextoOriginal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title"><i class="fas fa-file-alt"></i> Texto Original de la Lista</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <pre class="bg-light p-3" style="white-space: pre-wrap; max-height: 500px; overflow-y: auto;"
+                         th:text="${lista.textoOriginal}">Texto original aquí...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal POS Lista Escolar -->
+    <div class="modal fade" id="modalPOS" tabindex="-1" data-backdrop="static">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cash-register"></i>
+                        POS - Lista <span th:text="${lista.codigoCompleto}">LE001-001</span>
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row no-gutters">
+                        <!-- Columna Izquierda: Items -->
+                        <div class="col-lg-7 border-right">
+                            <div class="p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0"><i class="fas fa-list"></i> Items para Vender</h6>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="seleccionarTodos()">
+                                            <i class="fas fa-check-double"></i> Todos
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deseleccionarTodos()">
+                                            <i class="fas fa-times"></i> Ninguno
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover" id="tablaItemsPOS">
+                                        <thead class="thead-light sticky-top">
+                                            <tr>
+                                                <th style="width: 30px;"><input type="checkbox" id="checkAll"></th>
+                                                <th>Item</th>
+                                                <th class="text-center">Cant</th>
+                                                <th>Producto</th>
+                                                <th class="text-right">Precio</th>
+                                                <th class="text-right">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="itemsPOSBody">
+                                            <!-- Se llena dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Buscador de productos adicionales -->
+                                <div class="mt-3">
+                                    <label><i class="fas fa-search"></i> Agregar producto adicional:</label>
+                                    <select id="buscarProductoAdicional" class="form-control select2" style="width: 100%;">
+                                        <option value="">Buscar producto...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Resumen y Pago -->
+                        <div class="col-lg-5 bg-light">
+                            <div class="p-3">
+                                <!-- Datos Cliente -->
+                                <div class="card mb-3">
+                                    <div class="card-header py-2">
+                                        <h6 class="mb-0"><i class="fas fa-user"></i> Cliente</h6>
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <div class="form-group mb-2">
+                                            <input type="text" class="form-control form-control-sm" id="posClienteNombre"
+                                                   th:value="${lista.contactoNombre}" placeholder="Nombre">
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <input type="text" class="form-control form-control-sm" id="posClienteDoc"
+                                                       placeholder="DNI/RUC" maxlength="11">
+                                            </div>
+                                            <div class="col-6">
+                                                <input type="text" class="form-control form-control-sm" id="posClienteTel"
+                                                       th:value="${lista.contactoTelefono}" placeholder="Teléfono">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Resumen -->
+                                <div class="card mb-3">
+                                    <div class="card-body text-center py-3">
+                                        <small class="text-muted">Items seleccionados: <span id="posItemsCount">0</span></small>
+                                        <h2 class="text-success mb-0">
+                                            S/ <span id="posTotalDisplay">0.00</span>
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                <!-- Forma de Pago -->
+                                <div class="form-group">
+                                    <label>Tipo Comprobante</label>
+                                    <select id="posTipoComprobante" class="form-control form-control-sm">
+                                        <option value="BOLETA" selected>BOLETA</option>
+                                        <option value="FACTURA">FACTURA</option>
+                                        <option value="NOTA_VENTA">NOTA DE VENTA</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Forma de Pago</label>
+                                    <select id="posFormaPago" class="form-control form-control-sm">
+                                        <option value="CONTADO" selected>CONTADO</option>
+                                        <option value="CREDITO">CRÉDITO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Método de Pago</label>
+                                    <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                        <label class="btn btn-outline-success btn-sm active">
+                                            <input type="radio" name="posMetodoPago" value="EFECTIVO" checked> Efectivo
+                                        </label>
+                                        <label class="btn btn-outline-success btn-sm">
+                                            <input type="radio" name="posMetodoPago" value="YAPE"> Yape
+                                        </label>
+                                        <label class="btn btn-outline-success btn-sm">
+                                            <input type="radio" name="posMetodoPago" value="TARJETA"> Tarjeta
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Botones -->
+                                <div class="mt-4">
+                                    <button type="button" class="btn btn-success btn-lg btn-block" id="btnProcesarVenta">
+                                        <i class="fas fa-check"></i> PROCESAR VENTA (F2)
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-block" onclick="marcarPendientes()">
+                                        <i class="fas fa-clock"></i> Marcar Pendientes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal PDF -->
+    <div class="modal fade" id="modalPDF" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-pdf mr-2"></i>Exportar Cotización PDF</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Seleccione los niveles de precio a incluir en el PDF:</p>
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" class="custom-control-input" id="pdfEconomico" value="ECONOMICO" checked>
+                        <label class="custom-control-label" for="pdfEconomico">
+                            <i class="fas fa-coins text-secondary"></i> Económico
+                            <small class="text-muted ml-2">S/ <span th:text="${#numbers.formatDecimal(lista.totalEconomico, 1, 2)}">0.00</span></small>
+                        </label>
+                    </div>
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" class="custom-control-input" id="pdfMedio" value="MEDIO" checked>
+                        <label class="custom-control-label" for="pdfMedio">
+                            <i class="fas fa-balance-scale text-info"></i> Medio
+                            <small class="text-muted ml-2">S/ <span th:text="${#numbers.formatDecimal(lista.totalMedio, 1, 2)}">0.00</span></small>
+                        </label>
+                    </div>
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" class="custom-control-input" id="pdfPremium" value="PREMIUM" checked>
+                        <label class="custom-control-label" for="pdfPremium">
+                            <i class="fas fa-star text-warning"></i> Premium
+                            <small class="text-muted ml-2">S/ <span th:text="${#numbers.formatDecimal(lista.totalPremium, 1, 2)}">0.00</span></small>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="descargarPDF()">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal WhatsApp -->
+    <div class="modal fade" id="modalWhatsApp" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fab fa-whatsapp mr-2"></i>Enviar por WhatsApp</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label><i class="fas fa-phone"></i> Número de WhatsApp</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">+51</span>
+                            </div>
+                            <input type="text" class="form-control" id="whatsappNumero"
+                                   th:value="${lista.contactoTelefono}"
+                                   placeholder="999999999" maxlength="9">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-layer-group"></i> Nivel de Cotización</label>
+                        <select class="form-control" id="whatsappNivel">
+                            <option value="ECONOMICO">Económico - S/ <span th:text="${#numbers.formatDecimal(lista.totalEconomico, 1, 2)}">0.00</span></option>
+                            <option value="MEDIO" selected>Medio - S/ <span th:text="${#numbers.formatDecimal(lista.totalMedio, 1, 2)}">0.00</span></option>
+                            <option value="PREMIUM">Premium - S/ <span th:text="${#numbers.formatDecimal(lista.totalPremium, 1, 2)}">0.00</span></option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Se abrirá WhatsApp Web con un mensaje de cotización incluyendo:
+                        <ul class="mb-0 mt-1">
+                            <li>Datos del alumno y colegio</li>
+                            <li>Lista de productos cotizados con precios</li>
+                            <li>Total del nivel seleccionado</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="enviarWhatsApp()">
+                        <i class="fab fa-whatsapp"></i> Abrir WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<script th:replace="~{fragments/layout :: scripts}"></script>
+<script th:inline="javascript">
+const listaId = [[${lista.id}]];
+let itemsPOS = [];
+
+$(document).ready(function() {
+    // Configurar CSRF para todas las peticiones AJAX
+    var csrfToken = $('meta[name="_csrf"]').attr('content');
+    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+
+    $.ajaxSetup({
+        beforeSend: function(xhr) {
+            if (csrfToken && csrfHeader) {
+                xhr.setRequestHeader(csrfHeader, csrfToken);
+            }
+        }
+    });
+
+    // Inicializar Select2 para buscar productos
+    $('#buscarProductoAdicional').select2({
+        theme: 'bootstrap4',
+        placeholder: 'Buscar producto...',
+        allowClear: true,
+        minimumInputLength: 2,
+        ajax: {
+            url: '/listas-escolares/api/buscar-productos',
+            dataType: 'json',
+            delay: 300,
+            data: params => ({ termino: params.term }),
+            processResults: data => ({
+                results: data.map(p => ({
+                    id: p.id,
+                    text: `${p.nombre} - S/ ${p.precio} (Stock: ${p.stock})`
+                }))
+            })
+        }
+    });
+
+    // Atajos de teclado
+    $(document).on('keydown', function(e) {
+        if (e.key === 'F2' && $('#modalPOS').is(':visible')) {
+            e.preventDefault();
+            procesarVenta();
+        }
+    });
+
+    // Check all
+    $('#checkAll').change(function() {
+        $('.item-check').prop('checked', this.checked).trigger('change');
+    });
+});
+
+function abrirPOSModal() {
+    // Cargar items
+    $.get(`/listas-escolares/api/${listaId}/detalles-pos`)
+        .done(function(data) {
+            itemsPOS = data.items;
+            renderizarItemsPOS();
+            $('#modalPOS').modal('show');
+        })
+        .fail(function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al cargar items', 'error');
+        });
+}
+
+function renderizarItemsPOS() {
+    const tbody = $('#itemsPOSBody');
+    tbody.empty();
+
+    itemsPOS.forEach((item, index) => {
+        const tieneStock = item.tieneStock !== false;
+        const checked = tieneStock && item.estado !== 'NO_COTIZADO' ? 'checked' : '';
+        const disabled = !tieneStock ? 'disabled' : '';
+
+        tbody.append(`
+            <tr class="${!tieneStock ? 'table-danger' : ''}">
+                <td>
+                    <input type="checkbox" class="item-check" data-index="${index}"
+                           ${checked} ${disabled}>
+                </td>
+                <td>
+                    <small class="text-muted">${item.textoOriginal}</small>
+                </td>
+                <td class="text-center">
+                    <input type="number" class="form-control form-control-sm text-center item-cantidad"
+                           data-index="${index}" value="${item.cantidad}" min="1" max="100"
+                           style="width: 60px;" ${disabled}>
+                </td>
+                <td>
+                    ${item.productoNombre || '<span class="text-danger">Sin asignar</span>'}
+                    ${!tieneStock ? '<br><small class="text-danger">Sin stock</small>' : ''}
+                </td>
+                <td class="text-right">
+                    S/ ${parseFloat(item.precioFinal || 0).toFixed(2)}
+                </td>
+                <td class="text-right font-weight-bold item-subtotal" data-index="${index}">
+                    S/ ${parseFloat(item.subtotal || 0).toFixed(2)}
+                </td>
+            </tr>
+        `);
+    });
+
+    // Eventos
+    $('.item-check, .item-cantidad').on('change', calcularTotalPOS);
+    calcularTotalPOS();
+}
+
+function calcularTotalPOS() {
+    let total = 0;
+    let count = 0;
+
+    $('.item-check:checked').each(function() {
+        const index = $(this).data('index');
+        const item = itemsPOS[index];
+        const cantidad = parseInt($(`.item-cantidad[data-index="${index}"]`).val()) || item.cantidad;
+        const subtotal = cantidad * parseFloat(item.precioFinal || 0);
+
+        $(`.item-subtotal[data-index="${index}"]`).text('S/ ' + subtotal.toFixed(2));
+        total += subtotal;
+        count++;
+    });
+
+    $('#posTotalDisplay').text(total.toFixed(2));
+    $('#posItemsCount').text(count);
+}
+
+function seleccionarTodos() {
+    $('.item-check:not(:disabled)').prop('checked', true).trigger('change');
+}
+
+function deseleccionarTodos() {
+    $('.item-check').prop('checked', false).trigger('change');
+}
+
+function procesarVenta() {
+    const itemsSeleccionados = [];
+
+    $('.item-check:checked').each(function() {
+        const index = $(this).data('index');
+        const item = itemsPOS[index];
+        const cantidad = parseInt($(`.item-cantidad[data-index="${index}"]`).val()) || item.cantidad;
+
+        itemsSeleccionados.push({
+            detalleListaId: item.id,
+            productoId: item.productoId,
+            cantidad: cantidad,
+            precioUnitario: parseFloat(item.precioFinal),
+            nivelSeleccionado: item.nivelSeleccionado
+        });
+    });
+
+    if (itemsSeleccionados.length === 0) {
+        Swal.fire('Atención', 'Debe seleccionar al menos un item', 'warning');
+        return;
+    }
+
+    const datos = {
+        listaEscolarId: listaId,
+        tipoComprobante: $('#posTipoComprobante').val(),
+        clienteNombre: $('#posClienteNombre').val(),
+        clienteDocumento: $('#posClienteDoc').val(),
+        clienteTelefono: $('#posClienteTel').val(),
+        formaPago: $('#posFormaPago').val(),
+        metodoPago: $('input[name="posMetodoPago"]:checked').val(),
+        itemsSeleccionados: itemsSeleccionados
+    };
+
+    $('#btnProcesarVenta').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+
+    $.ajax({
+        url: '/listas-escolares/api/venta',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datos),
+        success: function(resp) {
+            if (resp.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Venta Procesada',
+                    html: `<p>Comprobante: <strong>${resp.serie}-${resp.numero}</strong></p>
+                           <p>Items vendidos: ${resp.itemsVendidos}</p>
+                           <p>Items pendientes: ${resp.itemsPendientes}</p>`,
+                    confirmButtonText: 'Aceptar'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al procesar venta', 'error');
+        },
+        complete: function() {
+            $('#btnProcesarVenta').prop('disabled', false).html('<i class="fas fa-check"></i> PROCESAR VENTA (F2)');
+        }
+    });
+}
+
+function generarCotizaciones() {
+    Swal.fire({
+        title: '¿Regenerar cotizaciones?',
+        text: 'Se buscarán productos nuevamente para todos los items no vendidos',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, regenerar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(`/listas-escolares/api/${listaId}/cotizar`)
+                .done(() => window.location.reload())
+                .fail(xhr => Swal.fire('Error', xhr.responseJSON?.error || 'Error', 'error'));
+        }
+    });
+}
+
+function marcarPendientes() {
+    $.post(`/listas-escolares/api/${listaId}/marcar-pendiente`)
+        .done(() => {
+            Swal.fire('Listo', 'Items marcados como pendientes', 'success')
+                .then(() => window.location.reload());
+        })
+        .fail(xhr => Swal.fire('Error', xhr.responseJSON?.error || 'Error', 'error'));
+}
+
+// ========== FUNCIONES MODAL PDF ==========
+function abrirModalPDF() {
+    $('#modalPDF').modal('show');
+}
+
+function descargarPDF() {
+    const niveles = [];
+    if ($('#pdfEconomico').is(':checked')) niveles.push('ECONOMICO');
+    if ($('#pdfMedio').is(':checked')) niveles.push('MEDIO');
+    if ($('#pdfPremium').is(':checked')) niveles.push('PREMIUM');
+
+    if (niveles.length === 0) {
+        Swal.fire('Atención', 'Debe seleccionar al menos un nivel', 'warning');
+        return;
+    }
+
+    // Construir URL con parámetros
+    const nivelesParam = niveles.join(',');
+    const url = `/listas-escolares/${listaId}/pdf?niveles=${nivelesParam}`;
+
+    // Abrir en nueva pestaña
+    window.open(url, '_blank');
+    $('#modalPDF').modal('hide');
+}
+
+// ========== FUNCIONES MODAL WHATSAPP ==========
+function abrirModalWhatsApp() {
+    $('#modalWhatsApp').modal('show');
+}
+
+function enviarWhatsApp() {
+    const numero = $('#whatsappNumero').val().trim();
+    const nivel = $('#whatsappNivel').val();
+
+    if (!numero || numero.length < 9) {
+        Swal.fire('Atención', 'Ingrese un número de WhatsApp válido', 'warning');
+        return;
+    }
+
+    // Obtener datos de la lista desde Thymeleaf
+    const datosLista = {
+        codigo: [[${lista.codigoCompleto}]],
+        alumno: [[${lista.nombreAlumno}]],
+        colegio: [[${lista.colegio ?: 'No especificado'}]],
+        grado: [[${lista.grado + (lista.seccion != null ? ' - ' + lista.seccion : '')}]],
+        totalEconomico: [[${lista.totalEconomico}]],
+        totalMedio: [[${lista.totalMedio}]],
+        totalPremium: [[${lista.totalPremium}]]
+    };
+
+    // Obtener total según nivel
+    let total = 0;
+    let nivelTexto = '';
+    switch(nivel) {
+        case 'ECONOMICO':
+            total = datosLista.totalEconomico;
+            nivelTexto = 'Económico';
+            break;
+        case 'MEDIO':
+            total = datosLista.totalMedio;
+            nivelTexto = 'Medio';
+            break;
+        case 'PREMIUM':
+            total = datosLista.totalPremium;
+            nivelTexto = 'Premium';
+            break;
+    }
+
+    // Construir mensaje
+    let mensaje = `📚 *COTIZACIÓN LISTA ESCOLAR*\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `📋 *Código:* ${datosLista.codigo}\n`;
+    mensaje += `👨‍🎓 *Alumno:* ${datosLista.alumno}\n`;
+    mensaje += `🏫 *Colegio:* ${datosLista.colegio}\n`;
+    mensaje += `📖 *Grado:* ${datosLista.grado}\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    mensaje += `💰 *Nivel ${nivelTexto}:*\n`;
+    mensaje += `*TOTAL: S/ ${parseFloat(total).toFixed(2)}*\n\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━\n`;
+    mensaje += `✅ Cotización válida por 7 días\n`;
+    mensaje += `📍 Visítenos para más detalles\n`;
+    mensaje += `💳 Aceptamos todos los medios de pago`;
+
+    // Codificar mensaje
+    const mensajeCodificado = encodeURIComponent(mensaje);
+
+    // Construir URL de WhatsApp
+    const urlWhatsApp = `https://wa.me/51${numero}?text=${mensajeCodificado}`;
+
+    // Abrir WhatsApp
+    window.open(urlWhatsApp, '_blank');
+    $('#modalWhatsApp').modal('hide');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='productos_faltantes')}"></aside>
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Productos Faltantes
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="/listas-escolares">Listas Escolares</a></li>
+                            <li class="breadcrumb-item active">Productos Faltantes</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- Estadísticas -->
+                <div class="row">
+                    <div class="col-lg-4 col-6">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.totalProductosDiferentes}">0</h3>
+                                <p>Productos Diferentes Sin Stock</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-6">
+                        <div class="small-box bg-danger">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.totalItemsFaltantes}">0</h3>
+                                <p>Unidades Totales Solicitadas</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-6">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.totalCotizadosProveedor}">0</h3>
+                                <p>Cotizados con Proveedor</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="card card-primary card-outline card-tabs">
+                    <div class="card-header p-0 pt-1 border-bottom-0">
+                        <ul class="nav nav-tabs" id="tabsFaltantes" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="tab" href="#tab-faltantes">
+                                    <i class="fas fa-exclamation-circle text-warning mr-1"></i>
+                                    Sin Asignar
+                                    <span class="badge badge-warning ml-1" th:text="${#lists.size(faltantes)}">0</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#tab-proveedor">
+                                    <i class="fas fa-phone text-info mr-1"></i>
+                                    Cotizados Proveedor
+                                    <span class="badge badge-info ml-1" th:text="${#lists.size(cotizadosProveedor)}">0</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <!-- Tab: Sin Asignar -->
+                            <div class="tab-pane fade show active" id="tab-faltantes">
+                                <div class="alert alert-warning" th:if="${#lists.isEmpty(faltantes)}">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    No hay productos faltantes. Todos los items tienen producto asignado.
+                                </div>
+
+                                <div class="table-responsive" th:unless="${#lists.isEmpty(faltantes)}">
+                                    <table class="table table-hover table-striped" id="tablaFaltantes">
+                                        <thead class="thead-dark">
+                                            <tr>
+                                                <th style="width: 40%;">Producto Solicitado</th>
+                                                <th class="text-center">Veces</th>
+                                                <th class="text-center">Cant. Total</th>
+                                                <th class="text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr th:each="f : ${faltantes}">
+                                                <td>
+                                                    <strong th:text="${f.textoOriginal}">Producto</strong>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-warning badge-pill"
+                                                          th:text="${f.vecessolicitado}">1</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-danger badge-pill"
+                                                          th:text="${f.cantidadTotal}">1</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-info"
+                                                                th:onclick="'verDetalles(\'' + ${f.textoOriginal} + '\')'"
+                                                                title="Ver listas que lo piden">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-success"
+                                                                th:onclick="'asignarMasivo(\'' + ${f.textoOriginal} + '\')'"
+                                                                title="Asignar producto a todos">
+                                                            <i class="fas fa-link"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Tab: Cotizados Proveedor -->
+                            <div class="tab-pane fade" id="tab-proveedor">
+                                <div class="alert alert-info" th:if="${#lists.isEmpty(cotizadosProveedor)}">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    No hay items cotizados con proveedor pendientes de compra.
+                                </div>
+
+                                <div class="table-responsive" th:unless="${#lists.isEmpty(cotizadosProveedor)}">
+                                    <table class="table table-hover table-striped" id="tablaCotizados">
+                                        <thead class="thead-info">
+                                            <tr>
+                                                <th>Lista</th>
+                                                <th>Item Solicitado</th>
+                                                <th class="text-center">Cant.</th>
+                                                <th>Proveedor</th>
+                                                <th class="text-right">Precio</th>
+                                                <th class="text-center">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr th:each="item : ${cotizadosProveedor}">
+                                                <td>
+                                                    <a th:href="@{/listas-escolares/{id}(id=${item.listaEscolar.id})}"
+                                                       class="text-primary">
+                                                        <th:block th:text="${item.listaEscolar.codigoCompleto}">LE001-001</th:block>
+                                                    </a>
+                                                    <br>
+                                                    <small class="text-muted" th:text="${item.listaEscolar.nombreAlumno}">Alumno</small>
+                                                </td>
+                                                <td>
+                                                    <span th:text="${item.textoOriginal}">Item</span>
+                                                    <br>
+                                                    <small class="text-info"
+                                                           th:if="${item.descripcionManualEconomico != null or item.descripcionManualMedio != null or item.descripcionManualPremium != null}">
+                                                        <i class="fas fa-tag mr-1"></i>
+                                                        <span th:text="${item.descripcionManualMedio ?: (item.descripcionManualEconomico ?: item.descripcionManualPremium)}">Desc</span>
+                                                    </small>
+                                                </td>
+                                                <td class="text-center" th:text="${item.cantidadSolicitada}">1</td>
+                                                <td>
+                                                    <i class="fas fa-store text-secondary mr-1"></i>
+                                                    <span th:text="${item.nombreProveedor ?: 'Sin especificar'}">Proveedor</span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span th:if="${item.cotizadoProveedorEconomico}" class="d-block">
+                                                        <small class="text-muted">E:</small> S/ <span th:text="${#numbers.formatDecimal(item.precioEconomico, 1, 2)}">0.00</span>
+                                                    </span>
+                                                    <span th:if="${item.cotizadoProveedorMedio}" class="d-block">
+                                                        <small class="text-muted">M:</small> S/ <span th:text="${#numbers.formatDecimal(item.precioMedio, 1, 2)}">0.00</span>
+                                                    </span>
+                                                    <span th:if="${item.cotizadoProveedorPremium}" class="d-block">
+                                                        <small class="text-muted">P:</small> S/ <span th:text="${#numbers.formatDecimal(item.precioPremium, 1, 2)}">0.00</span>
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-success"
+                                                                th:onclick="'vincularProducto(' + ${item.id} + ', \'' + ${item.textoOriginal} + '\')'"
+                                                                title="Vincular producto del inventario">
+                                                            <i class="fas fa-link"></i> Vincular
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal Ver Detalles -->
+    <div class="modal fade" id="modalDetalles" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-list mr-2"></i>Listas que solicitan este producto
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <h6 id="modalProductoTitulo" class="mb-3"></h6>
+                    <div id="modalDetallesContenido">
+                        <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Asignar Masivo -->
+    <div class="modal fade" id="modalAsignarMasivo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-link mr-2"></i>Asignar Producto a Todos
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="asignarTextoNormalizado">
+                    <p class="mb-3">
+                        Producto solicitado: <strong id="asignarProductoTexto"></strong>
+                    </p>
+                    <div class="form-group">
+                        <label>Buscar Producto en Inventario</label>
+                        <select id="asignarProductoSelect" class="form-control" style="width: 100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel a Asignar</label>
+                        <select id="asignarNivel" class="form-control">
+                            <option value="ECONOMICO">Economico</option>
+                            <option value="MEDIO" selected>Medio</option>
+                            <option value="PREMIUM">Premium</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="confirmarAsignacionMasiva()">
+                        <i class="fas fa-check mr-1"></i> Asignar a Todos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Vincular Producto -->
+    <div class="modal fade" id="modalVincular" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-link mr-2"></i>Vincular Producto del Inventario
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="vincularDetalleId">
+                    <p class="mb-3">
+                        Item: <strong id="vincularItemTexto"></strong>
+                    </p>
+                    <div class="form-group">
+                        <label>Buscar Producto en Inventario</label>
+                        <select id="vincularProductoSelect" class="form-control" style="width: 100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel a Vincular</label>
+                        <select id="vincularNivel" class="form-control">
+                            <option value="ECONOMICO">Economico</option>
+                            <option value="MEDIO" selected>Medio</option>
+                            <option value="PREMIUM">Premium</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Al vincular, el precio se actualizara al del producto seleccionado.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmarVinculacion()">
+                        <i class="fas fa-link mr-1"></i> Vincular Producto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<script th:replace="~{fragments/layout :: scripts}"></script>
+<script>
+$(document).ready(function() {
+    // Configurar CSRF
+    var csrfToken = $('meta[name="_csrf"]').attr('content');
+    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+    $.ajaxSetup({
+        beforeSend: function(xhr) {
+            if (csrfToken && csrfHeader) {
+                xhr.setRequestHeader(csrfHeader, csrfToken);
+            }
+        }
+    });
+
+    // DataTables
+    if ($('#tablaFaltantes tbody tr').length > 0) {
+        $('#tablaFaltantes').DataTable({
+            language: { url: '/js/datatables-es.json' },
+            order: [[1, 'desc']],
+            pageLength: 25
+        });
+    }
+
+    if ($('#tablaCotizados tbody tr').length > 0) {
+        $('#tablaCotizados').DataTable({
+            language: { url: '/js/datatables-es.json' },
+            order: [[0, 'asc']],
+            pageLength: 25
+        });
+    }
+
+    // Inicializar Select2 para modales
+    inicializarSelect2('#asignarProductoSelect');
+    inicializarSelect2('#vincularProductoSelect');
+});
+
+function inicializarSelect2(selector) {
+    $(selector).select2({
+        theme: 'bootstrap4',
+        placeholder: 'Buscar producto...',
+        allowClear: true,
+        minimumInputLength: 2,
+        dropdownParent: $(selector).closest('.modal'),
+        ajax: {
+            url: '/listas-escolares/api/buscar-productos',
+            dataType: 'json',
+            delay: 300,
+            data: params => ({ termino: params.term }),
+            processResults: data => ({
+                results: data.map(p => ({
+                    id: p.id,
+                    text: `${p.nombre} - S/${parseFloat(p.precio).toFixed(2)} (Stock: ${p.stock})`
+                }))
+            })
+        }
+    });
+}
+
+function verDetalles(textoProducto) {
+    $('#modalProductoTitulo').text(textoProducto);
+    $('#modalDetallesContenido').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>');
+    $('#modalDetalles').modal('show');
+
+    $.get('/listas-escolares/api/faltantes/detalle', { texto: textoProducto })
+        .done(function(detalles) {
+            if (detalles.length === 0) {
+                $('#modalDetallesContenido').html('<p class="text-muted">No se encontraron detalles.</p>');
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
+            html += '<thead><tr><th>Lista</th><th>Alumno</th><th>Colegio</th><th class="text-center">Cant.</th><th>Niveles</th></tr></thead>';
+            html += '<tbody>';
+
+            detalles.forEach(d => {
+                html += `<tr>
+                    <td><a href="/listas-escolares/${d.listaId}" target="_blank">${d.codigoLista}</a></td>
+                    <td>${d.nombreAlumno}</td>
+                    <td>${d.colegio || '-'}</td>
+                    <td class="text-center">${d.cantidad}</td>
+                    <td>
+                        ${d.nivel.includes('E') ? '<span class="badge badge-secondary mr-1">ECO</span>' : ''}
+                        ${d.nivel.includes('M') ? '<span class="badge badge-info mr-1">MED</span>' : ''}
+                        ${d.nivel.includes('P') ? '<span class="badge badge-warning mr-1">PRE</span>' : ''}
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            $('#modalDetallesContenido').html(html);
+        })
+        .fail(function() {
+            $('#modalDetallesContenido').html('<p class="text-danger">Error al cargar detalles.</p>');
+        });
+}
+
+function asignarMasivo(textoProducto) {
+    const textoNormalizado = textoProducto.toLowerCase().replace(/[^a-záéíóúñ0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    $('#asignarTextoNormalizado').val(textoNormalizado);
+    $('#asignarProductoTexto').text(textoProducto);
+    $('#asignarProductoSelect').val(null).trigger('change');
+    $('#modalAsignarMasivo').modal('show');
+}
+
+function confirmarAsignacionMasiva() {
+    const textoNormalizado = $('#asignarTextoNormalizado').val();
+    const productoId = $('#asignarProductoSelect').val();
+    const nivel = $('#asignarNivel').val();
+
+    if (!productoId) {
+        Swal.fire('Atencion', 'Debe seleccionar un producto', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Confirmar asignacion',
+        text: 'Se asignara este producto a TODOS los items similares en las listas pendientes.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Si, asignar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/listas-escolares/api/faltantes/asignar-masivo',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    textoNormalizado: textoNormalizado,
+                    nivel: nivel,
+                    productoId: productoId
+                }),
+                success: function(resp) {
+                    if (resp.success) {
+                        $('#modalAsignarMasivo').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Asignacion completada',
+                            text: `Se actualizaron ${resp.actualizados} items`,
+                            timer: 2000
+                        }).then(() => location.reload());
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.error || 'Error al asignar', 'error');
+                }
+            });
+        }
+    });
+}
+
+function vincularProducto(detalleId, textoItem) {
+    $('#vincularDetalleId').val(detalleId);
+    $('#vincularItemTexto').text(textoItem);
+    $('#vincularProductoSelect').val(null).trigger('change');
+    $('#modalVincular').modal('show');
+}
+
+function confirmarVinculacion() {
+    const detalleId = $('#vincularDetalleId').val();
+    const productoId = $('#vincularProductoSelect').val();
+    const nivel = $('#vincularNivel').val();
+
+    if (!productoId) {
+        Swal.fire('Atencion', 'Debe seleccionar un producto', 'warning');
+        return;
+    }
+
+    $.ajax({
+        url: `/listas-escolares/api/detalle/${detalleId}/vincular-producto`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            nivel: nivel,
+            productoId: productoId
+        }),
+        success: function(resp) {
+            if (resp.success) {
+                $('#modalVincular').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Producto vinculado',
+                    text: 'El producto ha sido vinculado correctamente',
+                    timer: 2000
+                }).then(() => location.reload());
+            }
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al vincular', 'error');
+        }
+    });
+}
+</script>
+</body>
+</html>

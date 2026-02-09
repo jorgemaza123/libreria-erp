@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -490,5 +491,145 @@ public class VentaService {
         log.info("Precio modificado por ADMIN. Producto: {}, Original: {}, Nuevo: {}, Usuario: {}",
                 producto.getNombre(), precioVenta, precioEnviado,
                 SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    // =====================================================
+    //  ANULACIÓN DE VENTAS CON COMUNICACIÓN DE BAJA SUNAT
+    // =====================================================
+
+    /**
+     * Anula una venta y envía Comunicación de Baja a SUNAT si aplica.
+     *
+     * POLÍTICA "NO DAÑAR":
+     * - Si SUNAT falla, la anulación LOCAL sigue adelante
+     * - El error de SUNAT se registra en la venta para reintento posterior
+     * - No se bloquea la operación por problemas de red/SUNAT
+     *
+     * LÓGICA CONDICIONAL (según auditoría):
+     * - SI (venta.tipo == FACTURA o BOLETA)
+     * - Y (configuracion.isFacturacionElectronicaActiva())
+     * - Y (venta.getSunatEstado() == ACEPTADO)
+     * - ENTONCES: Ejecuta llamada a API de baja
+     *
+     * @param ventaId ID de la venta a anular
+     * @param motivo Motivo de la anulación
+     * @return Map con resultado de la operación
+     */
+    @Transactional
+    @Auditable(modulo = "VENTAS", accion = "ANULAR", descripcion = "Anular venta")
+    public Map<String, Object> anularVenta(Long ventaId, String motivo) {
+        Map<String, Object> resultado = new HashMap<>();
+
+        // 1. Obtener la venta
+        Venta venta = ventaRepository.findById(ventaId)
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + ventaId));
+
+        // 2. Validar que no esté ya anulada
+        if ("ANULADO".equals(venta.getEstado())) {
+            throw new RuntimeException("La venta ya está anulada");
+        }
+
+        // 3. Validar que no tenga devoluciones
+        if ("DEVUELTO_TOTAL".equals(venta.getEstado()) || "DEVUELTO_PARCIAL".equals(venta.getEstado())) {
+            throw new RuntimeException("No se puede anular una venta con devoluciones. Use el módulo de devoluciones.");
+        }
+
+        // 4. INTENTAR COMUNICACIÓN DE BAJA A SUNAT (si aplica)
+        String estadoSunatBaja = "NO_APLICA";
+        String mensajeSunat = "";
+        boolean errorSunat = false;
+
+        try {
+            // LÓGICA CONDICIONAL según auditoría:
+            // Solo si es BOLETA/FACTURA, facturación activa, y fue ACEPTADO
+            boolean esComprobanteElectronico = "BOLETA".equals(venta.getTipoComprobante())
+                    || "FACTURA".equals(venta.getTipoComprobante());
+            boolean facturaActiva = facturacionService.isFacturacionElectronicaActiva();
+            boolean fueAceptado = "ACEPTADO".equals(venta.getSunatEstado());
+
+            if (esComprobanteElectronico && facturaActiva && fueAceptado) {
+                log.info("Enviando comunicación de baja a SUNAT para venta {}-{}", venta.getSerie(), venta.getNumero());
+
+                Map<String, Object> respuestaBaja = facturacionService.enviarComunicacionBaja(venta, motivo);
+                estadoSunatBaja = (String) respuestaBaja.get("estado");
+                mensajeSunat = (String) respuestaBaja.get("mensaje");
+                errorSunat = !Boolean.TRUE.equals(respuestaBaja.get("success"));
+
+                if (errorSunat) {
+                    log.warn("Error en comunicación de baja SUNAT: {}. La anulación local continuará.", mensajeSunat);
+                    // Marcar para reintento posterior
+                    venta.setSunatMensajeError("ERROR_BAJA: " + mensajeSunat);
+                }
+            }
+        } catch (Exception e) {
+            // POLÍTICA "NO DAÑAR": El error de SUNAT NO bloquea la anulación local
+            log.error("Excepción en comunicación de baja SUNAT (anulación local continuará): {}", e.getMessage(), e);
+            errorSunat = true;
+            mensajeSunat = "Excepción: " + e.getMessage();
+            venta.setSunatMensajeError("ERROR_BAJA_EXCEPTION: " + e.getMessage());
+        }
+
+        // 5. ANULACIÓN LOCAL (siempre se ejecuta, independiente de SUNAT)
+        venta.setEstado("ANULADO");
+
+        // 6. Devolver stock al inventario (si tiene items)
+        if (venta.getItems() != null) {
+            for (DetalleVenta detalle : venta.getItems()) {
+                Producto producto = detalle.getProducto();
+                if (producto != null) {
+                    // Solo si no es servicio
+                    boolean esServicio = producto.getTipo() != null && "SERVICIO".equalsIgnoreCase(producto.getTipo());
+                    if (!esServicio) {
+                        int cantidadVendida = detalle.getCantidad().intValue();
+
+                        // Registrar en Kardex
+                        Kardex kardex = new Kardex();
+                        kardex.setProducto(producto);
+                        kardex.setTipo("INGRESO");
+                        kardex.setMotivo("ANULACIÓN VENTA " + venta.getSerie() + "-" + venta.getNumero());
+                        kardex.setCantidad(cantidadVendida);
+                        kardex.setStockAnterior(producto.getStockActual());
+                        kardex.setStockActual(producto.getStockActual() + cantidadVendida);
+                        kardexRepository.save(kardex);
+
+                        // Actualizar stock
+                        producto.setStockActual(producto.getStockActual() + cantidadVendida);
+                        productoRepository.save(producto);
+                    }
+                }
+            }
+        }
+
+        // 7. Registrar egreso en caja si fue pagada (revertir el ingreso)
+        if (venta.getMontoPagado() != null && venta.getMontoPagado().compareTo(BigDecimal.ZERO) > 0) {
+            try {
+                String concepto = "ANULACIÓN VENTA " + venta.getSerie() + "-" + venta.getNumero();
+                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado());
+            } catch (Exception e) {
+                // Si la caja está cerrada, no podemos registrar pero no bloqueamos la anulación
+                log.warn("No se pudo registrar egreso por anulación (¿caja cerrada?): {}", e.getMessage());
+                resultado.put("alertaCaja", "No se pudo registrar egreso en caja: " + e.getMessage());
+            }
+        }
+
+        // 8. Guardar cambios
+        ventaRepository.save(venta);
+
+        // 9. Preparar resultado
+        resultado.put("success", true);
+        resultado.put("ventaId", venta.getId());
+        resultado.put("estadoVenta", venta.getEstado());
+        resultado.put("estadoSunatBaja", estadoSunatBaja);
+        resultado.put("mensajeSunat", mensajeSunat);
+        resultado.put("errorSunat", errorSunat);
+
+        if (errorSunat) {
+            resultado.put("advertencia", "La venta fue anulada localmente pero hubo un error con SUNAT. " +
+                    "Reintente la comunicación de baja más tarde.");
+        }
+
+        log.info("Venta {}-{} anulada. Estado SUNAT baja: {}", venta.getSerie(), venta.getNumero(), estadoSunatBaja);
+
+        return resultado;
     }
 }

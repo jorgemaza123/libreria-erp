@@ -39,7 +39,8 @@ public final class Constants {
 
     // === SESIONES ===
     public static final int SESSION_TIMEOUT_HOURS = 2;
-    public static final int MAX_SESSIONS_PER_USER = 1;
+    // -1 = sesiones ilimitadas (permite PC + móvil simultáneamente)
+    public static final int MAX_SESSIONS_PER_USER = -1;
 
     // === PAGINACIÓN ===
     public static final int DEFAULT_PAGE_SIZE = 50;

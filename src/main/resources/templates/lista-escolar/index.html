@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='listas_escolares')}"></aside>
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">
+                            <i class="fas fa-clipboard-list text-primary"></i>
+                            Listas Escolares
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item active">Listas Escolares</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- Estadísticas Rápidas -->
+                <div class="row">
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.pendientes} ?: 0">0</h3>
+                                <p>Pendientes</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-clock"></i></div>
+                            <a href="?estado=PENDIENTE" class="small-box-footer">
+                                Ver <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.enProceso} ?: 0">0</h3>
+                                <p>En Proceso</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+                            <a href="?estado=EN_PROCESO" class="small-box-footer">
+                                Ver <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.completadas} ?: 0">0</h3>
+                                <p>Completadas</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-check-circle"></i></div>
+                            <a href="?estado=COMPLETADA" class="small-box-footer">
+                                Ver <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box bg-primary">
+                            <div class="inner">
+                                <h3 th:text="${estadisticas.totalListas} ?: 0">0</h3>
+                                <p>Total del Año</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-list-alt"></i></div>
+                            <a href="?" class="small-box-footer">
+                                Ver Todas <i class="fas fa-arrow-circle-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros y Acciones -->
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-filter"></i> Filtros
+                        </h3>
+                        <div class="card-tools">
+                            <a th:href="@{/listas-escolares/nueva}" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus"></i> Nueva Lista
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="get" class="row">
+                            <div class="col-md-3">
+                                <label>Estado</label>
+                                <select name="estado" class="form-control form-control-sm">
+                                    <option value="">-- Todos --</option>
+                                    <option value="PENDIENTE" th:selected="${estadoFiltro == 'PENDIENTE'}">Pendiente</option>
+                                    <option value="COTIZADA" th:selected="${estadoFiltro == 'COTIZADA'}">Cotizada</option>
+                                    <option value="EN_PROCESO" th:selected="${estadoFiltro == 'EN_PROCESO'}">En Proceso</option>
+                                    <option value="COMPLETADA" th:selected="${estadoFiltro == 'COMPLETADA'}">Completada</option>
+                                    <option value="CANCELADA" th:selected="${estadoFiltro == 'CANCELADA'}">Cancelada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label>Colegio</label>
+                                <input type="text" name="colegio" class="form-control form-control-sm"
+                                       th:value="${colegioFiltro}" placeholder="Buscar colegio...">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Grado</label>
+                                <input type="text" name="grado" class="form-control form-control-sm"
+                                       th:value="${gradoFiltro}" placeholder="Ej: 3° Primaria">
+                            </div>
+                            <div class="col-md-2">
+                                <label>Año</label>
+                                <input type="number" name="anio" class="form-control form-control-sm"
+                                       th:value="${anioFiltro}" placeholder="2025">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary btn-sm mr-2">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                                <a href="/listas-escolares" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tabla de Listas -->
+                <div class="card">
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover table-striped">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width: 100px;">Código</th>
+                                    <th>Alumno</th>
+                                    <th>Grado</th>
+                                    <th>Colegio</th>
+                                    <th>Contacto</th>
+                                    <th class="text-center">Items</th>
+                                    <th class="text-center">Progreso</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="lista : ${listas.content}">
+                                    <td>
+                                        <a th:href="@{/listas-escolares/{id}(id=${lista.id})}"
+                                           class="font-weight-bold text-primary">
+                                            <th:block th:text="${lista.codigoCompleto}">LE001-001</th:block>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <strong th:text="${lista.nombreAlumno}">Juan Pérez</strong>
+                                    </td>
+                                    <td th:text="${lista.grado}">3° Primaria</td>
+                                    <td th:text="${lista.colegio} ?: '-'">San Martín</td>
+                                    <td>
+                                        <small>
+                                            <span th:text="${lista.contactoNombre}">Padre</span><br>
+                                            <i class="fas fa-phone text-muted"></i>
+                                            <span th:text="${lista.contactoTelefono}">999999999</span>
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge badge-success" th:text="${lista.itemsVendidos}">5</span>
+                                        /
+                                        <span class="badge badge-secondary" th:text="${lista.itemsTotal}">10</span>
+                                    </td>
+                                    <td class="text-center" style="min-width: 120px;">
+                                        <div class="progress progress-sm">
+                                            <div class="progress-bar bg-success"
+                                                 role="progressbar"
+                                                 th:style="'width:' + ${lista.porcentajeAvance} + '%'"
+                                                 th:aria-valuenow="${lista.porcentajeAvance}"
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <small th:text="${lista.porcentajeAvance} + '%'">50%</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge"
+                                              th:classappend="${lista.estado == 'PENDIENTE'} ? 'badge-secondary' :
+                                                              (${lista.estado == 'COTIZADA'} ? 'badge-info' :
+                                                              (${lista.estado == 'EN_PROCESO'} ? 'badge-warning' :
+                                                              (${lista.estado == 'COMPLETADA'} ? 'badge-success' : 'badge-dark')))"
+                                              th:text="${lista.estado}">PENDIENTE</span>
+                                    </td>
+                                    <td>
+                                        <small th:text="${#temporals.format(lista.fechaCreacion, 'dd/MM/yyyy')}">01/01/2025</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a th:href="@{/listas-escolares/{id}(id=${lista.id})}"
+                                               class="btn btn-info" title="Ver Detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a th:href="@{/listas-escolares/{id}/editar(id=${lista.id})}"
+                                               class="btn btn-warning"
+                                               th:if="${lista.estado != 'COMPLETADA' and lista.estado != 'CANCELADA'}"
+                                               title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(listas.content)}">
+                                    <td colspan="10" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                        No hay listas escolares registradas
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    <div class="card-footer" th:if="${listas.totalPages > 1}">
+                        <nav>
+                            <ul class="pagination pagination-sm m-0 float-right">
+                                <li class="page-item" th:classappend="${listas.first} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number - 1}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, listas.totalPages - 1)}"
+                                    th:classappend="${i == listas.number} ? 'active'">
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${i}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}"
+                                       th:text="${i + 1}">1</a>
+                                </li>
+                                <li class="page-item" th:classappend="${listas.last} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number + 1}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <span class="text-muted">
+                            Mostrando <span th:text="${listas.numberOfElements}">10</span>
+                            de <span th:text="${listas.totalElements}">100</span> listas
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

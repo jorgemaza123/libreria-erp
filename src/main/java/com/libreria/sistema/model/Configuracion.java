@@ -138,8 +138,36 @@ public class Configuracion {
     /**
      * Mensaje de pie en tickets/comprobantes
      */
-    @Column(length = 200)
+    @Column(length = 500)
     private String mensajePieTicket;
+
+    /**
+     * Dirección alternativa para mostrar en tickets (si es diferente a la fiscal)
+     */
+    @Column(length = 255)
+    private String direccionTicket;
+
+    /**
+     * Teléfono alternativo para mostrar en tickets
+     */
+    @Column(length = 50)
+    private String telefonoTicket;
+
+    /**
+     * Mensaje secundario/promocional para tickets
+     */
+    @Column(length = 200)
+    private String mensajePromoTicket;
+
+    /**
+     * Mostrar información de redes sociales en ticket
+     */
+    private Boolean mostrarRedesSocialesEnTicket;
+
+    /**
+     * Mostrar cuentas bancarias en ticket
+     */
+    private Boolean mostrarCuentasBancariasEnTicket;
 
     /**
      * Cuentas bancarias para mostrar en tickets/comprobantes.
@@ -210,5 +238,10 @@ public class Configuracion {
         this.mostrarLogoEnTicket = true;
         this.mensajePieTicket = "Gracias por su compra. Vuelva pronto!";
         this.cuentasBancarias = "BCP: 123-456789-0-12\nBBVA: 0011-0123-45-6789012345";
+        this.direccionTicket = null; // Usar dirección fiscal por defecto
+        this.telefonoTicket = null;  // Usar teléfono principal por defecto
+        this.mensajePromoTicket = null;
+        this.mostrarRedesSocialesEnTicket = false;
+        this.mostrarCuentasBancariasEnTicket = true;
     }
 }

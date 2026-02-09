@@ -2,6 +2,7 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.repository.ProductoRepository;
+import com.libreria.sistema.service.EtiquetaService;
 import com.libreria.sistema.service.ProductoExcelService;
 import com.libreria.sistema.service.ProductoService;
 import com.libreria.sistema.util.Constants;
@@ -35,11 +36,14 @@ public class ProductoController {
     private final ProductoService productoService;
     private final ProductoExcelService productoExcelService;
     private final ProductoRepository productoRepository;
+    private final EtiquetaService etiquetaService;
 
-    public ProductoController(ProductoService productoService, ProductoExcelService productoExcelService, ProductoRepository productoRepository) {
+    public ProductoController(ProductoService productoService, ProductoExcelService productoExcelService,
+                              ProductoRepository productoRepository, EtiquetaService etiquetaService) {
         this.productoService = productoService;
         this.productoExcelService = productoExcelService;
         this.productoRepository = productoRepository;
+        this.etiquetaService = etiquetaService;
     }
 
     /**
@@ -321,6 +325,114 @@ public class ProductoController {
             log.error("Error procesando archivo Excel", e);
             attributes.addFlashAttribute("error", "Error al procesar el archivo: " + e.getMessage());
             return "redirect:/productos/importar";
+        }
+    }
+
+    // =====================================================
+    //     GENERACIÓN DE ETIQUETAS CON CÓDIGO DE BARRAS
+    // =====================================================
+
+    /**
+     * DTO para recibir la solicitud de impresión de etiquetas.
+     */
+    public static class EtiquetaRequest {
+        private java.util.List<Long> productoIds;
+        private int cantidad = 1;
+
+        public java.util.List<Long> getProductoIds() { return productoIds; }
+        public void setProductoIds(java.util.List<Long> productoIds) { this.productoIds = productoIds; }
+        public int getCantidad() { return cantidad; }
+        public void setCantidad(int cantidad) { this.cantidad = cantidad; }
+    }
+
+    /**
+     * Genera PDF con etiquetas de códigos de barras para los productos seleccionados.
+     * El formato (A4 o Ticket) se determina según la configuración del sistema.
+     *
+     * @param request Lista de IDs de productos y cantidad de etiquetas por producto
+     * @return PDF con las etiquetas listas para imprimir, o JSON con error descriptivo
+     */
+    @PostMapping("/etiquetas/imprimir")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_VER')")
+    public ResponseEntity<?> imprimirEtiquetas(@RequestBody EtiquetaRequest request) {
+        try {
+            // Validación de entrada con mensaje claro
+            if (request == null) {
+                return ResponseEntity.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of(
+                                "error", "Solicitud inválida",
+                                "mensaje", "No se recibieron datos de la solicitud"
+                        ));
+            }
+
+            if (request.getProductoIds() == null || request.getProductoIds().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of(
+                                "error", "Sin productos seleccionados",
+                                "mensaje", "Debe seleccionar al menos un producto para generar etiquetas"
+                        ));
+            }
+
+            int cantidad = request.getCantidad() > 0 ? request.getCantidad() : 1;
+            if (cantidad > 100) {
+                cantidad = 100; // Límite de seguridad
+            }
+
+            log.info("Generando etiquetas para {} productos, {} por producto",
+                    request.getProductoIds().size(), cantidad);
+
+            byte[] pdf = etiquetaService.generarPdfEtiquetas(request.getProductoIds(), cantidad);
+
+            if (pdf == null || pdf.length == 0) {
+                return ResponseEntity.status(500)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of(
+                                "error", "PDF vacío",
+                                "mensaje", "No se pudo generar el contenido del PDF"
+                        ));
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            // IMPORTANTE: Solo UN header Content-Disposition (evita ERR_RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION)
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"etiquetas.pdf\"");
+            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+            headers.setContentLength(pdf.length);
+
+            log.info("PDF de etiquetas generado exitosamente: {} bytes", pdf.length);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdf);
+
+        } catch (IllegalArgumentException e) {
+            // Errores de validación (datos inválidos)
+            log.warn("Error de validación generando etiquetas: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "error", "Error de validación",
+                            "mensaje", e.getMessage()
+                    ));
+
+        } catch (Exception e) {
+            // Error inesperado - devolver JSON descriptivo en lugar de 500 vacío
+            log.error("Error generando etiquetas PDF: {}", e.getMessage(), e);
+
+            String mensajeUsuario = "Error al generar el PDF de etiquetas";
+            if (e.getMessage() != null && !e.getMessage().isEmpty()) {
+                mensajeUsuario += ": " + e.getMessage();
+            }
+
+            return ResponseEntity.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "error", "Error interno",
+                            "mensaje", mensajeUsuario,
+                            "detalle", e.getClass().getSimpleName()
+                    ));
         }
     }
 }

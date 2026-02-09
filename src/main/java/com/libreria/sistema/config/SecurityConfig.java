@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.http.MediaType;
 
@@ -44,6 +45,10 @@ public class SecurityConfig {
     @Autowired
     @Lazy
     private UsuarioService usuarioService;
+
+    @Autowired
+    @Lazy
+    private PasswordChangeFilter passwordChangeFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -70,6 +75,7 @@ public class SecurityConfig {
                     "/proveedores/**",
                     "/kardex/**",
                     "/reportes/**",
+                    "/listas-escolares/**",
                     "/reportes-financieros/**",
                     // Configuracion y administracion
                     "/configuracion/**",
@@ -92,8 +98,18 @@ public class SecurityConfig {
                 // Login y sus variantes (EVITA BUCLE DE REDIRECCION)
                 .requestMatchers("/login", "/login/**").permitAll()
 
-                // Recursos estaticos publicos
-                .requestMatchers("/css/**", "/js/**", "/img/**", "/plugins/**", "/dist/**", "/uploads/**").permitAll()
+                // Recuperación de contraseña (acceso público)
+                .requestMatchers("/usuarios/recuperar-password").permitAll()
+                .requestMatchers("/usuarios/validar-recuperacion").permitAll()
+                .requestMatchers("/usuarios/restablecer-password").permitAll()
+                .requestMatchers("/usuarios/recuperar-emergencia").permitAll()
+
+                // Cambio de contraseña inicial (requiere autenticación pero sin password cambiado)
+                .requestMatchers("/usuarios/cambiar-password-inicial").authenticated()
+                .requestMatchers("/usuarios/guardar-password-inicial").authenticated()
+
+                // Recursos estaticos publicos (incluye /images/** para logos y assets)
+                .requestMatchers("/css/**", "/js/**", "/img/**", "/images/**", "/plugins/**", "/dist/**", "/uploads/**", "/webjars/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
 
                 // Error pages
@@ -128,6 +144,7 @@ public class SecurityConfig {
                 .requestMatchers("/proveedores/**").authenticated()
                 .requestMatchers("/notificaciones/**").authenticated()
                 .requestMatchers("/incidencias/**").authenticated()
+                .requestMatchers("/listas-escolares/**").authenticated()
 
                 // ============================================================
                 // ENDPOINTS API - Autenticados (CSRF se maneja aparte)
@@ -200,6 +217,13 @@ public class SecurityConfig {
             );
 
         http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
+
+        // ============================================================
+        // FILTRO DE CAMBIO DE CONTRASEÑA OBLIGATORIO
+        // Se ejecuta después de la autenticación para verificar si
+        // el usuario debe cambiar su contraseña inicial.
+        // ============================================================
+        http.addFilterAfter(passwordChangeFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <nav th:replace="~{fragments/layout :: navbar}"></nav>
+    <aside th:replace="~{fragments/layout :: sidebar(active='listas_escolares')}"></aside>
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">
+                            <i class="fas fa-clipboard-list text-primary"></i>
+                            Nueva Lista Escolar
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item"><a href="/listas-escolares">Listas Escolares</a></li>
+                            <li class="breadcrumb-item active">Nueva</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="content">
+            <div class="container-fluid">
+                <form id="formLista">
+                    <div class="row">
+                        <!-- Columna Izquierda: Datos del Alumno -->
+                        <div class="col-lg-6">
+                            <div class="card card-primary card-outline">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-user-graduate"></i> Datos del Alumno
+                                    </h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="nombreAlumno">
+                                            Nombre del Alumno <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="nombreAlumno"
+                                               name="nombreAlumno" required
+                                               placeholder="Ej: Juan Carlos Pérez López">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="grado">
+                                                    Grado <span class="text-danger">*</span>
+                                                </label>
+                                                <select class="form-control" id="grado" name="grado" required>
+                                                    <option value="">-- Seleccionar --</option>
+                                                    <optgroup label="Inicial">
+                                                        <option>3 años</option>
+                                                        <option>4 años</option>
+                                                        <option>5 años</option>
+                                                    </optgroup>
+                                                    <optgroup label="Primaria">
+                                                        <option th:each="i : ${#numbers.sequence(1,6)}"
+                                                                th:value="${i + '° Primaria'}"
+                                                                th:text="${i + '° Primaria'}">1° Primaria</option>
+                                                    </optgroup>
+                                                    <optgroup label="Secundaria">
+                                                        <option th:each="i : ${#numbers.sequence(1,5)}"
+                                                                th:value="${i + '° Secundaria'}"
+                                                                th:text="${i + '° Secundaria'}">1° Secundaria</option>
+                                                    </optgroup>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="seccion">Sección</label>
+                                                <input type="text" class="form-control" id="seccion"
+                                                       name="seccion" placeholder="Ej: A, B, Única">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="colegio">Colegio</label>
+                                        <select class="form-control select2" id="colegio" name="colegio"
+                                                style="width: 100%;">
+                                            <option value="">-- Seleccionar o escribir --</option>
+                                            <option th:each="c : ${colegios}"
+                                                    th:value="${c.nombre}"
+                                                    th:text="${c.nombre}">Colegio</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Datos de Contacto -->
+                            <div class="card card-info card-outline">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-phone"></i> Datos de Contacto (Padre/Apoderado)
+                                    </h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="contactoNombre">Nombre del Contacto</label>
+                                        <input type="text" class="form-control" id="contactoNombre"
+                                               name="contactoNombre" placeholder="Ej: María López (Madre)">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="contactoTelefono">
+                                                    Teléfono / WhatsApp <span class="text-danger">*</span>
+                                                </label>
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text">
+                                                            <i class="fab fa-whatsapp text-success"></i>
+                                                        </span>
+                                                    </div>
+                                                    <input type="text" class="form-control" id="contactoTelefono"
+                                                           name="contactoTelefono" placeholder="999 999 999" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="contactoEmail">Email (opcional)</label>
+                                                <input type="email" class="form-control" id="contactoEmail"
+                                                       name="contactoEmail" placeholder="correo@ejemplo.com">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Texto OCR -->
+                        <div class="col-lg-6">
+                            <div class="card card-success card-outline" style="height: calc(100% - 1rem);">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-paste"></i> Texto de la Lista (OCR)
+                                    </h3>
+                                    <div class="card-tools">
+                                        <span class="badge badge-info" id="contadorLineas">0 líneas</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="callout callout-info py-2">
+                                        <small>
+                                            <i class="fas fa-lightbulb"></i>
+                                            Pegue aquí el texto extraído por OCR de la foto de WhatsApp.
+                                            El sistema detectará automáticamente los items y cantidades.
+                                        </small>
+                                    </div>
+                                    <div class="form-group">
+                                        <textarea class="form-control" id="textoOriginal" name="textoOriginal"
+                                                  rows="18" required
+                                                  placeholder="Pegue aquí el texto de la lista escolar...
+
+Ejemplo:
+2 cuadernos cuadriculados A4
+1 caja de colores x 24
+3 lapiceros azules
+1 regla de 30 cm
+..."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="fuenteTexto">Fuente del Texto</label>
+                                        <select class="form-control form-control-sm" id="fuenteTexto" name="fuenteTexto">
+                                            <option value="OCR_WHATSAPP" selected>OCR desde WhatsApp</option>
+                                            <option value="MANUAL">Escrito manualmente</option>
+                                            <option value="OCR_OTRO">OCR desde otra fuente</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="/listas-escolares" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left"></i> Volver
+                                    </a>
+                                    <button type="button" class="btn btn-secondary" id="btnLimpiar">
+                                        <i class="fas fa-eraser"></i> Limpiar
+                                    </button>
+                                    <button type="submit" class="btn btn-success float-right" id="btnGuardar">
+                                        <i class="fas fa-save"></i> Guardar y Procesar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</div>
+
+<script th:replace="~{fragments/layout :: scripts}"></script>
+<script>
+$(document).ready(function() {
+    // Configurar CSRF para todas las peticiones AJAX
+    var csrfToken = $('meta[name="_csrf"]').attr('content');
+    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+
+    $.ajaxSetup({
+        beforeSend: function(xhr) {
+            if (csrfToken && csrfHeader) {
+                xhr.setRequestHeader(csrfHeader, csrfToken);
+            }
+        }
+    });
+
+    // Select2 para colegio con tags (permite agregar nuevos)
+    $('#colegio').select2({
+        theme: 'bootstrap4',
+        tags: true,
+        placeholder: 'Buscar o escribir colegio...',
+        allowClear: true
+    });
+
+    // Contador de líneas
+    $('#textoOriginal').on('input', function() {
+        const lineas = $(this).val().split('\n').filter(l => l.trim()).length;
+        $('#contadorLineas').text(lineas + ' líneas');
+    });
+
+    // Limpiar
+    $('#btnLimpiar').click(function() {
+        $('#textoOriginal').val('').trigger('input');
+    });
+
+    // Enviar formulario
+    $('#formLista').submit(function(e) {
+        e.preventDefault();
+
+        const datos = {
+            nombreAlumno: $('#nombreAlumno').val(),
+            grado: $('#grado').val(),
+            seccion: $('#seccion').val(),
+            colegio: $('#colegio').val(),
+            contactoNombre: $('#contactoNombre').val(),
+            contactoTelefono: $('#contactoTelefono').val(),
+            contactoEmail: $('#contactoEmail').val(),
+            textoOriginal: $('#textoOriginal').val(),
+            fuenteTexto: $('#fuenteTexto').val()
+        };
+
+        $('#btnGuardar').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+
+        $.ajax({
+            url: '/listas-escolares/api/crear',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(datos),
+            success: function(resp) {
+                if (resp.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Lista Creada',
+                        html: `<p>Código: <strong>${resp.codigo}</strong></p>
+                               <p>Items detectados: <strong>${resp.itemsTotal}</strong></p>
+                               <p>¿Desea generar cotizaciones automáticas?</p>`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, cotizar',
+                        cancelButtonText: 'Ver lista'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Generar cotizaciones
+                            $.post(`/listas-escolares/api/${resp.id}/cotizar`)
+                                .done(function() {
+                                    window.location.href = '/listas-escolares/' + resp.id;
+                                })
+                                .fail(function() {
+                                    window.location.href = '/listas-escolares/' + resp.id;
+                                });
+                        } else {
+                            window.location.href = '/listas-escolares/' + resp.id;
+                        }
+                    });
+                }
+            },
+            error: function(xhr) {
+                const msg = xhr.responseJSON?.error || 'Error al crear la lista';
+                Swal.fire('Error', msg, 'error');
+            },
+            complete: function() {
+                $('#btnGuardar').prop('disabled', false).html('<i class="fas fa-save"></i> Guardar y Procesar');
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

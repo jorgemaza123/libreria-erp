@@ -57,9 +57,17 @@ public class Producto {
     private String marca;
     private String modelo;
     private String color;
-    private String generacion; 
-    private String tipo;       
+    private String generacion;
+    private String tipo;
     private String imagen;
+
+    /**
+     * Tags/Sinónimos para búsqueda inteligente.
+     * Almacena palabras clave separadas por comas que ayudan a encontrar el producto.
+     * Ejemplo: "diurex, pegamento, scotch, cinta adhesiva"
+     */
+    @Column(columnDefinition = "TEXT")
+    private String tags;
 
     @PrePersist
     protected void onCreate() {

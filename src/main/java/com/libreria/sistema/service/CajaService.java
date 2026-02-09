@@ -11,8 +11,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.libreria.sistema.model.Venta;
+import com.libreria.sistema.repository.VentaRepository;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,11 +29,14 @@ public class CajaService {
     private final MovimientoCajaRepository movimientoRepo;
     private final SesionCajaRepository sesionRepo;
     private final UsuarioRepository usuarioRepo;
+    private final VentaRepository ventaRepo;
 
-    public CajaService(MovimientoCajaRepository movimientoRepo, SesionCajaRepository sesionRepo, UsuarioRepository usuarioRepo) {
+    public CajaService(MovimientoCajaRepository movimientoRepo, SesionCajaRepository sesionRepo,
+                       UsuarioRepository usuarioRepo, VentaRepository ventaRepo) {
         this.movimientoRepo = movimientoRepo;
         this.sesionRepo = sesionRepo;
         this.usuarioRepo = usuarioRepo;
+        this.ventaRepo = ventaRepo;
     }
 
     private Usuario getUsuarioActual() {
@@ -122,5 +130,49 @@ public class CajaService {
     
     public Map<String, BigDecimal> obtenerBalanceHoy() {
        return obtenerBalanceSesion();
+    }
+
+    // =====================================================
+    //  ALERTA DE CRÉDITOS PENDIENTES (MISIÓN 3 - AUDITORÍA)
+    // =====================================================
+
+    /**
+     * Cuenta las ventas al crédito del día que tienen saldo pendiente.
+     *
+     * CASO DE USO: Al cerrar caja, alertar al cajero si hay créditos
+     * del día sin cobrar completamente.
+     *
+     * @return Map con "cantidad" (int) y "montoTotal" (BigDecimal) de créditos pendientes
+     */
+    public Map<String, Object> contarCreditosPendientesHoy() {
+        Map<String, Object> resultado = new HashMap<>();
+
+        try {
+            LocalDate hoy = LocalDate.now();
+
+            // Buscar ventas del día que sean CREDITO con saldo > 0 y no anuladas
+            List<Venta> creditosPendientes = ventaRepo.findAll().stream()
+                    .filter(v -> v.getFechaEmision() != null && v.getFechaEmision().equals(hoy))
+                    .filter(v -> "CREDITO".equals(v.getFormaPago()))
+                    .filter(v -> v.getSaldoPendiente() != null && v.getSaldoPendiente().compareTo(BigDecimal.ZERO) > 0)
+                    .filter(v -> !"ANULADO".equals(v.getEstado()))
+                    .toList();
+
+            BigDecimal montoTotal = creditosPendientes.stream()
+                    .map(Venta::getSaldoPendiente)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            resultado.put("cantidad", creditosPendientes.size());
+            resultado.put("montoTotal", montoTotal);
+            resultado.put("success", true);
+
+        } catch (Exception e) {
+            resultado.put("cantidad", 0);
+            resultado.put("montoTotal", BigDecimal.ZERO);
+            resultado.put("success", false);
+            resultado.put("error", e.getMessage());
+        }
+
+        return resultado;
     }
 }

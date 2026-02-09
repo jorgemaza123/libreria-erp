@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='toma-inventario'">
+<head>
+    <title>Resumen de Toma</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-flag-checkered"></i> Resumen - <span th:text="${toma.codigo}">TI-2024-0001</span></h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/toma-inventario">Toma de Inventario</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/toma-inventario/conteo/{id}(id=${toma.id})}">Conteo</a></li>
+                        <li class="breadcrumb-item active">Resumen</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Tarjetas de resumen -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${stats.totalProductos}">0</h3>
+                            <p>Total Productos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-boxes"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${stats.productosContados}">0</h3>
+                            <p>Productos Contados</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${stats.productosConDiferencia}">0</h3>
+                            <p>Con Diferencia</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-secondary">
+                        <div class="inner">
+                            <h3 th:text="${stats.productosPendientes}">0</h3>
+                            <p>Sin Contar</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-question-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alertas de validación -->
+            <div th:if="${stats.productosPendientes > 0}" class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <strong>Atención:</strong> Hay <span th:text="${stats.productosPendientes}">0</span> productos sin contar.
+                Los productos no contados no tendrán ajustes aplicados.
+            </div>
+
+            <div th:if="${stats.productosConDiferencia == 0}" class="alert alert-success">
+                <i class="fas fa-check-circle mr-2"></i>
+                <strong>Sin diferencias:</strong> Todos los productos contados coinciden con el stock del sistema.
+            </div>
+
+            <!-- Tabla de diferencias -->
+            <div class="card" th:if="${!#lists.isEmpty(detallesConDiferencia)}">
+                <div class="card-header bg-warning">
+                    <h3 class="card-title">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Productos con Diferencia (<span th:text="${#lists.size(detallesConDiferencia)}">0</span>)
+                    </h3>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-striped table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th class="text-center">Stock Sistema</th>
+                                <th class="text-center">Stock Físico</th>
+                                <th class="text-center">Diferencia</th>
+                                <th class="text-center">Tipo Ajuste</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="detalle : ${detallesConDiferencia}"
+                                th:class="${detalle.diferencia < 0 ? 'table-danger' : 'table-success'}">
+                                <td th:text="${detalle.producto.codigoBarra ?: detalle.producto.codigoInterno}">COD001</td>
+                                <td th:text="${detalle.producto.nombre}">Producto X</td>
+                                <td class="text-center" th:text="${detalle.stockSistema}">10</td>
+                                <td class="text-center font-weight-bold" th:text="${detalle.stockFisico}">8</td>
+                                <td class="text-center">
+                                    <span th:if="${detalle.diferencia < 0}" class="badge badge-danger"
+                                          th:text="${detalle.diferencia}">-2</span>
+                                    <span th:if="${detalle.diferencia > 0}" class="badge badge-success"
+                                          th:text="'+' + ${detalle.diferencia}">+2</span>
+                                </td>
+                                <td class="text-center">
+                                    <span th:if="${detalle.diferencia < 0}" class="text-danger">
+                                        <i class="fas fa-arrow-down"></i> SALIDA (Faltante)
+                                    </span>
+                                    <span th:if="${detalle.diferencia > 0}" class="text-success">
+                                        <i class="fas fa-arrow-up"></i> ENTRADA (Sobrante)
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="bg-light">
+                            <tr>
+                                <th colspan="4" class="text-right">Totales:</th>
+                                <td class="text-center">
+                                    <span class="text-danger" th:if="${stats.totalFaltantes > 0}">
+                                        -<span th:text="${stats.totalFaltantes}">0</span>
+                                    </span>
+                                    <span class="mx-2">|</span>
+                                    <span class="text-success" th:if="${stats.totalSobrantes > 0}">
+                                        +<span th:text="${stats.totalSobrantes}">0</span>
+                                    </span>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Información de lo que sucederá -->
+            <div class="card card-outline card-info">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-info-circle mr-2"></i>¿Qué sucederá al procesar?</h3>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Se actualizará el <strong>stock de <span th:text="${stats.productosConDiferencia}">0</span> productos</strong> al valor del conteo físico.</li>
+                        <li>Se crearán <strong>registros en el Kardex</strong> con el motivo "AJUSTE INVENTARIO #<span th:text="${toma.codigo}">TI-2024-0001</span>".</li>
+                        <li>La toma quedará marcada como <strong>PROCESADA</strong> y no podrá modificarse.</li>
+                        <li th:if="${stats.totalFaltantes > 0}">
+                            <span class="text-danger">
+                                <i class="fas fa-arrow-down"></i>
+                                Se registrarán <strong><span th:text="${stats.totalFaltantes}">0</span> unidades</strong> como SALIDA (faltantes/mermas).
+                            </span>
+                        </li>
+                        <li th:if="${stats.totalSobrantes > 0}">
+                            <span class="text-success">
+                                <i class="fas fa-arrow-up"></i>
+                                Se registrarán <strong><span th:text="${stats.totalSobrantes}">0</span> unidades</strong> como ENTRADA (sobrantes).
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a th:href="@{/toma-inventario/conteo/{id}(id=${toma.id})}" class="btn btn-default btn-block">
+                                <i class="fas fa-arrow-left"></i> Volver al Conteo
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <form th:action="@{/toma-inventario/cancelar/{id}(id=${toma.id})}" method="post"
+                                  onsubmit="return confirm('¿Cancelar esta toma de inventario? No se aplicarán cambios al stock.');">
+                                <button type="submit" class="btn btn-outline-danger btn-block">
+                                    <i class="fas fa-ban"></i> Cancelar Toma
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <form th:action="@{/toma-inventario/procesar/{id}(id=${toma.id})}" method="post"
+                                  onsubmit="return confirm('¿Procesar y cerrar esta toma de inventario?\n\nEsta acción aplicará los ajustes al stock y no podrá deshacerse.');">
+                                <button type="submit" class="btn btn-success btn-block">
+                                    <i class="fas fa-check-circle"></i> Procesar y Cerrar Toma
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+</body>
+</html>

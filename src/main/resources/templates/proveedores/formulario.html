@@ -1,22 +1,38 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='proveedores')}"></aside>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='proveedores'">
+<head>
+    <title th:text="${titulo}">Proveedor</title>
+</head>
+<body>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1 th:text="${titulo}">Proveedor</h1></div>
-        </section>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 th:text="${titulo}">Proveedor</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/proveedores}">Proveedores</a></li>
+                        <li class="breadcrumb-item active" th:text="${titulo}">Formulario</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <section class="content">
+    <section class="content">
+        <div class="container-fluid">
             <div class="card card-navy">
                 <form th:action="@{/proveedores/guardar}" th:object="${proveedor}" method="post">
                     <input type="hidden" th:field="*{id}" />
                     <input type="hidden" th:field="*{activo}" />
-                    
+
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-4">
@@ -61,14 +77,14 @@
                     </div>
 
                     <div class="card-footer text-right">
-                        <a href="/proveedores" class="btn btn-default">Cancelar</a>
+                        <a th:href="@{/proveedores}" class="btn btn-default">Cancelar</a>
                         <button type="submit" class="btn btn-navy"><i class="fas fa-save"></i> Guardar Proveedor</button>
                     </div>
                 </form>
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
 </div>
-<div th:replace="~{fragments/layout :: scripts}"></div>
+
 </body>
 </html>

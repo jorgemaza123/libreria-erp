@@ -1,147 +1,146 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='cotizaciones'">
+<head>
+    <title>Cotizaciones Emitidas</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    
-    <aside th:replace="~{fragments/layout :: sidebar(active='cotizaciones')}"></aside>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid"><h1>Cotizaciones Emitidas</h1></div>
+    </section>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1>Cotizaciones Emitidas</h1></div>
-        </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-navy card-outline">
+                <div class="card-body p-0">
+                    <table class="table table-striped projects">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Teléfono</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th class="text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${cotizaciones.content}">
+                                <td class="font-weight-bold" th:text="${c.serie} + '-' + ${c.numero}"></td>
+                                <td th:text="${#temporals.format(c.fechaEmision, 'dd/MM/yyyy')}"></td>
+                                <td>
+                                    <span th:text="${c.clienteNombre}"></span><br/>
+                                    <small th:text="${c.clienteDocumento}"></small>
+                                </td>
+                                <td th:text="${c.clienteTelefono}"></td>
+                                <td class="font-weight-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>
+                                <td>
+                                    <span th:if="${c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDO</span>
+                                    <span th:if="${c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-success">VENDIDO</span>
+                                </td>
+                                <td class="text-right">
+                                    <a th:if="${c.estado == 'EMITIDO'}" th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-sm" title="Editar">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </a>
 
-        <section class="content">
-            <div class="container-fluid">
-                <div class="card card-navy card-outline">
-                    <div class="card-body p-0">
-                        <table class="table table-striped projects">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Teléfono</th>
-                                    <th>Total</th>
-                                    <th>Estado</th>
-                                    <th class="text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="c : ${cotizaciones.content}">
-                                    <td class="font-weight-bold" th:text="${c.serie} + '-' + ${c.numero}"></td>
-                                    <td th:text="${#temporals.format(c.fechaEmision, 'dd/MM/yyyy')}"></td>
-                                    <td>
-                                        <span th:text="${c.clienteNombre}"></span><br/>
-                                        <small th:text="${c.clienteDocumento}"></small>
-                                    </td>
-                                    <td th:text="${c.clienteTelefono}"></td>
-                                    <td class="font-weight-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>
-                                    <td>
-                                        <span th:if="${c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDO</span>
-                                        <span th:if="${c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-success">VENDIDO</span>
-                                    </td>
-                                    <td class="text-right">
-                                        <a th:if="${c.estado == 'EMITIDO'}" th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-sm" title="Editar">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
+                                    <button class="btn btn-success btn-sm"
+                                            th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
+                                            title="WhatsApp">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </button>
 
-                                        <button class="btn btn-success btn-sm" 
-                                                th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
-                                                title="WhatsApp">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </button>
+                                    <button th:if="${c.estado == 'EMITIDO'}" class="btn btn-warning btn-sm" th:onclick="confirmarVenta([[${c.id}]])" title="Vender">
+                                        <i class="fas fa-cash-register"></i>
+                                    </button>
 
-                                        <button th:if="${c.estado == 'EMITIDO'}" class="btn btn-warning btn-sm" th:onclick="confirmarVenta([[${c.id}]])" title="Vender">
-                                            <i class="fas fa-cash-register"></i>
-                                        </button>
+                                    <button class="btn btn-default btn-sm" th:onclick="abrirPdf([[${c.id}]])" title="Imprimir">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                                        <button class="btn btn-default btn-sm" th:onclick="abrirPdf([[${c.id}]])" title="Imprimir">
-                                            <i class="fas fa-print"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        
-                        <div class="p-3" th:if="${cotizaciones.totalPages > 0}">
-                            <nav>
-                                <ul class="pagination justify-content-center m-0">
-                                    <li class="page-item" th:classappend="${cotizaciones.first} ? 'disabled'">
-                                        <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1})}">Anterior</a>
-                                    </li>
-                                    <li class="page-item disabled">
-                                        <span class="page-link" th:text="'Pág ' + (${currentPage + 1})"></span>
-                                    </li>
-                                    <li class="page-item" th:classappend="${cotizaciones.last} ? 'disabled'">
-                                        <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage + 1})}">Siguiente</a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-
+                    <div class="p-3" th:if="${cotizaciones.totalPages > 0}">
+                        <nav>
+                            <ul class="pagination justify-content-center m-0">
+                                <li class="page-item" th:classappend="${cotizaciones.first} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1})}">Anterior</a>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link" th:text="'Pág ' + (${currentPage + 1})"></span>
+                                </li>
+                                <li class="page-item" th:classappend="${cotizaciones.last} ? 'disabled'">
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage + 1})}">Siguiente</a>
+                                </li>
+                            </ul>
+                        </nav>
                     </div>
+
                 </div>
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
-<script>
-    // Función PDF en Popup
-    function abrirPdf(id) {
-        window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
-    }
-
-    // Función WhatsApp
-    async function enviarWhatsapp(nombre, serie, numero, total, telefono) {
-        let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
-        mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
-        mensaje += `Quedamos atentos a su confirmación.`;
-
-        const { value: nuevoNumero } = await Swal.fire({
-            title: 'Enviar WhatsApp',
-            text: 'Confirma el número:',
-            input: 'text',
-            inputValue: telefono || '',
-            showCancelButton: true,
-            confirmButtonText: 'Abrir Chat',
-            confirmButtonColor: '#25D366'
-        });
-
-        if (nuevoNumero) {
-            window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+<th:block layout:fragment="scripts">
+    <script>
+        // Función PDF en Popup
+        function abrirPdf(id) {
+            window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
         }
-    }
 
-    function confirmarVenta(id) {
-        Swal.fire({
-            title: 'Convertir a Venta',
-            text: "¿Generar Boleta o Factura?",
-            icon: 'question',
-            showDenyButton: true,
-            confirmButtonText: 'BOLETA',
-            denyButtonText: 'FACTURA',
-            confirmButtonColor: '#28a745',
-            denyButtonColor: '#17a2b8'
-        }).then((result) => {
-            if (result.isConfirmed || result.isDenied) {
-                let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
-                
-                $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
-                    Swal.fire('¡Vendido!', `Se generó la venta ID: ${resp.ventaId}`, 'success')
-                        .then(() => location.reload());
-                }).fail(function(err) {
-                    Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
-                });
+        // Función WhatsApp
+        async function enviarWhatsapp(nombre, serie, numero, total, telefono) {
+            let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
+            mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
+            mensaje += `Quedamos atentos a su confirmación.`;
+
+            const { value: nuevoNumero } = await Swal.fire({
+                title: 'Enviar WhatsApp',
+                text: 'Confirma el número:',
+                input: 'text',
+                inputValue: telefono || '',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir Chat',
+                confirmButtonColor: '#25D366'
+            });
+
+            if (nuevoNumero) {
+                window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
             }
-        });
-    }
-</script>
+        }
+
+        function confirmarVenta(id) {
+            Swal.fire({
+                title: 'Convertir a Venta',
+                text: "¿Generar Boleta o Factura?",
+                icon: 'question',
+                showDenyButton: true,
+                confirmButtonText: 'BOLETA',
+                denyButtonText: 'FACTURA',
+                confirmButtonColor: '#28a745',
+                denyButtonColor: '#17a2b8'
+            }).then((result) => {
+                if (result.isConfirmed || result.isDenied) {
+                    let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+
+                    $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                        Swal.fire('¡Vendido!', `Se generó la venta ID: ${resp.ventaId}`, 'success')
+                            .then(() => location.reload());
+                    }).fail(function(err) {
+                        Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

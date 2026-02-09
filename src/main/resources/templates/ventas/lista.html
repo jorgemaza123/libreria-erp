@@ -1,107 +1,105 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='historial_ventas'">
+<head>
+    <title>Historial de Ventas</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    
-    <aside th:replace="~{fragments/layout :: sidebar(active='historial_ventas')}"></aside>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid"><h1>Historial de Ventas</h1></div>
+    </section>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1>Historial de Ventas</h1></div>
-        </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <span th:text="${error}"></span>
+            </div>
 
-        <section class="content">
-            <div class="container-fluid">
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <span th:text="${success}"></span>
+            <div class="card card-navy card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Listado General</h3>
                 </div>
-                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    <span th:text="${error}"></span>
-                </div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Comprobante</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="v : ${ventas.content}">
+                                <td th:text="${#temporals.format(v.fechaCreacion, 'dd/MM/yyyy HH:mm')}"></td>
+                                <td>
+                                    <span class="badge badge-info" th:text="${v.tipoComprobante}"></span>
+                                    <strong th:text="${v.serie} + '-' + ${v.numero}"></strong>
+                                </td>
+                                <td th:text="${v.clienteDenominacion}"></td>
+                                <td class="font-weight-bold" th:text="'S/ ' + ${v.total}"></td>
+                                <td>
+                                    <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
+                                    <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
+                                </td>
+                                <td class="text-right">
+                                    <button class="btn btn-primary btn-sm btn-detalle" th:data-id="${v.id}" title="Ver Detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
 
-                <div class="card card-navy card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title">Listado General</h3>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Comprobante</th>
-                                    <th>Cliente</th>
-                                    <th>Total</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="v : ${ventas.content}">
-                                    <td th:text="${#temporals.format(v.fechaCreacion, 'dd/MM/yyyy HH:mm')}"></td>
-                                    <td>
-                                        <span class="badge badge-info" th:text="${v.tipoComprobante}"></span>
-                                        <strong th:text="${v.serie} + '-' + ${v.numero}"></strong>
-                                    </td>
-                                    <td th:text="${v.clienteDenominacion}"></td>
-                                    <td class="font-weight-bold" th:text="'S/ ' + ${v.total}"></td>
-                                    <td>
-                                        <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
-                                        <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
-                                    </td>
-                                    <td class="text-right">
-                                        <button class="btn btn-primary btn-sm btn-detalle" th:data-id="${v.id}" title="Ver Detalle">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <button class="btn btn-success btn-sm"
+                                            th:onclick="enviarWhatsappVenta([[${v.clienteDenominacion}]], [[${v.serie}]], [[${v.numero}]], [[${v.total}]], [[${v.clienteEntity != null ? v.clienteEntity.telefono : ''}]])"
+                                            title="Enviar por WhatsApp">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </button>
 
-                                        <button class="btn btn-success btn-sm"
-                                                th:onclick="enviarWhatsappVenta([[${v.clienteDenominacion}]], [[${v.serie}]], [[${v.numero}]], [[${v.total}]], [[${v.clienteEntity != null ? v.clienteEntity.telefono : ''}]])"
-                                                title="Enviar por WhatsApp">
-                                            <i class="fab fa-whatsapp"></i>
-                                        </button>
+                                    <button class="btn btn-default btn-sm"
+                                            th:onclick="abrirPdfVenta([[${v.id}]])"
+                                            title="Imprimir Comprobante">
+                                        <i class="fas fa-print"></i>
+                                    </button>
 
-                                        <button class="btn btn-default btn-sm" 
-                                                th:onclick="abrirPdfVenta([[${v.id}]])" 
-                                                title="Imprimir Comprobante">
-                                            <i class="fas fa-print"></i>
-                                        </button>
+                                    <form th:if="${v.estado == 'EMITIDO'}" th:action="@{/ventas/anular/{id}(id=${v.id})}" method="post" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Esta acción devolverá el stock.');">
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                                        <form th:if="${v.estado == 'EMITIDO'}" th:action="@{/ventas/anular/{id}(id=${v.id})}" method="post" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Esta acción devolverá el stock.');">
-                                            <button type="submit" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-ban"></i></button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div class="row mt-3" th:if="${ventas.totalPages > 0}">
-                            <div class="col-md-12">
-                                <nav>
-                                    <ul class="pagination justify-content-center">
-                                        <li class="page-item" th:classappend="${ventas.first} ? 'disabled'">
-                                            <a class="page-link" th:href="@{/ventas/lista(page=${currentPage - 1})}">Anterior</a>
-                                        </li>
-                                        <li class="page-item active">
-                                            <span class="page-link" th:text="${currentPage + 1} + ' de ' + ${ventas.totalPages}"></span>
-                                        </li>
-                                        <li class="page-item" th:classappend="${ventas.last} ? 'disabled'">
-                                            <a class="page-link" th:href="@{/ventas/lista(page=${currentPage + 1})}">Siguiente</a>
-                                        </li>
-                                    </ul>
-                                </nav>
-                            </div>
+                    <div class="row mt-3" th:if="${ventas.totalPages > 0}">
+                        <div class="col-md-12">
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item" th:classappend="${ventas.first} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/ventas/lista(page=${currentPage - 1})}">Anterior</a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <span class="page-link" th:text="${currentPage + 1} + ' de ' + ${ventas.totalPages}"></span>
+                                    </li>
+                                    <li class="page-item" th:classappend="${ventas.last} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/ventas/lista(page=${currentPage + 1})}">Siguiente</a>
+                                    </li>
+                                </ul>
+                            </nav>
                         </div>
-
                     </div>
+
                 </div>
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
 
     <div class="modal fade" id="modalDetalle">
         <div class="modal-dialog modal-lg">
@@ -121,8 +119,7 @@
     </div>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
+<th:block layout:fragment="scripts">
 <script>
     $(function () {
         // Lógica del modal detalle
@@ -140,33 +137,68 @@
 
     // --- FUNCIÓN ENVIAR WHATSAPP ---
     async function enviarWhatsappVenta(nombre, serie, numero, total, telefono) {
-        let mensaje = `Hola *${nombre}*, le enviamos su comprobante de venta *${serie}-${numero}*.\n`;
-        mensaje += `Importe Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
-        mensaje += `Gracias por su preferencia.`;
+        // Nombre de la empresa (configurable via Thymeleaf)
+        const nombreEmpresa = /*[[${@configuracionService.obtenerConfiguracion().getNombreEmpresa() ?: 'Librería H & J'}]]*/ 'Librería H & J';
+
+        // Construir mensaje formateado
+        let mensaje = `*${nombreEmpresa}*\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n`;
+        mensaje += `📄 *Comprobante N°:* ${serie}-${numero}\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n\n`;
+        mensaje += `👤 *Cliente:* ${nombre}\n\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n`;
+        mensaje += `💰 *TOTAL: S/ ${parseFloat(total).toFixed(2)}*\n`;
+        mensaje += `━━━━━━━━━━━━━━━━━━\n\n`;
+        mensaje += `¡Gracias por su compra! 🙏\n`;
+        mensaje += `Lo esperamos pronto.`;
 
         // SweetAlert inteligente: Si ya hay teléfono lo sugiere, si no, pide ingresarlo
         const { value: nuevoNumero } = await Swal.fire({
-            title: 'Enviar Comprobante',
-            text: 'Confirme el número de WhatsApp:',
-            input: 'text',
-            inputValue: telefono || '', // Pre-llena si existe, vacío si es null
+            title: '<i class="fab fa-whatsapp text-success"></i> Enviar Comprobante',
+            html: `
+                <p class="mb-3">Enviar comprobante <strong>${serie}-${numero}</strong> por WhatsApp</p>
+                <div class="form-group text-left">
+                    <label class="font-weight-bold">Número de WhatsApp:</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-success text-white">+51</span>
+                        </div>
+                        <input type="tel" id="swal-input-telefono" class="form-control form-control-lg"
+                               value="${telefono || ''}" placeholder="999888777" maxlength="9">
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonText: '<i class="fab fa-whatsapp"></i> Enviar',
             confirmButtonColor: '#25D366',
             cancelButtonText: 'Cancelar',
-            inputPlaceholder: 'Ej: 999888777',
-            inputValidator: (value) => {
-                if (!value) {
-                    return '¡Necesitas escribir un número para enviar!';
+            focusConfirm: false,
+            preConfirm: () => {
+                const valor = document.getElementById('swal-input-telefono').value.trim();
+                if (!valor || valor.length < 9) {
+                    Swal.showValidationMessage('Ingrese un número válido de 9 dígitos');
+                    return false;
                 }
+                return valor.replace(/\D/g, '');
             }
         });
 
         if (nuevoNumero) {
             // Abre WhatsApp Web/App con el mensaje preformateado
             window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+
+            // Toast de confirmación
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Abriendo WhatsApp...',
+                showConfirmButton: false,
+                timer: 2000
+            });
         }
     }
 </script>
+</th:block>
 </body>
 </html>

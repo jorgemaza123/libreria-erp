@@ -1,126 +1,152 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='servicios'">
+<head>
+    <title>Gestión de Servicios</title>
+</head>
+<body>
 
-<body class="hold-transition sidebar-mini">
-<div class="wrapper">
-    
-    <nav th:replace="~{fragments/layout :: navbar}"></nav>
-    <aside th:replace="~{fragments/layout :: sidebar(active='servicios')}"></aside>
-
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid"><h1>Gestión de Servicios y Proyectos</h1></div>
-        </section>
-
-        <section class="content">
-            <div class="container-fluid">
-                <div class="card">
-                    <div class="card-body">
-                        <table id="tablaOrdenes" class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Cliente</th>
-                                    <th>Trabajo</th>
-                                    <th>Estado</th>
-                                    <th>Saldo</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="o : ${ordenes}">
-                                    <td th:text="${o.id}"></td>
-                                    <td>
-                                        <div class="font-weight-bold" th:text="${o.clienteNombre}"></div>
-                                        <small class="d-block text-muted">
-                                            <i class="fas fa-id-card"></i> <span th:text="${o.clienteDocumento}"></span>
-                                        </small>
-                                        <small>
-                                            <i class="fas fa-phone"></i> <span th:text="${o.clienteTelefono}"></span>
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info" th:text="${o.tipoServicio}"></span><br>
-                                        <span th:text="${o.tituloTrabajo}"></span>
-                                    </td>
-                                    <td>
-                                        <span th:if="${o.estado == 'PENDIENTE'}" class="badge badge-warning">PENDIENTE</span>
-                                        <span th:if="${o.estado == 'ENTREGADO'}" class="badge badge-success">ENTREGADO</span>
-                                        <span th:if="${o.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
-                                    </td>
-                                    <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
-                                    
-                                    <td>
-                                        <button class="btn btn-sm btn-default" th:onclick="abrirPdf([[${o.id}]])" title="Imprimir"><i class="fas fa-print"></i></button>
-                                        
-                                        <button class="btn btn-sm btn-success" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])"><i class="fab fa-whatsapp"></i></button>
-                                        
-                                        <a th:if="${o.estado != 'ENTREGADO'}" th:href="@{/ordenes/editar/{id}(id=${o.id})}" class="btn btn-sm btn-warning" title="Editar / Ajustar Costos">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-
-                                        <button th:if="${o.estado != 'ENTREGADO'}" class="btn btn-sm btn-primary" th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])" title="Finalizar y Cobrar">
-                                            <i class="fas fa-check-double"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Gestión de Servicios y Proyectos</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item active">Servicios</li>
+                    </ol>
                 </div>
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-body">
+                    <table id="tablaOrdenes" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Trabajo</th>
+                                <th>Estado</th>
+                                <th>Saldo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="o : ${ordenes}">
+                                <td th:text="${o.id}"></td>
+                                <td>
+                                    <div class="font-weight-bold" th:text="${o.clienteNombre}"></div>
+                                    <small class="d-block text-muted">
+                                        <i class="fas fa-id-card"></i> <span th:text="${o.clienteDocumento}"></span>
+                                    </small>
+                                    <small>
+                                        <i class="fas fa-phone"></i> <span th:text="${o.clienteTelefono}"></span>
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-info" th:text="${o.tipoServicio}"></span><br>
+                                    <span th:text="${o.tituloTrabajo}"></span>
+                                </td>
+                                <td>
+                                    <span th:if="${o.estado == 'PENDIENTE'}" class="badge badge-warning">PENDIENTE</span>
+                                    <span th:if="${o.estado == 'ENTREGADO'}" class="badge badge-success">ENTREGADO</span>
+                                    <span th:if="${o.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
+                                </td>
+                                <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
+
+                                <td>
+                                    <button class="btn btn-sm btn-default" th:onclick="abrirPdf([[${o.id}]])" title="Imprimir"><i class="fas fa-print"></i></button>
+
+                                    <button class="btn btn-sm btn-success" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])"><i class="fab fa-whatsapp"></i></button>
+
+                                    <a th:if="${o.estado != 'ENTREGADO'}" th:href="@{/ordenes/editar/{id}(id=${o.id})}" class="btn btn-sm btn-warning" title="Editar / Ajustar Costos">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <button th:if="${o.estado != 'ENTREGADO'}" class="btn btn-sm btn-primary" th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])" title="Finalizar y Cobrar">
+                                        <i class="fas fa-check-double"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
-<div th:replace="~{fragments/layout :: scripts}"></div>
-
-<script>
-    $(document).ready(function () {
-        $("#tablaOrdenes").DataTable({
-            "responsive": true, "autoWidth": false, "order": [ [ 0, "desc" ] ], 
-            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function () {
+            $("#tablaOrdenes").DataTable({
+                "responsive": true,
+                "autoWidth": false,
+                "order": [[0, "desc"]],
+                "language": { "url": "/js/datatables-es.json" }
+            });
         });
-    });
 
-    function abrirPdf(id) {
-        window.open('/ordenes/pdf/' + id, '_blank', 'height=600,width=800,scrollbars=yes,status=yes');
-    }
-
-    async function abrirWhatsapp(telefono, nombre, trabajo) {
-        const { value: nuevoNumero } = await Swal.fire({
-            title: 'Enviar WhatsApp', text: 'Confirma el número:', input: 'text', inputValue: telefono || '',
-            showCancelButton: true, confirmButtonText: 'Abrir Chat', confirmButtonColor: '#25D366'
-        });
-        if (nuevoNumero) {
-            let mensaje = `Hola ${nombre}, su servicio de "${trabajo}" está en proceso/listo.`;
-            window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+        function abrirPdf(id) {
+            window.open('/ordenes/pdf/' + id, '_blank', 'height=600,width=800,scrollbars=yes,status=yes');
         }
-    }
 
-    function finalizarOrden(id, saldo) {
-        let msg = "Esto marcará la orden como ENTREGADA.";
-        let inputCobro = false;
-        if(saldo > 0) {
-            msg += `<br><strong>Hay un saldo pendiente de S/ ${saldo}</strong>.<br>¿Desea registrar este ingreso en Caja?`;
-            inputCobro = true;
+        async function abrirWhatsapp(telefono, nombre, trabajo) {
+            const { value: nuevoNumero } = await Swal.fire({
+                title: 'Enviar WhatsApp',
+                text: 'Confirma el número:',
+                input: 'text',
+                inputValue: telefono || '',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir Chat',
+                confirmButtonColor: '#25D366'
+            });
+            if (nuevoNumero) {
+                let mensaje = `Hola ${nombre}, su servicio de "${trabajo}" está en proceso/listo.`;
+                window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+            }
         }
-        Swal.fire({
-            title: '¿Finalizar Servicio?', html: msg, icon: 'question', showCancelButton: true,
-            confirmButtonText: inputCobro ? 'Sí, Cobrar y Finalizar' : 'Sí, Finalizar',
-            cancelButtonText: 'Cancelar', showDenyButton: inputCobro, denyButtonText: 'Finalizar SIN Cobrar'
-        }).then((result) => {
-            if (result.isConfirmed) enviarFinalizacion(id, true);
-            else if (result.isDenied) enviarFinalizacion(id, false);
-        });
-    }
 
-    function enviarFinalizacion(id, cobrar) {
-        $.post(`/ordenes/api/finalizar/${id}?cobrarSaldo=${cobrar}`, function(resp) {
-            Swal.fire('Listo', resp, 'success').then(() => location.reload());
-        }).fail(function() { Swal.fire('Error', 'No se pudo actualizar', 'error'); });
-    }
-</script>
+        function finalizarOrden(id, saldo) {
+            let msg = "Esto marcará la orden como ENTREGADA.";
+            let inputCobro = false;
+            if (saldo > 0) {
+                msg += `<br><strong>Hay un saldo pendiente de S/ ${saldo}</strong>.<br>¿Desea registrar este ingreso en Caja?`;
+                inputCobro = true;
+            }
+            Swal.fire({
+                title: '¿Finalizar Servicio?',
+                html: msg,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: inputCobro ? 'Sí, Cobrar y Finalizar' : 'Sí, Finalizar',
+                cancelButtonText: 'Cancelar',
+                showDenyButton: inputCobro,
+                denyButtonText: 'Finalizar SIN Cobrar'
+            }).then((result) => {
+                if (result.isConfirmed) enviarFinalizacion(id, true);
+                else if (result.isDenied) enviarFinalizacion(id, false);
+            });
+        }
+
+        function enviarFinalizacion(id, cobrar) {
+            $.post(`/ordenes/api/finalizar/${id}?cobrarSaldo=${cobrar}`, function(resp) {
+                Swal.fire('Listo', resp, 'success').then(() => location.reload());
+            }).fail(function() {
+                Swal.fire('Error', 'No se pudo actualizar', 'error');
+            });
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

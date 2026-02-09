@@ -185,12 +185,28 @@
           <input type="text" style="display:none">
           <input type="password" style="display:none">
 
-          <div th:if="${param.error}" class="alert alert-danger text-center">
-            Usuario o contraseña incorrectos
+          <!-- Mensaje de error personalizado -->
+          <div th:if="${param.error}" class="alert alert-danger text-center" style="font-size: 13px;">
+            <i class="fas fa-exclamation-circle mr-1"></i>
+            <span th:text="${param.error[0] != '' ? param.error[0] : 'Usuario o contraseña incorrectos'}"></span>
           </div>
 
           <div th:if="${param.logout}" class="alert alert-success text-center">
-            Ha cerrado sesión correctamente
+            <i class="fas fa-check-circle mr-1"></i> Ha cerrado sesión correctamente
+          </div>
+
+          <div th:if="${param.expired}" class="alert alert-warning text-center" style="font-size: 13px;">
+            <i class="fas fa-clock mr-1"></i> Su sesión ha expirado. Inicie sesión nuevamente.
+          </div>
+
+          <div th:if="${param.invalid}" class="alert alert-info text-center" style="font-size: 13px;">
+            <i class="fas fa-info-circle mr-1"></i> Sesión inválida. Por favor inicie sesión.
+          </div>
+
+          <!-- Mensaje de éxito (recuperación de contraseña) -->
+          <div th:if="${success}" class="alert alert-success text-center" style="font-size: 13px;">
+            <i class="fas fa-check-circle mr-1"></i>
+            <span th:text="${success}"></span>
           </div>
 
           <div class="input-group mb-3">
@@ -235,6 +251,13 @@
             Ingresar al sistema
           </button>
         </form>
+
+        <!-- Enlace para recuperar contraseña -->
+        <div class="text-center mt-3">
+          <a th:href="@{/usuarios/recuperar-password}" style="color: rgba(255,255,255,0.8); font-size: 13px;">
+            <i class="fas fa-key mr-1"></i> ¿Olvidó su contraseña?
+          </a>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='toma-inventario'">
+<head>
+    <title>Nueva Toma de Inventario</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-clipboard-check"></i> Nueva Toma de Inventario</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/toma-inventario">Toma de Inventario</a></li>
+                        <li class="breadcrumb-item active">Nueva</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-play-circle mr-2"></i>Iniciar Toma de Inventario
+                            </h3>
+                        </div>
+
+                        <form action="/toma-inventario/crear" method="post">
+                            <div class="card-body">
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    <strong>¿Qué es una Toma de Inventario?</strong><br>
+                                    Es un proceso de auditoría donde se compara el stock registrado en el sistema
+                                    con el conteo físico real de los productos. Al finalizar, se aplicarán los
+                                    ajustes necesarios y quedarán registrados en el Kardex.
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    <strong>Importante:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li>Se creará un registro de <strong>TODOS los productos activos</strong> del sistema.</li>
+                                        <li>Solo puede haber <strong>una toma abierta</strong> a la vez.</li>
+                                        <li>Los ajustes se aplicarán al <strong>procesar y cerrar</strong> la toma.</li>
+                                        <li>El proceso puede ser cancelado en cualquier momento sin aplicar cambios.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="observaciones">Observaciones (Opcional)</label>
+                                    <textarea name="observaciones" id="observaciones" class="form-control" rows="3"
+                                              placeholder="Ej: Toma de inventario mensual, Inventario por cambio de local, etc."></textarea>
+                                </div>
+
+                            </div>
+
+                            <div class="card-footer">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <a href="/toma-inventario" class="btn btn-default btn-block">
+                                            <i class="fas fa-arrow-left"></i> Cancelar
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <button type="submit" class="btn btn-primary btn-block"
+                                                onclick="return confirm('¿Iniciar nueva toma de inventario? Se creará un snapshot del stock actual de todos los productos.');">
+                                            <i class="fas fa-play"></i> Iniciar Toma
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+</body>
+</html>
