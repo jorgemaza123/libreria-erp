@@ -28,8 +28,9 @@ services:
       POSTGRES_PASSWORD: 1234
       POSTGRES_USER: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backups_cliente:/backups # CARPETA QUE EL CLIENTE PUEDE SINCRONIZAR CON GOOGLE DRIVE
+      # CAMBIO IMPORTANTE: Usar "./pgdata" guarda los datos en Windows, no en Docker
+      - ./pgdata:/var/lib/postgresql/data
+      - ./backups_cliente:/backups
       - ./scripts:/scripts
     restart: always
 
@@ -51,5 +52,5 @@ services:
     depends_on:
       - db
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
