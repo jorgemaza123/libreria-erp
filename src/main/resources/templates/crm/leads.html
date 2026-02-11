@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_leads'">
+<head>
+    <title>CRM - Leads</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0"><i class="fas fa-user-plus mr-2"></i>Gestion de Leads</h1>
+                <button class="btn btn-success" onclick="abrirModalLead()">
+                    <i class="fas fa-plus mr-1"></i>Nuevo Lead
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Busqueda -->
+            <div class="card">
+                <div class="card-body p-2">
+                    <form method="get" action="/crm/leads" class="form-inline">
+                        <input type="text" name="buscar" class="form-control form-control-sm mr-2" placeholder="Buscar por nombre, documento..." th:value="${buscar}" style="width: 300px;">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search mr-1"></i>Buscar</button>
+                        <a href="/crm/leads" class="btn btn-sm btn-outline-secondary ml-2"><i class="fas fa-times mr-1"></i>Limpiar</a>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de leads -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Documento</th>
+                                <th>Telefono</th>
+                                <th>Email</th>
+                                <th>Origen</th>
+                                <th>Empresa</th>
+                                <th>Etiquetas</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="lead : ${leads.content}" th:id="'lead-' + ${lead.id}">
+                                <td>
+                                    <a th:href="'/crm/clientes/' + ${lead.id} + '/perfil'" class="font-weight-bold" th:text="${lead.nombreRazonSocial}"></a>
+                                </td>
+                                <td th:text="${lead.numeroDocumento}"></td>
+                                <td th:text="${lead.telefono}"></td>
+                                <td th:text="${lead.email}"></td>
+                                <td>
+                                    <span class="badge badge-info" th:if="${lead.origenLead}" th:text="${lead.origenLead}"></span>
+                                </td>
+                                <td th:text="${lead.empresa}"></td>
+                                <td>
+                                    <th:block th:if="${lead.etiquetas}">
+                                        <span th:each="tag : ${lead.etiquetas.split(',')}" class="badge badge-secondary mr-1" th:text="${tag.trim()}"></span>
+                                    </th:block>
+                                </td>
+                                <td th:text="${lead.fechaRegistro != null ? #temporals.format(lead.fechaRegistro, 'dd/MM/yy') : ''}"></td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a th:href="'/crm/clientes/' + ${lead.id} + '/perfil'" class="btn btn-outline-info" title="Ver perfil"><i class="fas fa-eye"></i></a>
+                                        <button class="btn btn-outline-success" th:onclick="'convertirLead(' + ${lead.id} + ')'" title="Convertir a Cliente">
+                                            <i class="fas fa-user-check"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${leads.content.isEmpty()}">
+                                <td colspan="9" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i><br>No hay leads registrados
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer" th:if="${leads.totalPages > 1}">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            <li class="page-item" th:classappend="${leads.number == 0 ? 'disabled' : ''}">
+                                <a class="page-link" th:href="'/crm/leads?buscar=' + ${buscar} + '&page=' + ${leads.number - 1}">Anterior</a>
+                            </li>
+                            <li class="page-item" th:each="i : ${#numbers.sequence(0, leads.totalPages - 1)}" th:classappend="${i == leads.number ? 'active' : ''}">
+                                <a class="page-link" th:href="'/crm/leads?buscar=' + ${buscar} + '&page=' + ${i}" th:text="${i + 1}"></a>
+                            </li>
+                            <li class="page-item" th:classappend="${leads.number + 1 >= leads.totalPages ? 'disabled' : ''}">
+                                <a class="page-link" th:href="'/crm/leads?buscar=' + ${buscar} + '&page=' + ${leads.number + 1}">Siguiente</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<!-- Modal Nuevo Lead -->
+<div class="modal fade" id="modalLead" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus mr-2"></i>Nuevo Lead</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="leadId">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Nombre / Razon Social *</label>
+                            <input type="text" id="leadNombre" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Tipo Doc.</label>
+                            <select id="leadTipoDoc" class="form-control">
+                                <option value="0">Otros</option>
+                                <option value="1">DNI</option>
+                                <option value="6">RUC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Num. Documento</label>
+                            <input type="text" id="leadDocumento" class="form-control" placeholder="00000000">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Telefono</label>
+                            <input type="text" id="leadTelefono" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="leadEmail" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Origen</label>
+                            <select id="leadOrigen" class="form-control">
+                                <option value="">Sin especificar</option>
+                                <option value="REFERIDO">Referido</option>
+                                <option value="WHATSAPP">WhatsApp</option>
+                                <option value="PRESENCIAL">Presencial</option>
+                                <option value="WEB">Web</option>
+                                <option value="TELEFONO">Telefono</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Empresa</label>
+                            <input type="text" id="leadEmpresa" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Cargo</label>
+                            <input type="text" id="leadCargo" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Vendedor Asignado</label>
+                            <select id="leadVendedor" class="form-control">
+                                <option value="">Sin asignar</option>
+                                <option th:each="v : ${vendedores}" th:value="${v.id}" th:text="${v.nombreCompleto}"></option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Proximo Contacto</label>
+                            <input type="date" id="leadProximoContacto" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Direccion</label>
+                            <input type="text" id="leadDireccion" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Etiquetas (separar con coma)</label>
+                            <input type="text" id="leadEtiquetas" class="form-control" placeholder="VIP, MAYORISTA">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea id="leadObservaciones" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarLead()">
+                    <i class="fas fa-save mr-1"></i>Guardar Lead
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script>
+function abrirModalLead() {
+    $('#leadId').val('');
+    $('#leadNombre, #leadDocumento, #leadTelefono, #leadEmail, #leadEmpresa, #leadCargo, #leadDireccion, #leadEtiquetas, #leadObservaciones').val('');
+    $('#leadTipoDoc').val('0');
+    $('#leadOrigen, #leadVendedor').val('');
+    $('#leadProximoContacto').val('');
+    $('#modalLead').modal('show');
+}
+
+function guardarLead() {
+    var nombre = $('#leadNombre').val().trim();
+    if (!nombre) {
+        Swal.fire('Error', 'El nombre es obligatorio', 'error');
+        return;
+    }
+
+    var datos = {
+        id: $('#leadId').val(),
+        nombreRazonSocial: nombre,
+        tipoDocumento: $('#leadTipoDoc').val(),
+        numeroDocumento: $('#leadDocumento').val().trim() || '00000000',
+        telefono: $('#leadTelefono').val().trim(),
+        email: $('#leadEmail').val().trim(),
+        origenLead: $('#leadOrigen').val(),
+        empresa: $('#leadEmpresa').val().trim(),
+        cargo: $('#leadCargo').val().trim(),
+        vendedorAsignadoId: $('#leadVendedor').val(),
+        fechaProximoContacto: $('#leadProximoContacto').val(),
+        direccion: $('#leadDireccion').val().trim(),
+        etiquetas: $('#leadEtiquetas').val().trim(),
+        observaciones: $('#leadObservaciones').val().trim()
+    };
+
+    $.ajax({
+        url: '/crm/leads/guardar',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datos),
+        success: function(resp) {
+            if (resp.success) {
+                $('#modalLead').modal('hide');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Lead guardado', showConfirmButton: false, timer: 2000 });
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        },
+        error: function(xhr) {
+            var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error al guardar';
+            Swal.fire('Error', msg, 'error');
+        }
+    });
+}
+
+function convertirLead(id) {
+    Swal.fire({
+        title: 'Convertir Lead a Cliente',
+        text: 'El lead pasara a ser un cliente activo. Continuar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-user-check"></i> Convertir',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#28a745'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/crm/leads/' + id + '/convertir',
+                type: 'POST',
+                contentType: 'application/json',
+                data: '{}',
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire('Convertido', resp.mensaje, 'success');
+                        setTimeout(function() { location.reload(); }, 1500);
+                    }
+                },
+                error: function(xhr) {
+                    var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error';
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        }
+    });
+}
+</script>
+</div>
+
+</body>
+</html>

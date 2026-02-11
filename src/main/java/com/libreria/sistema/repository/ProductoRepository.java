@@ -155,4 +155,42 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
      */
     @Query("SELECT p.codigoInterno FROM Producto p WHERE p.codigoInterno LIKE 'SKU-%' ORDER BY p.codigoInterno DESC LIMIT 1")
     Optional<String> findUltimoSku();
+
+    // =====================================================
+    //  STOCK MODULE QUERIES
+    // =====================================================
+
+    @Query("SELECT COUNT(p) FROM Producto p WHERE p.activo = true AND p.stockActual = 0")
+    long countSinStock();
+
+    @Query("SELECT COALESCE(SUM(p.stockActual * p.precioCompra), 0) FROM Producto p WHERE p.activo = true AND p.precioCompra IS NOT NULL")
+    java.math.BigDecimal calcularValorInventario();
+
+    @Query(value = "SELECT * FROM productos p WHERE p.activo = true " +
+           "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
+           "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
+           "AND (:estado IS NULL " +
+           "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
+           "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
+           "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) " +
+           "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ",
+           countQuery = "SELECT COUNT(*) FROM productos p WHERE p.activo = true " +
+           "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+           "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
+           "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
+           "AND (:estado IS NULL " +
+           "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
+           "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
+           "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) " +
+           "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ",
+           nativeQuery = true)
+    Page<Producto> buscarStockFiltrado(@Param("termino") String termino,
+                                       @Param("categoria") String categoria,
+                                       @Param("estado") String estado,
+                                       Pageable pageable);
 }

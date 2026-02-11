@@ -620,12 +620,249 @@ public class ListaEscolarController {
     }
 
     // =========================================================
-    //  PDF EXPORT
+    //  PDF EXPORT — SISTEMA ADAPTATIVO DE 1 PÁGINA
     // =========================================================
 
     /**
-     * Genera PDF de cotización con los niveles seleccionados.
-     * Separa productos COTIZADOS de NO DISPONIBLES/PENDIENTES.
+     * Normaliza descripciones para reducir longitud 20-30% manteniendo claridad.
+     * Aplica abreviaciones estándar y limpieza de texto.
+     */
+    private static String normalizarDescripcion(String texto) {
+        if (texto == null || texto.isBlank()) return texto;
+        String r = texto.trim();
+
+        // Capitalizar primera letra
+        if (r.length() > 1) {
+            r = r.substring(0, 1).toUpperCase() + r.substring(1);
+        }
+
+        // Abreviaciones comunes
+        r = r.replaceAll("(?i)según indicación del profesor", "según profesor");
+        r = r.replaceAll("(?i)según indicaciones del profesor", "según profesor");
+        r = r.replaceAll("(?i)según indicación del(a)? docente", "según docente");
+        r = r.replaceAll("(?i)editorial\\b", "Ed.");
+        r = r.replaceAll("(?i)\\bversión\\b", "v.");
+        r = r.replaceAll("(?i)\\bcon\\s+", "c/");
+        r = r.replaceAll("(?i)\\bpara\\s+", "p/");
+        r = r.replaceAll("(?i)\\bunidad(es)?\\b", "und.");
+        r = r.replaceAll("(?i)\\bpaquete\\b", "paq.");
+        r = r.replaceAll("(?i)\\bgrande\\b", "gde.");
+        r = r.replaceAll("(?i)\\bpequeño(a)?\\b", "peq.");
+        r = r.replaceAll("(?i)\\bmediano(a)?\\b", "med.");
+        r = r.replaceAll("(?i)\\bdiferentes\\s+colores\\b", "colores surtidos");
+        r = r.replaceAll("(?i)\\bcuaderno\\s+cuadriculado\\b", "Cuaderno cuad.");
+        r = r.replaceAll("(?i)\\bcuaderno\\s+rayado\\b", "Cuaderno ray.");
+        r = r.replaceAll("(?i)\\bcuaderno\\s+doble\\s+raya\\b", "Cuaderno doble raya");
+        r = r.replaceAll("(?i)\\bforro\\s+rojo\\b", "– Rojo");
+        r = r.replaceAll("(?i)\\bforro\\s+azul\\b", "– Azul");
+        r = r.replaceAll("(?i)\\bforro\\s+verde\\b", "– Verde");
+        r = r.replaceAll("(?i)\\bforro\\s+amarillo\\b", "– Amarillo");
+        r = r.replaceAll("(?i)\\btapa\\s+dura\\b", "T/D");
+        r = r.replaceAll("(?i)\\btapa\\s+gruesa\\b", "T/G");
+        r = r.replaceAll("(?i)\\bhojas\\s+cuadriculadas\\b", "hojas cuad.");
+        r = r.replaceAll("(?i)\\bhojas\\s+rayadas\\b", "hojas ray.");
+        r = r.replaceAll("(?i)\\bmilimetrado(a)?\\b", "mm.");
+        r = r.replaceAll("(?i)\\btransparente(s)?\\b", "transp.");
+
+        // Limpiar espacios múltiples
+        r = r.replaceAll("\\s{2,}", " ").trim();
+
+        return r;
+    }
+
+    /**
+     * Layout adaptativo para PDF A4.
+     * No usa estimaciones — el modo se selecciona por cantidad de items
+     * y se degrada automáticamente en generarPDF() si la medición real no cabe.
+     */
+    private static class PdfLayout {
+        float fontSize;           // Contenido tabla
+        float fontSizeHeader;     // Cabecera columnas
+        float fontSizeTitle;      // Título nivel
+        float fontSizeSubtotal;   // Línea subtotal
+        float fontSizeTotal;      // TOTAL destacado (siempre >=9pt)
+        float cellPadding;        // Padding vertical celdas
+        float leading;            // Factor interlineado
+        float spacingBefore;      // Espacio antes de secciones
+        float pendientesFontSize; // Fuente sección pendientes
+        float condicionesFontSize;
+        String mode;
+
+        static final float ANCHO_DESC_PT = (PageSize.A4.getWidth() - 40f) * (3.8f / 7.5f);
+
+        // Modos ordenados del más amplio al más compacto
+        static final String[] MODOS = {"EXPANDED", "NORMAL", "COMPACT", "ULTRA_COMPACT"};
+
+        /** Selecciona modo inicial por cantidad de items (sin verificación de altura). */
+        static PdfLayout modoInicial(int totalFilas) {
+            PdfLayout l = new PdfLayout();
+            if (totalFilas <= 12) aplicarExpanded(l);
+            else if (totalFilas <= 22) aplicarNormal(l);
+            else if (totalFilas <= 32) aplicarCompact(l);
+            else aplicarUltraCompact(l);
+            return l;
+        }
+
+        /** Degrada al siguiente modo más compacto. Retorna false si ya es ULTRA_COMPACT. */
+        boolean degradar() {
+            return switch (mode) {
+                case "EXPANDED" -> { aplicarNormal(this); yield true; }
+                case "NORMAL"   -> { aplicarCompact(this); yield true; }
+                case "COMPACT"  -> { aplicarUltraCompact(this); yield true; }
+                default         -> false; // Ya es ULTRA_COMPACT, no se puede degradar más
+            };
+        }
+
+        /** <=12 items: fuentes grandes, celdas generosas */
+        private static void aplicarExpanded(PdfLayout l) {
+            l.fontSize = 11f;
+            l.fontSizeHeader = 11.5f;
+            l.fontSizeTitle = 11f;
+            l.fontSizeSubtotal = 10f;
+            l.fontSizeTotal = 12f;
+            l.cellPadding = 5.0f;
+            l.leading = 1.4f;
+            l.spacingBefore = 6f;
+            l.pendientesFontSize = 10f;
+            l.condicionesFontSize = 7.5f;
+            l.mode = "EXPANDED";
+        }
+
+        /** 13-22 items: balanceado */
+        private static void aplicarNormal(PdfLayout l) {
+            l.fontSize = 10f;
+            l.fontSizeHeader = 10.5f;
+            l.fontSizeTitle = 10f;
+            l.fontSizeSubtotal = 9f;
+            l.fontSizeTotal = 11f;
+            l.cellPadding = 3.5f;
+            l.leading = 1.25f;
+            l.spacingBefore = 5f;
+            l.pendientesFontSize = 9f;
+            l.condicionesFontSize = 7f;
+            l.mode = "NORMAL";
+        }
+
+        /** 23-32 items: compacto */
+        private static void aplicarCompact(PdfLayout l) {
+            l.fontSize = 9f;
+            l.fontSizeHeader = 9.5f;
+            l.fontSizeTitle = 8.5f;
+            l.fontSizeSubtotal = 8f;
+            l.fontSizeTotal = 10f;
+            l.cellPadding = 1.8f;
+            l.leading = 1.1f;
+            l.spacingBefore = 3f;
+            l.pendientesFontSize = 8f;
+            l.condicionesFontSize = 6.5f;
+            l.mode = "COMPACT";
+        }
+
+        /** >32 items: ultra compacto */
+        private static void aplicarUltraCompact(PdfLayout l) {
+            l.fontSize = 8f;
+            l.fontSizeHeader = 8.5f;
+            l.fontSizeTitle = 7.5f;
+            l.fontSizeSubtotal = 7f;
+            l.fontSizeTotal = 9f;
+            l.cellPadding = 0.8f;
+            l.leading = 1.0f;
+            l.spacingBefore = 1.5f;
+            l.pendientesFontSize = 7f;
+            l.condicionesFontSize = 6f;
+            l.mode = "ULTRA_COMPACT";
+        }
+
+        static boolean textoHaraWrap(String texto, float fontSize) {
+            if (texto == null || texto.isEmpty()) return false;
+            return texto.length() * fontSize * 0.5f > ANCHO_DESC_PT;
+        }
+    }
+
+    /**
+     * Separa los ítems de un nivel en COTIZADOS vs NO DISPONIBLES.
+     */
+    private static class ItemsSeparados {
+        final java.util.List<DetalleListaEscolar> cotizados;
+        final java.util.List<DetalleListaEscolar> noDisponibles;
+        final java.util.List<String> descripcionesCotizados; // para cálculo de wrap
+
+        ItemsSeparados(java.util.List<DetalleListaEscolar> cotizados,
+                       java.util.List<DetalleListaEscolar> noDisponibles,
+                       java.util.List<String> descripcionesCotizados) {
+            this.cotizados = cotizados;
+            this.noDisponibles = noDisponibles;
+            this.descripcionesCotizados = descripcionesCotizados;
+        }
+
+        int totalFilas() {
+            int filas = cotizados.size() + 3; // datos + título + header + subtotal
+            if (!noDisponibles.isEmpty()) {
+                filas += noDisponibles.size() + 2; // datos + título + header
+            }
+            return filas;
+        }
+
+        /** Cuenta filas cuya descripción probablemente hará wrap a 2+ líneas. */
+        int filasMultilinea(float fontSize) {
+            int count = 0;
+            for (String desc : descripcionesCotizados) {
+                if (PdfLayout.textoHaraWrap(desc, fontSize)) count++;
+            }
+            // También contar textos largos en no disponibles
+            for (DetalleListaEscolar d : noDisponibles) {
+                if (PdfLayout.textoHaraWrap(d.getTextoOriginal(), fontSize)) count++;
+            }
+            return count;
+        }
+    }
+
+    private ItemsSeparados separarItems(ListaEscolar lista, String nivel) {
+        java.util.List<DetalleListaEscolar> cotizados = new java.util.ArrayList<>();
+        java.util.List<DetalleListaEscolar> noDisponibles = new java.util.ArrayList<>();
+        java.util.List<String> descripcionesCotizados = new java.util.ArrayList<>();
+
+        for (DetalleListaEscolar detalle : lista.getDetalles()) {
+            if (detalle.esItemRegalo() && detalle.getNivelRegalo() != null && !detalle.getNivelRegalo().equals(nivel)) {
+                continue;
+            }
+
+            BigDecimal precio = detalle.getPrecioPorNivel(nivel);
+            boolean tieneProducto = detalle.getNombreProductoPorNivel(nivel) != null;
+            boolean tienePrecio = precio != null && precio.compareTo(BigDecimal.ZERO) > 0;
+            boolean esCotizacionProveedor = detalle.esCotizacionProveedorPorNivel(nivel);
+
+            if (detalle.esItemRegalo()) {
+                cotizados.add(detalle);
+                descripcionesCotizados.add("REGALO: " + normalizarDescripcion(detalle.getTextoOriginal()));
+            } else if ((tieneProducto && tienePrecio) || (esCotizacionProveedor && tienePrecio)) {
+                cotizados.add(detalle);
+                String desc;
+                boolean esCotiProv = esCotizacionProveedor && !tieneProducto;
+                if (esCotiProv) {
+                    String descManual = detalle.getDescripcionManualPorNivel(nivel);
+                    desc = descManual != null && !descManual.isBlank() ? descManual : detalle.getTextoOriginal();
+                    if (detalle.getNombreProveedor() != null && !detalle.getNombreProveedor().isBlank()) {
+                        desc += " (" + detalle.getNombreProveedor() + ")";
+                    }
+                } else {
+                    String nombreProd = detalle.getNombreProductoPorNivel(nivel);
+                    desc = nombreProd != null ? nombreProd : detalle.getTextoOriginal();
+                }
+                descripcionesCotizados.add(normalizarDescripcion(desc));
+            } else {
+                noDisponibles.add(detalle);
+            }
+        }
+
+        return new ItemsSeparados(cotizados, noDisponibles, descripcionesCotizados);
+    }
+
+    /**
+     * Genera PDF profesional con degradación automática de modo.
+     * Algoritmo: tryLayout(EXPANDED) → medir todo → si no cabe → degradar() → rebuild.
+     * TODAS las alturas se miden con getTotalHeight() + setLockedWidth(true).
+     * El espacio sobrante se distribuye elásticamente entre body y footer.
      */
     @GetMapping("/{id}/pdf")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
@@ -639,42 +876,130 @@ public class ListaEscolarController {
 
             Configuracion config = configuracionService.obtenerConfiguracion();
 
-            // Parsear niveles seleccionados
             Set<String> nivelesSet = new HashSet<>(Arrays.asList(niveles.toUpperCase().split(",")));
 
-            // Configurar respuesta HTTP
             response.setContentType("application/pdf");
             String filename = "Cotizacion_" + lista.getCodigoCompleto().replace("-", "_") + ".pdf";
             response.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
 
-            // Crear documento PDF
-            Document document = new Document(PageSize.A4);
-            PdfWriter.getInstance(document, response.getOutputStream());
+            // A4 con márgenes: 20 laterales, 15 top/bottom
+            Document document = new Document(PageSize.A4, 20, 20, 15, 15);
+            PdfWriter writer = PdfWriter.getInstance(document, response.getOutputStream());
             document.open();
 
-            // Agregar cabecera con datos de empresa
-            agregarCabeceraPDF(document, config, lista);
+            float anchoUtil = document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin();
+            // Altura útil de la página (espacio entre márgenes)
+            float alturaUtil = document.getPageSize().getHeight() - document.topMargin() - document.bottomMargin();
 
-            // Agregar datos del alumno
-            agregarDatosAlumno(document, lista);
-
-            // Agregar tablas por cada nivel seleccionado
+            boolean primeraPagina = true;
             for (String nivel : List.of("ECONOMICO", "MEDIO", "PREMIUM")) {
-                if (nivelesSet.contains(nivel)) {
-                    agregarSeccionNivelMejorada(document, lista, nivel, config);
+                if (!nivelesSet.contains(nivel)) continue;
+
+                if (!primeraPagina) {
+                    document.newPage();
                 }
-            }
+                primeraPagina = false;
 
-            // Leyenda de estados
-            agregarLeyendaEstados(document);
+                // 1) Separar items
+                ItemsSeparados items = separarItems(lista, nivel);
 
-            // Pie de página
-            if (config.getPiePaginaReportes() != null && !config.getPiePaginaReportes().trim().isEmpty()) {
-                document.add(new Paragraph(" "));
-                Paragraph pie = new Paragraph(config.getPiePaginaReportes(),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, Color.GRAY));
-                pie.setAlignment(Element.ALIGN_CENTER);
-                document.add(pie);
+                // 2) DEGRADACIÓN AUTOMÁTICA DE MODO
+                // Intenta el modo más amplio posible, degrada si no cabe en 1 página
+                PdfLayout layout = PdfLayout.modoInicial(items.totalFilas());
+
+                // Construir TODAS las tablas y medir ANTES de agregar al documento
+                PdfPTable tHeader = pdfBuildHeader(config, lista, layout);
+                PdfPTable tAlumno = pdfBuildDatosAlumno(lista, layout);
+                PdfPTable[] bodyTables = pdfBuildSeccionNivel(lista, nivel, config, items, layout);
+                BigDecimal totalNivel = pdfCalcularTotal(items, nivel);
+                PdfPTable tResumen = pdfBuildResumenFinanciero(totalNivel, config, layout);
+                PdfPTable tCondiciones = pdfBuildCondicionesComerciales(config, layout);
+                PdfPTable tFirma = pdfBuildFirma(config, layout);
+                Paragraph pLeyenda = pdfBuildLeyenda(layout);
+
+                // Medir alturas reales
+                float hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tResumen, tCondiciones, tFirma);
+                // Agregar margen para spacingBefore/After y leyenda (~30pt de gaps mínimos + leyenda)
+                float margenGaps = 30f + 12f;
+
+                // Loop de degradación: si no cabe, reconstruir con modo más compacto
+                while (hTotal + margenGaps > alturaUtil && layout.degradar()) {
+                    tHeader = pdfBuildHeader(config, lista, layout);
+                    tAlumno = pdfBuildDatosAlumno(lista, layout);
+                    bodyTables = pdfBuildSeccionNivel(lista, nivel, config, items, layout);
+                    tResumen = pdfBuildResumenFinanciero(totalNivel, config, layout);
+                    tCondiciones = pdfBuildCondicionesComerciales(config, layout);
+                    tFirma = pdfBuildFirma(config, layout);
+                    pLeyenda = pdfBuildLeyenda(layout);
+                    hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tResumen, tCondiciones, tFirma);
+                }
+
+                log.debug("PDF modo final: {} | hTotal: {}pt | alturaUtil: {}pt | cabe: {}",
+                    layout.mode, hTotal + margenGaps, alturaUtil, (hTotal + margenGaps) <= alturaUtil);
+
+                // 3) AGREGAR TODO AL DOCUMENTO
+                // Header
+                document.add(tHeader);
+                // Línea separadora
+                pdfAgregarLineaSeparadora(document, config, layout);
+                // Datos alumno
+                document.add(tAlumno);
+
+                // Body (tabla cotizados + pendientes)
+                for (PdfPTable bodyTable : bodyTables) {
+                    if (bodyTable != null) document.add(bodyTable);
+                }
+
+                // Nota pendientes (si hay)
+                if (!items.noDisponibles.isEmpty()) {
+                    float pfs = layout.pendientesFontSize;
+                    Paragraph nota = new Paragraph("Items sin producto asignado o no disponibles actualmente.",
+                        FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, Math.max(pfs - 1f, 5.5f), new Color(160, 160, 160)));
+                    nota.setSpacingBefore(1);
+                    document.add(nota);
+                }
+
+                // 4) FOOTER CON DISTRIBUCIÓN ELÁSTICA
+                float posY = writer.getVerticalPosition(true);
+                float espacioDisponible = posY - document.bottomMargin();
+
+                // Medir footer real con lockedWidth
+                tResumen.setLockedWidth(true);
+                tResumen.setTotalWidth(anchoUtil * 0.50f);
+                float hResumen = tResumen.getTotalHeight();
+
+                tCondiciones.setLockedWidth(true);
+                tCondiciones.setTotalWidth(anchoUtil);
+                float hCondiciones = tCondiciones.getTotalHeight();
+
+                tFirma.setLockedWidth(true);
+                tFirma.setTotalWidth(anchoUtil * 0.80f);
+                float hFirma = tFirma.getTotalHeight();
+
+                float hLeyenda = 12f;
+                float footerReal = hResumen + hCondiciones + hFirma + hLeyenda;
+                float libre = Math.max(espacioDisponible - footerReal, 0);
+
+                // Distribuir espacio libre proporcional (4:3:3:1)
+                float unidad = libre / 11f;
+                float topeMax = 50f;
+
+                float g1 = Math.min(Math.max(unidad * 4f, 4f), topeMax);
+                float g2 = Math.min(Math.max(unidad * 3f, 3f), topeMax);
+                float g3 = Math.min(Math.max(unidad * 3f, 3f), topeMax);
+                float g4 = Math.min(Math.max(unidad * 1f, 2f), 12f);
+
+                tResumen.setSpacingBefore(g1);
+                document.add(tResumen);
+
+                tCondiciones.setSpacingBefore(g2);
+                document.add(tCondiciones);
+
+                tFirma.setSpacingBefore(g3);
+                document.add(tFirma);
+
+                pLeyenda.setSpacingBefore(g4);
+                document.add(pLeyenda);
             }
 
             document.close();
@@ -688,9 +1013,219 @@ public class ListaEscolarController {
     }
 
     /**
-     * Nueva sección mejorada: Separa COTIZADOS de NO DISPONIBLES
+     * Mide la altura total de TODOS los componentes del PDF usando getTotalHeight().
+     * Todas las tablas se miden con setLockedWidth(true) para resultados precisos.
      */
-    private void agregarSeccionNivelMejorada(Document document, ListaEscolar lista, String nivel, Configuracion config) throws DocumentException {
+    private float pdfMedirTodo(float anchoUtil, PdfPTable tHeader, PdfPTable tAlumno,
+                                PdfPTable[] bodyTables, PdfPTable tResumen,
+                                PdfPTable tCondiciones, PdfPTable tFirma) {
+        float total = 0;
+
+        // Header
+        tHeader.setLockedWidth(true);
+        tHeader.setTotalWidth(anchoUtil);
+        total += tHeader.getTotalHeight();
+
+        // Línea separadora (~5pt)
+        total += 5f;
+
+        // Datos alumno
+        tAlumno.setLockedWidth(true);
+        tAlumno.setTotalWidth(anchoUtil);
+        total += tAlumno.getTotalHeight();
+
+        // Body tables (cotizados + pendientes)
+        for (PdfPTable bt : bodyTables) {
+            if (bt != null) {
+                bt.setLockedWidth(true);
+                bt.setTotalWidth(anchoUtil);
+                total += bt.getTotalHeight();
+            }
+        }
+
+        // Footer
+        tResumen.setLockedWidth(true);
+        tResumen.setTotalWidth(anchoUtil * 0.50f);
+        total += tResumen.getTotalHeight();
+
+        tCondiciones.setLockedWidth(true);
+        tCondiciones.setTotalWidth(anchoUtil);
+        total += tCondiciones.getTotalHeight();
+
+        tFirma.setLockedWidth(true);
+        tFirma.setTotalWidth(anchoUtil * 0.80f);
+        total += tFirma.getTotalHeight();
+
+        return total;
+    }
+
+    /** Calcula el total monetario sin construir tablas. */
+    private BigDecimal pdfCalcularTotal(ItemsSeparados items, String nivel) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (DetalleListaEscolar detalle : items.cotizados) {
+            if (detalle.esItemRegalo()) continue;
+            BigDecimal precio = detalle.getPrecioPorNivel(nivel);
+            int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
+            BigDecimal subtotal = (precio != null ? precio : BigDecimal.ZERO).multiply(BigDecimal.valueOf(cantidad));
+            total = total.add(subtotal);
+        }
+        return total;
+    }
+
+    // =========================================================
+    //  PDF — SECCIONES DE RENDERIZADO
+    // =========================================================
+
+    /** Construye la tabla header (empresa + título) sin agregar al documento. */
+    private PdfPTable pdfBuildHeader(Configuracion config, ListaEscolar lista, PdfLayout layout) throws DocumentException {
+        Color colorPrimario = parseColor(config.getColorPrimario(), new Color(44, 62, 80));
+        float escala = pdfEscala(layout);
+
+        boolean tienelogo = Boolean.TRUE.equals(config.getMostrarLogoEnReportes()) && config.getLogoBase64() != null;
+        PdfPTable headerTable = new PdfPTable(tienelogo ? 3 : 2);
+        headerTable.setWidthPercentage(100);
+        headerTable.setKeepTogether(true);
+
+        if (tienelogo) {
+            headerTable.setWidths(new float[]{0.7f, 3.5f, 3.3f});
+            try {
+                byte[] logoBytes = Base64.getDecoder().decode(config.getLogoBase64());
+                Image logo = Image.getInstance(logoBytes);
+                logo.scaleToFit(40 * escala, 40 * escala);
+                PdfPCell cellLogo = new PdfPCell(logo);
+                cellLogo.setBorder(Rectangle.NO_BORDER);
+                cellLogo.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cellLogo.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cellLogo.setPadding(2);
+                headerTable.addCell(cellLogo);
+            } catch (Exception e) {
+                PdfPCell c = new PdfPCell(); c.setBorder(Rectangle.NO_BORDER); headerTable.addCell(c);
+            }
+        } else {
+            headerTable.setWidths(new float[]{4f, 3.5f});
+        }
+
+        // Datos empresa
+        PdfPCell cellEmpresa = new PdfPCell();
+        cellEmpresa.setBorder(Rectangle.NO_BORDER);
+        cellEmpresa.setPadding(2);
+        cellEmpresa.setVerticalAlignment(Element.ALIGN_MIDDLE);
+
+        Paragraph pEmpresa = new Paragraph(config.getNombreEmpresa(),
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10f * escala, new Color(44, 62, 80)));
+        cellEmpresa.addElement(pEmpresa);
+
+        String info = "RUC: " + config.getRuc() + "  |  " + config.getDireccion()
+            + (config.getTelefono() != null ? "  |  Tel: " + config.getTelefono() : "");
+        float infoFs = 6.5f * escala;
+        Paragraph pInfo = new Paragraph(info, FontFactory.getFont(FontFactory.HELVETICA, infoFs, new Color(120, 120, 120)));
+        pInfo.setLeading(infoFs + 3);
+        cellEmpresa.addElement(pInfo);
+        headerTable.addCell(cellEmpresa);
+
+        // Título derecho: COTIZACIÓN + código + validez
+        PdfPCell cellTitulo = new PdfPCell();
+        cellTitulo.setBorder(Rectangle.NO_BORDER);
+        cellTitulo.setPadding(2);
+        cellTitulo.setVerticalAlignment(Element.ALIGN_MIDDLE);
+
+        Paragraph pTitulo = new Paragraph("COTIZACIÓN LISTA ESCOLAR",
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f * escala, colorPrimario));
+        pTitulo.setAlignment(Element.ALIGN_RIGHT);
+        cellTitulo.addElement(pTitulo);
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        float subFs = 7.5f * escala;
+        Paragraph pCodigo = new Paragraph(lista.getCodigoCompleto() + "  |  " + LocalDate.now().format(fmt),
+            FontFactory.getFont(FontFactory.HELVETICA, subFs, new Color(100, 100, 100)));
+        pCodigo.setAlignment(Element.ALIGN_RIGHT);
+        cellTitulo.addElement(pCodigo);
+
+        Paragraph pValidez = new Paragraph("Válido hasta: " + LocalDate.now().plusDays(7).format(fmt),
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, subFs - 0.5f, new Color(180, 60, 60)));
+        pValidez.setAlignment(Element.ALIGN_RIGHT);
+        cellTitulo.addElement(pValidez);
+
+        headerTable.addCell(cellTitulo);
+        headerTable.setSpacingAfter(2);
+        return headerTable;
+    }
+
+    /** Agrega solo la línea separadora al documento (no es tabla medible). */
+    private void pdfAgregarLineaSeparadora(Document document, Configuracion config, PdfLayout layout) throws DocumentException {
+        Color colorPrimario = parseColor(config.getColorPrimario(), new Color(44, 62, 80));
+        boolean compacto = "COMPACT".equals(layout.mode) || "ULTRA_COMPACT".equals(layout.mode);
+        PdfPTable linea = new PdfPTable(1);
+        linea.setWidthPercentage(100);
+        PdfPCell lc = new PdfPCell();
+        lc.setBorder(Rectangle.BOTTOM);
+        lc.setBorderColor(colorPrimario);
+        lc.setBorderWidth(1.2f);
+        lc.setFixedHeight(1f);
+        linea.addCell(lc);
+        linea.setSpacingAfter(compacto ? 2 : 4);
+        document.add(linea);
+    }
+
+    /** Construye la tabla de datos del alumno sin agregar al documento. */
+    private PdfPTable pdfBuildDatosAlumno(ListaEscolar lista, PdfLayout layout) throws DocumentException {
+        float escala = pdfEscala(layout);
+        float fs = 7f * escala;
+        float pad = 2f * escala;
+
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1f, 2.8f, 1f, 2.5f, 1f, 2.2f});
+        table.setKeepTogether(true);
+
+        Color bgLabel = new Color(240, 243, 247);
+        Color labelColor = new Color(70, 70, 70);
+        Color valorColor = new Color(44, 62, 80);
+
+        // Fila 1
+        table.addCell(pdfCeldaLimpia("Alumno:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(lista.getNombreAlumno(), fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia("Grado:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(lista.getGrado(), fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia("Colegio:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(lista.getColegio() != null ? lista.getColegio() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+
+        // Fila 2
+        table.addCell(pdfCeldaLimpia("Contacto:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(lista.getContactoNombre() != null ? lista.getContactoNombre() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia("Teléfono:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(lista.getContactoTelefono() != null ? lista.getContactoTelefono() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia("Año:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia(String.valueOf(lista.getAnioEscolar()), fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
+
+        table.setSpacingAfter(escala < 1f ? 1 : 3);
+        return table;
+    }
+
+    /** Calcula factor de escala según modo del layout. */
+    private float pdfEscala(PdfLayout layout) {
+        return switch (layout.mode) {
+            case "EXPANDED" -> 1.1f;
+            case "COMPACT", "ULTRA_COMPACT" -> 0.85f;
+            default -> 1f;
+        };
+    }
+
+    private String tituloNivel(String nivel) {
+        return switch (nivel) {
+            case "ECONOMICO" -> "OPCIÓN ECONÓMICA";
+            case "MEDIO" -> "OPCIÓN MEDIA";
+            case "PREMIUM" -> "OPCIÓN PREMIUM";
+            default -> nivel;
+        };
+    }
+
+    /**
+     * Construye las tablas del body (cotizados + pendientes) sin agregar al documento.
+     * Retorna array de 1-2 tablas: [tablaCotizados, tablaPendientes?].
+     */
+    private PdfPTable[] pdfBuildSeccionNivel(ListaEscolar lista, String nivel,
+                                         Configuracion config, ItemsSeparados items, PdfLayout layout) throws DocumentException {
         Color colorNivel = switch (nivel) {
             case "ECONOMICO" -> new Color(108, 117, 125);
             case "MEDIO" -> new Color(23, 162, 184);
@@ -698,332 +1233,423 @@ public class ListaEscolarController {
             default -> Color.GRAY;
         };
 
-        String tituloNivel = switch (nivel) {
-            case "ECONOMICO" -> "OPCIÓN ECONÓMICA";
-            case "MEDIO" -> "OPCIÓN MEDIA";
-            case "PREMIUM" -> "OPCIÓN PREMIUM";
-            default -> nivel;
-        };
+        String tituloNivel = tituloNivel(nivel);
 
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
+        float fs = layout.fontSize;
+        float pad = layout.cellPadding;
 
-        // Separar items: COTIZADOS vs NO DISPONIBLES
-        List<DetalleListaEscolar> itemsCotizados = new java.util.ArrayList<>();
-        List<DetalleListaEscolar> itemsNoDisponibles = new java.util.ArrayList<>();
+        // Colores para diseño limpio
+        Color grisSuave = new Color(248, 248, 248);
+        Color lineaGris = new Color(220, 220, 220);
+        Color textoOscuro = new Color(51, 51, 51);
 
-        for (DetalleListaEscolar detalle : lista.getDetalles()) {
-            // Filtrar regalos de otros niveles
-            if (detalle.esItemRegalo() && detalle.getNivelRegalo() != null && !detalle.getNivelRegalo().equals(nivel)) {
-                continue;
+        java.util.ArrayList<PdfPTable> resultado = new java.util.ArrayList<>();
+
+        // === TABLA COTIZADOS ===
+        if (!items.cotizados.isEmpty()) {
+            PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[]{0.35f, 0.45f, 3.9f, 0.55f, 1.1f, 1.15f});
+            table.setSpacingBefore(layout.spacingBefore);
+            table.setSplitLate(false);
+
+            // Título del nivel — barra de color sólido
+            PdfPCell cellTit = new PdfPCell(new Phrase(tituloNivel,
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeTitle, Color.WHITE)));
+            cellTit.setBackgroundColor(colorNivel);
+            cellTit.setPadding(pad + 1.5f);
+            cellTit.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cellTit.setColspan(6);
+            cellTit.setBorder(Rectangle.NO_BORDER);
+            table.addCell(cellTit);
+
+            // Cabecera de columnas
+            for (String h : new String[]{"#", "Est.", "Descripción", "Cant", "P.Unit", "Subtotal"}) {
+                PdfPCell cell = new PdfPCell(new Phrase(h,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeHeader, Color.WHITE)));
+                cell.setBackgroundColor(new Color(60, 60, 60));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setPadding(pad + 0.5f);
+                cell.setBorder(Rectangle.NO_BORDER);
+                table.addCell(cell);
             }
-
-            BigDecimal precio = detalle.getPrecioPorNivel(nivel);
-            boolean tieneProducto = detalle.getNombreProductoPorNivel(nivel) != null;
-            boolean tienePrecio = precio != null && precio.compareTo(BigDecimal.ZERO) > 0;
-            boolean esCotizacionProveedor = detalle.esCotizacionProveedorPorNivel(nivel);
-
-            // Si es regalo, va a cotizados
-            if (detalle.esItemRegalo()) {
-                itemsCotizados.add(detalle);
-            } else if (tieneProducto && tienePrecio) {
-                // Producto de inventario con precio
-                itemsCotizados.add(detalle);
-            } else if (esCotizacionProveedor && tienePrecio) {
-                // Cotización manual de proveedor con precio
-                itemsCotizados.add(detalle);
-            } else {
-                itemsNoDisponibles.add(detalle);
-            }
-        }
-
-        // === TITULO DEL NIVEL ===
-        Paragraph pTitulo = new Paragraph(tituloNivel, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.WHITE));
-        PdfPCell cellTitulo = new PdfPCell(pTitulo);
-        cellTitulo.setBackgroundColor(colorNivel);
-        cellTitulo.setPadding(8);
-        cellTitulo.setHorizontalAlignment(Element.ALIGN_CENTER);
-
-        // === SECCION 1: PRODUCTOS COTIZADOS ===
-        if (!itemsCotizados.isEmpty()) {
-            PdfPTable tableCotizados = new PdfPTable(6);
-            tableCotizados.setWidthPercentage(100);
-            tableCotizados.setWidths(new float[]{0.4f, 0.5f, 3.5f, 0.7f, 1.2f, 1.2f});
-            tableCotizados.setSpacingBefore(10);
-
-            // Titulo de sección
-            cellTitulo.setColspan(6);
-            tableCotizados.addCell(cellTitulo);
-
-            // Cabecera
-            agregarCabeceraTablaPDFMejorada(tableCotizados, colorNivel);
 
             BigDecimal totalCotizados = BigDecimal.ZERO;
             int num = 0;
 
-            for (DetalleListaEscolar detalle : itemsCotizados) {
+            for (DetalleListaEscolar detalle : items.cotizados) {
                 num++;
                 BigDecimal precio = detalle.getPrecioPorNivel(nivel);
                 int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
                 BigDecimal subtotal = (precio != null ? precio : BigDecimal.ZERO).multiply(BigDecimal.valueOf(cantidad));
 
-                // Icono de estado
+                boolean filaAlterna = (num % 2 == 0);
+                Color bgFila = filaAlterna ? grisSuave : Color.WHITE;
+
                 String iconoEstado = detalle.estaVendido() ? "[V]" : "[  ]";
-                Color colorEstado = detalle.estaVendido() ? new Color(40, 167, 69) : Color.BLACK;
+                Color colorEstado = detalle.estaVendido() ? new Color(40, 167, 69) : new Color(150, 150, 150);
 
-                tableCotizados.addCell(crearCeldaCentrada(String.valueOf(num)));
-                tableCotizados.addCell(crearCeldaConColor(iconoEstado, colorEstado));
+                table.addCell(pdfCeldaLimpia(String.valueOf(num), fs, pad, bgFila, textoOscuro, Element.ALIGN_CENTER));
+                table.addCell(pdfCeldaLimpia(iconoEstado, fs, pad, bgFila, colorEstado, Element.ALIGN_CENTER));
 
-                // Descripción
+                // Descripción normalizada
                 String descripcion;
                 boolean esCotizacionProv = detalle.esCotizacionProveedorPorNivel(nivel) &&
                                            detalle.getNombreProductoPorNivel(nivel) == null;
                 if (detalle.esItemRegalo()) {
-                    descripcion = "* REGALO: " + detalle.getTextoOriginal();
+                    descripcion = "REGALO: " + normalizarDescripcion(detalle.getTextoOriginal());
                 } else if (esCotizacionProv) {
-                    // Cotización de proveedor (sin producto de inventario)
                     String descManual = detalle.getDescripcionManualPorNivel(nivel);
                     String nombreMostrar = descManual != null && !descManual.isBlank() ? descManual : detalle.getTextoOriginal();
-                    descripcion = "** " + nombreMostrar;
+                    descripcion = normalizarDescripcion(nombreMostrar);
                     if (detalle.getNombreProveedor() != null && !detalle.getNombreProveedor().isBlank()) {
                         descripcion += " (" + detalle.getNombreProveedor() + ")";
                     }
                 } else {
                     String nombreProducto = detalle.getNombreProductoPorNivel(nivel);
-                    descripcion = nombreProducto != null ? nombreProducto : detalle.getTextoOriginal();
+                    descripcion = normalizarDescripcion(nombreProducto != null ? nombreProducto : detalle.getTextoOriginal());
                 }
-                tableCotizados.addCell(crearCelda(descripcion));
-
-                tableCotizados.addCell(crearCeldaCentrada(String.valueOf(cantidad)));
+                table.addCell(pdfCeldaLimpia(descripcion, fs, pad, bgFila, textoOscuro, Element.ALIGN_LEFT));
+                table.addCell(pdfCeldaLimpia(String.valueOf(cantidad), fs, pad, bgFila, textoOscuro, Element.ALIGN_CENTER));
 
                 if (detalle.esItemRegalo()) {
-                    tableCotizados.addCell(crearCeldaDerecha("GRATIS"));
-                    tableCotizados.addCell(crearCeldaDerecha("-"));
+                    table.addCell(pdfCeldaLimpia("GRATIS", fs, pad, bgFila, new Color(40, 167, 69), Element.ALIGN_RIGHT));
+                    table.addCell(pdfCeldaLimpia("-", fs, pad, bgFila, textoOscuro, Element.ALIGN_RIGHT));
                 } else {
-                    tableCotizados.addCell(crearCeldaDerecha(moneda + String.format("%.2f", precio)));
-                    tableCotizados.addCell(crearCeldaDerecha(moneda + String.format("%.2f", subtotal)));
+                    table.addCell(pdfCeldaLimpia(moneda + String.format("%.2f", precio), fs, pad, bgFila, textoOscuro, Element.ALIGN_RIGHT));
+                    table.addCell(pdfCeldaLimpia(moneda + String.format("%.2f", subtotal), fs, pad, bgFila, textoOscuro, Element.ALIGN_RIGHT));
                     totalCotizados = totalCotizados.add(subtotal);
                 }
             }
 
-            // Fila TOTAL
-            PdfPCell cellTotalLabel = new PdfPCell(new Phrase("SUBTOTAL " + tituloNivel,
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
-            cellTotalLabel.setColspan(5);
-            cellTotalLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            cellTotalLabel.setPadding(6);
-            cellTotalLabel.setBackgroundColor(new Color(248, 249, 250));
-            tableCotizados.addCell(cellTotalLabel);
+            // Línea separadora sutil antes del subtotal
+            PdfPCell lineaSep = new PdfPCell();
+            lineaSep.setColspan(6);
+            lineaSep.setBorder(Rectangle.TOP);
+            lineaSep.setBorderColor(lineaGris);
+            lineaSep.setBorderWidth(0.5f);
+            lineaSep.setFixedHeight(1f);
+            table.addCell(lineaSep);
 
-            PdfPCell cellTotalValor = new PdfPCell(new Phrase(moneda + String.format("%.2f", totalCotizados),
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE)));
-            cellTotalValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            cellTotalValor.setPadding(6);
-            cellTotalValor.setBackgroundColor(colorNivel);
-            tableCotizados.addCell(cellTotalValor);
+            // Fila SUBTOTAL
+            PdfPCell cellLabel = new PdfPCell(new Phrase("TOTAL " + tituloNivel,
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeSubtotal, textoOscuro)));
+            cellLabel.setColspan(5);
+            cellLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            cellLabel.setPadding(pad + 1);
+            cellLabel.setBackgroundColor(Color.WHITE);
+            cellLabel.setBorder(Rectangle.NO_BORDER);
+            table.addCell(cellLabel);
 
-            document.add(tableCotizados);
+            PdfPCell cellVal = new PdfPCell(new Phrase(moneda + String.format("%.2f", totalCotizados),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeSubtotal, Color.WHITE)));
+            cellVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            cellVal.setPadding(pad + 1);
+            cellVal.setBackgroundColor(colorNivel);
+            cellVal.setBorder(Rectangle.NO_BORDER);
+            table.addCell(cellVal);
+
+            resultado.add(table);
         }
 
-        // === SECCION 2: NO DISPONIBLES / PENDIENTES ===
-        if (!itemsNoDisponibles.isEmpty()) {
-            document.add(new Paragraph(" "));
+        // === TABLA PENDIENTES ===
+        if (!items.noDisponibles.isEmpty()) {
+            float pfs = layout.pendientesFontSize;
+            float ppad = Math.max(pad * 0.7f, 0.6f);
 
-            Paragraph pPendientes = new Paragraph("PENDIENTES / NO DISPONIBLE (" + tituloNivel + ")",
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, new Color(220, 53, 69)));
-            pPendientes.setSpacingBefore(5);
-            document.add(pPendientes);
+            PdfPTable tPend = new PdfPTable(3);
+            tPend.setWidthPercentage(100);
+            tPend.setWidths(new float[]{0.3f, 4.5f, 0.7f});
+            tPend.setSpacingBefore(layout.spacingBefore);
+            tPend.setSplitLate(false);
 
-            PdfPTable tablePendientes = new PdfPTable(4);
-            tablePendientes.setWidthPercentage(100);
-            tablePendientes.setWidths(new float[]{0.5f, 0.5f, 4f, 1f});
-            tablePendientes.setSpacingBefore(5);
+            PdfPCell tit = new PdfPCell(new Phrase("PENDIENTES - " + tituloNivel,
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, pfs, new Color(120, 120, 120))));
+            tit.setColspan(3);
+            tit.setBorder(Rectangle.BOTTOM);
+            tit.setBorderColor(new Color(200, 200, 200));
+            tit.setBorderWidth(0.5f);
+            tit.setPadding(ppad + 1);
+            tPend.addCell(tit);
 
-            // Cabecera roja
-            Color colorRojo = new Color(220, 53, 69);
-            for (String h : new String[]{"#", "Estado", "Item Solicitado", "Cant"}) {
-                PdfPCell cell = new PdfPCell(new Phrase(h, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
-                cell.setBackgroundColor(colorRojo);
+            Color grisOscuro = new Color(100, 100, 100);
+            for (String h : new String[]{"#", "Item Solicitado", "Cant"}) {
+                PdfPCell cell = new PdfPCell(new Phrase(h,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, pfs - 0.5f, grisOscuro)));
+                cell.setBackgroundColor(new Color(240, 240, 240));
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                cell.setPadding(5);
-                tablePendientes.addCell(cell);
+                cell.setPadding(ppad);
+                cell.setBorder(Rectangle.NO_BORDER);
+                tPend.addCell(cell);
             }
 
             int num = 0;
-            for (DetalleListaEscolar detalle : itemsNoDisponibles) {
+            for (DetalleListaEscolar detalle : items.noDisponibles) {
                 num++;
                 int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
+                boolean filaAlterna = (num % 2 == 0);
+                Color bgFila = filaAlterna ? grisSuave : Color.WHITE;
 
-                tablePendientes.addCell(crearCeldaCentrada(String.valueOf(num)));
-                tablePendientes.addCell(crearCeldaConColor("[X]", colorRojo));
-                tablePendientes.addCell(crearCelda(detalle.getTextoOriginal()));
-                tablePendientes.addCell(crearCeldaCentrada(String.valueOf(cantidad)));
+                boolean mostrarLinea = (num % 5 == 0) && num < items.noDisponibles.size();
+                int borderBottom = mostrarLinea ? Rectangle.BOTTOM : Rectangle.NO_BORDER;
+
+                PdfPCell c1 = new PdfPCell(new Phrase(String.valueOf(num),
+                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
+                c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c1.setPadding(ppad);
+                c1.setBackgroundColor(bgFila);
+                c1.setBorder(borderBottom);
+                if (mostrarLinea) { c1.setBorderColor(lineaGris); c1.setBorderWidth(0.3f); }
+                tPend.addCell(c1);
+
+                PdfPCell c2 = new PdfPCell(new Phrase(normalizarDescripcion(detalle.getTextoOriginal()),
+                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
+                c2.setPadding(ppad);
+                c2.setBackgroundColor(bgFila);
+                c2.setBorder(borderBottom);
+                if (mostrarLinea) { c2.setBorderColor(lineaGris); c2.setBorderWidth(0.3f); }
+                tPend.addCell(c2);
+
+                PdfPCell c3 = new PdfPCell(new Phrase(String.valueOf(cantidad),
+                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
+                c3.setHorizontalAlignment(Element.ALIGN_CENTER);
+                c3.setPadding(ppad);
+                c3.setBackgroundColor(bgFila);
+                c3.setBorder(borderBottom);
+                if (mostrarLinea) { c3.setBorderColor(lineaGris); c3.setBorderWidth(0.3f); }
+                tPend.addCell(c3);
             }
 
-            document.add(tablePendientes);
-
-            // Nota explicativa
-            Paragraph nota = new Paragraph("* Estos ítems no tienen producto asignado o no están disponibles actualmente.",
-                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, Color.GRAY));
-            nota.setSpacingBefore(3);
-            document.add(nota);
+            resultado.add(tPend);
         }
 
-        document.add(new Paragraph(" "));
+        return resultado.toArray(new PdfPTable[0]);
     }
 
-    private void agregarCabeceraTablaPDFMejorada(PdfPTable table, Color color) {
-        String[] headers = {"#", "Est.", "Descripción", "Cant", "P.Unit", "Subtotal"};
-        for (String h : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(h, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
-            cell.setBackgroundColor(color.darker());
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(5);
-            table.addCell(cell);
-        }
+    // =========================================================
+    //  PDF — FOOTER BUILDERS (construyen sin agregar al document)
+    //  Permiten medir altura real con getTotalHeight() antes de agregar.
+    // =========================================================
+
+    /** Construye tabla resumen financiero (Subtotal / IGV / TOTAL). */
+    private PdfPTable pdfBuildResumenFinanciero(BigDecimal total, Configuracion config, PdfLayout layout) throws DocumentException {
+        String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
+        float fs = layout.fontSizeTotal;
+        float padTotal = Math.max(layout.cellPadding + 3, 7f);
+
+        PdfPTable tabla = new PdfPTable(2);
+        tabla.setWidthPercentage(50);
+        tabla.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        tabla.setWidths(new float[]{3f, 2.5f});
+
+        BigDecimal igv = config.getIgvPorcentaje() != null ? config.getIgvPorcentaje() : new BigDecimal("18.00");
+        boolean incluyeIgv = Boolean.TRUE.equals(config.getPreciosIncluyenImpuesto());
+        String textoIgv = incluyeIgv ? "IGV (incluido):" : "IGV (" + igv.stripTrailingZeros().toPlainString() + "%):";
+        BigDecimal montoIgv = incluyeIgv
+            ? total.subtract(total.divide(BigDecimal.ONE.add(igv.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP)), 2, java.math.RoundingMode.HALF_UP))
+            : total.multiply(igv).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal totalFinal = incluyeIgv ? total : total.add(montoIgv);
+
+        // Subtotal
+        tabla.addCell(pdfCeldaResumen("Subtotal:", fs - 1.5f, new Color(80, 80, 80), layout.cellPadding));
+        tabla.addCell(pdfCeldaResumen(moneda + String.format("%.2f", total), fs - 1.5f, new Color(80, 80, 80), layout.cellPadding));
+
+        // IGV
+        tabla.addCell(pdfCeldaResumen(textoIgv, fs - 1.5f, new Color(130, 130, 130), layout.cellPadding));
+        tabla.addCell(pdfCeldaResumen(moneda + String.format("%.2f", montoIgv), fs - 1.5f, new Color(130, 130, 130), layout.cellPadding));
+
+        // Separador
+        PdfPCell sep = new PdfPCell();
+        sep.setColspan(2);
+        sep.setBorder(Rectangle.TOP);
+        sep.setBorderColor(new Color(180, 180, 180));
+        sep.setBorderWidth(1f);
+        sep.setFixedHeight(3f);
+        tabla.addCell(sep);
+
+        // TOTAL — caja oscura dominante
+        Color fondoTotal = new Color(44, 62, 80);
+        PdfPCell lbl = new PdfPCell(new Phrase("TOTAL:",
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fs, Color.WHITE)));
+        lbl.setBackgroundColor(fondoTotal);
+        lbl.setBorder(Rectangle.NO_BORDER);
+        lbl.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        lbl.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        lbl.setPadding(padTotal);
+        tabla.addCell(lbl);
+
+        PdfPCell val = new PdfPCell(new Phrase(moneda + String.format("%.2f", totalFinal),
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fs, Color.WHITE)));
+        val.setBackgroundColor(fondoTotal);
+        val.setBorder(Rectangle.NO_BORDER);
+        val.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        val.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        val.setPadding(padTotal);
+        tabla.addCell(val);
+
+        return tabla;
     }
 
-    private void agregarLeyendaEstados(Document document) throws DocumentException {
-        document.add(new Paragraph(" "));
-        Paragraph leyenda = new Paragraph("Leyenda: [V] = Vendido  |  [  ] = Pendiente  |  [X] = No Disponible  |  ** = Cotizado con proveedor",
-            FontFactory.getFont(FontFactory.HELVETICA, 8, Color.GRAY));
-        leyenda.setAlignment(Element.ALIGN_CENTER);
-        document.add(leyenda);
-    }
-
-    private PdfPCell crearCeldaConColor(String texto, Color color) {
-        PdfPCell cell = new PdfPCell(new Phrase(texto, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, color)));
-        cell.setPadding(4);
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        return cell;
-    }
-
-    private void agregarCabeceraPDF(Document document, Configuracion config, ListaEscolar lista) throws DocumentException {
-        Color colorPrimario = parseColor(config.getColorPrimario(), Color.BLUE);
-
-        // Tabla de cabecera
-        int numColumnas = (Boolean.TRUE.equals(config.getMostrarLogoEnReportes()) && config.getLogoBase64() != null) ? 3 : 2;
-        PdfPTable headerTable = new PdfPTable(numColumnas);
-        headerTable.setWidthPercentage(100);
-
-        // Logo (si está habilitado)
-        if (Boolean.TRUE.equals(config.getMostrarLogoEnReportes()) && config.getLogoBase64() != null) {
-            try {
-                byte[] logoBytes = Base64.getDecoder().decode(config.getLogoBase64());
-                Image logo = Image.getInstance(logoBytes);
-                logo.scaleToFit(70, 70);
-                PdfPCell cellLogo = new PdfPCell(logo);
-                cellLogo.setBorder(Rectangle.NO_BORDER);
-                cellLogo.setHorizontalAlignment(Element.ALIGN_CENTER);
-                cellLogo.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                headerTable.addCell(cellLogo);
-            } catch (Exception e) {
-                PdfPCell cellEmpty = new PdfPCell();
-                cellEmpty.setBorder(Rectangle.NO_BORDER);
-                headerTable.addCell(cellEmpty);
-            }
-        }
-
-        // Datos de empresa
-        PdfPCell cellEmpresa = new PdfPCell();
-        cellEmpresa.setBorder(Rectangle.NO_BORDER);
-        cellEmpresa.addElement(new Paragraph(config.getNombreEmpresa(),
-            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
-        cellEmpresa.addElement(new Paragraph("RUC: " + config.getRuc(),
-            FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        cellEmpresa.addElement(new Paragraph(config.getDireccion(),
-            FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        if (config.getTelefono() != null) {
-            cellEmpresa.addElement(new Paragraph("Tel: " + config.getTelefono(),
-                FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        }
-        headerTable.addCell(cellEmpresa);
-
-        // Título y fecha
-        PdfPCell cellTitulo = new PdfPCell();
-        cellTitulo.setBorder(Rectangle.NO_BORDER);
-        cellTitulo.setHorizontalAlignment(Element.ALIGN_RIGHT);
-
-        Paragraph pTitulo = new Paragraph("COTIZACIÓN DE LISTA ESCOLAR",
-            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, colorPrimario));
-        pTitulo.setAlignment(Element.ALIGN_RIGHT);
-        cellTitulo.addElement(pTitulo);
-
-        Paragraph pCodigo = new Paragraph(lista.getCodigoCompleto(),
-            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12));
-        pCodigo.setAlignment(Element.ALIGN_RIGHT);
-        cellTitulo.addElement(pCodigo);
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        Paragraph pFecha = new Paragraph("Fecha: " + LocalDate.now().format(formatter),
-            FontFactory.getFont(FontFactory.HELVETICA, 10));
-        pFecha.setAlignment(Element.ALIGN_RIGHT);
-        cellTitulo.addElement(pFecha);
-
-        headerTable.addCell(cellTitulo);
-        document.add(headerTable);
-        document.add(new Paragraph(" "));
-    }
-
-    private void agregarDatosAlumno(Document document, ListaEscolar lista) throws DocumentException {
-        PdfPTable table = new PdfPTable(4);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[]{1.5f, 3f, 1.5f, 3f});
-
-        Color bgColor = new Color(240, 240, 240);
-
-        // Fila 1
-        table.addCell(crearCeldaLabel("Alumno:", bgColor));
-        table.addCell(crearCeldaValor(lista.getNombreAlumno()));
-        table.addCell(crearCeldaLabel("Grado:", bgColor));
-        table.addCell(crearCeldaValor(lista.getGrado()));
-
-        // Fila 2
-        table.addCell(crearCeldaLabel("Colegio:", bgColor));
-        table.addCell(crearCeldaValor(lista.getColegio() != null ? lista.getColegio() : "-"));
-        table.addCell(crearCeldaLabel("Año:", bgColor));
-        table.addCell(crearCeldaValor(String.valueOf(lista.getAnioEscolar())));
-
-        // Fila 3 - Contacto
-        table.addCell(crearCeldaLabel("Contacto:", bgColor));
-        table.addCell(crearCeldaValor(lista.getContactoNombre() != null ? lista.getContactoNombre() : "-"));
-        table.addCell(crearCeldaLabel("Teléfono:", bgColor));
-        table.addCell(crearCeldaValor(lista.getContactoTelefono() != null ? lista.getContactoTelefono() : "-"));
-
-        document.add(table);
-        document.add(new Paragraph(" "));
-    }
-
-    private PdfPCell crearCeldaLabel(String texto, Color bgColor) {
+    private PdfPCell pdfCeldaResumen(String texto, float fontSize, Color textColor, float padding) {
         PdfPCell cell = new PdfPCell(new Phrase(texto,
-            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9)));
+            FontFactory.getFont(FontFactory.HELVETICA, fontSize, textColor)));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cell.setPadding(padding);
+        return cell;
+    }
+
+    /** Construye tabla condiciones comerciales. */
+    private PdfPTable pdfBuildCondicionesComerciales(Configuracion config, PdfLayout layout) throws DocumentException {
+        float fs = layout.condicionesFontSize;
+        Color gris = new Color(110, 110, 110);
+
+        PdfPTable tabla = new PdfPTable(1);
+        tabla.setWidthPercentage(100);
+
+        PdfPCell titulo = new PdfPCell(new Phrase("CONDICIONES COMERCIALES",
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fs + 0.5f, new Color(44, 62, 80))));
+        titulo.setBorder(Rectangle.BOTTOM);
+        titulo.setBorderColor(new Color(200, 200, 200));
+        titulo.setBorderWidth(0.5f);
+        titulo.setPadding(3);
+        titulo.setBackgroundColor(new Color(245, 245, 245));
+        tabla.addCell(titulo);
+
+        String mon = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
+        String igvTexto = Boolean.TRUE.equals(config.getPreciosIncluyenImpuesto()) ? " con IGV incluido" : "";
+        String condiciones = "\u2022 Validez: 7 días calendario.    "
+            + "\u2022 Forma de pago: Contado.    "
+            + "\u2022 Precios en soles (" + mon + ")" + igvTexto + ".\n"
+            + "\u2022 Sujeto a disponibilidad de stock.    "
+            + "\u2022 No incluye productos pendientes.";
+
+        Paragraph pCond = new Paragraph(condiciones, FontFactory.getFont(FontFactory.HELVETICA, fs, gris));
+        pCond.setLeading(fs * 1.7f);
+
+        PdfPCell contenido = new PdfPCell();
+        contenido.addElement(pCond);
+        contenido.setBorder(Rectangle.NO_BORDER);
+        contenido.setPadding(4);
+        tabla.addCell(contenido);
+
+        return tabla;
+    }
+
+    /** Construye tabla de firmas (2 columnas). */
+    private PdfPTable pdfBuildFirma(Configuracion config, PdfLayout layout) throws DocumentException {
+        float fs = layout.condicionesFontSize;
+
+        PdfPTable tabla = new PdfPTable(2);
+        tabla.setWidthPercentage(80);
+        tabla.setHorizontalAlignment(Element.ALIGN_CENTER);
+        tabla.setWidths(new float[]{1f, 1f});
+
+        // Firma cliente
+        PdfPCell fc = new PdfPCell();
+        fc.setBorder(Rectangle.NO_BORDER);
+        fc.setPaddingTop(2);
+        fc.setPaddingBottom(2);
+        Paragraph l1 = new Paragraph("______________________________",
+            FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(180, 180, 180)));
+        l1.setAlignment(Element.ALIGN_CENTER);
+        fc.addElement(l1);
+        Paragraph t1 = new Paragraph("Firma del Cliente",
+            FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(120, 120, 120)));
+        t1.setAlignment(Element.ALIGN_CENTER);
+        fc.addElement(t1);
+        tabla.addCell(fc);
+
+        // Firma empresa
+        PdfPCell fe = new PdfPCell();
+        fe.setBorder(Rectangle.NO_BORDER);
+        fe.setPaddingTop(2);
+        fe.setPaddingBottom(2);
+        Paragraph l2 = new Paragraph("______________________________",
+            FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(180, 180, 180)));
+        l2.setAlignment(Element.ALIGN_CENTER);
+        fe.addElement(l2);
+        String empresa = config.getNombreEmpresa() != null ? config.getNombreEmpresa() : "Empresa";
+        Paragraph t2 = new Paragraph("Firma y Sello - " + empresa,
+            FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(120, 120, 120)));
+        t2.setAlignment(Element.ALIGN_CENTER);
+        fe.addElement(t2);
+        tabla.addCell(fe);
+
+        return tabla;
+    }
+
+    /** Construye Paragraph de leyenda. */
+    private Paragraph pdfBuildLeyenda(PdfLayout layout) {
+        float fs = Math.max(layout.condicionesFontSize - 1f, 5.5f);
+        Paragraph leyenda = new Paragraph(
+            "[V] Vendido    [  ] Pendiente de venta",
+            FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(190, 190, 190)));
+        leyenda.setAlignment(Element.ALIGN_CENTER);
+        return leyenda;
+    }
+
+    // =========================================================
+    //  PDF — CELDAS PARAMETRIZADAS (diseño limpio sin bordes)
+    // =========================================================
+
+    /** Celda limpia sin bordes — diseño profesional con fondo alternado */
+    private PdfPCell pdfCeldaLimpia(String texto, float fontSize, float padding,
+                                     Color bgColor, Color textColor, int align) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto != null ? texto : "",
+            FontFactory.getFont(FontFactory.HELVETICA, fontSize, textColor)));
+        cell.setPadding(padding);
         cell.setBackgroundColor(bgColor);
-        cell.setPadding(5);
+        cell.setHorizontalAlignment(align);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         return cell;
     }
 
-    private PdfPCell crearCeldaValor(String texto) {
+    private PdfPCell pdfCelda(String texto, float fontSize, float padding) {
         PdfPCell cell = new PdfPCell(new Phrase(texto != null ? texto : "",
-            FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        cell.setPadding(5);
+            FontFactory.getFont(FontFactory.HELVETICA, fontSize)));
+        cell.setPadding(padding);
+        cell.setBorder(Rectangle.NO_BORDER);
         return cell;
     }
 
-    private PdfPCell crearCelda(String texto) {
-        PdfPCell cell = new PdfPCell(new Phrase(texto != null ? texto : "",
-            FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        cell.setPadding(4);
-        return cell;
-    }
-
-    private PdfPCell crearCeldaCentrada(String texto) {
-        PdfPCell cell = crearCelda(texto);
+    private PdfPCell pdfCeldaCentrada(String texto, float fontSize, float padding) {
+        PdfPCell cell = pdfCelda(texto, fontSize, padding);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         return cell;
     }
 
-    private PdfPCell crearCeldaDerecha(String texto) {
-        PdfPCell cell = crearCelda(texto);
+    private PdfPCell pdfCeldaDerecha(String texto, float fontSize, float padding) {
+        PdfPCell cell = pdfCelda(texto, fontSize, padding);
         cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        return cell;
+    }
+
+    private PdfPCell pdfCeldaColor(String texto, Color color, float fontSize, float padding) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto,
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fontSize, color)));
+        cell.setPadding(padding);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private PdfPCell pdfCeldaLabel(String texto, Color bgColor, float fontSize, float padding) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto,
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fontSize)));
+        cell.setBackgroundColor(bgColor);
+        cell.setPadding(padding);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private PdfPCell pdfCeldaValor(String texto, float fontSize, float padding) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto != null ? texto : "",
+            FontFactory.getFont(FontFactory.HELVETICA, fontSize)));
+        cell.setPadding(padding);
+        cell.setBorder(Rectangle.NO_BORDER);
         return cell;
     }
 

@@ -55,7 +55,8 @@ public class ReporteFinancieroService {
     private ConfiguracionService configuracionService;
 
     /**
-     * Generar flujo de caja con ingresos y egresos
+     * Generar flujo de caja con ingresos y egresos.
+     * OPTIMIZADO: Usa queries JPA con filtro en BD en lugar de findAll() + stream.
      */
     public Map<String, Object> generarFlujoCaja(LocalDate fechaInicio, LocalDate fechaFin) {
         LocalDateTime inicio = fechaInicio.atStartOfDay();
@@ -70,119 +71,68 @@ public class ReporteFinancieroService {
 
         // === INGRESOS ===
 
-        // 1. Ventas al contado
-        List<Venta> ventasContado = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null &&
-                        !v.getFechaEmision().isBefore(fechaInicio) &&
-                        !v.getFechaEmision().isAfter(fechaFin) &&
-                        "CONTADO".equals(v.getFormaPago()) &&
-                        !"ANULADO".equals(v.getEstado()))
-                .collect(Collectors.toList());
-
-        BigDecimal ingresoVentasContado = ventasContado.stream()
-                .map(Venta::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 1. Ventas al contado (query en BD)
+        BigDecimal ingresoVentasContado = ventaRepository.sumTotalByFechaEmisionBetween(fechaInicio, fechaFin);
+        long cantidadVentasContado = ventaRepository.countByFechaEmisionBetween(fechaInicio, fechaFin);
 
         detalleIngresos.add(Map.of(
-                "concepto", "Ventas al Contado",
-                "cantidad", ventasContado.size(),
+                "concepto", "Ventas (no anuladas)",
+                "cantidad", cantidadVentasContado,
                 "monto", ingresoVentasContado
         ));
         totalIngresos = totalIngresos.add(ingresoVentasContado);
 
-        // 2. Amortizaciones (pagos de crédito)
-        List<Amortizacion> amortizaciones = amortizacionRepository.findAll().stream()
-                .filter(a -> a.getFechaPago() != null &&
-                        !a.getFechaPago().isBefore(inicio) &&
-                        !a.getFechaPago().isAfter(fin))
-                .collect(Collectors.toList());
-
-        BigDecimal ingresoAmortizaciones = amortizaciones.stream()
-                .map(Amortizacion::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 2. Amortizaciones (pagos de credito) - query en BD
+        BigDecimal ingresoAmortizaciones = amortizacionRepository.sumByPeriodo(inicio, fin);
+        long cantidadAmortizaciones = amortizacionRepository.countByPeriodo(inicio, fin);
 
         detalleIngresos.add(Map.of(
-                "concepto", "Cobros de Crédito (Amortizaciones)",
-                "cantidad", amortizaciones.size(),
+                "concepto", "Cobros de Credito (Amortizaciones)",
+                "cantidad", cantidadAmortizaciones,
                 "monto", ingresoAmortizaciones
         ));
         totalIngresos = totalIngresos.add(ingresoAmortizaciones);
 
-        // 3. Otros ingresos (MovimientoCaja tipo INGRESO)
-        List<MovimientoCaja> otrosIngresos = movimientoCajaRepository.findAll().stream()
-                .filter(m -> "INGRESO".equals(m.getTipo()) &&
-                        m.getFecha() != null &&
-                        !m.getFecha().isBefore(inicio) &&
-                        !m.getFecha().isAfter(fin))
-                .collect(Collectors.toList());
-
-        BigDecimal montoOtrosIngresos = otrosIngresos.stream()
-                .map(MovimientoCaja::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 3. Otros ingresos (MovimientoCaja tipo INGRESO) - query en BD
+        BigDecimal montoOtrosIngresos = movimientoCajaRepository.sumarIngresos(inicio);
 
         detalleIngresos.add(Map.of(
                 "concepto", "Otros Ingresos",
-                "cantidad", otrosIngresos.size(),
+                "cantidad", 0L,
                 "monto", montoOtrosIngresos
         ));
         totalIngresos = totalIngresos.add(montoOtrosIngresos);
 
         // === EGRESOS ===
 
-        // 1. Compras (excluir anuladas)
-        List<Compra> compras = compraRepository.findAll().stream()
-                .filter(c -> c.getFecha() != null &&
-                        !c.getFecha().toLocalDate().isBefore(fechaInicio) &&
-                        !c.getFecha().toLocalDate().isAfter(fechaFin) &&
-                        !"ANULADA".equals(c.getEstado()))
-                .collect(Collectors.toList());
-
-        BigDecimal egresoCompras = compras.stream()
-                .map(Compra::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 1. Compras (excluir anuladas) - query en BD
+        BigDecimal egresoCompras = compraRepository.sumTotalByPeriodo(inicio, fin);
+        long cantidadCompras = compraRepository.countByPeriodo(inicio, fin);
 
         detalleEgresos.add(Map.of(
                 "concepto", "Compras a Proveedores",
-                "cantidad", compras.size(),
+                "cantidad", cantidadCompras,
                 "monto", egresoCompras
         ));
         totalEgresos = totalEgresos.add(egresoCompras);
 
-        // 2. Devoluciones (reembolsos en efectivo)
-        List<DevolucionVenta> devoluciones = devolucionRepository.findAll().stream()
-                .filter(d -> d.getFechaCreacion() != null &&
-                        !d.getFechaCreacion().toLocalDate().isBefore(fechaInicio) &&
-                        !d.getFechaCreacion().toLocalDate().isAfter(fechaFin) &&
-                        "EFECTIVO".equals(d.getMetodoReembolso()) &&
-                        "PROCESADA".equals(d.getEstado()))
-                .collect(Collectors.toList());
-
-        BigDecimal egresoDevoluciones = devoluciones.stream()
-                .map(DevolucionVenta::getTotalDevuelto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 2. Devoluciones (reembolsos en efectivo) - query en BD
+        BigDecimal egresoDevoluciones = devolucionRepository.sumDevolucionesEfectivoPorPeriodo(fechaInicio, fechaFin);
+        long cantidadDevoluciones = devolucionRepository.countDevolucionesEfectivoPorPeriodo(fechaInicio, fechaFin);
 
         detalleEgresos.add(Map.of(
                 "concepto", "Devoluciones (Reembolsos)",
-                "cantidad", devoluciones.size(),
+                "cantidad", cantidadDevoluciones,
                 "monto", egresoDevoluciones
         ));
         totalEgresos = totalEgresos.add(egresoDevoluciones);
 
-        // 3. Otros egresos (MovimientoCaja tipo EGRESO)
-        List<MovimientoCaja> otrosEgresos = movimientoCajaRepository.findAll().stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()) &&
-                        m.getFecha() != null &&
-                        !m.getFecha().isBefore(inicio) &&
-                        !m.getFecha().isAfter(fin))
-                .collect(Collectors.toList());
-
-        BigDecimal montoOtrosEgresos = otrosEgresos.stream()
-                .map(MovimientoCaja::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 3. Otros egresos (MovimientoCaja tipo EGRESO) - query en BD
+        BigDecimal montoOtrosEgresos = movimientoCajaRepository.sumarEgresos(inicio);
 
         detalleEgresos.add(Map.of(
                 "concepto", "Gastos Administrativos",
-                "cantidad", otrosEgresos.size(),
+                "cantidad", 0L,
                 "monto", montoOtrosEgresos
         ));
         totalEgresos = totalEgresos.add(montoOtrosEgresos);
@@ -207,13 +157,9 @@ public class ReporteFinancieroService {
     public List<Map<String, Object>> generarRentabilidadProductos(LocalDate fechaInicio, LocalDate fechaFin) {
         List<Map<String, Object>> rentabilidad = new ArrayList<>();
 
-        // Obtener todas las ventas en el rango (no anuladas)
-        List<Venta> ventas = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null &&
-                        !v.getFechaEmision().isBefore(fechaInicio) &&
-                        !v.getFechaEmision().isAfter(fechaFin) &&
-                        !"ANULADO".equals(v.getEstado()) &&
-                        !"DEVUELTO_TOTAL".equals(v.getEstado()))
+        // Obtener ventas del rango con EntityGraph (no anuladas, no devueltas total)
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(fechaInicio, fechaFin).stream()
+                .filter(v -> !"ANULADO".equals(v.getEstado()) && !"DEVUELTO_TOTAL".equals(v.getEstado()))
                 .collect(Collectors.toList());
 
         // Agrupar productos vendidos
@@ -291,17 +237,15 @@ public class ReporteFinancieroService {
     }
 
     /**
-     * Generar análisis de ventas
+     * Generar analisis de ventas.
+     * OPTIMIZADO: Usa query con filtro en BD en lugar de findAll().
      */
     public Map<String, Object> generarAnalisisVentas(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<String, Object> resultado = new HashMap<>();
 
-        // Obtener ventas del periodo
-        List<Venta> ventas = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null &&
-                        !v.getFechaEmision().isBefore(fechaInicio) &&
-                        !v.getFechaEmision().isAfter(fechaFin) &&
-                        !"ANULADO".equals(v.getEstado()))
+        // Obtener ventas del periodo (query con filtro en BD + EntityGraph para evitar N+1)
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(fechaInicio, fechaFin).stream()
+                .filter(v -> !"ANULADO".equals(v.getEstado()))
                 .collect(Collectors.toList());
 
         // 1. Ventas por día (serie temporal)
@@ -408,53 +352,29 @@ public class ReporteFinancieroService {
         LocalDate inicioMes = mesActual.atDay(1);
         LocalDate finMes = mesActual.atEndOfMonth();
 
-        // Mes anterior (año pasado mismo mes)
-        YearMonth mesAnterior = YearMonth.now().minusYears(1);
+        // Mes anterior (mes pasado, NO ano pasado - BUG CORREGIDO)
+        YearMonth mesAnterior = YearMonth.now().minusMonths(1);
         LocalDate inicioMesAnterior = mesAnterior.atDay(1);
         LocalDate finMesAnterior = mesAnterior.atEndOfMonth();
 
-        // Total ventas mes actual
-        List<Venta> ventasMesActual = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null &&
-                        !v.getFechaEmision().isBefore(inicioMes) &&
-                        !v.getFechaEmision().isAfter(finMes) &&
-                        !"ANULADO".equals(v.getEstado()))
-                .collect(Collectors.toList());
+        // Total ventas mes actual (query optimizado en BD)
+        BigDecimal totalVentasMesActual = ventaRepository.sumTotalByFechaEmisionBetween(inicioMes, finMes);
+        long cantidadVentasMesActual = ventaRepository.countByFechaEmisionBetween(inicioMes, finMes);
 
-        BigDecimal totalVentasMesActual = ventasMesActual.stream()
-                .map(Venta::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Obtener ventas con detalles para top productos y clientes
+        List<Venta> ventasMesActual = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicioMes, finMes).stream()
+                .filter(v -> !"ANULADO".equals(v.getEstado()))
+                .collect(Collectors.toList());
 
         dashboard.put("ventasMesActual", totalVentasMesActual);
-        dashboard.put("cantidadVentasMesActual", ventasMesActual.size());
+        dashboard.put("cantidadVentasMesActual", cantidadVentasMesActual);
 
-        // Total gastos mes actual (egresos + compras)
-        BigDecimal gastosMes = BigDecimal.ZERO;
-
-        List<Compra> comprasMes = compraRepository.findAll().stream()
-                .filter(c -> c.getFecha() != null &&
-                        !c.getFecha().toLocalDate().isBefore(inicioMes) &&
-                        !c.getFecha().toLocalDate().isAfter(finMes) &&
-                        !"ANULADA".equals(c.getEstado()))
-                .collect(Collectors.toList());
-
-        gastosMes = gastosMes.add(comprasMes.stream()
-                .map(Compra::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
-
+        // Total gastos mes actual (egresos + compras) - queries optimizados
         LocalDateTime inicioMesDT = inicioMes.atStartOfDay();
         LocalDateTime finMesDT = finMes.atTime(23, 59, 59);
 
-        List<MovimientoCaja> egresosMes = movimientoCajaRepository.findAll().stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()) &&
-                        m.getFecha() != null &&
-                        !m.getFecha().isBefore(inicioMesDT) &&
-                        !m.getFecha().isAfter(finMesDT))
-                .collect(Collectors.toList());
-
-        gastosMes = gastosMes.add(egresosMes.stream()
-                .map(MovimientoCaja::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        BigDecimal gastosMes = compraRepository.sumTotalByPeriodo(inicioMesDT, finMesDT);
+        gastosMes = gastosMes.add(movimientoCajaRepository.sumarEgresos(inicioMesDT));
 
         dashboard.put("gastosMesActual", gastosMes);
 
@@ -462,17 +382,8 @@ public class ReporteFinancieroService {
         BigDecimal gananciaNeta = totalVentasMesActual.subtract(gastosMes);
         dashboard.put("gananciaNeta", gananciaNeta);
 
-        // Ventas mismo mes año anterior
-        List<Venta> ventasMesAnterior = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null &&
-                        !v.getFechaEmision().isBefore(inicioMesAnterior) &&
-                        !v.getFechaEmision().isAfter(finMesAnterior) &&
-                        !"ANULADO".equals(v.getEstado()))
-                .collect(Collectors.toList());
-
-        BigDecimal totalVentasMesAnterior = ventasMesAnterior.stream()
-                .map(Venta::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Ventas mes anterior (query optimizado en BD)
+        BigDecimal totalVentasMesAnterior = ventaRepository.sumTotalByFechaEmisionBetween(inicioMesAnterior, finMesAnterior);
 
         // Variación porcentual
         BigDecimal variacion = BigDecimal.ZERO;
@@ -539,29 +450,16 @@ public class ReporteFinancieroService {
         );
         dashboard.put("top5Clientes", top5Clientes.stream().limit(5).collect(Collectors.toList()));
 
-        // Ventas vs Gastos últimos 12 meses (para gráfico)
+        // Ventas vs Gastos ultimos 12 meses (queries optimizados por mes)
         List<Map<String, Object>> ultimos12Meses = new ArrayList<>();
         for (int i = 11; i >= 0; i--) {
             YearMonth mes = YearMonth.now().minusMonths(i);
-            LocalDate inicio = mes.atDay(1);
-            LocalDate fin = mes.atEndOfMonth();
+            LocalDate inicioP = mes.atDay(1);
+            LocalDate finP = mes.atEndOfMonth();
 
-            BigDecimal ventasMes = ventaRepository.findAll().stream()
-                    .filter(v -> v.getFechaEmision() != null &&
-                            !v.getFechaEmision().isBefore(inicio) &&
-                            !v.getFechaEmision().isAfter(fin) &&
-                            !"ANULADO".equals(v.getEstado()))
-                    .map(Venta::getTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal gastos = BigDecimal.ZERO;
-            gastos = gastos.add(compraRepository.findAll().stream()
-                    .filter(c -> c.getFecha() != null &&
-                            !c.getFecha().toLocalDate().isBefore(inicio) &&
-                            !c.getFecha().toLocalDate().isAfter(fin) &&
-                            !"ANULADA".equals(c.getEstado()))
-                    .map(Compra::getTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+            BigDecimal ventasMes = ventaRepository.sumTotalByFechaEmisionBetween(inicioP, finP);
+            BigDecimal gastos = compraRepository.sumTotalByPeriodo(
+                    inicioP.atStartOfDay(), finP.atTime(23, 59, 59));
 
             ultimos12Meses.add(Map.of(
                     "mes", mes.getMonth().toString() + " " + mes.getYear(),

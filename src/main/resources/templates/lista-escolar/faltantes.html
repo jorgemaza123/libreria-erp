@@ -324,7 +324,7 @@
 </div>
 
 <script th:replace="~{fragments/layout :: scripts}"></script>
-<script>
+<script th:inline="none">
 $(document).ready(function() {
     // Configurar CSRF
     var csrfToken = $('meta[name="_csrf"]').attr('content');

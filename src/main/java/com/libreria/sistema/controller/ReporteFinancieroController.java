@@ -29,7 +29,7 @@ public class ReporteFinancieroController {
      * Vista principal del dashboard financiero
      */
     @GetMapping
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     public String dashboard(Model model) {
         model.addAttribute("titulo", "Dashboard Financiero");
         return "reportes-financieros/dashboard";
@@ -39,7 +39,7 @@ public class ReporteFinancieroController {
      * Vista de flujo de caja
      */
     @GetMapping("/flujo-caja")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     public String flujoCaja(Model model) {
         model.addAttribute("titulo", "Flujo de Caja");
         return "reportes-financieros/flujo-caja";
@@ -49,7 +49,7 @@ public class ReporteFinancieroController {
      * Vista de rentabilidad
      */
     @GetMapping("/rentabilidad")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     public String rentabilidad(Model model) {
         model.addAttribute("titulo", "Análisis de Rentabilidad");
         return "reportes-financieros/rentabilidad";
@@ -59,7 +59,7 @@ public class ReporteFinancieroController {
      * Vista de análisis de ventas
      */
     @GetMapping("/analisis-ventas")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     public String analisisVentas(Model model) {
         model.addAttribute("titulo", "Análisis de Ventas");
         return "reportes-financieros/analisis-ventas";
@@ -71,7 +71,7 @@ public class ReporteFinancieroController {
      * Obtener datos del dashboard
      */
     @GetMapping("/api/dashboard")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getDashboardData() {
         try {
@@ -88,7 +88,7 @@ public class ReporteFinancieroController {
      * Obtener datos de flujo de caja
      */
     @GetMapping("/api/flujo-caja")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getFlujoCaja(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
@@ -108,7 +108,7 @@ public class ReporteFinancieroController {
      * Obtener datos de rentabilidad
      */
     @GetMapping("/api/rentabilidad")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     @ResponseBody
     public ResponseEntity<?> getRentabilidad(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
@@ -128,7 +128,7 @@ public class ReporteFinancieroController {
      * Obtener datos de análisis de ventas
      */
     @GetMapping("/api/analisis-ventas")
-    @PreAuthorize("hasPermission(null, 'REPORTES_VER')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getAnalisisVentas(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
@@ -150,7 +150,7 @@ public class ReporteFinancieroController {
      * Exportar flujo de caja a Excel
      */
     @GetMapping("/api/flujo-caja/excel")
-    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
     public void exportarFlujoCajaExcel(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
@@ -167,7 +167,7 @@ public class ReporteFinancieroController {
      * Exportar flujo de caja a PDF
      */
     @GetMapping("/api/flujo-caja/pdf")
-    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
     public void exportarFlujoCajaPDF(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
@@ -184,7 +184,7 @@ public class ReporteFinancieroController {
      * Exportar rentabilidad a Excel
      */
     @GetMapping("/api/rentabilidad/excel")
-    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
     public void exportarRentabilidadExcel(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
@@ -201,7 +201,7 @@ public class ReporteFinancieroController {
      * Exportar rentabilidad a PDF
      */
     @GetMapping("/api/rentabilidad/pdf")
-    @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
     public void exportarRentabilidadPDF(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,

@@ -125,6 +125,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/eliminar/{id}")
+    @PreAuthorize("hasPermission(null, 'USUARIOS_ELIMINAR')")
     public String eliminar(@PathVariable Long id, RedirectAttributes attr) {
         try {
             // No borramos físicamente para mantener integridad de ventas, solo desactivamos

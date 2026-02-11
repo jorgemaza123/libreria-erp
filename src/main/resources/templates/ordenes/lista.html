@@ -86,7 +86,7 @@
 </div>
 
 <th:block layout:fragment="scripts">
-    <script>
+    <script th:inline="none">
         $(document).ready(function () {
             $("#tablaOrdenes").DataTable({
                 "responsive": true,

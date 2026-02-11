@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_leads'">
+<head>
+    <title>CRM - Perfil Cliente</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    <span th:text="${cliente.nombreRazonSocial}">Cliente</span>
+                    <span class="badge ml-2" th:classappend="${cliente.tipo == 'LEAD' ? 'badge-info' : 'badge-success'}" th:text="${cliente.tipo}">TIPO</span>
+                </h1>
+                <div>
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalActividad()"><i class="fas fa-plus mr-1"></i>Nueva Actividad</button>
+                    <a href="/crm/leads" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>Volver</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Info del cliente -->
+                <div class="col-lg-4">
+                    <div class="card card-primary card-outline">
+                        <div class="card-body box-profile">
+                            <div class="text-center">
+                                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                    <i class="fas fa-user fa-2x text-white"></i>
+                                </div>
+                            </div>
+                            <h3 class="profile-username text-center mt-2" th:text="${cliente.nombreRazonSocial}">Nombre</h3>
+                            <p class="text-muted text-center" th:text="${cliente.empresa}">Empresa</p>
+
+                            <ul class="list-group list-group-unbordered mb-3">
+                                <li class="list-group-item">
+                                    <b>Documento</b> <span class="float-right" th:text="${cliente.numeroDocumento}"></span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Telefono</b> <span class="float-right" th:text="${cliente.telefono}"></span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Email</b> <span class="float-right" th:text="${cliente.email}"></span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Direccion</b> <span class="float-right" th:text="${cliente.direccion}"></span>
+                                </li>
+                                <li class="list-group-item" th:if="${cliente.cargo}">
+                                    <b>Cargo</b> <span class="float-right" th:text="${cliente.cargo}"></span>
+                                </li>
+                                <li class="list-group-item" th:if="${cliente.origenLead}">
+                                    <b>Origen</b> <span class="float-right badge badge-info" th:text="${cliente.origenLead}"></span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Categoria</b> <span class="float-right badge badge-secondary" th:text="${cliente.categoria}"></span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Compras</b> <span class="float-right" th:text="${cliente.cantidadCompras}">0</span>
+                                </li>
+                                <li class="list-group-item">
+                                    <b>Total Historico</b> <span class="float-right">S/ <span th:text="${#numbers.formatDecimal(cliente.totalComprasHistorico, 1, 2)}">0.00</span></span>
+                                </li>
+                            </ul>
+
+                            <div th:if="${cliente.etiquetas}">
+                                <strong>Etiquetas:</strong><br>
+                                <span th:each="tag : ${cliente.etiquetas.split(',')}" class="badge badge-primary mr-1 mb-1" th:text="${tag.trim()}"></span>
+                            </div>
+
+                            <div th:if="${cliente.observaciones}" class="mt-2">
+                                <strong>Observaciones:</strong>
+                                <p class="text-muted small" th:text="${cliente.observaciones}"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Oportunidades del cliente -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-funnel-dollar mr-2"></i>Oportunidades</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm mb-0" th:if="${!oportunidades.isEmpty()}">
+                                <tr th:each="op : ${oportunidades}">
+                                    <td>
+                                        <strong th:text="${op.titulo}"></strong><br>
+                                        <span class="badge" th:classappend="${op.etapa == 'GANADO' ? 'badge-success' : (op.etapa == 'PERDIDO' ? 'badge-danger' : 'badge-info')}" th:text="${op.etapa}"></span>
+                                        <small class="text-muted ml-1">S/ <span th:text="${op.valorEstimado != null ? #numbers.formatDecimal(op.valorEstimado, 1, 2) : '0.00'}"></span></small>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div th:if="${oportunidades.isEmpty()}" class="text-center py-3 text-muted">
+                                Sin oportunidades
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-stream mr-2"></i>Timeline de Actividades</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="timeline-container">
+                                <div th:if="${actividades.isEmpty()}" class="text-center py-5 text-muted">
+                                    <i class="fas fa-history fa-3x mb-3"></i>
+                                    <p>No hay actividades registradas</p>
+                                    <button class="btn btn-primary btn-sm" onclick="abrirModalActividad()">
+                                        <i class="fas fa-plus mr-1"></i>Registrar primera actividad
+                                    </button>
+                                </div>
+
+                                <div class="timeline" th:if="${!actividades.isEmpty()}">
+                                    <div th:each="act : ${actividades}" class="time-label" th:remove="tag">
+                                        <div class="timeline-item" style="margin-left: 0;">
+                                            <div class="d-flex align-items-start p-2 border-bottom">
+                                                <div class="mr-3 mt-1">
+                                                    <span th:switch="${act.tipo}">
+                                                        <i th:case="'LLAMADA'" class="fas fa-phone text-primary fa-lg"></i>
+                                                        <i th:case="'MENSAJE'" class="fas fa-comment text-info fa-lg"></i>
+                                                        <i th:case="'REUNION'" class="fas fa-users text-warning fa-lg"></i>
+                                                        <i th:case="'NOTA'" class="fas fa-sticky-note text-secondary fa-lg"></i>
+                                                        <i th:case="'RECLAMO'" class="fas fa-exclamation-circle text-danger fa-lg"></i>
+                                                        <i th:case="'TAREA'" class="fas fa-tasks text-success fa-lg"></i>
+                                                        <i th:case="'EMAIL'" class="fas fa-envelope text-primary fa-lg"></i>
+                                                        <i th:case="'VISITA'" class="fas fa-walking text-info fa-lg"></i>
+                                                        <i th:case="*" class="fas fa-circle text-muted fa-lg"></i>
+                                                    </span>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between">
+                                                        <strong th:text="${act.asunto}">Asunto</strong>
+                                                        <span class="badge" th:classappend="${act.estado == 'COMPLETADA' ? 'badge-success' : (act.estado == 'CANCELADA' ? 'badge-danger' : 'badge-warning')}" th:text="${act.estado}"></span>
+                                                    </div>
+                                                    <p class="text-muted small mb-1" th:if="${act.descripcion}" th:text="${act.descripcion}"></p>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock mr-1"></i>
+                                                        <span th:text="${act.fechaCreacion != null ? #temporals.format(act.fechaCreacion, 'dd/MM/yyyy HH:mm') : ''}"></span>
+                                                        <span th:if="${act.usuario}" class="ml-2">
+                                                            <i class="fas fa-user mr-1"></i><span th:text="${act.usuario.nombreCompleto}"></span>
+                                                        </span>
+                                                    </small>
+                                                    <p th:if="${act.resultado}" class="text-success small mt-1 mb-0">
+                                                        <i class="fas fa-check mr-1"></i><span th:text="${act.resultado}"></span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Nueva Actividad -->
+<div class="modal fade" id="modalActividad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus mr-2"></i>Nueva Actividad</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="actTipo" class="form-control">
+                        <option value="LLAMADA">Llamada</option>
+                        <option value="MENSAJE">Mensaje</option>
+                        <option value="REUNION">Reunion</option>
+                        <option value="NOTA">Nota</option>
+                        <option value="RECLAMO">Reclamo</option>
+                        <option value="TAREA">Tarea</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="VISITA">Visita</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Asunto *</label>
+                    <input type="text" id="actAsunto" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Descripcion</label>
+                    <textarea id="actDescripcion" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Programada</label>
+                    <input type="datetime-local" id="actFechaProgramada" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Duracion (minutos)</label>
+                    <input type="number" id="actDuracion" class="form-control" placeholder="30">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarActividad()">
+                    <i class="fas fa-save mr-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script th:inline="javascript">
+var clienteId = /*[[${cliente.id}]]*/ 0;
+
+function abrirModalActividad() {
+    $('#actAsunto, #actDescripcion').val('');
+    $('#actFechaProgramada, #actDuracion').val('');
+    $('#actTipo').val('LLAMADA');
+    $('#modalActividad').modal('show');
+}
+
+function guardarActividad() {
+    var asunto = $('#actAsunto').val().trim();
+    if (!asunto) {
+        Swal.fire('Error', 'El asunto es obligatorio', 'error');
+        return;
+    }
+
+    var datos = {
+        tipo: $('#actTipo').val(),
+        asunto: asunto,
+        descripcion: $('#actDescripcion').val().trim(),
+        clienteId: clienteId,
+        fechaProgramada: $('#actFechaProgramada').val(),
+        duracionMinutos: $('#actDuracion').val()
+    };
+
+    $.ajax({
+        url: '/crm/actividades/guardar',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datos),
+        success: function(resp) {
+            if (resp.success) {
+                $('#modalActividad').modal('hide');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Actividad registrada', showConfirmButton: false, timer: 2000 });
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        },
+        error: function(xhr) {
+            var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error';
+            Swal.fire('Error', msg, 'error');
+        }
+    });
+}
+</script>
+</div>
+
+</body>
+</html>

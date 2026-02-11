@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='stock'">
+
+<head>
+    <title>Control de Stock</title>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><i class="fas fa-cubes text-success mr-2"></i>Control de Stock</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Stock</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- KPI Cards -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${kpis.totalProductos}">0</h3>
+                            <p>Total Productos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-boxes"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${kpis.stockCritico}">0</h3>
+                            <p>Stock Critico</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${kpis.sinStock}">0</h3>
+                            <p>Sin Stock</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-times-circle"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>S/ <span th:text="${#numbers.formatDecimal(kpis.valorInventario, 1, 'COMMA', 2, 'POINT')}">0.00</span></h3>
+                            <p>Valor Inventario</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-filter mr-1"></i>Inventario</h3>
+                    <div class="card-tools">
+                        <a id="btnExportar" href="#" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-excel mr-1"></i>Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="text" id="filtroTermino" class="form-control" placeholder="Buscar por nombre, codigo, categoria...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filtroCategoria" class="form-control">
+                                <option value="">Todas las categorias</option>
+                                <option th:each="cat : ${categorias}" th:value="${cat}" th:text="${cat}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filtroEstado" class="form-control">
+                                <option value="">Todos los estados</option>
+                                <option value="OK">OK</option>
+                                <option value="BAJO">Bajo</option>
+                                <option value="CRITICO">Critico</option>
+                                <option value="SIN_STOCK">Sin Stock</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="btnLimpiar" class="btn btn-outline-secondary btn-block"><i class="fas fa-eraser mr-1"></i>Limpiar</button>
+                        </div>
+                    </div>
+
+                    <table id="tablaStock" class="table table-bordered table-hover table-sm" style="width:100%">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Codigo</th>
+                                <th>Producto</th>
+                                <th>Categoria</th>
+                                <th>Stock</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th>Estado</th>
+                                <th>P.Compra</th>
+                                <th>Valor</th>
+                                <th>Actualizado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Modal Ajustar Stock -->
+    <div class="modal fade" id="modalAjustar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-balance-scale mr-1"></i>Ajustar Stock</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="ajusteProductoId">
+                    <div class="form-group">
+                        <label>Producto</label>
+                        <input type="text" id="ajusteProductoNombre" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Stock Actual</label>
+                        <input type="number" id="ajusteStockActual" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Nuevo Stock <span class="text-danger">*</span></label>
+                        <input type="number" id="ajusteNuevoStock" class="form-control" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo</label>
+                        <input type="text" id="ajusteMotivo" class="form-control" placeholder="Ej: Conteo fisico, merma, correccion...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="btnConfirmarAjuste"><i class="fas fa-save mr-1"></i>Ajustar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script th:inline="none" >
+$(document).ready(function() {
+    var puedeAjustar = /*[[${puedeAjustar}]]*/ false;
+
+    var debounceTimer;
+
+    var tabla = $('#tablaStock').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '/stock/api/buscar',
+            data: function(d) {
+                d.categoria = $('#filtroCategoria').val();
+                d.estado = $('#filtroEstado').val();
+            }
+        },
+        columns: [
+            { data: 'codigoInterno', defaultContent: '-' },
+            { data: 'nombre' },
+            { data: 'categoria', defaultContent: '-' },
+            { data: 'stockActual', className: 'text-center font-weight-bold' },
+            { data: 'stockMinimo', className: 'text-center' },
+            { data: 'stockMaximo', className: 'text-center', defaultContent: '-' },
+            {
+                data: null,
+                className: 'text-center',
+                orderable: false,
+                render: function(data) {
+                    return '<span class="badge ' + data.badgeClass + '">' + data.estado.replace('_', ' ') + '</span>';
+                }
+            },
+            {
+                data: 'precioCompra',
+                className: 'text-right',
+                render: function(data) {
+                    return data != null ? 'S/ ' + parseFloat(data).toFixed(2) : '-';
+                }
+            },
+            {
+                data: 'valorStock',
+                className: 'text-right',
+                render: function(data) {
+                    return data != null ? 'S/ ' + parseFloat(data).toFixed(2) : '-';
+                }
+            },
+            {
+                data: 'fechaActualizacion',
+                render: function(data) {
+                    if (!data) return '-';
+                    var d = new Date(data);
+                    return d.toLocaleDateString('es-PE');
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                className: 'text-center',
+                render: function(data) {
+                    var html = '<a href="/stock/producto/' + data.id + '" class="btn btn-info btn-xs mr-1" title="Ver detalle"><i class="fas fa-eye"></i></a>';
+                    if (puedeAjustar) {
+                        html += '<button class="btn btn-warning btn-xs btn-ajustar" data-id="' + data.id + '" data-nombre="' + data.nombre + '" data-stock="' + data.stockActual + '" title="Ajustar stock"><i class="fas fa-balance-scale"></i></button>';
+                    }
+                    return html;
+                }
+            }
+        ],
+        order: [[1, 'asc']],
+        pageLength: 25,
+        language: {
+            url: '/datatables/i18n/es-ES.json'
+        },
+        dom: 'rtip'
+    });
+
+    // Custom search with debounce
+    $('#filtroTermino').on('keyup', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            tabla.search($('#filtroTermino').val()).draw();
+        }, 300);
+    });
+
+    $('#filtroCategoria, #filtroEstado').on('change', function() {
+        tabla.draw();
+    });
+
+    $('#btnLimpiar').on('click', function() {
+        $('#filtroTermino').val('');
+        $('#filtroCategoria').val('');
+        $('#filtroEstado').val('');
+        tabla.search('').draw();
+    });
+
+    // Export Excel
+    $('#btnExportar').on('click', function(e) {
+        e.preventDefault();
+        var params = new URLSearchParams();
+        if ($('#filtroTermino').val()) params.append('termino', $('#filtroTermino').val());
+        if ($('#filtroCategoria').val()) params.append('categoria', $('#filtroCategoria').val());
+        if ($('#filtroEstado').val()) params.append('estado', $('#filtroEstado').val());
+        window.location.href = '/stock/exportar/excel?' + params.toString();
+    });
+
+    // Adjust stock modal
+    $(document).on('click', '.btn-ajustar', function() {
+        var id = $(this).data('id');
+        var nombre = $(this).data('nombre');
+        var stock = $(this).data('stock');
+        $('#ajusteProductoId').val(id);
+        $('#ajusteProductoNombre').val(nombre);
+        $('#ajusteStockActual').val(stock);
+        $('#ajusteNuevoStock').val(stock);
+        $('#ajusteMotivo').val('');
+        $('#modalAjustar').modal('show');
+    });
+
+    $('#btnConfirmarAjuste').on('click', function() {
+        var btn = $(this);
+        btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/stock/api/ajustar',
+            method: 'POST',
+            data: {
+                productoId: $('#ajusteProductoId').val(),
+                nuevoStock: $('#ajusteNuevoStock').val(),
+                motivo: $('#ajusteMotivo').val()
+            },
+            success: function(res) {
+                if (res.success) {
+                    $('#modalAjustar').modal('hide');
+                    tabla.draw(false);
+                    toastr.success(res.message);
+                    // Reload KPIs
+                    location.reload();
+                } else {
+                    toastr.error(res.message);
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Error al ajustar stock';
+                toastr.error(msg);
+            },
+            complete: function() {
+                btn.prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+</div>
+
+</body>
+</html>

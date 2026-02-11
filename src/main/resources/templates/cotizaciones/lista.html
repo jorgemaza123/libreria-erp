@@ -4,84 +4,228 @@
       layout:decorate="~{fragments/layout}"
       th:with="active='cotizaciones'">
 <head>
-    <title>Cotizaciones Emitidas</title>
+    <title>Cotizaciones</title>
 </head>
 <body>
 
 <div layout:fragment="content">
     <section class="content-header">
-        <div class="container-fluid"><h1>Cotizaciones Emitidas</h1></div>
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-sm-6"><h1><i class="fas fa-file-invoice-dollar"></i> Cotizaciones</h1></div>
+                <div class="col-sm-6 text-right">
+                    <a href="/cotizaciones/nueva" class="btn btn-primary"><i class="fas fa-plus"></i> Nueva Cotización</a>
+                    <a th:href="@{/cotizaciones/exportar/excel(termino=${termino},estado=${estado},fechaDesde=${fechaDesde},fechaHasta=${fechaHasta})}"
+                       class="btn btn-success"><i class="fas fa-file-excel"></i> Excel</a>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="content">
         <div class="container-fluid">
+
+            <!-- KPIs -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${kpis['totalMes']}">0</h3>
+                            <p>Cotizaciones del Mes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-file-alt"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>S/ <span th:text="${#numbers.formatDecimal(kpis['montoCotizadoMes'], 1, 2)}">0.00</span></h3>
+                            <p>Monto Cotizado</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${kpis['pendientes']}">0</h3>
+                            <p>Pendientes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-primary">
+                        <div class="inner">
+                            <h3><span th:text="${kpis['porcentajeConversion']}">0</span>%</h3>
+                            <p>Tasa Conversión</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card card-outline card-navy mb-3">
+                <div class="card-body py-2">
+                    <form method="get" action="/cotizaciones/lista" class="row align-items-end">
+                        <div class="col-md-3">
+                            <label class="small mb-1">Buscar</label>
+                            <input type="text" name="termino" class="form-control form-control-sm" placeholder="Cliente, N°, documento..." th:value="${termino}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small mb-1">Estado</label>
+                            <select name="estado" class="form-control form-control-sm">
+                                <option value="">Todos</option>
+                                <option value="BORRADOR" th:selected="${estado == 'BORRADOR'}">Borrador</option>
+                                <option value="EMITIDA" th:selected="${estado == 'EMITIDA'}">Emitida</option>
+                                <option value="ENVIADA" th:selected="${estado == 'ENVIADA'}">Enviada</option>
+                                <option value="EN_NEGOCIACION" th:selected="${estado == 'EN_NEGOCIACION'}">En Negociación</option>
+                                <option value="APROBADA" th:selected="${estado == 'APROBADA'}">Aprobada</option>
+                                <option value="CONVERTIDA" th:selected="${estado == 'CONVERTIDA'}">Convertida</option>
+                                <option value="RECHAZADA" th:selected="${estado == 'RECHAZADA'}">Rechazada</option>
+                                <option value="VENCIDA" th:selected="${estado == 'VENCIDA'}">Vencida</option>
+                                <option value="ANULADA" th:selected="${estado == 'ANULADA'}">Anulada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small mb-1">Desde</label>
+                            <input type="date" name="fechaDesde" class="form-control form-control-sm" th:value="${fechaDesde}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small mb-1">Hasta</label>
+                            <input type="date" name="fechaHasta" class="form-control form-control-sm" th:value="${fechaHasta}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+                            <a href="/cotizaciones/lista" class="btn btn-sm btn-default"><i class="fas fa-times"></i> Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla -->
             <div class="card card-navy card-outline">
                 <div class="card-body p-0">
-                    <table class="table table-striped projects">
+                    <table class="table table-striped table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th>N°</th>
                                 <th>Fecha</th>
                                 <th>Cliente</th>
-                                <th>Teléfono</th>
-                                <th>Total</th>
+                                <th>Tipo</th>
+                                <th class="text-right">Total</th>
+                                <th>Pago</th>
                                 <th>Estado</th>
-                                <th class="text-right">Acciones</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="c : ${cotizaciones.content}">
-                                <td class="font-weight-bold" th:text="${c.serie} + '-' + ${c.numero}"></td>
-                                <td th:text="${#temporals.format(c.fechaEmision, 'dd/MM/yyyy')}"></td>
+                                <td class="font-weight-bold" th:text="${c.serie} + '-' + ${#numbers.formatInteger(c.numero, 6)}"></td>
+                                <td th:text="${c.fechaEmision != null ? #temporals.format(c.fechaEmision, 'dd/MM/yyyy') : '-'}"></td>
                                 <td>
                                     <span th:text="${c.clienteNombre}"></span><br/>
-                                    <small th:text="${c.clienteDocumento}"></small>
+                                    <small class="text-muted" th:text="${c.clienteDocumento}"></small>
                                 </td>
-                                <td th:text="${c.clienteTelefono}"></td>
-                                <td class="font-weight-bold text-success" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>
                                 <td>
-                                    <span th:if="${c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDO</span>
-                                    <span th:if="${c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-success">VENDIDO</span>
+                                    <th:block th:with="tieneProductos=${false},tieneServicios=${false}">
+                                        <th:block th:each="item : ${c.items}">
+                                            <th:block th:if="${item.tipoItem == 'SERVICIO'}" th:with="tieneServicios=${true}"></th:block>
+                                        </th:block>
+                                    </th:block>
+                                    <small class="text-muted">
+                                        <span th:each="item,iter : ${c.items}" th:if="${iter.index < 2}">
+                                            <span th:if="${item.tipoItem == 'SERVICIO'}" class="badge badge-info badge-sm">S</span>
+                                            <span th:if="${item.tipoItem != 'SERVICIO'}" class="badge badge-secondary badge-sm">P</span>
+                                        </span>
+                                        <span th:if="${c.items.size() > 2}" class="text-muted">+<span th:text="${c.items.size() - 2}"></span></span>
+                                    </small>
                                 </td>
-                                <td class="text-right">
-                                    <a th:if="${c.estado == 'EMITIDO'}" th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-sm" title="Editar">
+                                <td class="text-right font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>
+                                <td>
+                                    <span th:if="${c.formaPago == 'CREDITO'}" class="badge badge-warning">Crédito</span>
+                                    <span th:if="${c.formaPago != 'CREDITO'}" class="badge badge-light">Contado</span>
+                                </td>
+                                <td>
+                                    <span th:if="${c.estado == 'BORRADOR'}" class="badge badge-secondary">BORRADOR</span>
+                                    <span th:if="${c.estado == 'EMITIDA' || c.estado == 'EMITIDO'}" class="badge badge-primary">EMITIDA</span>
+                                    <span th:if="${c.estado == 'ENVIADA'}" class="badge badge-info">ENVIADA</span>
+                                    <span th:if="${c.estado == 'EN_NEGOCIACION'}" class="badge badge-purple">EN NEGOCIACIÓN</span>
+                                    <span th:if="${c.estado == 'APROBADA'}" class="badge badge-success">APROBADA</span>
+                                    <span th:if="${c.estado == 'CONVERTIDA' || c.estado == 'CONVERTIDO_VENTA'}" class="badge badge-dark">CONVERTIDA</span>
+                                    <span th:if="${c.estado == 'RECHAZADA'}" class="badge badge-secondary" style="background:#6c3483;color:white;">RECHAZADA</span>
+                                    <span th:if="${c.estado == 'VENCIDA'}" class="badge badge-warning text-dark">VENCIDA</span>
+                                    <span th:if="${c.estado == 'ANULADA'}" class="badge badge-danger">ANULADA</span>
+                                </td>
+                                <td class="text-center" style="white-space: nowrap;">
+                                    <!-- Editar -->
+                                    <a th:if="${c.estado == 'BORRADOR' || c.estado == 'EMITIDA' || c.estado == 'EMITIDO' || c.estado == 'EN_NEGOCIACION'}"
+                                       th:href="@{/cotizaciones/editar/{id}(id=${c.id})}" class="btn btn-primary btn-xs" title="Editar">
                                         <i class="fas fa-pencil-alt"></i>
                                     </a>
 
-                                    <button class="btn btn-success btn-sm"
+                                    <!-- Avanzar estado -->
+                                    <button th:if="${c.estado == 'EMITIDA' || c.estado == 'EMITIDO'}"
+                                            class="btn btn-info btn-xs" th:onclick="'avanzarEstado(' + ${c.id} + ', \'ENVIADA\')'" title="Marcar Enviada">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                    <button th:if="${c.estado == 'ENVIADA'}"
+                                            class="btn btn-info btn-xs" th:onclick="'avanzarEstado(' + ${c.id} + ', \'EN_NEGOCIACION\')'" title="En Negociación">
+                                        <i class="fas fa-handshake"></i>
+                                    </button>
+                                    <button th:if="${c.estado == 'ENVIADA' || c.estado == 'EN_NEGOCIACION'}"
+                                            class="btn btn-success btn-xs" th:onclick="'avanzarEstado(' + ${c.id} + ', \'APROBADA\')'" title="Marcar Aprobada">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+
+                                    <!-- Convertir a venta -->
+                                    <button th:if="${c.estado == 'EMITIDA' || c.estado == 'EMITIDO' || c.estado == 'ENVIADA' || c.estado == 'EN_NEGOCIACION' || c.estado == 'APROBADA'}"
+                                            class="btn btn-warning btn-xs" th:onclick="'confirmarVenta(' + ${c.id} + ')'" title="Convertir a Venta">
+                                        <i class="fas fa-cash-register"></i>
+                                    </button>
+
+                                    <!-- PDF -->
+                                    <button class="btn btn-default btn-xs" th:onclick="'abrirPdf(' + ${c.id} + ')'" title="PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </button>
+
+                                    <!-- WhatsApp -->
+                                    <button class="btn btn-success btn-xs"
                                             th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
                                             title="WhatsApp">
                                         <i class="fab fa-whatsapp"></i>
                                     </button>
 
-                                    <button th:if="${c.estado == 'EMITIDO'}" class="btn btn-warning btn-sm" th:onclick="confirmarVenta([[${c.id}]])" title="Vender">
-                                        <i class="fas fa-cash-register"></i>
-                                    </button>
-
-                                    <button class="btn btn-default btn-sm" th:onclick="abrirPdf([[${c.id}]])" title="Imprimir">
-                                        <i class="fas fa-print"></i>
+                                    <!-- Anular -->
+                                    <button th:if="${c.estado != 'CONVERTIDA' && c.estado != 'CONVERTIDO_VENTA' && c.estado != 'ANULADA' && c.estado != 'RECHAZADA'}"
+                                            class="btn btn-danger btn-xs" th:onclick="'anularCotizacion(' + ${c.id} + ')'" title="Anular">
+                                        <i class="fas fa-ban"></i>
                                     </button>
                                 </td>
+                            </tr>
+                            <tr th:if="${cotizaciones.content.isEmpty()}">
+                                <td colspan="8" class="text-center text-muted py-4">No se encontraron cotizaciones</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div class="p-3" th:if="${cotizaciones.totalPages > 0}">
+                    <!-- Paginación -->
+                    <div class="p-3" th:if="${cotizaciones.totalPages > 1}">
                         <nav>
                             <ul class="pagination justify-content-center m-0">
                                 <li class="page-item" th:classappend="${cotizaciones.first} ? 'disabled'">
-                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1})}">Anterior</a>
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage - 1},termino=${termino},estado=${estado},fechaDesde=${fechaDesde},fechaHasta=${fechaHasta})}">Anterior</a>
                                 </li>
                                 <li class="page-item disabled">
-                                    <span class="page-link" th:text="'Pág ' + (${currentPage + 1})"></span>
+                                    <span class="page-link" th:text="'Pág ' + (${currentPage + 1}) + ' de ' + ${cotizaciones.totalPages}"></span>
                                 </li>
                                 <li class="page-item" th:classappend="${cotizaciones.last} ? 'disabled'">
-                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage + 1})}">Siguiente</a>
+                                    <a class="page-link" th:href="@{/cotizaciones/lista(page=${currentPage + 1},termino=${termino},estado=${estado},fechaDesde=${fechaDesde},fechaHasta=${fechaHasta})}">Siguiente</a>
                                 </li>
                             </ul>
                         </nav>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -90,12 +234,10 @@
 
 <th:block layout:fragment="scripts">
     <script>
-        // Función PDF en Popup
         function abrirPdf(id) {
-            window.open('/cotizaciones/imprimir/' + id, '_blank', 'width=900,height=700');
+            window.open('/cotizaciones/pdf/' + id, '_blank', 'width=900,height=700');
         }
 
-        // Función WhatsApp
         async function enviarWhatsapp(nombre, serie, numero, total, telefono) {
             let mensaje = `Hola *${nombre}*, le enviamos la Cotización *${serie}-${numero}*.\n`;
             mensaje += `Total: *S/ ${parseFloat(total).toFixed(2)}*\n\n`;
@@ -129,10 +271,39 @@
             }).then((result) => {
                 if (result.isConfirmed || result.isDenied) {
                     let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
-
                     $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
-                        Swal.fire('¡Vendido!', `Se generó la venta ID: ${resp.ventaId}`, 'success')
+                        Swal.fire('Vendido', `Se generó la venta ID: ${resp.ventaId}`, 'success')
                             .then(() => location.reload());
+                    }).fail(function(err) {
+                        Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+                    });
+                }
+            });
+        }
+
+        function avanzarEstado(id, nuevoEstado) {
+            $.post(`/cotizaciones/api/cambiar-estado/${id}?estado=${nuevoEstado}`, function(resp) {
+                Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 })
+                    .fire({ icon: 'success', title: resp.mensaje });
+                setTimeout(() => location.reload(), 800);
+            }).fail(function(err) {
+                Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+            });
+        }
+
+        function anularCotizacion(id) {
+            Swal.fire({
+                title: '¿Anular cotización?',
+                text: 'Esta acción no se puede deshacer',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, anular',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post(`/cotizaciones/api/anular/${id}`, function(resp) {
+                        Swal.fire('Anulada', resp.mensaje, 'success').then(() => location.reload());
                     }).fail(function(err) {
                         Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
                     });

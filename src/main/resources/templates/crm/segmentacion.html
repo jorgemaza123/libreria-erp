@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_segmentacion'">
+<head>
+    <title>CRM - Segmentacion</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <h1 class="m-0"><i class="fas fa-filter mr-2"></i>Segmentacion de Clientes</h1>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Filtros -->
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-sliders-h mr-2"></i>Filtros de Segmentacion</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <select id="filtroTipo" class="form-control form-control-sm">
+                                    <option value="">Todos</option>
+                                    <option value="LEAD">Lead</option>
+                                    <option value="CLIENTE">Cliente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <select id="filtroCategoria" class="form-control form-control-sm">
+                                    <option value="">Todas</option>
+                                    <option value="VIP">VIP</option>
+                                    <option value="FRECUENTE">Frecuente</option>
+                                    <option value="NUEVO">Nuevo</option>
+                                    <option value="MOROSO">Moroso</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Origen</label>
+                                <select id="filtroOrigen" class="form-control form-control-sm">
+                                    <option value="">Todos</option>
+                                    <option value="REFERIDO">Referido</option>
+                                    <option value="WHATSAPP">WhatsApp</option>
+                                    <option value="PRESENCIAL">Presencial</option>
+                                    <option value="WEB">Web</option>
+                                    <option value="TELEFONO">Telefono</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Etiqueta</label>
+                                <select id="filtroEtiqueta" class="form-control form-control-sm">
+                                    <option value="">Todas</option>
+                                    <option th:each="tag : ${etiquetas}" th:value="${tag}" th:text="${tag}"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Compras</label>
+                                <select id="filtroCompras" class="form-control form-control-sm">
+                                    <option value="">Todas</option>
+                                    <option value="true">Con compras</option>
+                                    <option value="false">Sin compras</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button class="btn btn-primary btn-block btn-sm" onclick="filtrar()">
+                                    <i class="fas fa-search mr-1"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list mr-2"></i>Resultados
+                        <span class="badge badge-primary ml-1" id="totalResultados">0</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div id="resultadosContainer">
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-filter fa-3x mb-3"></i>
+                            <p>Usa los filtros para segmentar clientes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<div layout:fragment="scripts">
+<script>
+function filtrar() {
+    var filtros = {
+        tipo: $('#filtroTipo').val(),
+        categoria: $('#filtroCategoria').val(),
+        origen: $('#filtroOrigen').val(),
+        etiqueta: $('#filtroEtiqueta').val(),
+        conCompras: $('#filtroCompras').val() || null,
+        page: 0
+    };
+
+    $('#resultadosContainer').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+
+    $.ajax({
+        url: '/crm/segmentacion/filtrar',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(filtros),
+        success: function(resp) {
+            $('#totalResultados').text(resp.totalElements);
+            renderResultados(resp.clientes);
+        },
+        error: function(xhr) {
+            $('#resultadosContainer').html('<div class="text-center py-4 text-danger">Error al filtrar</div>');
+        }
+    });
+}
+
+function renderResultados(clientes) {
+    if (!clientes || clientes.length === 0) {
+        $('#resultadosContainer').html('<div class="text-center py-5 text-muted"><i class="fas fa-search fa-3x mb-3"></i><p>No se encontraron clientes con esos criterios</p></div>');
+        return;
+    }
+
+    var html = '<table class="table table-hover table-sm mb-0">';
+    html += '<thead class="thead-light"><tr><th>Nombre</th><th>Documento</th><th>Tipo</th><th>Categoria</th><th>Telefono</th><th>Email</th><th>Compras</th><th>Total</th><th>Etiquetas</th><th></th></tr></thead><tbody>';
+
+    clientes.forEach(function(c) {
+        html += '<tr>';
+        html += '<td><a href="/crm/clientes/' + c.id + '/perfil"><strong>' + c.nombreRazonSocial + '</strong></a></td>';
+        html += '<td>' + (c.numeroDocumento || '') + '</td>';
+        html += '<td><span class="badge ' + (c.tipo === 'LEAD' ? 'badge-info' : 'badge-success') + '">' + (c.tipo || '') + '</span></td>';
+        html += '<td><span class="badge badge-secondary">' + (c.categoria || '-') + '</span></td>';
+        html += '<td>' + (c.telefono || '') + '</td>';
+        html += '<td>' + (c.email || '') + '</td>';
+        html += '<td>' + (c.cantidadCompras || 0) + '</td>';
+        html += '<td>S/ ' + (c.totalComprasHistorico ? parseFloat(c.totalComprasHistorico).toFixed(2) : '0.00') + '</td>';
+        html += '<td>';
+        if (c.etiquetas) {
+            c.etiquetas.split(',').forEach(function(tag) {
+                tag = tag.trim();
+                if (tag) html += '<span class="badge badge-primary mr-1">' + tag + '</span>';
+            });
+        }
+        html += '</td>';
+        html += '<td><a href="/crm/clientes/' + c.id + '/perfil" class="btn btn-xs btn-outline-info"><i class="fas fa-eye"></i></a></td>';
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    $('#resultadosContainer').html(html);
+}
+</script>
+</div>
+
+</body>
+</html>

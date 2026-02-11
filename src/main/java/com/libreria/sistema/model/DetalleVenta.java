@@ -36,6 +36,11 @@ public class DetalleVenta {
     @Column(precision = 10, scale = 2)
     private BigDecimal subtotal; // cantidad * precioUnitario
 
+    // Tipo de item y categoría (propagados desde cotización para rentabilidad)
+    private String tipoItem; // PRODUCTO o SERVICIO
+
+    private String categoriaServicio; // SUBLIMACION, COPIAS, etc. (para tracking post-conversión)
+
     // Impuestos Item
     private BigDecimal porcentajeIgv = new BigDecimal("18.00");
     private String codigoTipoAfectacionIgv = "10"; // 10 = Gravado - Operación Onerosa

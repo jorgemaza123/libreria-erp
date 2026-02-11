@@ -1,165 +1,301 @@
 package com.libreria.sistema.service;
 
-import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.Producto;
-import com.libreria.sistema.model.Venta;
 import com.libreria.sistema.model.dto.ReporteDTO;
 import com.libreria.sistema.repository.CajaRepository;
+import com.libreria.sistema.repository.CotizacionRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.VentaRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * ESTADOS VÁLIDOS PARA KPIs FINANCIEROS:
- * - EMITIDO: Venta activa (pendiente de cobro total si es crédito)
- * - PAGADO_TOTAL: Venta completamente cobrada
- * - DEVUELTO_PARCIAL: Venta con devolución parcial (el resto cuenta)
+ * Dashboard Service OPTIMIZADO (Fase 1 + Fase 2):
+ * - Todos los findAll() reemplazados por queries JPA con filtro en BD
+ * - Nuevas metricas: ventas hoy, ayer, mes pasado, variacion %, canal
+ * - Grafico de 12 meses en lugar de 6
+ * - Top productos filtrado por mes actual
  *
- * ESTADOS EXCLUIDOS:
- * - ANULADO: Venta cancelada, no cuenta
- * - DEVUELTO_TOTAL: Todo el dinero fue devuelto
+ * ESTADOS VALIDOS PARA KPIs FINANCIEROS (definidos en Constants.java):
+ * - EMITIDO, PAGADO_TOTAL, DEVUELTO_PARCIAL
+ * EXCLUIDOS: ANULADO, DEVUELTO_TOTAL
  */
-
 @Service
 public class DashboardService {
 
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
     private final CajaRepository cajaRepository;
+    private final CotizacionRepository cotizacionRepository;
     private final SunatBillingService sunatBillingService;
     private final LicenseValidationService licenseService;
 
     public DashboardService(ProductoRepository productoRepository,
                            VentaRepository ventaRepository,
                            CajaRepository cajaRepository,
+                           CotizacionRepository cotizacionRepository,
                            SunatBillingService sunatBillingService,
                            LicenseValidationService licenseService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.cajaRepository = cajaRepository;
+        this.cotizacionRepository = cotizacionRepository;
         this.sunatBillingService = sunatBillingService;
         this.licenseService = licenseService;
     }
 
     public Map<String, Object> obtenerDatosDashboard() {
         LocalDate hoy = LocalDate.now();
+        LocalDate ayer = hoy.minusDays(1);
         LocalDate inicioMes = hoy.withDayOfMonth(1);
+        YearMonth mesAnterior = YearMonth.now().minusMonths(1);
+        LocalDate inicioMesPasado = mesAnterior.atDay(1);
+        LocalDate finMesPasado = mesAnterior.atEndOfMonth();
 
-        // --- 1. KPIs PRINCIPALES ---
-        // CORREGIDO: Incluir TODOS los estados que representan "Dinero Real"
-        // Excluir solo: ANULADO, DEVUELTO_TOTAL
-        Set<String> estadosValidos = Set.of("EMITIDO", "PAGADO_TOTAL", "DEVUELTO_PARCIAL");
+        // ============================================================
+        // 1. KPIs PRINCIPALES (queries optimizados en BD)
+        // ============================================================
 
-        List<Venta> ventasMes = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null
-                        && !v.getFechaEmision().isBefore(inicioMes)
-                        && v.getEstado() != null
-                        && estadosValidos.contains(v.getEstado()))
-                .collect(Collectors.toList());
+        // Ventas del mes (solo estados validos)
+        BigDecimal totalVentasMes = ventaRepository.sumVentasValidasByPeriodo(inicioMes, hoy);
+        long cantidadVentasMes = ventaRepository.countVentasValidasByPeriodo(inicioMes, hoy);
 
-        BigDecimal totalVentasMes = ventasMes.stream()
-                .map(v -> v.getTotal() != null ? v.getTotal() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Ventas de hoy
+        BigDecimal ventasHoy = ventaRepository.sumVentasValidasByPeriodo(hoy, hoy);
+        long cantidadVentasHoy = ventaRepository.countVentasValidasByPeriodo(hoy, hoy);
 
-        // Calcular Créditos por Cobrar (CORREGIDO NULL POINTER)
-        BigDecimal totalCreditosPendientes = ventaRepository.findAll().stream()
-                .filter(v -> v.getSaldoPendiente() != null && // <--- VALIDACIÓN IMPORTANTE
-                             v.getSaldoPendiente().compareTo(BigDecimal.ZERO) > 0 && 
-                             !"ANULADO".equals(v.getEstado()))
-                .map(Venta::getSaldoPendiente)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Ventas de ayer
+        BigDecimal ventasAyer = ventaRepository.sumVentasValidasByPeriodo(ayer, ayer);
+        long cantidadVentasAyer = ventaRepository.countVentasValidasByPeriodo(ayer, ayer);
 
-        // Calcular Valor del Inventario
-        List<Producto> productos = productoRepository.findAll();
-        BigDecimal valorInventario = productos.stream()
+        // Ventas del mes pasado
+        BigDecimal ventasMesPasado = ventaRepository.sumVentasValidasByPeriodo(inicioMesPasado, finMesPasado);
+        long cantidadVentasMesPasado = ventaRepository.countVentasValidasByPeriodo(inicioMesPasado, finMesPasado);
+
+        // Creditos por cobrar (query directo en BD)
+        BigDecimal totalCreditosPendientes = ventaRepository.sumCreditosPendientes();
+
+        // Valor del inventario (query optimizado con repository)
+        BigDecimal valorInventario = calcularValorInventario();
+
+        // Gastos del mes (egresos de caja)
+        BigDecimal gastosMes = cajaRepository.sumarEgresosPorFechas(inicioMes, hoy);
+
+        // ============================================================
+        // 2. INDICADORES DE VARIACION (%)
+        // ============================================================
+
+        // Variacion ventas hoy vs ayer
+        BigDecimal variacionDiaria = calcularVariacion(ventasHoy, ventasAyer);
+
+        // Variacion mes actual vs mes pasado
+        BigDecimal variacionMensual = calcularVariacion(totalVentasMes, ventasMesPasado);
+
+        // Variacion cantidad pedidos mes actual vs mes pasado
+        BigDecimal variacionPedidos = calcularVariacion(
+                BigDecimal.valueOf(cantidadVentasMes),
+                BigDecimal.valueOf(cantidadVentasMesPasado));
+
+        // ============================================================
+        // 3. DATOS PARA GRAFICOS (queries agrupados en BD)
+        // ============================================================
+
+        // Top 5 productos del MES (no historico global)
+        List<ReporteDTO> topProductos = ventaRepository.obtenerTopProductosMes(
+                inicioMes, PageRequest.of(0, 5));
+
+        // Grafico de ventas mensuales (12 meses) - query agrupado
+        LocalDate inicio12Meses = YearMonth.now().minusMonths(11).atDay(1);
+        Map<String, Map<String, BigDecimal>> comparativa = construirComparativa12Meses(inicio12Meses);
+
+        // Modalidad de venta (CONTADO vs CREDITO) - query agrupado
+        Map<String, Long> pieCredito = construirPieModalidad();
+
+        // Ventas por canal
+        List<Map<String, Object>> ventasPorCanal = construirVentasPorCanal(inicioMes, hoy);
+
+        // ============================================================
+        // 4. KPIs COTIZACIONES
+        // ============================================================
+        List<String> estadosPendientesCoti = Arrays.asList("EMITIDA", "EMITIDO", "ENVIADA", "APROBADA", "EN_NEGOCIACION");
+        long cotizacionesPendientes = cotizacionRepository.countByEstadoIn(estadosPendientesCoti);
+        BigDecimal montoCotizadoMes = cotizacionRepository.sumTotalByFechaCreacionBetween(
+                inicioMes.atStartOfDay(), LocalDateTime.now());
+        List<String> estadosConvertidos = Arrays.asList("CONVERTIDA", "CONVERTIDO_VENTA");
+        long cotizacionesMes = cotizacionRepository.countByFechaCreacionBetween(
+                inicioMes.atStartOfDay(), LocalDateTime.now());
+        long convertidasMes = cotizacionRepository.countByEstadoInAndFechaCreacionBetween(
+                estadosConvertidos, inicioMes.atStartOfDay(), LocalDateTime.now());
+        double tasaConversionCoti = cotizacionesMes > 0 ? (double) convertidasMes / cotizacionesMes * 100 : 0;
+
+        // ============================================================
+        // 5. ALERTA STOCK (query optimizado)
+        // ============================================================
+        List<Producto> stockCritico = productoRepository.obtenerStockCritico();
+
+        // ============================================================
+        // 5. DATOS SUNAT Y LICENCIA
+        // ============================================================
+        Map<String, Object> sunatStats = sunatBillingService.obtenerEstadisticasDashboard();
+        LicenseValidationService.LicenseInfo licenseInfo = licenseService.validarLicencia();
+
+        // ============================================================
+        // CONSTRUIR RESULTADO
+        // ============================================================
+        Map<String, Object> resultado = new HashMap<>();
+
+        // KPIs originales
+        resultado.put("kpiVentasMes", totalVentasMes);
+        resultado.put("kpiCreditos", totalCreditosPendientes);
+        resultado.put("kpiInventario", valorInventario);
+        resultado.put("kpiGastos", gastosMes);
+
+        // KPIs nuevos (Fase 2)
+        resultado.put("ventasHoy", ventasHoy);
+        resultado.put("cantidadVentasHoy", cantidadVentasHoy);
+        resultado.put("ventasAyer", ventasAyer);
+        resultado.put("cantidadVentasAyer", cantidadVentasAyer);
+        resultado.put("ventasMesPasado", ventasMesPasado);
+        resultado.put("cantidadVentasMes", cantidadVentasMes);
+        resultado.put("cantidadVentasMesPasado", cantidadVentasMesPasado);
+
+        // Indicadores de variacion
+        resultado.put("variacionDiaria", variacionDiaria);
+        resultado.put("variacionMensual", variacionMensual);
+        resultado.put("variacionPedidos", variacionPedidos);
+
+        // Graficos
+        resultado.put("topProductos", topProductos);
+        resultado.put("comparativa", comparativa);
+        resultado.put("pieCredito", pieCredito);
+        resultado.put("ventasPorCanal", ventasPorCanal);
+
+        // Alertas
+        resultado.put("stockCritico", stockCritico);
+        resultado.put("sinMovimiento", new ArrayList<>());
+
+        // Cotizaciones
+        resultado.put("cotizacionesPendientes", cotizacionesPendientes);
+        resultado.put("montoCotizadoMes", montoCotizadoMes);
+        resultado.put("cotizacionesMes", cotizacionesMes);
+        resultado.put("tasaConversionCoti", Math.round(tasaConversionCoti * 10.0) / 10.0);
+
+        // SUNAT y Licencia
+        resultado.put("sunatStats", sunatStats);
+        resultado.put("licenseInfo", licenseInfo);
+        resultado.put("alertaPago", licenseInfo.isAlertaPago());
+        resultado.put("tieneDeudaSunat", sunatBillingService.hayDeudaPendiente());
+        resultado.put("deudaTotalSunat", sunatBillingService.obtenerDeudaTotal());
+
+        return resultado;
+    }
+
+    /**
+     * Calcula variacion porcentual entre valor actual y anterior.
+     * Retorna 0 si el anterior es 0 (evita division por cero).
+     */
+    private BigDecimal calcularVariacion(BigDecimal actual, BigDecimal anterior) {
+        if (anterior == null || anterior.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return actual.subtract(anterior)
+                .divide(anterior, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(1, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Calcula valor del inventario sumando (precioCompra * stockActual) de productos activos.
+     * Usa findByActivoTrue() que solo trae productos activos.
+     */
+    private BigDecimal calcularValorInventario() {
+        List<Producto> productos = productoRepository.findByActivoTrue();
+        return productos.stream()
                 .map(p -> {
                     BigDecimal costo = p.getPrecioCompra() != null ? p.getPrecioCompra() : BigDecimal.ZERO;
                     BigDecimal stock = new BigDecimal(p.getStockActual() != null ? p.getStockActual() : 0);
                     return costo.multiply(stock);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
-        // Calcular Gastos del Mes
-        BigDecimal gastosMes = cajaRepository.findAll().stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()) && 
-                             m.getFecha() != null && 
-                             !m.getFecha().toLocalDate().isBefore(inicioMes))
-                .map(m -> m.getMonto() != null ? m.getMonto() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    /**
+     * Construye la comparativa de ingresos vs egresos para 12 meses.
+     * Usa queries agrupados en BD en lugar de findAll() en loop.
+     */
+    private Map<String, Map<String, BigDecimal>> construirComparativa12Meses(LocalDate inicio12Meses) {
+        // Obtener ventas mensuales agrupadas desde BD
+        List<Object[]> ventasMensuales = ventaRepository.ventasMensualesAgrupadas(inicio12Meses);
+        Map<String, BigDecimal> ventasPorMes = new HashMap<>();
+        for (Object[] row : ventasMensuales) {
+            ventasPorMes.put((String) row[0], (BigDecimal) row[1]);
+        }
 
-        // --- 2. DATOS PARA GRÁFICOS ---
-        List<ReporteDTO> topProductos = productoRepository.obtenerTopProductos();
+        // Obtener egresos mensuales agrupados desde BD
+        List<Object[]> egresosMensuales = cajaRepository.egresosMensualesAgrupados(
+                inicio12Meses.atStartOfDay());
+        Map<String, BigDecimal> egresosPorMes = new HashMap<>();
+        for (Object[] row : egresosMensuales) {
+            egresosPorMes.put((String) row[0], (BigDecimal) row[1]);
+        }
 
-        // Comparativa
+        // Construir mapa ordenado con los 12 meses
         Map<String, Map<String, BigDecimal>> comparativa = new LinkedHashMap<>();
-        for (int i = 5; i >= 0; i--) {
+        for (int i = 11; i >= 0; i--) {
             YearMonth mes = YearMonth.now().minusMonths(i);
-            String etiqueta = mes.format(DateTimeFormatter.ofPattern("MMM yyyy")); 
-            
-            // CORREGIDO: Usar mismos estados válidos en la comparativa
-            BigDecimal ingresos = ventaRepository.findAll().stream()
-                .filter(v -> v.getFechaEmision() != null
-                        && YearMonth.from(v.getFechaEmision()).equals(mes)
-                        && v.getEstado() != null
-                        && estadosValidos.contains(v.getEstado()))
-                .map(v -> v.getTotal() != null ? v.getTotal() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-                
-            BigDecimal egresos = cajaRepository.findAll().stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()) && 
-                             m.getFecha() != null && 
-                             YearMonth.from(m.getFecha()).equals(mes))
-                .map(m -> m.getMonto() != null ? m.getMonto() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            String clave = mes.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            String etiqueta = mes.format(DateTimeFormatter.ofPattern("MMM yyyy"));
+
+            BigDecimal ingresos = ventasPorMes.getOrDefault(clave, BigDecimal.ZERO);
+            BigDecimal egresos = egresosPorMes.getOrDefault(clave, BigDecimal.ZERO);
 
             comparativa.put(etiqueta, Map.of("ingreso", ingresos, "egreso", egresos));
         }
 
-        long ventasAlCredito = ventaRepository.findAll().stream()
-                .filter(v -> "CREDITO".equals(v.getFormaPago())).count();
-        long ventasContado = ventaRepository.findAll().stream()
-                .filter(v -> "CONTADO".equals(v.getFormaPago())).count();
+        return comparativa;
+    }
 
-        // --- 3. ALERTA STOCK ---
-        List<Producto> stockCritico = productos.stream()
-                .filter(p -> p.getStockActual() != null && p.getStockMinimo() != null &&
-                             p.getStockActual() <= p.getStockMinimo() && p.isActivo())
-                .collect(Collectors.toList());
+    /**
+     * Construye el pie chart de modalidad de venta (CONTADO vs CREDITO).
+     * Usa query agrupado en BD.
+     */
+    private Map<String, Long> construirPieModalidad() {
+        List<Object[]> resultados = ventaRepository.countByFormaPago();
+        long credito = 0;
+        long contado = 0;
+        for (Object[] row : resultados) {
+            String forma = (String) row[0];
+            long count = (Long) row[1];
+            if ("CREDITO".equals(forma)) {
+                credito = count;
+            } else if ("CONTADO".equals(forma)) {
+                contado = count;
+            }
+        }
+        return Map.of("credito", credito, "contado", contado);
+    }
 
-        // --- 4. DATOS SUNAT Y LICENCIA ---
-        Map<String, Object> sunatStats = sunatBillingService.obtenerEstadisticasDashboard();
-        LicenseValidationService.LicenseInfo licenseInfo = licenseService.validarLicencia();
-
-        // Usar HashMap mutable para poder agregar más datos
-        Map<String, Object> resultado = new HashMap<>();
-        resultado.put("kpiVentasMes", totalVentasMes);
-        resultado.put("kpiCreditos", totalCreditosPendientes);
-        resultado.put("kpiInventario", valorInventario);
-        resultado.put("kpiGastos", gastosMes);
-        resultado.put("topProductos", topProductos);
-        resultado.put("comparativa", comparativa);
-        resultado.put("pieCredito", Map.of("credito", ventasAlCredito, "contado", ventasContado));
-        resultado.put("stockCritico", stockCritico);
-        resultado.put("sinMovimiento", new ArrayList<>());
-
-        // Agregar stats de SUNAT Billing
-        resultado.put("sunatStats", sunatStats);
-
-        // Agregar info de licencia
-        resultado.put("licenseInfo", licenseInfo);
-        resultado.put("alertaPago", licenseInfo.isAlertaPago());
-
-        // Agregar alerta de deuda SUNAT
-        resultado.put("tieneDeudaSunat", sunatBillingService.hayDeudaPendiente());
-        resultado.put("deudaTotalSunat", sunatBillingService.obtenerDeudaTotal());
-
-        return resultado;
+    /**
+     * Construye datos de ventas por canal para grafico.
+     */
+    private List<Map<String, Object>> construirVentasPorCanal(LocalDate inicio, LocalDate fin) {
+        List<Object[]> resultados = ventaRepository.ventasPorCanal(inicio, fin);
+        List<Map<String, Object>> canales = new ArrayList<>();
+        for (Object[] row : resultados) {
+            Map<String, Object> canal = new HashMap<>();
+            canal.put("canal", row[0]);
+            canal.put("cantidad", row[1]);
+            canal.put("total", row[2]);
+            canales.add(canal);
+        }
+        return canales;
     }
 }

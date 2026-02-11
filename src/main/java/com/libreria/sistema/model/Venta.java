@@ -16,7 +16,14 @@ import java.util.List;
  */
 @Data
 @Entity
-@Table(name = "ventas")
+@Table(name = "ventas", indexes = {
+    @Index(name = "idx_venta_fecha_estado", columnList = "fechaEmision, estado"),
+    @Index(name = "idx_venta_fecha_emision", columnList = "fechaEmision"),
+    @Index(name = "idx_venta_estado", columnList = "estado"),
+    @Index(name = "idx_venta_cliente_id", columnList = "cliente_id"),
+    @Index(name = "idx_venta_canal", columnList = "canal_venta"),
+    @Index(name = "idx_venta_forma_pago", columnList = "formaPago")
+})
 public class Venta {
 
     @Id
@@ -43,6 +50,11 @@ public class Venta {
      */
     @Column(name = "metodo_pago", length = 20)
     private String metodoPago = "EFECTIVO";
+
+    // --- CANAL DE VENTA ---
+    /** Canal por donde se origino la venta: LOCAL, WHATSAPP, DELIVERY, TELEFONO, WEB */
+    @Column(name = "canal_venta", length = 30)
+    private String canalVenta = "LOCAL";
 
     // --- DATOS CLIENTE (SNAPSHOT) ---
     // Guardamos los datos en texto por si el cliente cambia de dirección en el futuro,
@@ -121,5 +133,6 @@ public class Venta {
         if(this.montoPagado == null) this.montoPagado = BigDecimal.ZERO;
         if(this.saldoPendiente == null) this.saldoPendiente = BigDecimal.ZERO;
         if(this.metodoPago == null) this.metodoPago = "EFECTIVO";
+        if(this.canalVenta == null) this.canalVenta = "LOCAL";
     }
 }

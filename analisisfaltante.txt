@@ -1,0 +1,856 @@
+================================================================================
+              AUDITORIA TECNICA COMPARATIVA - SISTEMA LIBRERIA ERP
+                         Fecha: 2026-02-10
+================================================================================
+
+================================================================================
+1. RESUMEN EJECUTIVO
+================================================================================
+
+El sistema "Sistema Libreria" es una aplicacion ERP desktop basada en web
+(Spring Boot 3.2.0 + Java 17 + Thymeleaf + PostgreSQL) orientada a una
+libreria/papeleria. Actualmente cubre ~4 de los 12 modulos ERP de referencia
+de forma completa y ~3 de forma parcial. Los modulos restantes (5) NO existen.
+
+El dashboard actual tiene un enfoque FINANCIERO/CONTABLE (KPIs de ventas del
+mes, creditos, inventario, gastos) pero NO coincide con el dashboard de
+referencia que es de tipo COMERCIAL/OPERATIVO (pedidos del dia, comparativa
+diaria, ventas por canal, crecimiento %).
+
+ESTADO GENERAL:
+- Arquitectura: Monolitica MVC, funcional pero con problemas serios de
+  performance (multiples findAll() con filtro en memoria).
+- Cobertura ERP: ~30% de un ERP completo.
+- Dashboard: ~25% de las metricas de referencia implementadas.
+- Escalabilidad: Requiere refactorizacion CRITICA en la capa de datos antes
+  de escalar.
+
+================================================================================
+2. AUDITORIA IMAGEN 1 - MODULOS ERP
+================================================================================
+
++---------------------------+------------+--------------------------------------+
+| MODULO                    | ESTADO     | OBSERVACION                          |
++---------------------------+------------+--------------------------------------+
+| Contabilidad              | PARCIAL    | Solo flujo de caja y reportes basicos|
+| Ventas                    | EXISTE     | Completo: POS, credito, devoluciones |
+| Facturacion Electronica   | EXISTE     | Integracion SUNAT via PSE APISUNAT   |
+| Compras                   | EXISTE     | CRUD basico + registro por proveedor |
+| Inventario                | EXISTE     | Stock, Kardex, toma inventario, ajust|
+| Planilla                  | NO EXISTE  | Cero implementacion                  |
+| Importaciones             | NO EXISTE  | Cero implementacion                  |
+| Produccion                | NO EXISTE  | Cero implementacion                  |
+| Activo Fijo               | NO EXISTE  | Cero implementacion                  |
+| Tesoreria                 | PARCIAL    | Caja chica, movimientos, sin bancos  |
+| CRM                       | PARCIAL    | Clientes con stats, sin pipeline     |
+| Distribucion              | NO EXISTE  | Cero implementacion                  |
++---------------------------+------------+--------------------------------------+
+
+--------------------------------------------------------------------------------
+2.1 MODULO: CONTABILIDAD - PARCIAL
+--------------------------------------------------------------------------------
+
+LO QUE EXISTE:
+- ReporteFinancieroService.java: Flujo de caja (ingresos vs egresos),
+  rentabilidad por productos, analisis de ventas, dashboard financiero.
+- ReporteFinancieroController.java: Endpoints para generar reportes.
+- Templates: reportes-financieros/flujo-caja.html, rentabilidad.html,
+  analisis-ventas.html, dashboard.html
+- Exportacion a PDF (OpenPDF) y Excel (Apache POI).
+- Registro de movimientos de caja (ingresos/egresos).
+
+LO QUE NO EXISTE:
+- Plan de cuentas contable.
+- Libro Diario, Libro Mayor, Balance General, Estado de Resultados.
+- Asientos contables automaticos.
+- Centro de costos.
+- Cuentas por pagar (solo existe cuentas por cobrar).
+- Conciliacion bancaria.
+- Declaraciones tributarias (PDT, PLAME).
+- Integracion con sistemas contables externos.
+
+PARA IMPLEMENTAR CONTABILIDAD COMPLETA:
+  Base de datos:
+  - tabla: plan_cuentas (id, codigo, nombre, tipo, nivel, padre_id, activo)
+  - tabla: asientos_contables (id, fecha, descripcion, referencia, usuario_id)
+  - tabla: detalle_asiento (id, asiento_id, cuenta_id, debe, haber)
+  - tabla: periodos_contables (id, mes, anio, estado, cerrado)
+  - tabla: centro_costos (id, codigo, nombre)
+
+  Backend:
+  - ContabilidadService.java: Generacion de asientos, libros, balances
+  - PlanCuentasController.java: CRUD del plan
+  - LibrosContablesController.java: Libro diario, mayor
+  - EstadosFinancierosController.java: Balance, EERR
+
+  Frontend:
+  - Plan de cuentas (arbol jerarquico)
+  - Vista de asientos contables
+  - Reportes: Libro Diario, Mayor, Balance General, EERR
+  - Conciliacion bancaria UI
+
+--------------------------------------------------------------------------------
+2.2 MODULO: VENTAS - EXISTE (COMPLETO)
+--------------------------------------------------------------------------------
+
+ARCHIVOS PRINCIPALES:
+- Entidades: Venta.java, DetalleVenta.java, Cotizacion.java,
+  DetalleCotizacion.java, DevolucionVenta.java, DetalleDevolucion.java
+- Servicios: VentaService.java, CotizacionService.java, DevolucionService.java
+- Controladores: VentaController.java, HomeController.java (POS),
+  CotizacionController.java, DevolucionController.java, CobranzaController.java
+- Repositorios: VentaRepository.java, DetalleVentaRepository.java,
+  CotizacionRepository.java, DevolucionVentaRepository.java
+- Templates: ventas/pos.html, ventas/lista.html, ventas/ticket.html,
+  ventas/impresion.html, cotizaciones/*, devoluciones/*, cobranzas/*
+
+FUNCIONALIDADES CUBIERTAS:
+- Punto de venta (POS) con busqueda por codigo de barras
+- Tipos de comprobante: BOLETA, FACTURA, NOTA_VENTA
+- Formas de pago: CONTADO, CREDITO
+- Metodos de pago: EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA
+- Cotizaciones con conversion a boleta
+- Devoluciones parciales y totales con notas de credito
+- Cobranzas (amortizaciones de credito)
+- Control de precios (solo ADMIN modifica precios)
+- Lock pesimista para stock (concurrencia)
+- Correlativos automaticos por serie
+
+LO QUE FALTA (MENOR):
+- No hay concepto de "pedidos" (orden de venta antes de facturar)
+- No hay gestion de cotizaciones con seguimiento/pipeline
+- No hay ventas por canal (WhatsApp, Rappi, etc.)
+
+--------------------------------------------------------------------------------
+2.3 MODULO: FACTURACION ELECTRONICA - EXISTE (COMPLETO)
+--------------------------------------------------------------------------------
+
+ARCHIVOS PRINCIPALES:
+- Servicio: FacturacionElectronicaService.java, SunatBillingService.java
+- Entidad: ConfiguracionSunat.java, MonthlyBilling.java
+- DTOs: SunatRequestDTO.java, SunatResponseDTO.java, FacturaSunatDTO.java
+- Controladores: ConfiguracionSunatController.java, SunatBillingController.java
+- Templates: configuracion/sunat.html, configuracion/sunat-billing.html
+
+FUNCIONALIDADES CUBIERTAS:
+- Envio de Boletas y Facturas a SUNAT via PSE (APISUNAT)
+- Notas de Credito electronicas
+- Comunicacion de Baja (anulacion en SUNAT)
+- Sincronizacion de correlativos con SUNAT
+- Contador de comprobantes emitidos con costos
+- Widget de dashboard con estadisticas SUNAT
+- Modo dual: electronico (B001/F001) e interno (I001/IF001)
+
+OBSERVACIONES:
+- Implementacion solida con manejo de errores "No Danar"
+- Depende de un PSE externo (APISUNAT) - no genera XML/firma localmente
+- No implementa Guias de Remision electronicas
+- No implementa Notas de Debito
+
+--------------------------------------------------------------------------------
+2.4 MODULO: COMPRAS - EXISTE (BASICO)
+--------------------------------------------------------------------------------
+
+ARCHIVOS PRINCIPALES:
+- Entidades: Compra.java, DetalleCompra.java, Proveedor.java,
+  SolicitudProducto.java
+- Servicio: CompraService.java
+- Controladores: CompraController.java, ProveedorController.java,
+  SolicitudController.java
+- Templates: compras/formulario.html, compras/lista.html,
+  proveedores/formulario.html, proveedores/lista.html, solicitudes/lista.html
+
+FUNCIONALIDADES CUBIERTAS:
+- Registro de compras con detalle de productos
+- Gestion de proveedores (CRUD)
+- Tipos de comprobante de compra (FACTURA, BOLETA, GUIA)
+- Actualizacion automatica de stock al registrar compra (via Kardex)
+- Solicitudes de productos (pedidos internos)
+
+LO QUE FALTA:
+- Ordenes de compra (proceso previo a la compra)
+- Aprobaciones de compra (workflow)
+- Comparacion de cotizaciones de proveedores
+- Cuentas por pagar a proveedores (no hay tracking de deudas a proveedores)
+- Recepcion parcial de mercaderia
+- Evaluacion de proveedores
+
+--------------------------------------------------------------------------------
+2.5 MODULO: INVENTARIO - EXISTE (COMPLETO)
+--------------------------------------------------------------------------------
+
+ARCHIVOS PRINCIPALES:
+- Entidades: Producto.java, Kardex.java, TomaInventario.java,
+  DetalleTomaInventario.java
+- Servicios: ProductoService.java, ProductoExcelService.java,
+  ProductoBusquedaService.java, EtiquetaService.java,
+  TomaInventarioService.java, MatcherProductosService.java
+- Controladores: ProductoController.java, InventarioController.java,
+  KardexController.java, TomaInventarioController.java
+- Repositorios: ProductoRepository.java, KardexRepository.java
+- Templates: productos/lista.html, productos/formulario.html,
+  productos/importar.html, inventario/ajuste.html, inventario/etiquetas.html,
+  inventario/importar.html, kardex/lista.html, toma-inventario/*
+
+FUNCIONALIDADES CUBIERTAS:
+- CRUD de productos con codigo de barras y SKU
+- Importacion/exportacion masiva por Excel
+- Kardex completo (INGRESO, SALIDA, AJUSTE con trazabilidad)
+- Stock minimo con alertas
+- Ajuste de inventario manual
+- Toma de inventario (conteo fisico con resumen de diferencias)
+- Generacion de etiquetas
+- Busqueda inteligente (por nombre, codigo, tags/sinonimos)
+- Lock pesimista para operaciones concurrentes de stock
+- Ubicacion en estanteria (fila, columna, estante)
+
+LO QUE FALTA (MENOR):
+- Multiples almacenes/sucursales
+- Lotes y fechas de vencimiento
+- Trazabilidad de series (numeros de serie individuales)
+- Inventario en transito
+
+--------------------------------------------------------------------------------
+2.6 MODULO: PLANILLA - NO EXISTE
+--------------------------------------------------------------------------------
+
+PARA IMPLEMENTAR:
+  Base de datos:
+  - tabla: empleados (id, dni, nombres, apellidos, cargo, fecha_ingreso,
+    salario_base, tipo_contrato, estado, area_id)
+  - tabla: areas (id, nombre, jefe_id)
+  - tabla: planilla_mensual (id, mes, anio, estado, total_bruto,
+    total_descuentos, total_neto)
+  - tabla: detalle_planilla (id, planilla_id, empleado_id, dias_trabajados,
+    salario_bruto, essalud, onp_afp, renta_quinta, descuentos, neto)
+  - tabla: vacaciones (id, empleado_id, fecha_inicio, fecha_fin, estado)
+  - tabla: asistencia (id, empleado_id, fecha, hora_ingreso, hora_salida)
+  - tabla: prestamos_empleado (id, empleado_id, monto, cuotas, saldo)
+
+  Backend:
+  - EmpleadoService, PlanillaService, AsistenciaService
+  - EmpleadoController, PlanillaController
+  - Calculo de CTS, gratificaciones, vacaciones, AFP/ONP, EsSalud
+  - Generacion de boletas de pago
+
+  Frontend:
+  - CRUD empleados, registro de asistencia
+  - Generacion mensual de planilla
+  - Boletas de pago PDF
+  - Reportes: PDT 601, PLAME
+
+  Complejidad: ALTA (regulacion laboral peruana compleja)
+
+--------------------------------------------------------------------------------
+2.7 MODULO: IMPORTACIONES - NO EXISTE
+--------------------------------------------------------------------------------
+
+PARA IMPLEMENTAR:
+  Base de datos:
+  - tabla: importaciones (id, proveedor_extranjero_id, orden_compra, incoterm,
+    fecha_embarque, fecha_llegada, estado, pais_origen)
+  - tabla: detalle_importacion (id, importacion_id, producto_id, cantidad,
+    precio_fob, peso, volumen)
+  - tabla: gastos_importacion (id, importacion_id, concepto, monto, moneda)
+    (flete, seguro, arancel, IGV importacion, agente aduanas, almacenaje)
+  - tabla: tipos_cambio (id, fecha, moneda, compra, venta)
+
+  Backend:
+  - ImportacionService: Calculo de costo CIF, prorrateo de gastos
+  - LiquidacionAduaneraService
+  - TipoCambioService
+
+  Frontend:
+  - Registro de importaciones con timeline de estados
+  - Prorrateo de costos de nacionalizacion
+  - Calculo de precio unitario final (FOB + gastos)
+
+  Complejidad: ALTA (requiere conocimiento aduanero)
+
+--------------------------------------------------------------------------------
+2.8 MODULO: PRODUCCION - NO EXISTE
+--------------------------------------------------------------------------------
+
+PARA IMPLEMENTAR:
+  Base de datos:
+  - tabla: recetas (id, producto_final_id, nombre, version)
+  - tabla: detalle_receta (id, receta_id, insumo_id, cantidad_requerida)
+  - tabla: ordenes_produccion (id, receta_id, cantidad, fecha_inicio,
+    fecha_fin, estado, responsable_id)
+  - tabla: consumo_insumos (id, orden_id, insumo_id, cantidad_consumida)
+
+  Backend:
+  - RecetaService, OrdenProduccionService
+  - Control de consumo de insumos y generacion de producto terminado
+  - Actualizacion de Kardex al producir
+
+  Frontend:
+  - Gestion de recetas/formulas (BOM - Bill of Materials)
+  - Ordenes de produccion con seguimiento
+  - Reportes de eficiencia
+
+  Complejidad: MEDIA (aplica si la libreria fabrica productos)
+  NOTA: Probablemente NO aplica para una libreria/papeleria
+
+--------------------------------------------------------------------------------
+2.9 MODULO: ACTIVO FIJO - NO EXISTE
+--------------------------------------------------------------------------------
+
+PARA IMPLEMENTAR:
+  Base de datos:
+  - tabla: activos_fijos (id, codigo, descripcion, categoria, fecha_compra,
+    valor_compra, vida_util, metodo_depreciacion, ubicacion, responsable_id,
+    estado)
+  - tabla: depreciacion_mensual (id, activo_id, mes, anio, monto_depreciacion,
+    depreciacion_acumulada, valor_neto)
+  - tabla: mantenimiento_activos (id, activo_id, fecha, tipo, costo, proveedor)
+
+  Backend:
+  - ActivoFijoService: Calculo de depreciacion (linea recta, acelerada)
+  - DepreciacionService: Proceso mensual de depreciacion
+  - Generacion de asientos contables por depreciacion
+
+  Frontend:
+  - CRUD activos fijos con foto/ubicacion
+  - Proceso de depreciacion mensual
+  - Reportes: Cuadro de activos, depreciacion acumulada
+  - Baja de activos
+
+  Complejidad: MEDIA
+
+--------------------------------------------------------------------------------
+2.10 MODULO: TESORERIA - PARCIAL
+--------------------------------------------------------------------------------
+
+LO QUE EXISTE:
+- SesionCaja (apertura/cierre con arqueo)
+- MovimientoCaja (ingresos/egresos con concepto)
+- CajaService.java: Apertura, cierre, registro de movimientos, balance
+- CajaController.java: Endpoints de gestion de caja
+- GastoController.java: Registro de gastos
+- Templates: caja/index.html, caja/apertura.html, caja/cierre.html,
+  gastos/index.html
+- Amortizaciones (cobros parciales de creditos)
+
+LO QUE FALTA:
+- Gestion de cuentas bancarias
+- Conciliacion bancaria
+- Transferencias entre cuentas
+- Flujo de caja proyectado
+- Cheques (emision, cobro, protestados)
+- Letras de cambio
+- Pagares
+- Control de caja chica con rendicion
+- Tesoreria multi-moneda
+
+PARA IMPLEMENTAR COMPLETO:
+  Base de datos:
+  - tabla: cuentas_bancarias (id, banco, numero, tipo, moneda, saldo)
+  - tabla: movimientos_banco (id, cuenta_id, tipo, monto, referencia, fecha)
+  - tabla: conciliacion_bancaria (id, cuenta_id, mes, estado)
+  - tabla: documentos_pago (id, tipo, numero, monto, fecha_emision,
+    fecha_vencimiento, estado) -- cheques, letras, pagares
+
+  Complejidad: MEDIA-ALTA
+
+--------------------------------------------------------------------------------
+2.11 MODULO: CRM - PARCIAL
+--------------------------------------------------------------------------------
+
+LO QUE EXISTE:
+- Cliente.java: Entidad completa con datos de credito, estadisticas de compra,
+  categoria (VIP, FRECUENTE, NUEVO, MOROSO), limite de credito, saldo deudor.
+- ClienteService.java: CRUD + actualizacion de estadisticas.
+- ClienteController.java: Endpoints completos.
+- Templates: clientes/lista.html, clientes/formulario.html
+- Historial de compras por cliente (VentaRepository queries)
+- Deudas por cliente
+- Cotizaciones (CotizacionService)
+- Notificaciones (NotificacionService)
+
+LO QUE FALTA:
+- Pipeline de ventas (oportunidades, etapas, probabilidad)
+- Seguimiento de contactos/interacciones
+- Campanas de marketing
+- Segmentacion automatica de clientes
+- Email marketing / SMS
+- Reportes de conversion
+- Tareas/recordatorios por cliente
+- Integracion con canales (WhatsApp, redes sociales)
+
+PARA IMPLEMENTAR COMPLETO:
+  Base de datos:
+  - tabla: oportunidades (id, cliente_id, nombre, etapa, monto_estimado,
+    probabilidad, fecha_cierre, vendedor_id)
+  - tabla: actividades (id, cliente_id, oportunidad_id, tipo, descripcion,
+    fecha, completada)
+  - tabla: campanas (id, nombre, tipo, fecha_inicio, fecha_fin, presupuesto)
+
+  Complejidad: MEDIA-ALTA
+
+--------------------------------------------------------------------------------
+2.12 MODULO: DISTRIBUCION - NO EXISTE
+--------------------------------------------------------------------------------
+
+PARA IMPLEMENTAR:
+  Base de datos:
+  - tabla: rutas (id, nombre, zona, vehiculo, conductor_id)
+  - tabla: ordenes_despacho (id, venta_id, ruta_id, estado, fecha_despacho,
+    fecha_entrega)
+  - tabla: vehiculos (id, placa, tipo, capacidad)
+  - tabla: guias_remision (id, orden_id, serie, numero, punto_partida,
+    punto_llegada, transportista)
+
+  Backend:
+  - DespachoService, RutaService, GuiaRemisionService
+
+  Frontend:
+  - Asignacion de entregas a rutas
+  - Tracking de estado de despacho
+  - Guias de remision (SUNAT)
+  - Reportes de entregas
+
+  Complejidad: MEDIA
+  NOTA: Puede ser relevante si la libreria hace delivery
+
+================================================================================
+3. AUDITORIA IMAGEN 2 - DASHBOARD
+================================================================================
+
++-------------------------------------+------------+---------------------------+
+| METRICA                             | ESTADO     | OBSERVACION               |
++-------------------------------------+------------+---------------------------+
+| Total pedidos del mes               | NO EXISTE  | No hay concepto "pedidos" |
+| Comparativa con mes anterior (%)    | PARCIAL    | Existe vs anio anterior   |
+| Ventas hoy                          | NO EXISTE  | No se calcula en dashboard|
+| Ventas ayer                         | NO EXISTE  | No se calcula             |
+| Ventas del mes                      | EXISTE     | kpiVentasMes en dashboard |
+| Ventas del mes pasado               | NO EXISTE  | No se muestra en dashboard|
+| Grafico ventas mensuales            | EXISTE     | Balance 6 meses (barras)  |
+| Ventas por canal                    | NO EXISTE  | No hay campo "canal"      |
+| Productos mas vendidos              | EXISTE     | Top 5 (donut chart)       |
+| Indicadores crecimiento/caida (%)   | NO EXISTE  | No hay % en dashboard     |
+| Identificacion usuario y tienda     | PARCIAL    | Usuario si, tienda no     |
++-------------------------------------+------------+---------------------------+
+
+--------------------------------------------------------------------------------
+3.1 METRICA: Total de pedidos del mes - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+El sistema NO tiene concepto de "pedido" (orden de venta previa a facturacion).
+Las ventas se crean directamente como comprobantes (Boleta/Factura/Nota Venta).
+
+FUENTE DE DATO ACTUAL: No existe.
+
+COMO IMPLEMENTAR:
+  Opcion A (Rapida): Contar ventas del mes como "pedidos"
+  - Query: SELECT COUNT(v) FROM Venta v WHERE v.fechaEmision BETWEEN :inicioMes
+    AND :hoy AND v.estado != 'ANULADO'
+  - Agregar a DashboardService.obtenerDatosDashboard()
+  - Agregar KPI al dashboard.html
+
+  Opcion B (Correcta): Crear entidad Pedido separada
+  - Nuevo flujo: Pedido -> Venta -> Factura
+  - Requiere: tabla pedidos, tabla detalle_pedidos, PedidoService,
+    PedidoController, templates
+
+--------------------------------------------------------------------------------
+3.2 METRICA: Comparativa con mes anterior (%) - PARCIAL
+--------------------------------------------------------------------------------
+
+ANALISIS:
+En ReporteFinancieroService.generarDashboardFinanciero() (linea 478-483):
+- Calcula "variacionAnual" comparando mes actual vs MISMO MES DEL ANIO ANTERIOR
+- ERROR: Compara con el anio anterior, NO con el mes anterior
+  (linea 412: YearMonth mesAnterior = YearMonth.now().minusYears(1))
+
+FUENTE ACTUAL: ReporteFinancieroService.java:478 - variacionAnual
+PERO NO se usa en el dashboard principal (dashboard.html). Solo esta en
+reportes-financieros/dashboard.html.
+
+En el DashboardService.java principal: NO existe comparativa mensual alguna.
+
+COMO IMPLEMENTAR CORRECTAMENTE:
+  En DashboardService.obtenerDatosDashboard():
+
+  // Mes anterior
+  YearMonth mesAnterior = YearMonth.now().minusMonths(1);
+  LocalDate inicioMesAnterior = mesAnterior.atDay(1);
+  LocalDate finMesAnterior = mesAnterior.atEndOfMonth();
+
+  BigDecimal ventasMesAnterior = ventaRepository
+      .sumTotalByFechaEmisionBetween(inicioMesAnterior, finMesAnterior);
+
+  BigDecimal variacionMensual = BigDecimal.ZERO;
+  if (ventasMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
+      variacionMensual = totalVentasMes.subtract(ventasMesAnterior)
+          .divide(ventasMesAnterior, 4, RoundingMode.HALF_UP)
+          .multiply(BigDecimal.valueOf(100));
+  }
+
+  resultado.put("ventasMesAnterior", ventasMesAnterior);
+  resultado.put("variacionMensual", variacionMensual);
+
+  En dashboard.html: Agregar badge con flecha arriba/abajo y porcentaje.
+
+--------------------------------------------------------------------------------
+3.3 METRICA: Ventas hoy - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+El DashboardService NO calcula ventas del dia. Solo calcula ventas del mes
+completo (kpiVentasMes).
+
+FUENTE: No existe en DashboardService.java
+
+COMO IMPLEMENTAR:
+  En DashboardService.obtenerDatosDashboard():
+
+  // Ya existe VentaRepository.sumTotalByFechaEmisionBetween()
+  BigDecimal ventasHoy = ventaRepository
+      .sumTotalByFechaEmisionBetween(hoy, hoy);
+  long cantidadVentasHoy = ventaRepository
+      .countByFechaEmisionBetween(hoy, hoy);
+
+  resultado.put("ventasHoy", ventasHoy);
+  resultado.put("cantidadVentasHoy", cantidadVentasHoy);
+
+  Los queries necesarios YA EXISTEN en VentaRepository.java:
+  - sumTotalByFechaEmisionBetween (linea 72)
+  - countByFechaEmisionBetween (linea 78)
+
+  Frontend: Agregar small-box o info-box en dashboard.html
+
+--------------------------------------------------------------------------------
+3.4 METRICA: Ventas ayer - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+Similar a ventas hoy, no se calcula.
+
+COMO IMPLEMENTAR:
+  En DashboardService.obtenerDatosDashboard():
+
+  LocalDate ayer = hoy.minusDays(1);
+  BigDecimal ventasAyer = ventaRepository
+      .sumTotalByFechaEmisionBetween(ayer, ayer);
+
+  resultado.put("ventasAyer", ventasAyer);
+
+  Frontend: Agregar metrica junto a "ventas hoy" para comparativa visual.
+
+--------------------------------------------------------------------------------
+3.5 METRICA: Ventas del mes - EXISTE
+--------------------------------------------------------------------------------
+
+FUENTE: DashboardService.java:60-69
+  - Filtra ventas con fechaEmision >= inicioMes
+  - Filtra estados validos: EMITIDO, PAGADO_TOTAL, DEVUELTO_PARCIAL
+  - Suma v.getTotal()
+
+PROBLEMA DE PERFORMANCE CRITICO:
+  ventaRepository.findAll() -> Carga TODAS las ventas de la historia a memoria
+  y filtra con stream(). Con 10,000+ ventas esto sera MUY lento.
+
+CALCULO: CORRECTO en logica de negocio (excluye ANULADO y DEVUELTO_TOTAL).
+
+RECOMENDACION:
+  Reemplazar por query optimizado:
+
+  @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v " +
+         "WHERE v.fechaEmision >= :inicio " +
+         "AND v.estado IN ('EMITIDO','PAGADO_TOTAL','DEVUELTO_PARCIAL')")
+  BigDecimal sumVentasMesValidas(@Param("inicio") LocalDate inicio);
+
+  NOTA: El query sumTotalByFechaEmisionBetween YA EXISTE pero solo excluye
+  ANULADO, no excluye DEVUELTO_TOTAL. Hay inconsistencia.
+
+--------------------------------------------------------------------------------
+3.6 METRICA: Ventas del mes pasado - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+No se calcula ni se muestra en el dashboard principal.
+Solo existe en ReporteFinancieroService pero compara con el anio anterior.
+
+COMO IMPLEMENTAR:
+  En DashboardService:
+
+  YearMonth mesAnterior = YearMonth.now().minusMonths(1);
+  BigDecimal ventasMesPasado = ventaRepository
+      .sumTotalByFechaEmisionBetween(
+          mesAnterior.atDay(1), mesAnterior.atEndOfMonth());
+
+  resultado.put("ventasMesPasado", ventasMesPasado);
+
+--------------------------------------------------------------------------------
+3.7 METRICA: Grafico de ventas mensuales - EXISTE (DIFERENTE)
+--------------------------------------------------------------------------------
+
+FUENTE: DashboardService.java:101-123 (comparativa 6 meses)
+  - Gráfico de barras: Ingresos vs Egresos ultimos 6 meses
+  - Renderizado con Chart.js en dashboard.html:238-265
+
+DIFERENCIA CON REFERENCIA:
+  - Referencia: Grafico de LINEA de ventas mensuales (12 meses)
+  - Actual: Grafico de BARRAS comparando ingresos vs egresos (6 meses)
+
+PROBLEMA DE PERFORMANCE:
+  Mismo patron: ventaRepository.findAll() se llama dentro de un FOR loop
+  (6 iteraciones). Es decir, carga TODAS las ventas 6 veces.
+  cajaRepository.findAll() tambien se llama 6 veces.
+
+COMO AJUSTAR AL DASHBOARD DE REFERENCIA:
+  - Cambiar tipo de grafico a 'line' en Chart.js
+  - Ampliar a 12 meses
+  - Usar query agrupado:
+
+    @Query("SELECT FUNCTION('TO_CHAR', v.fechaEmision, 'YYYY-MM'), " +
+           "SUM(v.total) FROM Venta v " +
+           "WHERE v.fechaEmision >= :inicio AND v.estado != 'ANULADO' " +
+           "GROUP BY FUNCTION('TO_CHAR', v.fechaEmision, 'YYYY-MM') " +
+           "ORDER BY 1")
+    List<Object[]> ventasMensualesAgrupadas(@Param("inicio") LocalDate inicio);
+
+--------------------------------------------------------------------------------
+3.8 METRICA: Ventas por canal - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+El sistema NO tiene concepto de "canal de venta".
+La entidad Venta.java tiene:
+- metodoPago (EFECTIVO, YAPE, PLIN, etc.) - esto es METODO DE PAGO, no canal
+- No existe campo "canal" o "origen"
+
+El dashboard muestra pie chart de "Modalidad de Venta" (Contado vs Credito),
+NO ventas por canal.
+
+COMO IMPLEMENTAR:
+  1. Agregar campo a Venta.java:
+     @Column(name = "canal_venta", length = 30)
+     private String canalVenta = "LOCAL";
+     // Valores: LOCAL, WHATSAPP, RAPPI, WEB, TELEFONO
+
+  2. Migrar datos existentes:
+     UPDATE ventas SET canal_venta = 'LOCAL' WHERE canal_venta IS NULL;
+
+  3. Agregar al POS (ventas/pos.html): Selector de canal
+
+  4. Query para dashboard:
+     @Query("SELECT v.canalVenta, COUNT(v), SUM(v.total) FROM Venta v " +
+            "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+            "AND v.estado != 'ANULADO' GROUP BY v.canalVenta")
+     List<Object[]> ventasPorCanal(LocalDate inicio, LocalDate fin);
+
+  5. Agregar grafico pie/donut en dashboard.html
+
+--------------------------------------------------------------------------------
+3.9 METRICA: Productos mas vendidos - EXISTE
+--------------------------------------------------------------------------------
+
+FUENTE: ProductoRepository.java:98-103 (obtenerTopProductos)
+  Query: SELECT p.nombre, SUM(d.cantidad) FROM DetalleVenta d
+         JOIN d.producto p GROUP BY p.nombre ORDER BY SUM(d.cantidad) DESC
+         LIMIT 5
+
+Renderizado como DONUT chart en dashboard.html:268-284
+
+PROBLEMA:
+- El query es GLOBAL (todas las ventas de la historia), no filtra por periodo
+- No excluye ventas anuladas
+- La referencia muestra top productos DEL MES, no historico
+
+COMO CORREGIR:
+  @Query("SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, " +
+         "SUM(d.cantidad)) FROM DetalleVenta d JOIN d.producto p " +
+         "JOIN d.venta v WHERE v.fechaEmision >= :inicio " +
+         "AND v.estado != 'ANULADO' " +
+         "GROUP BY p.nombre ORDER BY SUM(d.cantidad) DESC")
+  List<ReporteDTO> obtenerTopProductosMes(@Param("inicio") LocalDate inicio,
+                                           Pageable pageable);
+
+--------------------------------------------------------------------------------
+3.10 METRICA: Indicadores de crecimiento/caida (%) - NO EXISTE
+--------------------------------------------------------------------------------
+
+ANALISIS:
+El dashboard actual NO muestra porcentajes de crecimiento/caida en ninguna
+metrica. Los KPIs muestran solo valores absolutos:
+- "S/ 1,234.00 Ventas del Mes" (sin %)
+- "S/ 500.00 Cuentas por Cobrar" (sin %)
+
+COMO IMPLEMENTAR:
+  1. Calcular variaciones en DashboardService:
+
+     // Para cada KPI, calcular % vs mes anterior
+     BigDecimal varVentas = calcularVariacion(ventasHoy, ventasAyer);
+     BigDecimal varMes = calcularVariacion(ventasMes, ventasMesPasado);
+
+     private BigDecimal calcularVariacion(BigDecimal actual, BigDecimal anterior) {
+         if (anterior.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
+         return actual.subtract(anterior)
+             .divide(anterior, 4, RoundingMode.HALF_UP)
+             .multiply(BigDecimal.valueOf(100));
+     }
+
+  2. En dashboard.html, agregar badges:
+     <span th:class="${varVentas >= 0} ? 'badge badge-success' :
+           'badge badge-danger'">
+       <i th:class="${varVentas >= 0} ? 'fas fa-arrow-up' :
+              'fas fa-arrow-down'"></i>
+       <span th:text="${#numbers.formatDecimal(varVentas, 1, 1) + '%'}"></span>
+     </span>
+
+--------------------------------------------------------------------------------
+3.11 METRICA: Identificacion de usuario y tienda - PARCIAL
+--------------------------------------------------------------------------------
+
+LO QUE EXISTE:
+- El navbar (fragments/layout.html) muestra el nombre del usuario autenticado
+- El sistema conoce el usuario via Spring Security
+
+LO QUE NO EXISTE:
+- No hay concepto de "tienda" o "sucursal"
+- No hay multi-tienda/multi-sucursal
+- La configuracion tiene nombre de empresa pero no "tienda"
+
+COMO IMPLEMENTAR MULTI-TIENDA:
+  Base de datos:
+  - tabla: tiendas (id, nombre, direccion, telefono, ruc)
+  - Agregar tienda_id a: ventas, compras, sesiones_caja, productos (stock
+    por tienda), usuarios
+
+  Complejidad: ALTA (afecta toda la logica del sistema)
+
+================================================================================
+4. RECOMENDACIONES TECNICAS
+================================================================================
+
+4.1 CRITICO - PERFORMANCE DE QUERIES
+--------------------------------------------------------------------------------
+PROBLEMA: DashboardService.java y ReporteFinancieroService.java usan el patron:
+  repository.findAll().stream().filter(...)
+
+Esto carga TODAS las filas de la tabla a memoria Java y filtra con streams.
+Con 10,000+ ventas el dashboard sera lento. Con 50,000+ puede causar
+OutOfMemoryError.
+
+SOLUCION: Reemplazar TODOS los findAll() por queries JPA con filtro en BD.
+Los queries necesarios YA EXISTEN en VentaRepository.java pero no se usan
+en DashboardService.
+
+Archivos afectados:
+- DashboardService.java: lineas 60, 72, 90, 107, 115, 125, 127
+- ReporteFinancieroService.java: lineas 74, 94, 112, 133, 152, 211, 300,
+  417, 448, 466, 549, 558
+- CajaService.java: linea 154
+
+PRIORIDAD: P0 (bloquea escalamiento)
+
+4.2 CRITICO - INCONSISTENCIA EN FILTROS DE ESTADOS
+--------------------------------------------------------------------------------
+DashboardService usa: Set("EMITIDO", "PAGADO_TOTAL", "DEVUELTO_PARCIAL")
+VentaRepository.sumTotalByFechaEmisionBetween usa: estado != 'ANULADO'
+ReporteFinancieroService usa: !"ANULADO".equals(v.getEstado())
+
+El segundo incluye DEVUELTO_TOTAL, el primero no.
+Esto causa diferencias numericas entre dashboard y reportes.
+
+SOLUCION: Definir en un solo lugar (Constants.java o enum) los estados
+validos para KPIs financieros y reusar en todas partes.
+
+4.3 IMPORTANTE - ARQUITECTURA MONOLITICA
+--------------------------------------------------------------------------------
+El sistema es un monolito MVC. Para escalar a ERP completo (12 modulos):
+- Considerar modularizacion interna (paquetes por modulo con interfaces claras)
+- O migrar a microservicios para modulos independientes
+- Minimo: Separar la logica en modulos con ServiceFacade por area
+
+4.4 IMPORTANTE - SEGURIDAD
+--------------------------------------------------------------------------------
+- CSRF deshabilitado globalmente (para AJAX). Recomendado: Habilitar CSRF y
+  enviar token en headers AJAX.
+- Passwords en texto en application.properties. Usar variables de entorno.
+- Las queries nativas (ProductoRepository:117) son seguras (usan parametros),
+  pero verificar que no haya concatenacion de strings en queries.
+
+4.5 MEJORA - PATRON DTO INCONSISTENTE
+--------------------------------------------------------------------------------
+Algunos servicios retornan Map<String, Object> en lugar de DTOs tipados.
+Esto dificulta mantenimiento y testing.
+Afecta: DashboardService, ReporteFinancieroService, CajaService.
+
+================================================================================
+5. RIESGOS ARQUITECTONICOS
+================================================================================
+
+5.1 RIESGO ALTO: Performance en Dashboard
+    - findAll() en tablas grandes causa degradacion exponencial
+    - Con 50K+ ventas, el dashboard puede tardar >10 segundos
+    - Polling cada 30 segundos amplifica el problema (N requests/minuto)
+
+5.2 RIESGO ALTO: Falta de indices en BD
+    - No se observan @Index en entidades
+    - Queries frecuentes por fechaEmision, estado, clienteId sin indices
+      explícitos podrian ser lentos
+
+5.3 RIESGO MEDIO: Acoplamiento entre modulos
+    - VentaService depende de 10 repositorios/servicios
+    - Un cambio en Producto puede romper Ventas, Compras, Inventario
+    - No hay interfaces/abstracciones entre capas
+
+5.4 RIESGO MEDIO: Sin tests automatizados
+    - No se encontraron archivos de test en el proyecto
+    - Cualquier refactorizacion es riesgosa sin cobertura de tests
+
+5.5 RIESGO BAJO: Dependencia de PSE externo (APISUNAT)
+    - Si APISUNAT cae, la facturacion electronica se detiene
+    - El sistema maneja esto con "politica no danar" (buena practica)
+
+================================================================================
+6. PROXIMOS PASOS PRIORIZADOS
+================================================================================
+
+FASE 1 - ESTABILIZACION (1-2 semanas)
+--------------------------------------
+P0.1: Reemplazar TODOS los findAll() en DashboardService por queries JPA
+P0.2: Reemplazar findAll() en ReporteFinancieroService
+P0.3: Unificar criterios de estados validos en Constants.java
+P0.4: Agregar indices a tablas: ventas(fecha_emision, estado),
+      movimientos_caja(tipo, fecha), productos(activo, stock_actual)
+
+FASE 2 - DASHBOARD DE REFERENCIA (1 semana)
+---------------------------------------------
+P1.1: Agregar "Ventas hoy" y "Ventas ayer" al dashboard
+P1.2: Agregar "Ventas del mes pasado" y variacion %
+P1.3: Agregar indicadores de crecimiento/caida (badges con %)
+P1.4: Agregar campo canal_venta a Venta + grafico por canal
+P1.5: Corregir top productos para filtrar por mes actual
+P1.6: Cambiar grafico de barras 6 meses a linea 12 meses
+
+FASE 3 - COMPLETAR MODULOS EXISTENTES (2-3 semanas)
+-----------------------------------------------------
+P2.1: Compras: Agregar ordenes de compra y cuentas por pagar
+P2.2: Tesoreria: Agregar cuentas bancarias basicas
+P2.3: CRM: Agregar seguimiento de actividades por cliente
+P2.4: Contabilidad: Plan de cuentas y asientos automaticos
+
+FASE 4 - MODULOS NUEVOS (SEGUN PRIORIDAD DE NEGOCIO)
+------------------------------------------------------
+P3.1: Planilla (si tiene empleados que gestionar)
+P3.2: Activo Fijo (si tiene activos que depreciar)
+P3.3: Distribucion (si hace delivery)
+P3.4: Importaciones (si importa mercaderia)
+P3.5: Produccion (probablemente NO aplica para libreria)
+
+FASE 5 - CALIDAD Y ESCALABILIDAD
+----------------------------------
+P4.1: Agregar tests unitarios para servicios criticos
+P4.2: Implementar cache (Redis/Caffeine) para dashboard
+P4.3: Modularizar arquitectura
+P4.4: Implementar multi-tienda si aplica
+
+================================================================================
+FIN DE AUDITORIA TECNICA
+================================================================================

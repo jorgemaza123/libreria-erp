@@ -1,33 +1,40 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Cotizacion;
-import com.libreria.sistema.model.dto.VentaDTO;
+import com.libreria.sistema.model.dto.CotizacionDTO;
+import com.libreria.sistema.service.CotizacionPdfService;
 import com.libreria.sistema.service.CotizacionService;
 import com.libreria.sistema.service.ConfiguracionService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.List;
 
 @Controller
 @RequestMapping("/cotizaciones")
+@Slf4j
 public class CotizacionController {
 
     private final CotizacionService cotizacionService;
+    private final CotizacionPdfService cotizacionPdfService;
     private final ConfiguracionService configuracionService;
 
-    public CotizacionController(CotizacionService cotizacionService, ConfiguracionService configuracionService) {
+    public CotizacionController(CotizacionService cotizacionService,
+                                CotizacionPdfService cotizacionPdfService,
+                                ConfiguracionService configuracionService) {
         this.cotizacionService = cotizacionService;
+        this.cotizacionPdfService = cotizacionPdfService;
         this.configuracionService = configuracionService;
     }
 
@@ -47,32 +54,38 @@ public class CotizacionController {
 
     @GetMapping("/lista")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
-    public String lista(@RequestParam(defaultValue = "0") int page, Model model) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by("id").descending());
-        Page<Cotizacion> pageCoti = cotizacionService.listar(pageable);
+    public String lista(@RequestParam(defaultValue = "0") int page,
+                        @RequestParam(required = false) String termino,
+                        @RequestParam(required = false) String estado,
+                        @RequestParam(required = false) String fechaDesde,
+                        @RequestParam(required = false) String fechaHasta,
+                        Model model) {
+        Pageable pageable = PageRequest.of(page, 15, Sort.by("id").descending());
+        Page<Cotizacion> pageCoti = cotizacionService.buscarFiltrado(termino, estado, fechaDesde, fechaHasta, pageable);
 
         model.addAttribute("cotizaciones", pageCoti);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", pageCoti.getTotalPages());
 
-        if (pageCoti.getTotalPages() > 0) {
-            List<Integer> pageNumbers = IntStream.rangeClosed(1, pageCoti.getTotalPages())
-                    .boxed().collect(Collectors.toList());
-            model.addAttribute("pageNumbers", pageNumbers);
-        } else {
-            model.addAttribute("pageNumbers", List.of());
-        }
-        
+        // Filtros activos para mantener en paginación
+        model.addAttribute("termino", termino);
+        model.addAttribute("estado", estado);
+        model.addAttribute("fechaDesde", fechaDesde);
+        model.addAttribute("fechaHasta", fechaHasta);
+
+        // KPIs
+        model.addAttribute("kpis", cotizacionService.obtenerKPIs());
+
         return "cotizaciones/lista";
     }
 
     @PostMapping("/api/guardar")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_CREAR')")
     @ResponseBody
-    public ResponseEntity<?> guardar(@RequestBody VentaDTO dto) {
+    public ResponseEntity<?> guardar(@RequestBody CotizacionDTO dto) {
         try {
-            cotizacionService.crearCotizacion(dto);
-            return ResponseEntity.ok(Map.of("mensaje", "Cotización creada correctamente"));
+            Cotizacion c = cotizacionService.crearCotizacion(dto);
+            return ResponseEntity.ok(Map.of("mensaje", "Cotización creada correctamente", "id", c.getId()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -81,7 +94,7 @@ public class CotizacionController {
     @PutMapping("/api/actualizar/{id}")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_EDITAR')")
     @ResponseBody
-    public ResponseEntity<?> actualizar(@PathVariable Long id, @RequestBody VentaDTO dto) {
+    public ResponseEntity<?> actualizar(@PathVariable Long id, @RequestBody CotizacionDTO dto) {
         try {
             cotizacionService.actualizarCotizacion(id, dto);
             return ResponseEntity.ok(Map.of("mensaje", "Actualizado correctamente"));
@@ -90,7 +103,6 @@ public class CotizacionController {
         }
     }
 
-    // Metodo corregido: Asegurado de tener solo un @PostMapping
     @PostMapping("/api/convertir/{id}")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_CONVERTIR')")
     @ResponseBody
@@ -106,6 +118,66 @@ public class CotizacionController {
         }
     }
 
+    @PostMapping("/api/cambiar-estado/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<?> cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
+        try {
+            cotizacionService.cambiarEstado(id, estado);
+            return ResponseEntity.ok(Map.of("mensaje", "Estado actualizado a " + estado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/anular/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<?> anular(@PathVariable Long id) {
+        try {
+            cotizacionService.anularCotizacion(id);
+            return ResponseEntity.ok(Map.of("mensaje", "Cotización anulada"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/kpis")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> kpis() {
+        return ResponseEntity.ok(cotizacionService.obtenerKPIs());
+    }
+
+    @GetMapping("/api/rentabilidad")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> rentabilidad(@RequestParam(required = false) String desde,
+                                          @RequestParam(required = false) String hasta) {
+        if (desde == null || desde.isEmpty()) desde = java.time.LocalDate.now().withDayOfMonth(1).toString();
+        if (hasta == null || hasta.isEmpty()) hasta = java.time.LocalDate.now().toString();
+        String desdeTs = desde + " 00:00:00";
+        String hastaTs = hasta + " 23:59:59";
+        return ResponseEntity.ok(cotizacionService.obtenerRentabilidadServicios(desdeTs, hastaTs));
+    }
+
+    @GetMapping("/pdf/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    public void descargarPdf(@PathVariable Long id, HttpServletResponse response) throws Exception {
+        Cotizacion cotizacion = cotizacionService.obtenerPorId(id);
+        if (cotizacion == null) {
+            response.sendError(404, "Cotización no encontrada");
+            return;
+        }
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition",
+                "inline; filename=Cotizacion-" + cotizacion.getSerie() + "-" + cotizacion.getNumero() + ".pdf");
+
+        cotizacionPdfService.generarPdf(cotizacion, response.getOutputStream());
+        response.getOutputStream().flush();
+    }
+
     @GetMapping("/imprimir/{id}")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String imprimir(@PathVariable Long id, Model model) {
@@ -114,11 +186,68 @@ public class CotizacionController {
         return "cotizaciones/impresion";
     }
 
+    @GetMapping("/exportar/excel")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    public ResponseEntity<byte[]> exportarExcel(@RequestParam(required = false) String termino,
+                                                 @RequestParam(required = false) String estado,
+                                                 @RequestParam(required = false) String fechaDesde,
+                                                 @RequestParam(required = false) String fechaHasta) {
+        try {
+            byte[] bytes = cotizacionService.exportarExcel(termino, estado, fechaDesde, fechaHasta);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "cotizaciones.xlsx");
+            return ResponseEntity.ok().headers(headers).body(bytes);
+        } catch (Exception e) {
+            log.error("Error exportando Excel de cotizaciones", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/detalle/{id}")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String verDetalle(@PathVariable Long id, Model model) {
         Cotizacion cotizacion = cotizacionService.obtenerPorId(id);
         model.addAttribute("cotizacion", cotizacion);
         return "cotizaciones/modal_detalle :: contenido";
+    }
+
+    // --- API: Categorías de servicio (dinámicas) ---
+    @GetMapping("/api/categorias")
+    @ResponseBody
+    public ResponseEntity<?> categorias() {
+        return ResponseEntity.ok(cotizacionService.obtenerCategoriasActivas());
+    }
+
+    // --- API: Tendencia mensual (12 meses) ---
+    @GetMapping("/api/tendencia")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> tendencia() {
+        return ResponseEntity.ok(cotizacionService.obtenerTendenciaMensual());
+    }
+
+    // --- API: Conversión por categoría ---
+    @GetMapping("/api/conversion-categoria")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> conversionCategoria(@RequestParam(required = false) String desde,
+                                                  @RequestParam(required = false) String hasta) {
+        if (desde == null || desde.isEmpty()) desde = java.time.LocalDate.now().withDayOfMonth(1).toString();
+        if (hasta == null || hasta.isEmpty()) hasta = java.time.LocalDate.now().toString();
+        return ResponseEntity.ok(cotizacionService.obtenerConversionPorCategoria(desde + " 00:00:00", hasta + " 23:59:59"));
+    }
+
+    // --- API: Rentabilidad desde ventas reales ---
+    @GetMapping("/api/rentabilidad-ventas")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> rentabilidadVentas(@RequestParam(required = false) String desde,
+                                                 @RequestParam(required = false) String hasta) {
+        java.time.LocalDate desdeDate = (desde != null && !desde.isEmpty())
+                ? java.time.LocalDate.parse(desde) : java.time.LocalDate.now().withDayOfMonth(1);
+        java.time.LocalDate hastaDate = (hasta != null && !hasta.isEmpty())
+                ? java.time.LocalDate.parse(hasta) : java.time.LocalDate.now();
+        return ResponseEntity.ok(cotizacionService.obtenerRentabilidadVentas(desdeDate, hastaDate));
     }
 }

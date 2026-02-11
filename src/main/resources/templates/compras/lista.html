@@ -104,7 +104,7 @@
 </div>
 
 <th:block layout:fragment="scripts">
-    <script>
+    <script th:inline="none">
         $(document).ready(function () {
             $("#tablaCompras").DataTable({
                 "responsive": true,

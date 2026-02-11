@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_actividades'">
+<head>
+    <title>CRM - Mis Tareas</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0"><i class="fas fa-tasks mr-2"></i>Mis Tareas y Actividades</h1>
+                <button class="btn btn-primary" onclick="abrirModalActividad()">
+                    <i class="fas fa-plus mr-1"></i>Nueva Actividad
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-clock mr-2"></i>Pendientes
+                        <span class="badge badge-warning ml-1" th:text="${pendientes.size()}">0</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>Tipo</th>
+                                <th>Asunto</th>
+                                <th>Cliente</th>
+                                <th>Programada</th>
+                                <th>Registrada por</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="act : ${pendientes}" th:id="'act-' + ${act.id}"
+                                th:classappend="${act.fechaProgramada != null and act.fechaProgramada.isBefore(#temporals.createNow()) ? 'table-danger' : ''}">
+                                <td class="text-center">
+                                    <span th:switch="${act.tipo}">
+                                        <i th:case="'LLAMADA'" class="fas fa-phone text-primary"></i>
+                                        <i th:case="'MENSAJE'" class="fas fa-comment text-info"></i>
+                                        <i th:case="'REUNION'" class="fas fa-users text-warning"></i>
+                                        <i th:case="'NOTA'" class="fas fa-sticky-note text-secondary"></i>
+                                        <i th:case="'RECLAMO'" class="fas fa-exclamation-circle text-danger"></i>
+                                        <i th:case="'TAREA'" class="fas fa-tasks text-success"></i>
+                                        <i th:case="'EMAIL'" class="fas fa-envelope text-primary"></i>
+                                        <i th:case="'VISITA'" class="fas fa-walking text-info"></i>
+                                        <i th:case="*" class="fas fa-circle text-muted"></i>
+                                    </span>
+                                </td>
+                                <td><span class="badge badge-secondary" th:text="${act.tipo}"></span></td>
+                                <td>
+                                    <strong th:text="${act.asunto}"></strong>
+                                    <br th:if="${act.descripcion}">
+                                    <small class="text-muted" th:if="${act.descripcion}" th:text="${#strings.abbreviate(act.descripcion, 80)}"></small>
+                                </td>
+                                <td>
+                                    <a th:if="${act.cliente}" th:href="'/crm/clientes/' + ${act.cliente.id} + '/perfil'" th:text="${act.cliente.nombreRazonSocial}"></a>
+                                </td>
+                                <td>
+                                    <span th:if="${act.fechaProgramada}" th:text="${#temporals.format(act.fechaProgramada, 'dd/MM/yyyy HH:mm')}"></span>
+                                    <span th:if="${act.fechaProgramada != null and act.fechaProgramada.isBefore(#temporals.createNow())}" class="badge badge-danger ml-1">Vencida</span>
+                                </td>
+                                <td>
+                                    <small th:if="${act.usuario}" th:text="${act.usuario.nombreCompleto}"></small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" th:onclick="'completarActividad(' + ${act.id} + ')'" title="Completar">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr th:if="${pendientes.isEmpty()}">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                                    <p>No tienes tareas pendientes</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<!-- Modal Nueva Actividad -->
+<div class="modal fade" id="modalActividad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus mr-2"></i>Nueva Actividad</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="actTipo" class="form-control">
+                        <option value="TAREA">Tarea</option>
+                        <option value="LLAMADA">Llamada</option>
+                        <option value="MENSAJE">Mensaje</option>
+                        <option value="REUNION">Reunion</option>
+                        <option value="NOTA">Nota</option>
+                        <option value="RECLAMO">Reclamo</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="VISITA">Visita</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cliente *</label>
+                    <select id="actCliente" class="form-control select2" style="width: 100%;">
+                        <option value="">Seleccionar...</option>
+                        <option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nombreRazonSocial + ' - ' + c.numeroDocumento}"></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Asunto *</label>
+                    <input type="text" id="actAsunto" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Descripcion</label>
+                    <textarea id="actDescripcion" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Programada</label>
+                    <input type="datetime-local" id="actFechaProgramada" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarActividad()">
+                    <i class="fas fa-save mr-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script>
+$(document).ready(function() {
+    if ($('#actCliente').length) {
+        $('#actCliente').select2({ theme: 'bootstrap4', dropdownParent: $('#modalActividad') });
+    }
+});
+
+function abrirModalActividad() {
+    $('#actAsunto, #actDescripcion').val('');
+    $('#actFechaProgramada').val('');
+    $('#actTipo').val('TAREA');
+    $('#actCliente').val('').trigger('change');
+    $('#modalActividad').modal('show');
+}
+
+function guardarActividad() {
+    var asunto = $('#actAsunto').val().trim();
+    var clienteId = $('#actCliente').val();
+
+    if (!asunto || !clienteId) {
+        Swal.fire('Error', 'Asunto y cliente son obligatorios', 'error');
+        return;
+    }
+
+    var datos = {
+        tipo: $('#actTipo').val(),
+        asunto: asunto,
+        descripcion: $('#actDescripcion').val().trim(),
+        clienteId: clienteId,
+        fechaProgramada: $('#actFechaProgramada').val()
+    };
+
+    $.ajax({
+        url: '/crm/actividades/guardar',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datos),
+        success: function(resp) {
+            if (resp.success) {
+                $('#modalActividad').modal('hide');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Actividad creada', showConfirmButton: false, timer: 2000 });
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        },
+        error: function(xhr) {
+            var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error';
+            Swal.fire('Error', msg, 'error');
+        }
+    });
+}
+
+function completarActividad(id) {
+    Swal.fire({
+        title: 'Completar Actividad',
+        input: 'text',
+        inputLabel: 'Resultado (opcional)',
+        inputPlaceholder: 'Ej: Cliente interesado, se envio cotizacion',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-check"></i> Completar',
+        confirmButtonColor: '#28a745'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/crm/actividades/' + id + '/completar',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ resultado: result.value || '' }),
+                success: function(resp) {
+                    if (resp.success) {
+                        $('#act-' + id).fadeOut(300, function() { $(this).remove(); });
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Actividad completada', showConfirmButton: false, timer: 2000 });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', 'No se pudo completar', 'error');
+                }
+            });
+        }
+    });
+}
+</script>
+</div>
+
+</body>
+</html>

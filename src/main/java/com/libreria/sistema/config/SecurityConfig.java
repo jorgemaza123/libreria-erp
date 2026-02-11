@@ -71,12 +71,18 @@ public class SecurityConfig {
                     "/cotizaciones/**",
                     "/cobranzas/**",
                     "/devoluciones/**",
-                    "/ordenes-servicio/**",
+                    "/ordenes/**",
                     "/proveedores/**",
                     "/kardex/**",
                     "/reportes/**",
                     "/listas-escolares/**",
                     "/reportes-financieros/**",
+                    "/crm/**",
+                    "/gastos/**",
+                    "/toma-inventario/**",
+                    "/solicitudes/**",
+                    "/servicios/**",
+                    "/stock/**",
                     // Configuracion y administracion
                     "/configuracion/**",
                     "/usuarios/**",
@@ -140,11 +146,18 @@ public class SecurityConfig {
                 .requestMatchers("/cotizaciones/**").authenticated()
                 .requestMatchers("/cobranzas/**").authenticated()
                 .requestMatchers("/devoluciones/**").authenticated()
-                .requestMatchers("/ordenes-servicio/**").authenticated()
+                .requestMatchers("/ordenes/**").authenticated()
                 .requestMatchers("/proveedores/**").authenticated()
                 .requestMatchers("/notificaciones/**").authenticated()
                 .requestMatchers("/incidencias/**").authenticated()
                 .requestMatchers("/listas-escolares/**").authenticated()
+                .requestMatchers("/crm/**").authenticated()
+                .requestMatchers("/gastos/**").authenticated()
+                .requestMatchers("/toma-inventario/**").authenticated()
+                .requestMatchers("/solicitudes/**").authenticated()
+                .requestMatchers("/servicios/**").authenticated()
+                .requestMatchers("/stock/**").authenticated()
+                .requestMatchers("/vendedor/**").authenticated()
 
                 // ============================================================
                 // ENDPOINTS API - Autenticados (CSRF se maneja aparte)

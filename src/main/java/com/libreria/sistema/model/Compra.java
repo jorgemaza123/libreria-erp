@@ -9,7 +9,10 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "compras")
+@Table(name = "compras", indexes = {
+    @Index(name = "idx_compra_fecha_estado", columnList = "fecha, estado"),
+    @Index(name = "idx_compra_proveedor", columnList = "proveedor_id")
+})
 public class Compra {
 
     @Id

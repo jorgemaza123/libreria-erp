@@ -150,4 +150,44 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
            "(LOWER(c.nombreRazonSocial) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
            "c.numeroDocumento LIKE %:termino%) ORDER BY c.nombreRazonSocial")
     List<Cliente> buscarParaAutocompletado(@Param("termino") String termino);
+
+    // =====================================================
+    //  CRM - LEADS Y SEGMENTACION
+    // =====================================================
+
+    List<Cliente> findByTipoAndActivoTrue(String tipo);
+
+    @Query("SELECT c FROM Cliente c WHERE c.activo = true AND c.tipo = :tipo " +
+           "AND (LOWER(c.nombreRazonSocial) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
+           "c.numeroDocumento LIKE %:termino% OR :termino IS NULL OR :termino = '') " +
+           "ORDER BY c.fechaRegistro DESC")
+    Page<Cliente> buscarPorTipoPaginado(@Param("tipo") String tipo, @Param("termino") String termino, Pageable pageable);
+
+    @Query("SELECT c FROM Cliente c WHERE c.activo = true AND c.etiquetas LIKE %:etiqueta%")
+    List<Cliente> findByEtiqueta(@Param("etiqueta") String etiqueta);
+
+    @Query("SELECT c FROM Cliente c WHERE c.activo = true " +
+           "AND (:tipo IS NULL OR c.tipo = :tipo) " +
+           "AND (:categoria IS NULL OR c.categoria = :categoria) " +
+           "AND (:etiqueta IS NULL OR c.etiquetas LIKE %:etiqueta%) " +
+           "AND (:origen IS NULL OR c.origenLead = :origen) " +
+           "AND (:conCompras IS NULL OR (:conCompras = true AND c.cantidadCompras > 0) OR (:conCompras = false AND (c.cantidadCompras IS NULL OR c.cantidadCompras = 0))) " +
+           "ORDER BY c.nombreRazonSocial")
+    Page<Cliente> findClientesSegmentados(
+            @Param("tipo") String tipo,
+            @Param("categoria") String categoria,
+            @Param("etiqueta") String etiqueta,
+            @Param("origen") String origen,
+            @Param("conCompras") Boolean conCompras,
+            Pageable pageable);
+
+    @Query("SELECT c FROM Cliente c WHERE c.activo = true AND c.tipo = 'LEAD' " +
+           "AND c.fechaRegistro < :fecha AND c.cantidadCompras = 0")
+    List<Cliente> findLeadsInactivos(@Param("fecha") java.time.LocalDateTime fecha);
+
+    long countByTipoAndActivoTrue(String tipo);
+
+    @Query("SELECT c.origenLead, COUNT(c) FROM Cliente c WHERE c.activo = true AND c.tipo = 'LEAD' " +
+           "AND c.origenLead IS NOT NULL GROUP BY c.origenLead")
+    List<Object[]> contarLeadsPorOrigen();
 }

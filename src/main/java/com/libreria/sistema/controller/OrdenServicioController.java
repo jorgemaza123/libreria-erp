@@ -13,6 +13,7 @@ import com.lowagie.text.pdf.*;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ import java.util.Map;
 @Controller
 @RequestMapping("/ordenes")
 @Slf4j
+@PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_VER')")
 public class OrdenServicioController {
 
     private final OrdenServicioRepository ordenRepository;
@@ -41,7 +43,8 @@ public class OrdenServicioController {
     }
 
     @GetMapping("/nueva")
-public String nuevaOrden(Model model) { 
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR')")
+public String nuevaOrden(Model model) {
     // ESTA LÍNEA ES VITAL PARA QUE EL DATALIST FUNCIONE
     model.addAttribute("tipos", ordenRepository.findTiposServicio()); 
     return "ordenes/formulario"; 
@@ -55,6 +58,7 @@ public String nuevaOrden(Model model) {
 
     // API GUARDAR
     @PostMapping("/api/guardar")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR')")
     public ResponseEntity<?> guardarOrden(@RequestBody OrdenDTO dto) {
         try {
             OrdenServicio orden = new OrdenServicio();
@@ -96,6 +100,7 @@ public String nuevaOrden(Model model) {
 
     // API FINALIZAR
     @PostMapping("/api/finalizar/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
     public ResponseEntity<?> finalizarOrden(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean cobrarSaldo) {
         try {
             return ordenRepository.findById(id).map(orden -> {
@@ -280,6 +285,7 @@ public String nuevaOrden(Model model) {
 
 
     @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
 public String editarOrden(@PathVariable Long id, Model model) {
     OrdenServicio orden = ordenRepository.findById(id).orElse(null);
     if(orden == null) return "redirect:/ordenes/lista";

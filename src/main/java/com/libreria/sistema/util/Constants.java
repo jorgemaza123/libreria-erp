@@ -1,6 +1,8 @@
 package com.libreria.sistema.util;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Constantes globales del sistema
@@ -61,6 +63,21 @@ public final class Constants {
     public static final String AFECTACION_GRAVADO = "10";
     public static final String AFECTACION_EXONERADO = "20";
     public static final String AFECTACION_INAFECTO = "30";
+
+    // === ESTADOS DE VENTA ===
+    /** Estados que representan dinero real para KPIs financieros */
+    public static final Set<String> ESTADOS_VALIDOS_KPI = Set.of("EMITIDO", "PAGADO_TOTAL", "DEVUELTO_PARCIAL");
+    /** Estados que representan dinero real - como lista para queries JPQL IN */
+    public static final List<String> ESTADOS_VALIDOS_KPI_LIST = List.of("EMITIDO", "PAGADO_TOTAL", "DEVUELTO_PARCIAL");
+    public static final String ESTADO_ANULADO = "ANULADO";
+    public static final String ESTADO_DEVUELTO_TOTAL = "DEVUELTO_TOTAL";
+
+    // === CANALES DE VENTA ===
+    public static final String CANAL_LOCAL = "LOCAL";
+    public static final String CANAL_WHATSAPP = "WHATSAPP";
+    public static final String CANAL_DELIVERY = "DELIVERY";
+    public static final String CANAL_TELEFONO = "TELEFONO";
+    public static final String CANAL_WEB = "WEB";
 
     // === SERIES DE COMPROBANTES ===
     public static final String SERIE_BOLETA_INTERNA = "I001";

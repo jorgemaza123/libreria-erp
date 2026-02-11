@@ -131,4 +131,14 @@ public interface CajaRepository extends JpaRepository<MovimientoCaja, Long> {
      */
     @Query("SELECT m FROM MovimientoCaja m WHERE m.concepto LIKE 'VENTA%' AND CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC")
     List<MovimientoCaja> findMovimientosVentas(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Egresos agrupados por mes (para grafico dashboard)
+     */
+    @Query("SELECT FUNCTION('TO_CHAR', m.fecha, 'YYYY-MM'), COALESCE(SUM(m.monto), 0) " +
+           "FROM MovimientoCaja m " +
+           "WHERE m.tipo = 'EGRESO' AND m.fecha >= :inicio " +
+           "GROUP BY FUNCTION('TO_CHAR', m.fecha, 'YYYY-MM') " +
+           "ORDER BY FUNCTION('TO_CHAR', m.fecha, 'YYYY-MM')")
+    List<Object[]> egresosMensualesAgrupados(@Param("inicio") LocalDateTime inicio);
 }

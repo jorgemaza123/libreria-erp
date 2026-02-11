@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
-      th:with="active='servicios'">
+      th:with="active=${ordenEdicion != null ? 'servicios' : 'nuevo_servicio'}">
 <head>
     <title>Nueva Orden de Servicio</title>
 </head>

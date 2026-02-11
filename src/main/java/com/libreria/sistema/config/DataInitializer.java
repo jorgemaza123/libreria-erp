@@ -3,11 +3,13 @@ package com.libreria.sistema.config;
 import com.libreria.sistema.model.Correlativo;
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.Rol;
+import com.libreria.sistema.model.ServicioCategoria;
 import com.libreria.sistema.model.Usuario;
 import com.libreria.sistema.repository.CorrelativoRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.RolRepository;
 import com.libreria.sistema.repository.RoleRepository;
+import com.libreria.sistema.repository.ServicioCategoriaRepository;
 import com.libreria.sistema.repository.UsuarioRepository;
 import com.libreria.sistema.service.RolePermissionService;
 import org.springframework.boot.CommandLineRunner;
@@ -38,6 +40,7 @@ public class DataInitializer {
                                RoleRepository roleRepo,
                                CorrelativoRepository correlativoRepo,
                                ProductoRepository productoRepo,
+                               ServicioCategoriaRepository servicioCategoriaRepo,
                                RolePermissionService rolePermissionService,
                                PasswordEncoder passwordEncoder,
                                PlatformTransactionManager transactionManager) {
@@ -168,6 +171,28 @@ public class DataInitializer {
                 crearProductoSiNoExiste(productoRepo, "BOLSA_PLASTICA", "Bolsa Plástica", new BigDecimal("0.10"), "PRODUCTO");
                 crearProductoSiNoExiste(productoRepo, "LAPICERO_AZUL", "Lapicero Azul Std", new BigDecimal("1.00"), "PRODUCTO");
 
+                // 4.2 Migración CRM: clientes existentes sin tipo -> CLIENTE
+                int clientesMigrados = entityManager
+                    .createNativeQuery("UPDATE clientes SET tipo = 'CLIENTE' WHERE tipo IS NULL")
+                    .executeUpdate();
+                if (clientesMigrados > 0) {
+                    System.out.println(">>> CRM: " + clientesMigrados + " clientes migrados con tipo=CLIENTE");
+                }
+
+                // 4.3 Categorías de Servicio (para cotizaciones)
+                System.out.println(">>> Inicializando Categorías de Servicio...");
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "SUBLIMACION", "Sublimación", "Sublimación en tazas, polos, etc.", "fas fa-tshirt", 1);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "COPIAS", "Copias", "Fotocopias B/N y color", "fas fa-copy", 2);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "IMPRESION", "Impresión", "Impresiones A4, A3, fotos", "fas fa-print", 3);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "ESCANEO", "Escaneo", "Digitalización de documentos", "fas fa-scanner", 4);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "SOPORTE_TECNICO", "Soporte Técnico", "Reparación y soporte de equipos", "fas fa-tools", 5);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "TRAMITES", "Trámites", "Gestión de trámites diversos", "fas fa-file-signature", 6);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "SOFTWARE", "Software", "Instalación y configuración de software", "fas fa-laptop-code", 7);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "COSTURA", "Costura", "Servicios de costura y confección", "fas fa-cut", 8);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "TRABAJOS_ESCOLARES", "Trabajos Escolares", "Maquetas, informes, trabajos", "fas fa-graduation-cap", 9);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "PAPELERIA", "Papelería", "Encuadernado, anillado, empastado", "fas fa-book", 10);
+                crearCategoriaSiNoExiste(servicioCategoriaRepo, "OTRO", "Otro", "Servicios varios", "fas fa-ellipsis-h", 99);
+
                 // 5. Migración de Roles
                 System.out.println(">>> Verificando migración de roles...");
                 List<Usuario> todosUsuarios = usuarioRepo.findAll();
@@ -194,6 +219,20 @@ public class DataInitializer {
                 return null;
             });
         };
+    }
+
+    private void crearCategoriaSiNoExiste(ServicioCategoriaRepository repo, String codigo, String nombre, String descripcion, String icono, int orden) {
+        if (repo.findByCodigo(codigo).isEmpty()) {
+            ServicioCategoria cat = new ServicioCategoria();
+            cat.setCodigo(codigo);
+            cat.setNombre(nombre);
+            cat.setDescripcion(descripcion);
+            cat.setIcono(icono);
+            cat.setOrden(orden);
+            cat.setActiva(true);
+            repo.save(cat);
+            System.out.println(" > Categoría servicio creada: " + nombre);
+        }
     }
 
     private void crearProductoSiNoExiste(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo) {

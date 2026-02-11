@@ -93,6 +93,7 @@ public class ReporteProblemaController {
      */
     @PostMapping("/api/crear")
     @ResponseBody
+    @PreAuthorize("hasPermission(null, 'INCIDENCIAS_CREAR')")
     public ResponseEntity<?> crearReporte(@RequestBody Map<String, Object> datos) {
         try {
             String tipoProblema = (String) datos.get("tipoProblema");
@@ -211,7 +212,7 @@ public class ReporteProblemaController {
      */
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    @PreAuthorize("hasPermission(null, 'INCIDENCIAS_EDITAR')")
+    @PreAuthorize("hasPermission(null, 'INCIDENCIAS_ELIMINAR')")
     public ResponseEntity<?> eliminarReporte(@PathVariable Long id) {
         try {
             reporteService.eliminar(id);

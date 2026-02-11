@@ -8,7 +8,10 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "clientes")
+@Table(name = "clientes", indexes = {
+    @Index(name = "idx_cliente_tipo", columnList = "tipo"),
+    @Index(name = "idx_cliente_vendedor", columnList = "vendedor_asignado_id")
+})
 public class Cliente {
 
     @Id
@@ -29,6 +32,35 @@ public class Cliente {
     private String telefono;
     private String telefonoSecundario; // Contacto alternativo
     private String email; // Para enviar el XML/PDF
+
+    // =====================================================
+    //  CAMPOS CRM
+    // =====================================================
+
+    @Column(length = 20)
+    private String tipo; // LEAD, CLIENTE (default CLIENTE para existentes)
+
+    @Column(length = 500)
+    private String etiquetas; // Tags comma-separated: "VIP,MAYORISTA,EDUCACION"
+
+    @Column(length = 150)
+    private String empresa;
+
+    @Column(length = 100)
+    private String cargo;
+
+    @Column(length = 30)
+    private String origenLead; // REFERIDO, WHATSAPP, PRESENCIAL, WEB, TELEFONO
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vendedor_asignado_id")
+    private Usuario vendedorAsignado;
+
+    private String contactoSecundarioNombre;
+    private String contactoSecundarioTelefono;
+    private String contactoSecundarioEmail;
+
+    private LocalDate fechaProximoContacto;
 
     // DATOS DE CRÉDITO
     @Column(name = "tiene_credito")
@@ -86,6 +118,7 @@ public class Cliente {
         if (this.saldoDeudor == null) this.saldoDeudor = BigDecimal.ZERO;
         if (this.totalComprasHistorico == null) this.totalComprasHistorico = BigDecimal.ZERO;
         if (this.cantidadCompras == null) this.cantidadCompras = 0;
+        if (this.tipo == null) this.tipo = "CLIENTE";
     }
 
     @PreUpdate

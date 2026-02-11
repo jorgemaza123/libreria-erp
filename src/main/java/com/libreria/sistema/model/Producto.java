@@ -7,7 +7,12 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "productos")
+@Table(name = "productos", indexes = {
+    @Index(name = "idx_producto_activo", columnList = "activo"),
+    @Index(name = "idx_producto_activo_stock", columnList = "activo, stockActual"),
+    @Index(name = "idx_producto_categoria", columnList = "categoria"),
+    @Index(name = "idx_producto_nombre", columnList = "nombre")
+})
 public class Producto {
 
     @Id
@@ -43,6 +48,7 @@ public class Producto {
 
     private Integer stockActual;
     private Integer stockMinimo;
+    private Integer stockMaximo;
     private String unidadMedida;
     
     private String ubicacionFila;

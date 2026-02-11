@@ -35,4 +35,22 @@ public interface DevolucionVentaRepository extends JpaRepository<DevolucionVenta
     );
 
     List<DevolucionVenta> findTop10ByOrderByFechaCreacionDesc();
+
+    /**
+     * Suma total devuelto en efectivo en un periodo
+     */
+    @Query("SELECT COALESCE(SUM(d.totalDevuelto), 0) FROM DevolucionVenta d " +
+           "WHERE d.metodoReembolso = 'EFECTIVO' AND d.estado = 'PROCESADA' " +
+           "AND d.fechaEmision BETWEEN :inicio AND :fin")
+    java.math.BigDecimal sumDevolucionesEfectivoPorPeriodo(
+           @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Cuenta devoluciones procesadas en efectivo en un periodo
+     */
+    @Query("SELECT COUNT(d) FROM DevolucionVenta d " +
+           "WHERE d.metodoReembolso = 'EFECTIVO' AND d.estado = 'PROCESADA' " +
+           "AND d.fechaEmision BETWEEN :inicio AND :fin")
+    long countDevolucionesEfectivoPorPeriodo(
+           @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 }

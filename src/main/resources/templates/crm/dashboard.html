@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_dashboard'">
+<head>
+    <title>CRM - Dashboard</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0"><i class="fas fa-handshake mr-2"></i>CRM - Dashboard Comercial</h1>
+                <div>
+                    <a href="/crm/pipeline" class="btn btn-primary btn-sm"><i class="fas fa-columns mr-1"></i>Pipeline</a>
+                    <a href="/crm/leads" class="btn btn-success btn-sm"><i class="fas fa-user-plus mr-1"></i>Leads</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- KPIs Principales -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${stats.totalLeads}">0</h3>
+                            <p>Leads Activos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-user-plus"></i></div>
+                        <a href="/crm/leads" class="small-box-footer">Ver leads <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${stats.oportunidadesActivas}">0</h3>
+                            <p>Oportunidades Activas</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-funnel-dollar"></i></div>
+                        <a href="/crm/pipeline" class="small-box-footer">Ver pipeline <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>S/ <span th:text="${#numbers.formatDecimal(stats.valorPipeline, 1, 2)}">0.00</span></h3>
+                            <p>Valor del Pipeline</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                        <a href="/crm/pipeline" class="small-box-footer">Detalle <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${stats.actividadesVencidas}">0</h3>
+                            <p>Tareas Vencidas</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <a href="/crm/actividades" class="small-box-footer">Ver tareas <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Segunda fila: Metricas del mes -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-success"><i class="fas fa-trophy"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ganadas este mes</span>
+                            <span class="info-box-number" th:text="${stats.ganadasMes}">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-primary"><i class="fas fa-chart-line"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Valor ganado mes</span>
+                            <span class="info-box-number">S/ <span th:text="${#numbers.formatDecimal(stats.valorGanadasMes, 1, 2)}">0.00</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-info"><i class="fas fa-percentage"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Tasa Conversion</span>
+                            <span class="info-box-number"><span th:text="${stats.tasaConversion}">0</span>%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-secondary"><i class="fas fa-users"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Clientes Totales</span>
+                            <span class="info-box-number" th:text="${stats.totalClientes}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graficos -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i>Pipeline por Etapa</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartPipeline" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i>Leads por Origen</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartOrigenes" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tareas pendientes rapidas -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-tasks mr-2"></i>Actividades Pendientes (<span th:text="${stats.actividadesPendientes}">0</span>)</h3>
+                            <div class="card-tools">
+                                <a href="/crm/actividades" class="btn btn-tool"><i class="fas fa-external-link-alt"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<div layout:fragment="scripts">
+<script th:inline="javascript">
+$(document).ready(function() {
+    var statsData = /*[[${stats}]]*/ {};
+
+    // Chart Pipeline por Etapa
+    var etapas = statsData.estadisticasPorEtapa || [];
+    var labelsEtapa = [];
+    var dataCountEtapa = [];
+    var dataValorEtapa = [];
+    var coloresEtapa = ['#17a2b8', '#007bff', '#ffc107', '#fd7e14', '#28a745', '#dc3545'];
+
+    for (var i = 0; i < etapas.length; i++) {
+        labelsEtapa.push(etapas[i][0]);
+        dataCountEtapa.push(etapas[i][1]);
+        dataValorEtapa.push(etapas[i][2]);
+    }
+
+    if (labelsEtapa.length > 0) {
+        new Chart(document.getElementById('chartPipeline'), {
+            type: 'bar',
+            data: {
+                labels: labelsEtapa,
+                datasets: [{
+                    label: 'Cantidad',
+                    data: dataCountEtapa,
+                    backgroundColor: coloresEtapa.slice(0, labelsEtapa.length)
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+
+    // Chart Leads por Origen
+    var origenes = statsData.leadsPorOrigen || [];
+    var labelsOrigen = [];
+    var dataOrigen = [];
+    var coloresOrigen = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'];
+
+    for (var j = 0; j < origenes.length; j++) {
+        labelsOrigen.push(origenes[j][0] || 'Sin especificar');
+        dataOrigen.push(origenes[j][1]);
+    }
+
+    if (labelsOrigen.length > 0) {
+        new Chart(document.getElementById('chartOrigenes'), {
+            type: 'doughnut',
+            data: {
+                labels: labelsOrigen,
+                datasets: [{
+                    data: dataOrigen,
+                    backgroundColor: coloresOrigen.slice(0, labelsOrigen.length)
+                }]
+            },
+            options: { responsive: true }
+        });
+    } else {
+        $('#chartOrigenes').parent().html('<div class="text-center text-muted py-5"><i class="fas fa-chart-pie fa-3x mb-3"></i><p>No hay datos de leads aun</p></div>');
+    }
+});
+</script>
+</div>
+
+</body>
+</html>

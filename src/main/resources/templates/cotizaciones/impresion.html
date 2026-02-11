@@ -5,37 +5,50 @@
     <title th:text="'Cotizacion-' + ${cotizacion.serie} + '-' + ${cotizacion.numero}"></title>
     <style>
         body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px; }
-        
+
         .header { width: 100%; overflow: hidden; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
         .company-info { float: left; width: 60%; }
-        
-        /* ESTILO PARA EL LOGO */
         .logo-img { max-height: 80px; max-width: 250px; margin-bottom: 10px; display: block; object-fit: contain; }
-
         .company-info h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
         .company-info p { margin: 2px 0; }
-        
-        .invoice-box { float: right; width: 35%; border: 1px solid #333; padding: 10px; text-align: center; border-radius: 8px; }
-        .invoice-box h3 { margin: 0; font-size: 18px; }
-        .invoice-box h2 { margin: 10px 0; font-size: 20px; color: #007bff; }
-        
-        .client-info { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .label { font-weight: bold; width: 120px; display: inline-block; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #333; color: white; text-align: center; }
-        td.num { text-align: right; }
+        .invoice-box { float: right; width: 35%; border: 2px solid #007bff; padding: 10px; text-align: center; border-radius: 8px; }
+        .invoice-box h3 { margin: 0; font-size: 16px; }
+        .invoice-box h2 { margin: 8px 0; font-size: 20px; color: #007bff; }
+        .invoice-box p { margin: 0; font-weight: bold; }
 
-        .totals { float: right; width: 300px; }
-        .totals table { border: none; }
-        .totals th { background: none; color: #333; text-align: right; border: none; }
-        .totals td { border: none; border-bottom: 1px solid #ddd; text-align: right; }
-        .grand-total { font-size: 18px; font-weight: bold; }
+        .client-info { margin-bottom: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; display: flex; }
+        .client-col { flex: 1; }
+        .client-col .label { font-weight: bold; display: inline-block; min-width: 120px; }
+
+        table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table.items th, table.items td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        table.items th { background-color: #333; color: white; text-align: center; font-size: 12px; }
+        table.items td.num { text-align: right; }
+        table.items td.cat { text-align: center; font-size: 11px; color: #666; }
+
+        .totals-wrapper { display: flex; justify-content: flex-end; }
+        .totals { width: 320px; }
+        .totals table { width: 100%; border-collapse: collapse; }
+        .totals td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+        .totals td.label { text-align: right; font-weight: bold; }
+        .totals td.value { text-align: right; }
+        .totals .grand-total td { font-size: 16px; font-weight: bold; border-top: 2px solid #333; border-bottom: none; }
+
+        .credit-box { background: #fff3f3; border: 1px solid #f5c6cb; padding: 10px; margin: 15px 0; border-radius: 5px; }
+        .credit-box h4 { margin: 0 0 5px 0; color: #721c24; font-size: 13px; }
+        .credit-box p { margin: 2px 0; font-size: 13px; }
+        .credit-box .saldo { color: #dc3545; font-weight: bold; }
+
+        .section-title { font-weight: bold; font-size: 13px; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+        .section-content { font-size: 13px; margin-bottom: 10px; white-space: pre-line; }
+
+        .footer { margin-top: 40px; font-size: 11px; text-align: center; border-top: 1px dashed #999; padding-top: 10px; color: #666; }
 
         .no-print { text-align: center; margin-bottom: 20px; }
-        .btn-print { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
+        .btn-print { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 14px; margin: 0 5px; }
+        .btn-print.secondary { background: #6c757d; }
+        .btn-print.pdf { background: #dc3545; }
 
         @media print {
             .no-print { display: none; }
@@ -47,69 +60,120 @@
 <body>
 
     <div class="no-print">
-        <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR / GUARDAR PDF</button>
-        <button class="btn-print" style="background:#6c757d; margin-left:10px;" onclick="window.close()">CERRAR</button>
+        <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i> IMPRIMIR</button>
+        <a th:href="@{/cotizaciones/pdf/{id}(id=${cotizacion.id})}" class="btn-print pdf" target="_blank">PDF Profesional</a>
+        <button class="btn-print secondary" onclick="window.close()">CERRAR</button>
     </div>
 
     <div class="header">
         <div class="company-info">
-            <img th:if="${config.logoBase64 != null}" 
-                 th:src="'data:image/png;base64,' + ${config.logoBase64}" 
+            <img th:if="${config.logoBase64 != null}"
+                 th:src="'data:image/png;base64,' + ${config.logoBase64}"
                  class="logo-img" alt="Logo Empresa">
-            
+
             <h1 th:if="${config.logoBase64 == null}" th:text="${config.nombreEmpresa}">NOMBRE EMPRESA</h1>
             <h2 th:if="${config.logoBase64 != null}" th:text="${config.nombreEmpresa}" style="margin:0; font-size:1.2em;">NOMBRE EMPRESA</h2>
-            
+
             <p th:text="${config.direccion}">Dirección</p>
-            <p th:text="'Teléfono: ' + ${config.telefono}"></p>
-            <p th:text="'Email: ' + ${config.email}"></p>
+            <p th:if="${config.telefono != null}" th:text="'Teléfono: ' + ${config.telefono}"></p>
+            <p th:if="${config.email != null}" th:text="'Email: ' + ${config.email}"></p>
         </div>
         <div class="invoice-box">
             <h3 th:text="'R.U.C. ' + ${config.ruc}">R.U.C.</h3>
-            <h2>COTIZACIÓN</h2> 
+            <h2>COTIZACIÓN</h2>
             <p th:text="${cotizacion.serie} + ' - ' + ${#numbers.formatInteger(cotizacion.numero, 6)}"></p>
         </div>
     </div>
 
     <div class="client-info">
-        <div class="row">
-            <div><span class="label">Cliente:</span> <span th:text="${cotizacion.clienteNombre}"></span></div>
-            <div><span class="label">Fecha Emisión:</span> <span th:text="${cotizacion.fechaEmision}"></span></div>
+        <div class="client-col">
+            <p><span class="label">Señor(es):</span> <span th:text="${cotizacion.clienteNombre ?: '-'}"></span></p>
+            <p><span class="label">Documento:</span> <span th:text="${cotizacion.clienteDocumento ?: '-'}"></span></p>
+            <p th:if="${cotizacion.clienteTelefono != null && !cotizacion.clienteTelefono.isEmpty()}">
+                <span class="label">Teléfono:</span> <span th:text="${cotizacion.clienteTelefono}"></span>
+            </p>
         </div>
-        <div class="row">
-            <div><span class="label">Documento:</span> <span th:text="${cotizacion.clienteDocumento}"></span></div>
-            <div><span class="label">Validez:</span> 15 Días</div>
+        <div class="client-col">
+            <p><span class="label">Fecha Emisión:</span>
+                <span th:text="${cotizacion.fechaEmision != null ? #temporals.format(cotizacion.fechaEmision, 'dd/MM/yyyy') : '-'}"></span>
+            </p>
+            <p><span class="label">Válido hasta:</span>
+                <span th:text="${cotizacion.fechaVencimiento != null ? #temporals.format(cotizacion.fechaVencimiento, 'dd/MM/yyyy') : '-'}"></span>
+            </p>
+            <p><span class="label">Condición:</span> <span th:text="${cotizacion.formaPago ?: 'CONTADO'}"></span></p>
+            <p th:if="${cotizacion.metodoPago != null}">
+                <span class="label">Método:</span> <span th:text="${cotizacion.metodoPago}"></span>
+            </p>
         </div>
     </div>
 
-    <table>
+    <table class="items">
         <thead>
             <tr>
-                <th width="5%">Cant.</th>
-                <th>Descripción / Detalle</th> <th width="15%">P. Unit</th>
-                <th width="15%">Importe</th>
+                <th width="6%">Cant.</th>
+                <th>Descripción</th>
+                <th width="12%">Categoría</th>
+                <th width="12%">P. Unit.</th>
+                <th width="12%">Importe</th>
             </tr>
         </thead>
         <tbody>
             <tr th:each="item : ${cotizacion.items}">
                 <td class="num" th:text="${#numbers.formatDecimal(item.cantidad, 1, 'POINT', 0, 'COMMA')}"></td>
                 <td th:text="${item.descripcion}"></td>
-                <td class="num" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
-                <td class="num" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
+                <td class="cat" th:text="${item.tipoItem == 'SERVICIO' && item.categoriaServicio != null ? item.categoriaServicio.replace('_', ' ') : '-'}"></td>
+                <td class="num" th:text="'S/ ' + ${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
+                <td class="num" th:text="'S/ ' + ${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
             </tr>
         </tbody>
     </table>
 
-    <div class="totals">
-        <table>
-            <tr>
-                <th class="grand-total">TOTAL A PAGAR:</th>
-                <td class="grand-total" th:text="'S/ ' + ${#numbers.formatDecimal(cotizacion.total, 1, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
-        </table>
+    <div class="totals-wrapper">
+        <div class="totals">
+            <table>
+                <tr>
+                    <td class="label">Op. Gravada:</td>
+                    <td class="value" th:text="'S/ ' + ${cotizacion.subtotal != null ? #numbers.formatDecimal(cotizacion.subtotal, 1, 'COMMA', 2, 'POINT') : '0.00'}"></td>
+                </tr>
+                <tr>
+                    <td class="label">IGV (18%):</td>
+                    <td class="value" th:text="'S/ ' + ${cotizacion.igv != null ? #numbers.formatDecimal(cotizacion.igv, 1, 'COMMA', 2, 'POINT') : '0.00'}"></td>
+                </tr>
+                <tr th:if="${cotizacion.descuento != null && cotizacion.descuento > 0}">
+                    <td class="label">Descuento:</td>
+                    <td class="value" th:text="'-S/ ' + ${#numbers.formatDecimal(cotizacion.descuento, 1, 'COMMA', 2, 'POINT')}"></td>
+                </tr>
+                <tr class="grand-total">
+                    <td class="label">TOTAL:</td>
+                    <td class="value" th:text="'S/ ' + ${#numbers.formatDecimal(cotizacion.total, 1, 'COMMA', 2, 'POINT')}"></td>
+                </tr>
+            </table>
+        </div>
     </div>
-    
-    <div style="margin-top: 50px; font-size: 12px; text-align: center; border-top: 1px dashed #999; padding-top: 10px;">
+
+    <!-- Info Crédito -->
+    <div th:if="${cotizacion.formaPago == 'CREDITO'}" class="credit-box">
+        <h4>INFORMACIÓN DE CRÉDITO</h4>
+        <p th:if="${cotizacion.montoInicial != null && cotizacion.montoInicial > 0}">
+            Monto Inicial: <strong th:text="'S/ ' + ${#numbers.formatDecimal(cotizacion.montoInicial, 1, 'COMMA', 2, 'POINT')}"></strong>
+        </p>
+        <p>Saldo Pendiente: <span class="saldo" th:text="'S/ ' + ${#numbers.formatDecimal(cotizacion.saldoPendiente != null ? cotizacion.saldoPendiente : 0, 1, 'COMMA', 2, 'POINT')}"></span></p>
+        <p th:if="${cotizacion.diasCredito != null}">Plazo: <span th:text="${cotizacion.diasCredito}"></span> días</p>
+    </div>
+
+    <!-- Condiciones Comerciales -->
+    <div th:if="${cotizacion.condiciones != null && !cotizacion.condiciones.isEmpty()}">
+        <div class="section-title">Condiciones Comerciales</div>
+        <div class="section-content" th:text="${cotizacion.condiciones}"></div>
+    </div>
+
+    <!-- Observaciones -->
+    <div th:if="${cotizacion.observaciones != null && !cotizacion.observaciones.isEmpty()}">
+        <div class="section-title">Observaciones</div>
+        <div class="section-content" th:text="${cotizacion.observaciones}"></div>
+    </div>
+
+    <div class="footer">
         Este documento es una cotización preliminar y no representa un comprobante de pago.<br>
         Los precios pueden variar después de la fecha de validez.<br>
         <strong>Gracias por su preferencia.</strong>

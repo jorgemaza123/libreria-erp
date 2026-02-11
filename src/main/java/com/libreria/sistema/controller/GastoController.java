@@ -3,6 +3,7 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.service.CajaService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/gastos")
+@PreAuthorize("hasPermission(null, 'GASTOS_VER')")
 public class GastoController {
 
     private final CajaService cajaService;
@@ -42,7 +44,8 @@ public class GastoController {
     }
 
     @PostMapping("/guardar")
-    public String registrarGasto(@RequestParam String concepto, 
+    @PreAuthorize("hasPermission(null, 'GASTOS_CREAR')")
+    public String registrarGasto(@RequestParam String concepto,
                                  @RequestParam BigDecimal monto, 
                                  RedirectAttributes attr) {
         try {

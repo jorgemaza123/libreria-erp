@@ -330,6 +330,32 @@ public class RolePermissionService {
         // NOTIFICACIONES
         permisos.add(crearPermisoSiNoExiste("NOTIFICACIONES", "VER", "NOTIFICACIONES_VER", "Ver notificaciones"));
 
+        // CRM
+        permisos.add(crearPermisoSiNoExiste("CRM", "VER", "CRM_VER", "Ver módulo CRM"));
+        permisos.add(crearPermisoSiNoExiste("CRM", "CREAR", "CRM_CREAR", "Crear leads, oportunidades y actividades"));
+        permisos.add(crearPermisoSiNoExiste("CRM", "EDITAR", "CRM_EDITAR", "Editar y convertir leads/oportunidades"));
+        permisos.add(crearPermisoSiNoExiste("CRM", "ELIMINAR", "CRM_ELIMINAR", "Eliminar registros CRM"));
+        permisos.add(crearPermisoSiNoExiste("CRM", "PIPELINE", "CRM_PIPELINE", "Gestionar pipeline de ventas"));
+
+        // GASTOS
+        permisos.add(crearPermisoSiNoExiste("GASTOS", "VER", "GASTOS_VER", "Ver gastos operativos"));
+        permisos.add(crearPermisoSiNoExiste("GASTOS", "CREAR", "GASTOS_CREAR", "Registrar gastos operativos"));
+
+        // SOLICITUDES DE PRODUCTO
+        permisos.add(crearPermisoSiNoExiste("SOLICITUDES", "VER", "SOLICITUDES_VER", "Ver solicitudes de producto"));
+        permisos.add(crearPermisoSiNoExiste("SOLICITUDES", "EDITAR", "SOLICITUDES_EDITAR", "Atender solicitudes de producto"));
+        permisos.add(crearPermisoSiNoExiste("SOLICITUDES", "ELIMINAR", "SOLICITUDES_ELIMINAR", "Eliminar solicitudes de producto"));
+
+        // LISTAS ESCOLARES
+        permisos.add(crearPermisoSiNoExiste("LISTAS_ESCOLARES", "VER", "LISTAS_ESCOLARES_VER", "Ver listas escolares"));
+        permisos.add(crearPermisoSiNoExiste("LISTAS_ESCOLARES", "CREAR", "LISTAS_ESCOLARES_CREAR", "Crear listas escolares"));
+        permisos.add(crearPermisoSiNoExiste("LISTAS_ESCOLARES", "EDITAR", "LISTAS_ESCOLARES_EDITAR", "Editar listas escolares"));
+
+        // STOCK
+        permisos.add(crearPermisoSiNoExiste("STOCK", "VER", "STOCK_VER", "Ver módulo de stock"));
+        permisos.add(crearPermisoSiNoExiste("STOCK", "AJUSTAR", "STOCK_AJUSTAR", "Ajustar stock de productos"));
+        permisos.add(crearPermisoSiNoExiste("STOCK", "MOVIMIENTOS", "STOCK_MOVIMIENTOS", "Ver movimientos de stock"));
+
         log.info("Permisos por defecto creados/verificados");
     }
 
@@ -383,6 +409,20 @@ public class RolePermissionService {
         agregarPermiso(permisosVendedor, "COTIZACIONES_CONVERTIR");
         agregarPermiso(permisosVendedor, "COBRANZAS_VER");
         agregarPermiso(permisosVendedor, "COBRANZAS_CREAR");
+        agregarPermiso(permisosVendedor, "CRM_VER");
+        agregarPermiso(permisosVendedor, "CRM_CREAR");
+        agregarPermiso(permisosVendedor, "CRM_EDITAR");
+        agregarPermiso(permisosVendedor, "CRM_PIPELINE");
+        agregarPermiso(permisosVendedor, "LISTAS_ESCOLARES_VER");
+        agregarPermiso(permisosVendedor, "LISTAS_ESCOLARES_CREAR");
+        agregarPermiso(permisosVendedor, "LISTAS_ESCOLARES_EDITAR");
+        agregarPermiso(permisosVendedor, "SOLICITUDES_VER");
+        agregarPermiso(permisosVendedor, "NOTIFICACIONES_VER");
+        agregarPermiso(permisosVendedor, "INCIDENCIAS_VER");
+        agregarPermiso(permisosVendedor, "INCIDENCIAS_CREAR");
+        agregarPermiso(permisosVendedor, "GASTOS_VER");
+        agregarPermiso(permisosVendedor, "GASTOS_CREAR");
+        agregarPermiso(permisosVendedor, "STOCK_VER");
         vendedor.setPermissions(permisosVendedor);
         roleRepository.save(vendedor);
 
@@ -403,6 +443,10 @@ public class RolePermissionService {
         agregarPermiso(permisosContador, "COMPRAS_VER");
         agregarPermiso(permisosContador, "CAJA_VER");
         agregarPermiso(permisosContador, "AUDITORIA_VER");
+        agregarPermiso(permisosContador, "GASTOS_VER");
+        agregarPermiso(permisosContador, "NOTIFICACIONES_VER");
+        agregarPermiso(permisosContador, "STOCK_VER");
+        agregarPermiso(permisosContador, "STOCK_MOVIMIENTOS");
         contador.setPermissions(permisosContador);
         roleRepository.save(contador);
 
@@ -424,6 +468,12 @@ public class RolePermissionService {
         agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_VER");
         agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_CREAR");
         agregarPermiso(permisosAlmacenero, "TOMA_INVENTARIO_PROCESAR");
+        agregarPermiso(permisosAlmacenero, "SOLICITUDES_VER");
+        agregarPermiso(permisosAlmacenero, "SOLICITUDES_EDITAR");
+        agregarPermiso(permisosAlmacenero, "NOTIFICACIONES_VER");
+        agregarPermiso(permisosAlmacenero, "STOCK_VER");
+        agregarPermiso(permisosAlmacenero, "STOCK_AJUSTAR");
+        agregarPermiso(permisosAlmacenero, "STOCK_MOVIMIENTOS");
         almacenero.setPermissions(permisosAlmacenero);
         roleRepository.save(almacenero);
 

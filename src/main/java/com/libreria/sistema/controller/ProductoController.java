@@ -70,6 +70,7 @@ public class ProductoController {
     }
 
     @GetMapping("/nuevo")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_CREAR')")
     public String nuevo(Model model) {
         Producto p = new Producto();
         p.setActivo(true);
@@ -83,6 +84,7 @@ public class ProductoController {
     }
 
     @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes attributes) {
         return productoService.obtenerPorId(id).map(producto -> {
             model.addAttribute("producto", producto);
@@ -191,6 +193,7 @@ public class ProductoController {
     }
 
     @GetMapping("/eliminar/{id}")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_ELIMINAR')")
     public String eliminar(@PathVariable Long id, RedirectAttributes attributes) {
         try {
             productoService.eliminar(id);

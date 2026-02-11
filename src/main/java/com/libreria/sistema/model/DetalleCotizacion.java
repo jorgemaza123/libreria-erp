@@ -18,8 +18,12 @@ public class DetalleCotizacion {
     private Cotizacion cotizacion;
 
     @ManyToOne
-    @JoinColumn(name = "producto_id", nullable = false)
+    @JoinColumn(name = "producto_id")
     private Producto producto;
+
+    private String tipoItem = "PRODUCTO"; // PRODUCTO o SERVICIO
+
+    private String categoriaServicio; // SUBLIMACION, COPIAS, IMPRESION, etc.
 
     private BigDecimal cantidad;
     private String descripcion;
@@ -28,5 +32,11 @@ public class DetalleCotizacion {
     private BigDecimal precioUnitario;
 
     @Column(precision = 10, scale = 2)
+    private BigDecimal costoEstimado; // Costo estimado para calcular margen
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    @Column(columnDefinition = "TEXT")
+    private String parametrosJson; // JSON libre para parámetros personalizados del servicio
 }

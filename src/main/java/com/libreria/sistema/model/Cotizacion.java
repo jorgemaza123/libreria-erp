@@ -26,21 +26,55 @@ public class Cotizacion {
     // Cliente
     private String clienteDocumento;
     private String clienteNombre;
-    private String clienteTelefono; // <--- NUEVO CAMPO
-    @Column(columnDefinition = "TEXT") // Para texto largo (Diagnóstico/Falla)
+    private String clienteTelefono;
+
+    @Column(columnDefinition = "TEXT")
     private String observaciones;
 
-    // Totales
+    @Column(columnDefinition = "TEXT")
+    private String condiciones;
+
+    // Totales fiscales
+    @Column(precision = 10, scale = 2)
+    private BigDecimal subtotal;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal igv;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal descuento;
+
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
 
-    private String estado; 
+    // Forma de pago
+    private String formaPago;    // CONTADO o CREDITO
+    private String metodoPago;   // EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal montoInicial;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal saldoPendiente;
+
+    private Integer diasCredito;
+
+    // Estado: BORRADOR, EMITIDA, ENVIADA, APROBADA, CONVERTIDA, VENCIDA, ANULADA
+    private String estado;
+
+    // Trazabilidad a venta generada
+    @Column(name = "venta_id")
+    private Long ventaId;
 
     private LocalDateTime fechaCreacion;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_id")
+    private Cliente clienteEntity;
 
     @OneToMany(mappedBy = "cotizacion", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<DetalleCotizacion> items = new ArrayList<>();
@@ -49,7 +83,11 @@ public class Cotizacion {
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
         this.fechaEmision = LocalDate.now();
-        this.fechaVencimiento = LocalDate.now().plusDays(15);
-        if(this.estado == null) this.estado = "EMITIDO";
+        if (this.fechaVencimiento == null) this.fechaVencimiento = LocalDate.now().plusDays(15);
+        if (this.estado == null) this.estado = "EMITIDA";
+        if (this.formaPago == null) this.formaPago = "CONTADO";
+        if (this.descuento == null) this.descuento = BigDecimal.ZERO;
+        if (this.montoInicial == null) this.montoInicial = BigDecimal.ZERO;
+        if (this.saldoPendiente == null) this.saldoPendiente = BigDecimal.ZERO;
     }
 }

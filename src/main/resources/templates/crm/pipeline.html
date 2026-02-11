@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='crm_pipeline'">
+<head>
+    <title>CRM - Pipeline</title>
+    <style>
+        .kanban-column { min-height: 400px; background: #f4f6f9; border-radius: 8px; }
+        .kanban-card {
+            background: white; border-radius: 6px; padding: 12px; margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12); cursor: grab; border-left: 4px solid #007bff;
+            transition: box-shadow 0.2s;
+        }
+        .kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .kanban-card.ui-sortable-helper { box-shadow: 0 8px 25px rgba(0,0,0,0.3); transform: rotate(2deg); }
+        .kanban-card .card-valor { font-weight: bold; color: #28a745; }
+        .kanban-header { padding: 10px 15px; border-radius: 8px 8px 0 0; color: white; font-weight: bold; }
+        .etapa-NUEVO .kanban-header { background: #17a2b8; }
+        .etapa-NUEVO .kanban-card { border-left-color: #17a2b8; }
+        .etapa-CONTACTADO .kanban-header { background: #007bff; }
+        .etapa-CONTACTADO .kanban-card { border-left-color: #007bff; }
+        .etapa-COTIZADO .kanban-header { background: #ffc107; }
+        .etapa-COTIZADO .kanban-card { border-left-color: #ffc107; }
+        .etapa-NEGOCIACION .kanban-header { background: #fd7e14; }
+        .etapa-NEGOCIACION .kanban-card { border-left-color: #fd7e14; }
+        .sortable-placeholder { background: #e9ecef; border: 2px dashed #adb5bd; border-radius: 6px; margin-bottom: 8px; min-height: 60px; }
+    </style>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0"><i class="fas fa-columns mr-2"></i>Pipeline de Ventas</h1>
+                <button class="btn btn-success" onclick="abrirModalOportunidad()">
+                    <i class="fas fa-plus mr-1"></i>Nueva Oportunidad
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <th:block th:each="entry : ${pipeline}">
+                    <div class="col-lg-3 col-md-6" th:classappend="'etapa-' + ${entry.key}">
+                        <div class="kanban-header d-flex justify-content-between align-items-center">
+                            <span th:text="${entry.key}">ETAPA</span>
+                            <span class="badge badge-light" th:text="${entry.value.size()}">0</span>
+                        </div>
+                        <div class="kanban-column p-2 sortable-list" th:data-etapa="${entry.key}">
+                            <div th:each="op : ${entry.value}" class="kanban-card" th:data-id="${op.id}">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <strong class="small" th:text="${op.titulo}">Titulo</strong>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link p-0 text-muted" data-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                            <a class="dropdown-item" href="#" th:onclick="'verDetalle(' + ${op.id} + ')'"><i class="fas fa-eye mr-2"></i>Ver detalle</a>
+                                            <a class="dropdown-item text-success" href="#" th:onclick="'marcarGanada(' + ${op.id} + ')'"><i class="fas fa-trophy mr-2"></i>Marcar ganada</a>
+                                            <a class="dropdown-item text-danger" href="#" th:onclick="'marcarPerdida(' + ${op.id} + ')'"><i class="fas fa-times mr-2"></i>Marcar perdida</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="small text-muted mb-1">
+                                    <i class="fas fa-user mr-1"></i><span th:text="${op.cliente != null ? op.cliente.nombreRazonSocial : ''}"></span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="card-valor small" th:text="${op.valorEstimado != null ? 'S/ ' + #numbers.formatDecimal(op.valorEstimado, 1, 2) : ''}"></span>
+                                    <small class="text-muted" th:if="${op.fechaCierreEstimada}" th:text="${#temporals.format(op.fechaCierreEstimada, 'dd/MM')}"></small>
+                                </div>
+                            </div>
+                            <div th:if="${entry.value.isEmpty()}" class="text-center py-4 text-muted small">
+                                <i class="fas fa-inbox"></i><br>Sin oportunidades
+                            </div>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Nueva Oportunidad -->
+<div class="modal fade" id="modalOportunidad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-funnel-dollar mr-2"></i>Nueva Oportunidad</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="opId">
+                <div class="form-group">
+                    <label>Titulo *</label>
+                    <input type="text" id="opTitulo" class="form-control" placeholder="Ej: Venta de utiles escolares">
+                </div>
+                <div class="form-group">
+                    <label>Cliente *</label>
+                    <select id="opCliente" class="form-control select2" style="width: 100%;">
+                        <option value="">Seleccionar cliente...</option>
+                        <option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nombreRazonSocial + ' - ' + c.numeroDocumento}"></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vendedor *</label>
+                    <select id="opVendedor" class="form-control">
+                        <option th:each="v : ${vendedores}" th:value="${v.id}" th:text="${v.nombreCompleto}"></option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Valor Estimado (S/)</label>
+                            <input type="number" step="0.01" id="opValor" class="form-control" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Cierre Estimado</label>
+                            <input type="date" id="opFechaCierre" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea id="opNotas" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarOportunidad()">
+                    <i class="fas fa-save mr-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle -->
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="detalleTitle">Detalle Oportunidad</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" id="detalleBody">
+                <div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Inicializar sortable para drag & drop
+    $('.sortable-list').sortable({
+        connectWith: '.sortable-list',
+        placeholder: 'sortable-placeholder',
+        handle: '.kanban-card',
+        items: '.kanban-card',
+        tolerance: 'pointer',
+        receive: function(event, ui) {
+            var cardId = ui.item.data('id');
+            var nuevaEtapa = $(this).data('etapa');
+            var orden = ui.item.index();
+
+            $.ajax({
+                url: '/crm/oportunidades/' + cardId + '/etapa',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ etapa: nuevaEtapa, orden: orden }),
+                success: function(resp) {
+                    // Actualizar badge contadores
+                    actualizarContadores();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Etapa actualizada', showConfirmButton: false, timer: 1500 });
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', 'No se pudo actualizar la etapa', 'error');
+                    location.reload();
+                }
+            });
+        }
+    });
+
+    if ($('#opCliente').length) {
+        $('#opCliente').select2({ theme: 'bootstrap4', dropdownParent: $('#modalOportunidad') });
+    }
+});
+
+function actualizarContadores() {
+    $('.sortable-list').each(function() {
+        var count = $(this).children('.kanban-card').length;
+        $(this).prev('.kanban-header').find('.badge').text(count);
+    });
+}
+
+function abrirModalOportunidad() {
+    $('#opId, #opTitulo, #opValor, #opNotas').val('');
+    $('#opFechaCierre').val('');
+    $('#opCliente').val('').trigger('change');
+    $('#modalOportunidad').modal('show');
+}
+
+function guardarOportunidad() {
+    var titulo = $('#opTitulo').val().trim();
+    var clienteId = $('#opCliente').val();
+    var vendedorId = $('#opVendedor').val();
+
+    if (!titulo || !clienteId || !vendedorId) {
+        Swal.fire('Error', 'Titulo, cliente y vendedor son obligatorios', 'error');
+        return;
+    }
+
+    var datos = {
+        id: $('#opId').val(),
+        titulo: titulo,
+        clienteId: clienteId,
+        vendedorId: vendedorId,
+        valorEstimado: $('#opValor').val(),
+        fechaCierreEstimada: $('#opFechaCierre').val(),
+        notas: $('#opNotas').val().trim()
+    };
+
+    $.ajax({
+        url: '/crm/oportunidades/guardar',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datos),
+        success: function(resp) {
+            if (resp.success) {
+                $('#modalOportunidad').modal('hide');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Oportunidad creada', showConfirmButton: false, timer: 2000 });
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        },
+        error: function(xhr) {
+            var msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error';
+            Swal.fire('Error', msg, 'error');
+        }
+    });
+}
+
+function verDetalle(id) {
+    $('#detalleBody').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+    $('#modalDetalle').modal('show');
+
+    $.get('/crm/oportunidades/' + id, function(data) {
+        var html = '<dl class="row mb-0">';
+        html += '<dt class="col-sm-4">Titulo</dt><dd class="col-sm-8">' + data.titulo + '</dd>';
+        html += '<dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + data.clienteNombre + '</dd>';
+        html += '<dt class="col-sm-4">Vendedor</dt><dd class="col-sm-8">' + data.vendedorNombre + '</dd>';
+        html += '<dt class="col-sm-4">Etapa</dt><dd class="col-sm-8"><span class="badge badge-info">' + data.etapa + '</span></dd>';
+        html += '<dt class="col-sm-4">Valor Estimado</dt><dd class="col-sm-8">S/ ' + (data.valorEstimado ? parseFloat(data.valorEstimado).toFixed(2) : '0.00') + '</dd>';
+        if (data.valorReal) html += '<dt class="col-sm-4">Valor Real</dt><dd class="col-sm-8">S/ ' + parseFloat(data.valorReal).toFixed(2) + '</dd>';
+        if (data.fechaCierreEstimada) html += '<dt class="col-sm-4">Cierre Est.</dt><dd class="col-sm-8">' + data.fechaCierreEstimada + '</dd>';
+        if (data.notas) html += '<dt class="col-sm-4">Notas</dt><dd class="col-sm-8">' + data.notas + '</dd>';
+        if (data.motivoPerdida) html += '<dt class="col-sm-4">Motivo Perdida</dt><dd class="col-sm-8 text-danger">' + data.motivoPerdida + '</dd>';
+        html += '</dl>';
+        $('#detalleTitle').text(data.titulo);
+        $('#detalleBody').html(html);
+    });
+}
+
+function marcarGanada(id) {
+    Swal.fire({
+        title: 'Marcar como Ganada',
+        input: 'number',
+        inputLabel: 'Valor real de la venta (S/)',
+        inputPlaceholder: '0.00',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-trophy"></i> Marcar Ganada',
+        confirmButtonColor: '#28a745'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/crm/oportunidades/' + id + '/ganada',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ valorReal: result.value }),
+                success: function(resp) {
+                    Swal.fire('Ganada!', 'Oportunidad marcada como ganada', 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', 'No se pudo actualizar', 'error');
+                }
+            });
+        }
+    });
+}
+
+function marcarPerdida(id) {
+    Swal.fire({
+        title: 'Marcar como Perdida',
+        input: 'text',
+        inputLabel: 'Motivo de la perdida',
+        inputPlaceholder: 'Ej: Precio alto, competencia, etc.',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-times"></i> Marcar Perdida',
+        confirmButtonColor: '#dc3545'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/crm/oportunidades/' + id + '/perdida',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ motivo: result.value || 'No especificado' }),
+                success: function(resp) {
+                    Swal.fire('Perdida', 'Oportunidad marcada como perdida', 'info');
+                    setTimeout(function() { location.reload(); }, 1500);
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', 'No se pudo actualizar', 'error');
+                }
+            });
+        }
+    });
+}
+</script>
+</div>
+
+</body>
+</html>

@@ -232,6 +232,74 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<Venta> findDeudasPorClienteId(@Param("clienteId") Long clienteId);
 
     // =====================================================
+    //  CONSULTAS OPTIMIZADAS PARA DASHBOARD (FASE 1+2)
+    // =====================================================
+
+    /**
+     * Suma ventas con estados validos KPI en un periodo.
+     * Excluye ANULADO y DEVUELTO_TOTAL.
+     */
+    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v " +
+           "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL')")
+    BigDecimal sumVentasValidasByPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Cuenta ventas con estados validos KPI en un periodo
+     */
+    @Query("SELECT COUNT(v) FROM Venta v " +
+           "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL')")
+    long countVentasValidasByPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Total creditos pendientes (saldo > 0, no anulados)
+     */
+    @Query("SELECT COALESCE(SUM(v.saldoPendiente), 0) FROM Venta v " +
+           "WHERE v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    BigDecimal sumCreditosPendientes();
+
+    /**
+     * Conteo de ventas por forma de pago (CONTADO vs CREDITO)
+     */
+    @Query("SELECT v.formaPago, COUNT(v) FROM Venta v " +
+           "WHERE v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL') " +
+           "GROUP BY v.formaPago")
+    List<Object[]> countByFormaPago();
+
+    /**
+     * Ventas agrupadas por mes (ultimos N meses) para grafico de lineas
+     */
+    @Query("SELECT FUNCTION('TO_CHAR', v.fechaEmision, 'YYYY-MM'), COALESCE(SUM(v.total), 0) " +
+           "FROM Venta v " +
+           "WHERE v.fechaEmision >= :inicio " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL') " +
+           "GROUP BY FUNCTION('TO_CHAR', v.fechaEmision, 'YYYY-MM') " +
+           "ORDER BY FUNCTION('TO_CHAR', v.fechaEmision, 'YYYY-MM')")
+    List<Object[]> ventasMensualesAgrupadas(@Param("inicio") LocalDate inicio);
+
+    /**
+     * Top productos vendidos en un periodo (para dashboard del mes)
+     */
+    @Query("SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, SUM(d.cantidad)) " +
+           "FROM DetalleVenta d JOIN d.producto p JOIN d.venta v " +
+           "WHERE v.fechaEmision >= :inicio " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL') " +
+           "GROUP BY p.nombre ORDER BY SUM(d.cantidad) DESC")
+    List<com.libreria.sistema.model.dto.ReporteDTO> obtenerTopProductosMes(
+           @Param("inicio") LocalDate inicio, Pageable pageable);
+
+    /**
+     * Ventas agrupadas por canal de venta en un periodo
+     */
+    @Query("SELECT COALESCE(v.canalVenta, 'LOCAL'), COUNT(v), COALESCE(SUM(v.total), 0) " +
+           "FROM Venta v " +
+           "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL') " +
+           "GROUP BY COALESCE(v.canalVenta, 'LOCAL')")
+    List<Object[]> ventasPorCanal(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    // =====================================================
     //  CONSULTAS PARA CONTADOR DE COMPROBANTES SUNAT
     // =====================================================
 

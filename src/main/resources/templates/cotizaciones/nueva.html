@@ -3,20 +3,15 @@
 <head>
     <div th:replace="~{fragments/layout :: head}"></div>
     <style>
-        /* FONDO Y CENTRADO */
-        .content-wrapper { background-color: #e9ecef; } /* Fondo un poco más oscuro para resaltar los rectángulos */
-        
-        /* RECTÁNGULO CENTRAL (PRODUCTOS) */
+        .content-wrapper { background-color: #e9ecef; }
         .card-main {
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border: none;
-            height: 85vh; /* Altura fija para mantener consistencia */
+            height: 85vh;
             display: flex;
             flex-direction: column;
         }
-
-        /* RECTÁNGULO LATERAL (DATOS Y TOTAL) */
         .card-side {
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -25,24 +20,20 @@
             position: sticky;
             top: 10px;
         }
-
-        /* TOTAL GIGANTE */
         .total-box {
             background: #2c3e50;
             color: #2ecc71;
             padding: 15px;
             text-align: center;
             border-radius: 6px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
-        .total-amount { font-size: 2.5rem; font-weight: 800; font-family: monospace; }
-        .total-label { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: #bdc3c7; }
-
-        /* TABLA COMPACTA */
+        .total-amount { font-size: 2.2rem; font-weight: 800; font-family: monospace; }
+        .total-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: #bdc3c7; }
+        .desglose { font-size: 0.75rem; color: #95a5a6; margin-top: 5px; }
+        .desglose span { display: inline-block; margin: 0 8px; }
         .table-pos thead th { background-color: #34495e; color: white; padding: 8px; }
         .table-pos td { vertical-align: middle !important; padding: 5px !important; }
-        
-        /* INPUTS EN TABLA (CANTIDAD) */
         .input-qty {
             width: 70px;
             text-align: center;
@@ -51,47 +42,58 @@
             border: 2px solid #ddd;
             border-radius: 4px;
         }
-        .input-qty:focus {
-            border-color: #3498db;
-            background-color: #ebf5fb;
-            outline: none;
+        .input-qty:focus { border-color: #3498db; background-color: #ebf5fb; outline: none; }
+        .input-price {
+            width: 90px;
+            text-align: right;
+            font-weight: bold;
+            border: 2px solid #ddd;
+            border-radius: 4px;
         }
-
-        /* BUSCADOR SELECT2 */
+        .input-price:focus { border-color: #e67e22; background-color: #fef9e7; outline: none; }
         .select2-container .select2-selection--single { height: 45px !important; }
-        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered { 
-            line-height: 43px !important; font-size: 1.2rem; 
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+            line-height: 43px !important; font-size: 1.2rem;
         }
-        /* Resaltar fila activa */
         .table-active-row { background-color: #fff3cd !important; }
+        .section-label { font-weight: bold; font-size: 0.85rem; color: #6c757d; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; margin-bottom: 10px; margin-top: 12px; }
+        .badge-servicio { background: #17a2b8; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; }
+        .pago-section { display: none; }
+        .pago-section.active { display: block; }
     </style>
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
 <div class="wrapper">
-    
+
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
     <aside th:replace="~{fragments/layout :: sidebar(active='nueva_cotizacion')}"></aside>
 
     <div class="content-wrapper d-flex justify-content-center pt-3">
-        
+
         <div class="container-fluid" style="max-width: 1600px;">
             <input type="hidden" id="idEdicion" th:value="${cotizacionEdicion != null ? cotizacionEdicion.id : ''}">
 
             <div class="row">
-                
+
+                <!-- PANEL IZQUIERDO: Productos + Tabla -->
                 <div class="col-lg-9 col-md-8">
                     <div class="card card-main">
                         <div class="card-header bg-white border-bottom-0 pt-3 px-4">
-                            <h5 class="text-secondary mb-3"><i class="fas fa-barcode"></i> Búsqueda de Productos</h5>
+                            <h5 class="text-secondary mb-3"><i class="fas fa-barcode"></i> Búsqueda de Productos / Servicios</h5>
                             <div class="row">
-                                <div class="col-md-10">
+                                <div class="col-md-8">
                                     <select id="selectProducto" class="form-control" style="width: 100%;"></select>
                                 </div>
                                 <div class="col-md-2">
-                                    <button class="btn btn-outline-secondary btn-block" style="height: 45px;" onclick="agregarServicioManual()">
-                                        <i class="fas fa-plus"></i> Otro
+                                    <button class="btn btn-outline-info btn-block" style="height: 45px;" onclick="agregarServicioManual()">
+                                        <i class="fas fa-tools"></i> Servicio
                                     </button>
+                                </div>
+                                <div class="col-md-2">
+                                    <select id="categoriaServicio" class="form-control" style="height: 45px;">
+                                        <option value="">Categoría</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -100,75 +102,134 @@
                             <table class="table table-pos table-striped table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th style="width: 5%">#</th>
-                                        <th style="width: 55%">Producto / Descripción</th>
-                                        <th style="width: 15%" class="text-right">Precio</th>
-                                        <th style="width: 10%" class="text-center">Cant.</th>
-                                        <th style="width: 10%" class="text-right">Total</th>
+                                        <th style="width: 4%">#</th>
+                                        <th style="width: 32%">Producto / Descripción</th>
+                                        <th style="width: 10%">Categoría</th>
+                                        <th style="width: 10%" class="text-right">Precio</th>
+                                        <th style="width: 9%" class="text-right">Costo Est.</th>
+                                        <th style="width: 9%" class="text-center">Cant.</th>
+                                        <th style="width: 11%" class="text-right">Total</th>
                                         <th style="width: 5%"></th>
                                     </tr>
                                 </thead>
-                                <tbody id="tablaVentas">
-                                    </tbody>
+                                <tbody id="tablaVentas"></tbody>
                             </table>
                             <div id="msgVacio" class="text-center mt-5 text-muted">
                                 <i class="fas fa-search fa-3x mb-3 text-gray-300"></i>
-                                <p>Busque un producto para comenzar...</p>
+                                <p>Busque un producto o agregue un servicio para comenzar...</p>
                             </div>
                         </div>
-                        
+
                         <div class="card-footer bg-light text-muted small">
-                            <i class="fas fa-keyboard"></i> 
-                            <b>Enter</b> en buscador: Selecciona | 
-                            <b>Enter</b> en Cantidad: Suma 1 | 
+                            <i class="fas fa-keyboard"></i>
+                            <b>Enter</b> en buscador: Selecciona |
+                            <b>Enter</b> en Cantidad: Suma 1 |
                             <b>Tab</b> en Cantidad: Vuelve a buscar
                         </div>
                     </div>
                 </div>
 
+                <!-- PANEL DERECHO: Datos + Pago + Botones -->
                 <div class="col-lg-3 col-md-4">
                     <div class="card card-side p-3">
-                        
+
+                        <!-- Total con desglose -->
                         <div class="total-box">
                             <div class="total-label">Total a Pagar</div>
                             <div class="total-amount" id="lblTotal">S/ 0.00</div>
+                            <div class="desglose">
+                                <span>Grav: <b id="lblSubtotal">0.00</b></span>
+                                <span>IGV: <b id="lblIgv">0.00</b></span>
+                            </div>
                         </div>
 
-                        <h6 class="font-weight-bold text-secondary border-bottom pb-2">Datos del Cliente</h6>
-                        
+                        <!-- Descuento -->
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Descuento (S/)</label>
+                            <input type="number" id="descuento" class="form-control form-control-sm" value="0" min="0" step="0.50" onchange="recalcularTotal()">
+                        </div>
+
+                        <!-- Datos del Cliente -->
+                        <div class="section-label"><i class="fas fa-user"></i> Datos del Cliente</div>
+
                         <div class="form-group mb-2">
                             <label class="small mb-1">DNI / RUC</label>
-                            <input type="text" id="clienteDoc" class="form-control" 
+                            <input type="text" id="clienteDoc" class="form-control form-control-sm"
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteDocumento : ''}">
                         </div>
-                        
                         <div class="form-group mb-2">
                             <label class="small mb-1">Nombre / Razón Social *</label>
-                            <input type="text" id="clienteNombre" class="form-control font-weight-bold" 
+                            <input type="text" id="clienteNombre" class="form-control form-control-sm font-weight-bold"
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteNombre : 'CLIENTE VARIOS'}">
                         </div>
-
-                        <div class="form-group mb-3">
+                        <div class="form-group mb-2">
                             <label class="small mb-1">Celular (WhatsApp)</label>
-                            <input type="text" id="clienteTelefono" class="form-control" 
+                            <input type="text" id="clienteTelefono" class="form-control form-control-sm"
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteTelefono : ''}">
                         </div>
 
-                        <button class="btn btn-primary btn-block btn-lg font-weight-bold shadow-sm mb-2" onclick="guardarCotizacion(true)">
-                            <i class="fas fa-save"></i> GUARDAR (F2)
+                        <!-- Forma de Pago -->
+                        <div class="section-label"><i class="fas fa-money-bill-wave"></i> Forma de Pago</div>
+
+                        <div class="form-group mb-2">
+                            <div class="btn-group btn-group-sm btn-block" role="group">
+                                <button type="button" class="btn btn-outline-primary active" id="btnContado" onclick="setFormaPago('CONTADO')">Contado</button>
+                                <button type="button" class="btn btn-outline-warning" id="btnCredito" onclick="setFormaPago('CREDITO')">Crédito</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Método</label>
+                            <select id="metodoPago" class="form-control form-control-sm">
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="YAPE">Yape</option>
+                                <option value="PLIN">Plin</option>
+                                <option value="TARJETA">Tarjeta</option>
+                                <option value="TRANSFERENCIA">Transferencia</option>
+                                <option value="CONTRAENTREGA">Contraentrega</option>
+                            </select>
+                        </div>
+
+                        <!-- Sección crédito (oculta por defecto) -->
+                        <div id="seccionCredito" class="pago-section">
+                            <div class="form-group mb-2">
+                                <label class="small mb-1">Monto Inicial (S/)</label>
+                                <input type="number" id="montoInicial" class="form-control form-control-sm" value="0" min="0" step="1">
+                            </div>
+                            <div class="form-group mb-2">
+                                <label class="small mb-1">Días de Crédito</label>
+                                <input type="number" id="diasCredito" class="form-control form-control-sm" value="15" min="1">
+                            </div>
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div class="section-label"><i class="fas fa-sticky-note"></i> Notas</div>
+                        <div class="form-group mb-2">
+                            <textarea id="observaciones" class="form-control form-control-sm" rows="2" placeholder="Observaciones..."
+                                      th:text="${cotizacionEdicion != null ? cotizacionEdicion.observaciones : ''}"></textarea>
+                        </div>
+                        <div class="form-group mb-2">
+                            <textarea id="condiciones" class="form-control form-control-sm" rows="2" placeholder="Condiciones comerciales..."
+                                      th:text="${cotizacionEdicion != null ? cotizacionEdicion.condiciones : ''}"></textarea>
+                        </div>
+
+                        <!-- Botones -->
+                        <button class="btn btn-primary btn-block font-weight-bold shadow-sm mb-1" onclick="guardarCotizacion('EMITIDA')">
+                            <i class="fas fa-paper-plane"></i> EMITIR (F2)
                         </button>
-                        
+                        <button class="btn btn-secondary btn-block btn-sm mb-1" onclick="guardarCotizacion('BORRADOR')">
+                            <i class="fas fa-save"></i> Guardar Borrador
+                        </button>
                         <button class="btn btn-default btn-block btn-sm" onclick="limpiarTodo()">
                             <i class="fas fa-eraser"></i> Limpiar Todo
                         </button>
 
-                        <div class="mt-4 text-center" th:if="${cotizacionEdicion != null}">
+                        <div class="mt-3 text-center" th:if="${cotizacionEdicion != null}">
                             <hr>
                             <button class="btn btn-warning btn-block font-weight-bold" onclick="convertirDirecto()">
                                 <i class="fas fa-cash-register"></i> FACTURAR AHORA
                             </button>
                         </div>
-
                     </div>
                 </div>
 
@@ -181,131 +242,170 @@
 
 <script th:inline="javascript">
     let carrito = [];
-    let ID_SERVICIO_GENERAL = 1;
+    let formaPago = 'CONTADO';
+    const IGV_FACTOR = 1.18;
+    let categoriasServicio = [];
+
+    function cargarCategoriasServicio() {
+        $.getJSON('/cotizaciones/api/categorias', function(data) {
+            categoriasServicio = data;
+            let select = $('#categoriaServicio');
+            select.find('option:not(:first)').remove();
+            data.forEach(function(cat) {
+                select.append(`<option value="${cat.codigo}">${cat.nombre}</option>`);
+            });
+        });
+    }
 
     $(document).ready(function() {
-        // --- 1. CONFIGURACIÓN DEL BUSCADOR (SELECT2) ---
+        cargarCategoriasServicio();
+        // --- BUSCADOR SELECT2 ---
         $('#selectProducto').select2({
             theme: 'bootstrap4',
             placeholder: "Escribe aquí para buscar...",
             allowClear: true,
-            minimumInputLength: 1, 
+            minimumInputLength: 1,
             ajax: {
                 url: '/ventas/api/buscar-productos',
                 dataType: 'json',
-                delay: 50, // Muy rápido
+                delay: 50,
                 data: function (params) { return { term: params.term }; },
-                processResults: function (data) { 
-                    return { 
+                processResults: function (data) {
+                    return {
                         results: data.map(p => ({
                             id: p.id,
                             text: p.text + " (Stock: " + p.stock + ")",
                             producto: p
-                        })) 
-                    }; 
+                        }))
+                    };
                 }
             }
         });
 
-        // --- 2. LÓGICA DE SELECCIÓN Y FOCO ---
         $('#selectProducto').on('select2:select', function (e) {
             let prod = e.params.data.producto;
-            
-            // Agregamos al carrito
             agregarAlCarrito(prod);
-            
-            // Limpiamos el buscador visualmente (pero el foco se moverá a la tabla)
             $('#selectProducto').val(null).trigger('change');
         });
 
-        // --- 3. CARGA DE DATOS (EDICIÓN) ---
+        // --- CARGA DE DATOS EN EDICIÓN ---
         /*[# th:if="${cotizacionEdicion != null}"]*/
             /*[# th:each="item : ${cotizacionEdicion.items}"]*/
             carrito.push({
-                id: /*[[${item.producto.id}]]*/ 0,
-                nombre: /*[[${item.descripcion != null ? item.descripcion : item.producto.nombre}]]*/ 'Prod',
+                productoId: /*[[${item.producto != null ? item.producto.id : 'null'}]]*/ null,
+                nombre: /*[[${item.descripcion != null ? item.descripcion : (item.producto != null ? item.producto.nombre : 'SERVICIO')}]]*/ 'Prod',
                 precio: /*[[${item.precioUnitario}]]*/ 0,
                 cantidad: /*[[${item.cantidad}]]*/ 1,
-                esServicio: /*[[${item.producto.codigoInterno == 'SERV-001'}]]*/ false
+                esServicio: /*[[${item.tipoItem == 'SERVICIO'}]]*/ false,
+                tipoItem: /*[[${item.tipoItem != null ? item.tipoItem : 'PRODUCTO'}]]*/ 'PRODUCTO',
+                categoriaServicio: /*[[${item.categoriaServicio}]]*/ null,
+                costoEstimado: /*[[${item.costoEstimado}]]*/ null
             });
             /*[/]*/
-            renderizarTablaCoti(false); 
+
+            // Cargar datos de pago
+            formaPago = /*[[${cotizacionEdicion.formaPago != null ? cotizacionEdicion.formaPago : 'CONTADO'}]]*/ 'CONTADO';
+            if (formaPago === 'CREDITO') {
+                setFormaPago('CREDITO');
+                $('#montoInicial').val(/*[[${cotizacionEdicion.montoInicial}]]*/ 0);
+                $('#diasCredito').val(/*[[${cotizacionEdicion.diasCredito}]]*/ 15);
+            }
+            let metPago = /*[[${cotizacionEdicion.metodoPago}]]*/ 'EFECTIVO';
+            if (metPago) $('#metodoPago').val(metPago);
+
+            let descVal = /*[[${cotizacionEdicion.descuento}]]*/ 0;
+            if (descVal) $('#descuento').val(descVal);
+
+            renderizarTablaCoti(false);
         /*[/]*/
 
-        // Foco inicial al buscador al cargar la página
         setTimeout(() => $('#selectProducto').select2('open'), 300);
 
-        // Atajo Global F2 para guardar
         $(document).keydown(function(e) {
             if (e.key === 'F2') {
                 e.preventDefault();
-                guardarCotizacion(true);
+                guardarCotizacion('EMITIDA');
             }
         });
     });
 
-    // --- FUNCIONES DEL CARRITO ---
+    // --- CARRITO ---
 
     function agregarAlCarrito(prod) {
-        // Buscamos si ya existe
-        let index = carrito.findIndex(i => i.id == prod.id);
-        
+        let index = carrito.findIndex(i => i.productoId == prod.id && !i.esServicio);
+
         if(index !== -1) {
-            // Si existe, no sumamos 1, solo movemos el foco ahí para que el usuario decida
             renderizarTablaCoti(true, index);
         } else {
-            // Nuevo item
             carrito.push({
-                id: prod.id,
-                nombre: prod.nombre, 
+                productoId: prod.id,
+                nombre: prod.nombre,
                 precio: parseFloat(prod.precio) || 0,
-                cantidad: 1, // Cantidad inicial 1
-                esServicio: false
+                cantidad: 1,
+                esServicio: false,
+                tipoItem: 'PRODUCTO',
+                categoriaServicio: null
             });
-            // Renderizamos y ponemos foco en el ÚLTIMO (el nuevo)
             renderizarTablaCoti(true, carrito.length - 1);
         }
     }
 
     function agregarServicioManual() {
+        let cat = $('#categoriaServicio').val() || null;
+        let catLabel = cat ? $('#categoriaServicio option:selected').text() : '';
         carrito.push({
-            id: ID_SERVICIO_GENERAL,
-            nombre: "SERVICIO / VARIOS", 
+            productoId: null,
+            nombre: catLabel ? catLabel.toUpperCase() : "SERVICIO",
             precio: 0.00,
             cantidad: 1,
-            esServicio: true
+            esServicio: true,
+            tipoItem: 'SERVICIO',
+            categoriaServicio: cat,
+            costoEstimado: null
         });
         renderizarTablaCoti(true, carrito.length - 1);
     }
 
     function renderizarTablaCoti(enfocar = false, indexFocus = -1) {
         let html = '';
-        let total = 0;
+        let totalBruto = 0;
 
         if (carrito.length === 0) $('#msgVacio').show();
         else $('#msgVacio').hide();
 
         carrito.forEach((item, index) => {
             let subtotal = item.cantidad * item.precio;
-            total += subtotal;
-            
-            // Highlight si es el que tiene el foco
-            let activeClass = (index === indexFocus) ? 'table-active-row' : '';
+            totalBruto += subtotal;
 
-            let nombreDisplay = item.esServicio 
-                ? `<input type="text" class="form-control form-control-sm" value="${item.nombre}" onchange="actDato(${index}, 'nombre', this.value)">`
-                : `<span class="font-weight-bold text-dark">${item.nombre}</span>`;
+            let activeClass = (index === indexFocus) ? 'table-active-row' : '';
+            let badgeServicio = item.esServicio ? '<span class="badge-servicio ml-1">SERVICIO</span>' : '';
+
+            let nombreDisplay = item.esServicio
+                ? `<input type="text" class="form-control form-control-sm" value="${escapeHtml(item.nombre)}" onchange="actDato(${index}, 'nombre', this.value)">${badgeServicio}`
+                : `<span class="font-weight-bold text-dark">${escapeHtml(item.nombre)}</span>`;
+
+            let catDisplay = item.categoriaServicio
+                ? `<small class="text-info">${item.categoriaServicio.replace('_', ' ')}</small>`
+                : '<small class="text-muted">-</small>';
+
+            // FIX P0: Precio editable para servicios
+            let precioInput = item.esServicio
+                ? `<input type="number" step="0.10" class="input-price form-control-sm" value="${item.precio.toFixed(2)}" onchange="actDato(${index}, 'precio', this.value)">`
+                : `<input type="number" step="0.10" class="form-control form-control-sm text-right border-0 bg-transparent" value="${item.precio.toFixed(2)}" readonly>`;
+
+            let costoInput = item.esServicio
+                ? `<input type="number" step="0.10" class="form-control form-control-sm text-right" style="width:80px" value="${item.costoEstimado != null ? parseFloat(item.costoEstimado).toFixed(2) : ''}" placeholder="0.00" onchange="actDato(${index}, 'costoEstimado', this.value)">`
+                : '<small class="text-muted">-</small>';
 
             html += `<tr class="${activeClass}">
                 <td class="text-center text-muted">${index + 1}</td>
                 <td>${nombreDisplay}</td>
-                <td class="text-right">
-                    <input type="number" step="0.10" class="form-control form-control-sm text-right border-0 bg-transparent" 
-                           value="${item.precio.toFixed(2)}" readonly>
-                </td>
+                <td class="text-center">${catDisplay}</td>
+                <td class="text-right">${precioInput}</td>
+                <td class="text-right">${costoInput}</td>
                 <td class="text-center">
-                    <input type="number" id="cant_${index}" class="input-qty" 
-                           value="${item.cantidad}" 
+                    <input type="number" id="cant_${index}" class="input-qty"
+                           value="${item.cantidad}"
                            onkeydown="handleCantidadKey(event, ${index})"
                            onchange="actDato(${index}, 'cant', this.value)">
                 </td>
@@ -317,65 +417,89 @@
                 </td>
             </tr>`;
         });
-        
-        $('#tablaVentas').html(html);
-        $('#lblTotal').text(`S/ ${total.toFixed(2)}`);
 
-        // GESTIÓN DEL FOCO AUTOMÁTICO
+        $('#tablaVentas').html(html);
+        actualizarTotales(totalBruto);
+
         if(enfocar && indexFocus !== -1) {
             setTimeout(() => {
-                let input = document.getElementById(`cant_${indexFocus}`);
-                if(input) {
-                    input.focus();
-                    input.select(); // Selecciona el número para que sea fácil sobreescribir si se desea
+                // Para servicios recién agregados, enfocar en el precio si es 0
+                let item = carrito[indexFocus];
+                if (item && item.esServicio && item.precio === 0) {
+                    let priceInputs = document.querySelectorAll('.input-price');
+                    // Buscar el input de precio del item indexFocus
+                    let row = document.querySelectorAll('#tablaVentas tr')[indexFocus];
+                    if (row) {
+                        let pi = row.querySelector('.input-price');
+                        if (pi) { pi.focus(); pi.select(); return; }
+                    }
                 }
+                let input = document.getElementById(`cant_${indexFocus}`);
+                if(input) { input.focus(); input.select(); }
             }, 50);
         }
     }
 
-    // --- LÓGICA DE TECLADO (CORE DEL POS) ---
+    function actualizarTotales(totalBruto) {
+        let descuento = parseFloat($('#descuento').val()) || 0;
+        let total = totalBruto - descuento;
+        if (total < 0) total = 0;
+        let subtotal = total / IGV_FACTOR;
+        let igv = total - subtotal;
+
+        $('#lblTotal').text(`S/ ${total.toFixed(2)}`);
+        $('#lblSubtotal').text(subtotal.toFixed(2));
+        $('#lblIgv').text(igv.toFixed(2));
+    }
+
+    function recalcularTotal() {
+        let totalBruto = carrito.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
+        actualizarTotales(totalBruto);
+    }
+
+    // --- TECLADO ---
 
     function handleCantidadKey(e, index) {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Evitar submit
-            
-            // LÓGICA: ENTER = SUMAR 1
+            e.preventDefault();
             let input = document.getElementById(`cant_${index}`);
             let val = parseFloat(input.value) || 0;
-            
-            // Actualizar memoria
             carrito[index].cantidad = val + 1;
-            
-            // Re-renderizar (se verá el cambio de precio) y MANTENER el foco aquí
             renderizarTablaCoti(true, index);
         }
-        
         if (e.key === 'Tab') {
-    e.preventDefault(); // Evitar salto normal
-    
-    // LÓGICA: TAB = VOLVER AL BUSCADOR Y ENFOCAR PARA ESCRIBIR
-    $('#selectProducto').select2('open');
-    
-    // Forzar foco en el campo de búsqueda del Select2
-    setTimeout(() => {
-        let searchField = document.querySelector('.select2-container--open .select2-search__field');
-        if (searchField) {
-            searchField.focus();
+            e.preventDefault();
+            $('#selectProducto').select2('open');
+            setTimeout(() => {
+                let searchField = document.querySelector('.select2-container--open .select2-search__field');
+                if (searchField) searchField.focus();
+            }, 50);
         }
-    }, 50);
-}
     }
 
     function actDato(index, campo, valor) {
         if(campo === 'nombre') carrito[index].nombre = valor;
         if(campo === 'cant') carrito[index].cantidad = parseFloat(valor) || 1;
-        
-        // Recalcular sin perder foco visualmente
-        let total = carrito.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
-        $('#lblTotal').text(`S/ ${total.toFixed(2)}`);
-        
-        // No llamamos a renderizar completo aquí para no molestar al usuario mientras escribe
-        // Se renderizará completo cuando presione Enter o Tab
+        if(campo === 'precio') carrito[index].precio = parseFloat(valor) || 0;
+        if(campo === 'costoEstimado') carrito[index].costoEstimado = valor ? parseFloat(valor) : null;
+
+        recalcularTotal();
+
+        // Actualizar subtotal en la fila visualmente
+        if (campo === 'precio' || campo === 'cant') {
+            let totalBruto = carrito.reduce((acc, i) => acc + (i.cantidad * i.precio), 0);
+            actualizarTotales(totalBruto);
+
+            // Actualizar celda de total de esta fila
+            let rows = document.querySelectorAll('#tablaVentas tr');
+            if (rows[index]) {
+                let subtotalCell = rows[index].querySelectorAll('td');
+                if (subtotalCell[5]) {
+                    let st = carrito[index].cantidad * carrito[index].precio;
+                    subtotalCell[5].innerHTML = `<span class="font-weight-bold text-success">S/ ${st.toFixed(2)}</span>`;
+                }
+            }
+        }
     }
 
     function eliminarItem(index) {
@@ -386,64 +510,113 @@
     function limpiarTodo() {
         if(confirm('¿Limpiar cotización?')) {
             carrito = [];
+            formaPago = 'CONTADO';
+            setFormaPago('CONTADO');
             renderizarTablaCoti();
             $('#clienteNombre').val('CLIENTE VARIOS');
             $('#clienteDoc').val('');
             $('#clienteTelefono').val('');
+            $('#descuento').val(0);
+            $('#observaciones').val('');
+            $('#condiciones').val('');
             $('#selectProducto').select2('open');
         }
     }
 
-    // --- GUARDAR (Misma lógica) ---
-    function guardarCotizacion(redireccionar = true) {
-        if(carrito.length === 0) return Swal.fire('Error', 'Agregue productos', 'warning');
-        
-        let dto = { 
+    // --- FORMA DE PAGO ---
+    function setFormaPago(tipo) {
+        formaPago = tipo;
+        if (tipo === 'CREDITO') {
+            $('#btnCredito').addClass('active').removeClass('btn-outline-warning').addClass('btn-warning');
+            $('#btnContado').removeClass('active').removeClass('btn-primary').addClass('btn-outline-primary');
+            $('#seccionCredito').addClass('active');
+        } else {
+            $('#btnContado').addClass('active').removeClass('btn-outline-primary').addClass('btn-primary');
+            $('#btnCredito').removeClass('active').removeClass('btn-warning').addClass('btn-outline-warning');
+            $('#seccionCredito').removeClass('active');
+        }
+    }
+
+    // --- GUARDAR ---
+    function guardarCotizacion(estado) {
+        if(carrito.length === 0) return Swal.fire('Error', 'Agregue productos o servicios', 'warning');
+
+        let dto = {
             clienteDocumento: $('#clienteDoc').val(),
-            clienteNombre: $('#clienteNombre').val(), 
+            clienteNombre: $('#clienteNombre').val(),
             clienteTelefono: $('#clienteTelefono').val(),
+            observaciones: $('#observaciones').val(),
+            condiciones: $('#condiciones').val(),
+            formaPago: formaPago,
+            metodoPago: $('#metodoPago').val(),
+            montoInicial: formaPago === 'CREDITO' ? parseFloat($('#montoInicial').val()) || 0 : null,
+            diasCredito: formaPago === 'CREDITO' ? parseInt($('#diasCredito').val()) || 15 : null,
+            descuento: parseFloat($('#descuento').val()) || 0,
+            estado: estado,
             items: carrito.map(i => ({
-                productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio,
-                descripcion: i.esServicio ? i.nombre : null 
+                productoId: i.esServicio ? null : i.productoId,
+                tipoItem: i.tipoItem,
+                categoriaServicio: i.categoriaServicio,
+                descripcion: i.nombre,
+                cantidad: i.cantidad,
+                precioUnitario: i.precio,
+                costoEstimado: i.costoEstimado
             }))
         };
-        
+
         let idEdicion = $('#idEdicion').val();
         let url = idEdicion ? '/cotizaciones/api/actualizar/' + idEdicion : '/cotizaciones/api/guardar';
         let method = idEdicion ? 'PUT' : 'POST';
 
-        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
         $.ajax({
             url: url, type: method, contentType: 'application/json', data: JSON.stringify(dto),
             success: function(resp) {
                 Swal.close();
                 const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                Toast.fire({ icon: 'success', title: 'Guardado Correctamente' });
-                
-                if(redireccionar) {
-                    setTimeout(() => window.location.href = '/cotizaciones/lista', 500);
-                } else {
-                    // Resetear para siguiente cliente rápido
-                    carrito = [];
-                    renderizarTablaCoti();
-                    $('#clienteNombre').val('CLIENTE VARIOS');
-                    $('#clienteDoc').val('');
-                    $('#selectProducto').select2('open');
-                }
+                Toast.fire({ icon: 'success', title: estado === 'BORRADOR' ? 'Borrador guardado' : 'Cotización emitida' });
+                setTimeout(() => window.location.href = '/cotizaciones/lista', 500);
             },
-            error: function(err) { Swal.fire('Error', 'Fallo al guardar', 'error'); }
+            error: function(err) {
+                Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Fallo al guardar', 'error');
+            }
         });
     }
-    
+
     function convertirDirecto() {
-        // Lógica de conversión (reutilizar la que tenías)
         let id = $('#idEdicion').val();
-        guardarCotizacion(false);
-        setTimeout(() => {
-             // ... llamar a tu API de convertir ...
-             Swal.fire('Función convertir', 'Implementa tu llamada AJAX aquí', 'info');
-        }, 500);
+        if (!id) return;
+
+        Swal.fire({
+            title: 'Convertir a Venta',
+            text: "¿Generar Boleta o Factura?",
+            icon: 'question',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'BOLETA',
+            denyButtonText: 'FACTURA',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#28a745',
+            denyButtonColor: '#17a2b8'
+        }).then((result) => {
+            if (result.isConfirmed || result.isDenied) {
+                let tipo = result.isConfirmed ? 'BOLETA' : 'FACTURA';
+                Swal.fire({ title: 'Convirtiendo...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+                $.post(`/cotizaciones/api/convertir/${id}?tipo=${tipo}`, function(resp) {
+                    Swal.fire('Vendido', `Se generó la venta ID: ${resp.ventaId}`, 'success')
+                        .then(() => window.location.href = '/cotizaciones/lista');
+                }).fail(function(err) {
+                    Swal.fire('Error', err.responseJSON ? err.responseJSON.error : 'Error desconocido', 'error');
+                });
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 </script>
 </body>

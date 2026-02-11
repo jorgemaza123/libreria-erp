@@ -235,12 +235,51 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-handshake"></i>
+                                <p>CRM <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/crm" class="nav-link" th:classappend="${active == 'crm_dashboard' ? 'active' : ''}">
+                                        <i class="fas fa-chart-line nav-icon"></i><p>Dashboard CRM</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/crm/pipeline" class="nav-link" th:classappend="${active == 'crm_pipeline' ? 'active' : ''}">
+                                        <i class="fas fa-columns nav-icon"></i><p>Pipeline</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/crm/leads" class="nav-link" th:classappend="${active == 'crm_leads' ? 'active' : ''}">
+                                        <i class="fas fa-user-plus nav-icon"></i><p>Leads</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/crm/actividades" class="nav-link" th:classappend="${active == 'crm_actividades' ? 'active' : ''}">
+                                        <i class="fas fa-tasks nav-icon"></i><p>Mis Tareas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/crm/segmentacion" class="nav-link" th:classappend="${active == 'crm_segmentacion' ? 'active' : ''}">
+                                        <i class="fas fa-filter nav-icon"></i><p>Segmentacion</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>
                                 <p>Logística <i class="right fas fa-angle-left"></i></p>
                             </a>
                             <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/stock" class="nav-link text-success" th:classappend="${active == 'stock' ? 'active' : ''}">
+                                        <i class="fas fa-cubes nav-icon"></i><p>Control de Stock</p>
+                                    </a>
+                                </li>
                                 <li class="nav-item">
                                     <a href="/productos" class="nav-link" th:classappend="${active == 'productos' ? 'active' : ''}">
                                         <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
@@ -460,44 +499,22 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <script th:inline="javascript">
-            // Verificación segura de objeto config
-            /*[+
-            var configData = [[${config}]];
-            +]*/
-            
-            var defaultConfig = {
-                 nombreEmpresa: 'Librería ERP',
-                 ruc: '00000000000',
-                 colorPrimario: '#007bff',
-                 colorSecundario: '#6c757d',
-                 colorExito: '#28a745',
-                 colorPeligro: '#dc3545',
-                 colorAdvertencia: '#ffc107',
-                 colorInfo: '#17a2b8',
-                 colorBronce: '#cd7f32',
-                 formatoMoneda: 'S/',
-                 formatoFechaReportes: 'dd/MM/yyyy',
-                 itemsPorPagina: 10,
-                 stockMinimo: 5,
-                 igvPorcentaje: 18.00
-            };
-
-            var finalConfig = configData || defaultConfig;
-
+            // Config segura: solo campos necesarios para JS (NO serializar entidad completa)
             window.APP_CONFIG = {
-                nombreEmpresa: finalConfig.nombreEmpresa,
-                ruc: finalConfig.ruc,
-                colorPrimario: finalConfig.colorPrimario,
-                colorExito: finalConfig.colorExito,
-                colorPeligro: finalConfig.colorPeligro,
-                colorAdvertencia: finalConfig.colorAdvertencia,
-                colorInfo: finalConfig.colorInfo,
-                colorBronce: finalConfig.colorBronce,
-                formatoMoneda: finalConfig.formatoMoneda,
-                formatoFechaReportes: finalConfig.formatoFechaReportes,
-                itemsPorPagina: finalConfig.itemsPorPagina,
-                stockMinimo: finalConfig.stockMinimo,
-                igvPorcentaje: finalConfig.igvPorcentaje
+                nombreEmpresa: /*[[${config?.nombreEmpresa ?: 'Librería ERP'}]]*/ 'Librería ERP',
+                ruc:           /*[[${config?.ruc ?: '00000000000'}]]*/ '00000000000',
+                colorPrimario:    /*[[${config?.colorPrimario ?: '#007bff'}]]*/ '#007bff',
+                colorSecundario:  /*[[${config?.colorSecundario ?: '#6c757d'}]]*/ '#6c757d',
+                colorExito:       /*[[${config?.colorExito ?: '#28a745'}]]*/ '#28a745',
+                colorPeligro:     /*[[${config?.colorPeligro ?: '#dc3545'}]]*/ '#dc3545',
+                colorAdvertencia: /*[[${config?.colorAdvertencia ?: '#ffc107'}]]*/ '#ffc107',
+                colorInfo:        /*[[${config?.colorInfo ?: '#17a2b8'}]]*/ '#17a2b8',
+                colorBronce:      /*[[${config?.colorBronce ?: '#cd7f32'}]]*/ '#cd7f32',
+                formatoMoneda:    /*[[${config?.formatoMoneda ?: 'S/'}]]*/ 'S/',
+                formatoFechaReportes: /*[[${config?.formatoFechaReportes ?: 'dd/MM/yyyy'}]]*/ 'dd/MM/yyyy',
+                itemsPorPagina:   /*[[${config?.itemsPorPagina ?: 10}]]*/ 10,
+                stockMinimo:      /*[[${config?.stockMinimo ?: 5}]]*/ 5,
+                igvPorcentaje:    /*[[${config?.igvPorcentaje ?: 18.00}]]*/ 18.00
             };
 
             window.formatearMoneda = function(valor) {

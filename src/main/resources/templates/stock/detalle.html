@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='stock'">
+
+<head>
+    <title>Detalle de Stock</title>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><i class="fas fa-cube text-info mr-2"></i>Detalle de Stock</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/stock">Stock</a></li>
+                        <li class="breadcrumb-item active" th:text="${producto.nombre}">Producto</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+
+                <!-- Left Column: Product Info -->
+                <div class="col-md-4">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-info-circle mr-1"></i>Informacion del Producto</h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="text-muted">Nombre</td>
+                                    <td class="font-weight-bold" th:text="${producto.nombre}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Codigo</td>
+                                    <td th:text="${producto.codigoInterno ?: '-'}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Barras</td>
+                                    <td th:text="${producto.codigoBarra ?: '-'}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Categoria</td>
+                                    <td th:text="${producto.categoria ?: '-'}">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">P. Compra</td>
+                                    <td th:text="${producto.precioCompra != null ? 'S/ ' + #numbers.formatDecimal(producto.precioCompra, 1, 'COMMA', 2, 'POINT') : '-'}">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-dark">
+                            <h3 class="card-title"><i class="fas fa-warehouse mr-1"></i>Stock</h3>
+                        </div>
+                        <div class="card-body text-center">
+                            <h1 class="mb-2">
+                                <span th:text="${producto.stockActual}" class="font-weight-bold">0</span>
+                            </h1>
+                            <span class="badge badge-lg" th:classappend="${producto.badgeClass}" th:text="${producto.estado.replace('_', ' ')}">OK</span>
+                            <hr>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted">Minimo</small>
+                                    <div class="font-weight-bold" th:text="${producto.stockMinimo ?: 0}">0</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Maximo</small>
+                                    <div class="font-weight-bold" th:text="${producto.stockMaximo ?: '-'}">-</div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div>
+                                <small class="text-muted">Valor en Stock</small>
+                                <div class="h5 text-success" th:text="${'S/ ' + #numbers.formatDecimal(producto.valorStock, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center" th:if="${puedeAjustar}">
+                            <button class="btn btn-warning btn-sm btn-block" id="btnAjustarDetalle">
+                                <i class="fas fa-balance-scale mr-1"></i>Ajustar Stock
+                            </button>
+                        </div>
+                    </div>
+
+                    <a href="/stock" class="btn btn-secondary btn-block mb-3">
+                        <i class="fas fa-arrow-left mr-1"></i>Volver al listado
+                    </a>
+                </div>
+
+                <!-- Right Column: Chart + Movements -->
+                <div class="col-md-8">
+                    <div class="card card-info card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-line mr-1"></i>Evolucion de Stock (30 dias)</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartEvolucion" height="120"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card" th:if="${puedeVerMovimientos}">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-exchange-alt mr-1"></i>Ultimos Movimientos</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-striped" id="tablaMovimientos">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Motivo</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-center">Anterior</th>
+                                        <th class="text-center">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="movimientosBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-3">
+                                            <i class="fas fa-spinner fa-spin"></i> Cargando movimientos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer text-center" id="paginacionMovimientos"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal Ajustar Stock -->
+    <div class="modal fade" id="modalAjustarDetalle" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-balance-scale mr-1"></i>Ajustar Stock</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Producto</label>
+                        <input type="text" class="form-control" th:value="${producto.nombre}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Stock Actual</label>
+                        <input type="number" class="form-control" th:value="${producto.stockActual}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Nuevo Stock <span class="text-danger">*</span></label>
+                        <input type="number" id="detalleNuevoStock" class="form-control" min="0" th:value="${producto.stockActual}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo</label>
+                        <input type="text" id="detalleMotivo" class="form-control" placeholder="Ej: Conteo fisico, merma...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="btnConfirmarAjusteDetalle"><i class="fas fa-save mr-1"></i>Ajustar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div layout:fragment="scripts">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script >
+$(document).ready(function() {
+    var productoId = /*[[${producto.id}]]*/ 0;
+var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
+
+    var chartInstance = null;
+
+    // Load evolution chart
+    $.get('/stock/api/evolucion/' + productoId, function(data) {
+        var ctx = document.getElementById('chartEvolucion').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Stock',
+                    data: data.datos,
+                    borderColor: '#17a2b8',
+                    backgroundColor: 'rgba(23,162,184,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#17a2b8'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    });
+
+    // Load movements
+    if (puedeVerMovimientos) {
+        cargarMovimientos(0);
+    }
+
+    function cargarMovimientos(page) {
+        $.get('/stock/api/movimientos/' + productoId + '?page=' + page + '&size=10', function(res) {
+            var html = '';
+            if (res.data.length === 0) {
+                html = '<tr><td colspan="6" class="text-center text-muted py-3">No hay movimientos registrados</td></tr>';
+            } else {
+                res.data.forEach(function(m) {
+                    var tipoBadge = m.tipo === 'ENTRADA' ? 'badge-success' : (m.tipo === 'SALIDA' ? 'badge-danger' : 'badge-info');
+                    html += '<tr>' +
+                        '<td>' + m.fecha + '</td>' +
+                        '<td><span class="badge ' + tipoBadge + '">' + m.tipo + '</span></td>' +
+                        '<td>' + (m.motivo || '-') + '</td>' +
+                        '<td class="text-center">' + m.cantidad + '</td>' +
+                        '<td class="text-center">' + m.stockAnterior + '</td>' +
+                        '<td class="text-center font-weight-bold">' + m.stockActual + '</td>' +
+                        '</tr>';
+                });
+            }
+            $('#movimientosBody').html(html);
+
+            // Pagination
+            var pagHtml = '';
+            if (res.totalPages > 1) {
+                for (var i = 0; i < res.totalPages; i++) {
+                    var active = i === page ? 'btn-primary' : 'btn-outline-primary';
+                    pagHtml += '<button class="btn btn-sm ' + active + ' mx-1 btn-page" data-page="' + i + '">' + (i + 1) + '</button>';
+                }
+            }
+            $('#paginacionMovimientos').html(pagHtml);
+        });
+    }
+
+    $(document).on('click', '.btn-page', function() {
+        cargarMovimientos($(this).data('page'));
+    });
+
+    // Adjust stock
+    $('#btnAjustarDetalle').on('click', function() {
+        $('#modalAjustarDetalle').modal('show');
+    });
+
+    $('#btnConfirmarAjusteDetalle').on('click', function() {
+        var btn = $(this);
+        btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/stock/api/ajustar',
+            method: 'POST',
+            data: {
+                productoId: productoId,
+                nuevoStock: $('#detalleNuevoStock').val(),
+                motivo: $('#detalleMotivo').val()
+            },
+            success: function(res) {
+                if (res.success) {
+                    toastr.success(res.message);
+                    setTimeout(function() { location.reload(); }, 800);
+                } else {
+                    toastr.error(res.message);
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Error al ajustar stock';
+                toastr.error(msg);
+            },
+            complete: function() {
+                btn.prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+</div>
+
+</body>
+</html>

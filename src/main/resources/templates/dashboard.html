@@ -11,19 +11,27 @@
 <div layout:fragment="content">
     <div class="content-header">
         <div class="container-fluid">
-            <h1 class="m-0 text-dark">Panel de Control Financiero</h1>
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="m-0 text-dark">Panel de Control Financiero</h1>
+                <small class="text-muted" id="ultimaActualizacion"></small>
+            </div>
         </div>
     </div>
 
     <section class="content">
         <div class="container-fluid">
 
+            <!-- ========== FILA 1: KPIs PRINCIPALES ========== -->
             <div class="row">
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-info">
                         <div class="inner">
                             <h3 id="kpiVentasMes" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiVentasMes, 1, 2)}"></h3>
                             <p>Ventas del Mes</p>
+                            <span class="badge" id="badgeVariacionMensual"
+                                  th:classappend="${variacionMensual >= 0} ? 'badge-success' : 'badge-danger'"
+                                  th:text="${variacionMensual >= 0 ? '+' : ''} + ${#numbers.formatDecimal(variacionMensual, 1, 1)} + '%'"></span>
+                            <small class="text-white-50"> vs mes anterior</small>
                         </div>
                         <div class="icon"><i class="fas fa-cash-register"></i></div>
                         <a href="/ventas/lista" class="small-box-footer">Ver detalles <i class="fas fa-arrow-circle-right"></i></a>
@@ -61,11 +69,107 @@
                 </div>
             </div>
 
+            <!-- ========== FILA 2: KPIs OPERATIVOS (ventas hoy, ayer, pedidos mes) ========== -->
+            <div class="row">
+                <div class="col-lg-4 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-success"><i class="fas fa-shopping-cart"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ventas Hoy</span>
+                            <span class="info-box-number" id="ventasHoy" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasHoy, 1, 2)}"></span>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-success" style="width: 100%"></div>
+                            </div>
+                            <span class="progress-description" id="variacionDiariaText">
+                                <span th:classappend="${variacionDiaria >= 0} ? 'text-success' : 'text-danger'">
+                                    <i th:classappend="${variacionDiaria >= 0} ? 'fa-arrow-up' : 'fa-arrow-down'" class="fas"></i>
+                                    <span th:text="${#numbers.formatDecimal(variacionDiaria < 0 ? variacionDiaria * -1 : variacionDiaria, 1, 1)} + '% vs ayer'"></span>
+                                </span>
+                                <span class="text-muted ml-1" id="cantVentasHoy" th:text="'(' + ${cantidadVentasHoy} + ' ventas)'"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-info"><i class="fas fa-history"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ventas Ayer</span>
+                            <span class="info-box-number" id="ventasAyer" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasAyer, 1, 2)}"></span>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-info" style="width: 100%"></div>
+                            </div>
+                            <span class="progress-description text-muted" id="cantVentasAyer" th:text="${cantidadVentasAyer} + ' ventas realizadas'"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-purple"><i class="fas fa-clipboard-list"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Pedidos del Mes</span>
+                            <span class="info-box-number" id="cantidadVentasMes" th:text="${cantidadVentasMes}"></span>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-purple" style="width: 100%"></div>
+                            </div>
+                            <span class="progress-description" id="variacionPedidosText">
+                                <span th:classappend="${variacionPedidos >= 0} ? 'text-success' : 'text-danger'">
+                                    <i th:classappend="${variacionPedidos >= 0} ? 'fa-arrow-up' : 'fa-arrow-down'" class="fas"></i>
+                                    <span th:text="${#numbers.formatDecimal(variacionPedidos < 0 ? variacionPedidos * -1 : variacionPedidos, 1, 1)} + '% vs mes anterior'"></span>
+                                </span>
+                                <span class="text-muted ml-1" id="cantMesPasado" th:text="'(' + ${cantidadVentasMesPasado} + ' ant.)'"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== FILA 2.5: KPIs COTIZACIONES ========== -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-cyan">
+                        <span class="info-box-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Cotizaciones del Mes</span>
+                            <span class="info-box-number" th:text="${cotizacionesMes}">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-teal">
+                        <span class="info-box-icon"><i class="fas fa-dollar-sign"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Monto Cotizado</span>
+                            <span class="info-box-number" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(montoCotizadoMes, 1, 2)}">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-orange">
+                        <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Cotiz. Pendientes</span>
+                            <span class="info-box-number" th:text="${cotizacionesPendientes}">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-indigo">
+                        <span class="info-box-icon"><i class="fas fa-chart-line"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Tasa Conversión</span>
+                            <span class="info-box-number"><span th:text="${tasaConversionCoti}">0</span>%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== FILA 3: GRAFICOS PRINCIPALES ========== -->
             <div class="row">
                 <div class="col-md-8">
                     <div class="card card-navy card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-chart-bar"></i> Balance: Ingresos vs Egresos (6 Meses)</h3>
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Ventas Mensuales: Ingresos vs Egresos (12 Meses)</h3>
                         </div>
                         <div class="card-body">
                             <canvas id="chartBalance" style="min-height: 300px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
@@ -76,7 +180,7 @@
                 <div class="col-md-4">
                     <div class="card card-success card-outline">
                         <div class="card-header">
-                            <h3 class="card-title">Top Productos</h3>
+                            <h3 class="card-title"><i class="fas fa-trophy"></i> Top Productos del Mes</h3>
                         </div>
                         <div class="card-body">
                             <canvas id="chartTop" style="min-height: 300px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
@@ -85,12 +189,22 @@
                 </div>
             </div>
 
+            <!-- ========== FILA 4: MODALIDAD, CANAL, SUNAT ========== -->
             <div class="row">
                 <div class="col-md-4">
                     <div class="card card-info card-outline">
-                        <div class="card-header"><h3 class="card-title">Modalidad de Venta (Global)</h3></div>
+                        <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-pie"></i> Modalidad de Venta</h3></div>
                         <div class="card-body">
                             <canvas id="chartModalidad" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-olive card-outline">
+                        <div class="card-header"><h3 class="card-title"><i class="fas fa-broadcast-tower"></i> Ventas por Canal (Mes)</h3></div>
+                        <div class="card-body">
+                            <canvas id="chartCanal" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
@@ -145,7 +259,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- ========== FILA 5: LICENCIA + STOCK CRITICO ========== -->
+            <div class="row">
                 <div class="col-md-4">
                     <!-- Widget Licencia -->
                     <div class="card" th:classappend="${licenseInfo?.estado?.name() == 'ACTIVO' ? 'card-success' : (licenseInfo?.estado?.name() == 'EN_GRACIA' ? 'card-warning' : 'card-danger')} + ' card-outline'">
@@ -173,10 +290,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row">
-                <div class="col-md-12">
+                <div class="col-md-8">
                     <div class="card card-danger card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Alerta de Stock Bajo</h3>
@@ -220,7 +335,7 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
 
-        // 1. DATOS COMPARATIVA
+        // 1. DATOS COMPARATIVA (12 meses)
         const rawComparativa = /*[[${comparativa}]]*/ {};
         const labelsComp = Object.keys(rawComparativa);
         const dataIngresos = labelsComp.map(k => rawComparativa[k].ingreso);
@@ -232,23 +347,47 @@
         // 3. DATOS MODALIDAD
         const rawPie = /*[[${pieCredito}]]*/ {};
 
+        // 4. DATOS CANAL
+        const rawCanal = /*[[${ventasPorCanal}]]*/ [];
+
+        // Variables globales para los charts que se actualizan
+        let chartBalance, chartCanal;
+
+        const COLORES_CANAL = {
+            'LOCAL': '#28a745',
+            'WHATSAPP': '#25D366',
+            'DELIVERY': '#fd7e14',
+            'TELEFONO': '#6f42c1',
+            'WEB': '#007bff'
+        };
+
         $(document).ready(function() {
 
-            // GRÁFICO 1: BALANCE (BARRAS) - Colores desde configuración
-            new Chart(document.getElementById('chartBalance').getContext('2d'), {
-                type: 'bar',
+            // GRAFICO 1: BALANCE (LINEAS - 12 meses)
+            chartBalance = new Chart(document.getElementById('chartBalance').getContext('2d'), {
+                type: 'line',
                 data: {
                     labels: labelsComp,
                     datasets: [
                         {
                             label: 'Ingresos (Ventas)',
-                            backgroundColor: APP_CONFIG.colorExito,
-                            data: dataIngresos
+                            borderColor: APP_CONFIG.colorExito,
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            data: dataIngresos,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         },
                         {
                             label: 'Egresos (Gastos/Compras)',
-                            backgroundColor: APP_CONFIG.colorPeligro,
-                            data: dataEgresos
+                            borderColor: APP_CONFIG.colorPeligro,
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            data: dataEgresos,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         }
                     ]
                 },
@@ -259,12 +398,14 @@
                         yAxes: [{ ticks: { beginAtZero: true, callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; } } }]
                     },
                     tooltips: {
-                        callbacks: { label: function(item) { return APP_CONFIG.formatoMoneda + ' ' + item.yLabel.toFixed(2); } }
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: { label: function(item) { return item.dataset.label + ': ' + APP_CONFIG.formatoMoneda + ' ' + item.yLabel.toFixed(2); } }
                     }
                 }
             });
 
-            // GRÁFICO 2: TOP PRODUCTOS (DONUT) - Paleta de colores personalizada
+            // GRAFICO 2: TOP PRODUCTOS (DONUT)
             new Chart(document.getElementById('chartTop').getContext('2d'), {
                 type: 'doughnut',
                 data: {
@@ -283,17 +424,47 @@
                 options: { responsive: true, maintainAspectRatio: false, legend: { position: 'right' } }
             });
 
-            // GRÁFICO 3: MODALIDAD (PIE) - Colores desde configuración
+            // GRAFICO 3: MODALIDAD (PIE)
             new Chart(document.getElementById('chartModalidad').getContext('2d'), {
                 type: 'pie',
                 data: {
-                    labels: ['Contado', 'Crédito'],
+                    labels: ['Contado', 'Credito'],
                     datasets: [{
                         data: [rawPie.contado, rawPie.credito],
                         backgroundColor: [APP_CONFIG.colorInfo, APP_CONFIG.colorAdvertencia]
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // GRAFICO 4: VENTAS POR CANAL (DOUGHNUT)
+            var canalLabels = rawCanal.map(c => c.canal || 'N/A');
+            var canalData = rawCanal.map(c => c.total || 0);
+            var canalColors = canalLabels.map(l => COLORES_CANAL[l] || '#6c757d');
+
+            chartCanal = new Chart(document.getElementById('chartCanal').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: canalLabels,
+                    datasets: [{
+                        data: canalData,
+                        backgroundColor: canalColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: { position: 'bottom' },
+                    tooltips: {
+                        callbacks: {
+                            label: function(item, data) {
+                                var label = data.labels[item.index] || '';
+                                var value = data.datasets[0].data[item.index] || 0;
+                                return label + ': ' + APP_CONFIG.formatoMoneda + ' ' + parseFloat(value).toFixed(2);
+                            }
+                        }
+                    }
+                }
             });
 
             // ============================================
@@ -325,7 +496,7 @@
             }
         }
 
-        // Detener polling cuando la pestaña no está visible (ahorro de recursos)
+        // Detener polling cuando la pestana no esta visible (ahorro de recursos)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 detenerPollingDashboard();
@@ -340,16 +511,38 @@
                 url: '/api/dashboard/datos',
                 method: 'GET',
                 success: function(data) {
-                    // Actualizar KPIs
+                    // KPIs principales
                     $('#kpiVentasMes').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiVentasMes || 0).toFixed(2));
                     $('#kpiCreditos').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiCreditos || 0).toFixed(2));
                     $('#kpiInventario').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiInventario || 0).toFixed(2));
                     $('#kpiGastos').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiGastos || 0).toFixed(2));
 
-                    // Actualizar tabla de stock crítico
+                    // KPIs operativos
+                    $('#ventasHoy').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ventasHoy || 0).toFixed(2));
+                    $('#ventasAyer').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ventasAyer || 0).toFixed(2));
+                    $('#cantidadVentasMes').text(data.cantidadVentasMes || 0);
+                    $('#cantVentasHoy').text('(' + (data.cantidadVentasHoy || 0) + ' ventas)');
+                    $('#cantVentasAyer').text((data.cantidadVentasAyer || 0) + ' ventas realizadas');
+                    $('#cantMesPasado').text('(' + (data.cantidadVentasMesPasado || 0) + ' ant.)');
+
+                    // Variacion mensual badge
+                    actualizarBadgeVariacion('#badgeVariacionMensual', data.variacionMensual, ' vs mes anterior');
+
+                    // Variacion diaria
+                    actualizarVariacionInline('#variacionDiariaText', data.variacionDiaria, 'vs ayer',
+                        '(' + (data.cantidadVentasHoy || 0) + ' ventas)');
+
+                    // Variacion pedidos
+                    actualizarVariacionInline('#variacionPedidosText', data.variacionPedidos, 'vs mes anterior',
+                        '(' + (data.cantidadVentasMesPasado || 0) + ' ant.)');
+
+                    // Tabla de stock critico
                     if (data.stockCritico) {
                         actualizarTablaStockCritico(data.stockCritico);
                     }
+
+                    // Timestamp
+                    $('#ultimaActualizacion').text('Actualizado: ' + (data.ultimaActualizacion || ''));
 
                     console.log('[Dashboard Principal] Actualizado a las ' + (data.ultimaActualizacion || new Date().toLocaleTimeString()));
                 },
@@ -359,12 +552,31 @@
             });
         }
 
+        function actualizarBadgeVariacion(selector, valor, sufijo) {
+            var v = parseFloat(valor || 0);
+            var badge = $(selector);
+            badge.removeClass('badge-success badge-danger');
+            badge.addClass(v >= 0 ? 'badge-success' : 'badge-danger');
+            badge.text((v >= 0 ? '+' : '') + v.toFixed(1) + '%');
+        }
+
+        function actualizarVariacionInline(selector, valor, textoComparacion, textoExtra) {
+            var v = parseFloat(valor || 0);
+            var absV = Math.abs(v).toFixed(1);
+            var colorClass = v >= 0 ? 'text-success' : 'text-danger';
+            var iconClass = v >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+            $(selector).html(
+                '<span class="' + colorClass + '"><i class="fas ' + iconClass + '"></i> ' + absV + '% ' + textoComparacion + '</span>' +
+                '<span class="text-muted ml-1">' + textoExtra + '</span>'
+            );
+        }
+
         function actualizarTablaStockCritico(productos) {
             var tbody = $('#tbodyStockCritico');
             tbody.empty();
 
             if (!productos || productos.length === 0) {
-                tbody.html('<tr><td colspan="5" class="text-center text-muted">¡Excelente! No hay productos con stock crítico.</td></tr>');
+                tbody.html('<tr><td colspan="5" class="text-center text-muted">Excelente! No hay productos con stock critico.</td></tr>');
                 return;
             }
 

@@ -1,5 +1,6 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -20,8 +21,10 @@ public class Configuracion {
     private String telefono;
     private String email;
 
+    @JsonIgnore
     @Column(columnDefinition = "TEXT")
     private String logoBase64;
+
     @Column(columnDefinition = "TEXT")
     private String logoUrl;
 
@@ -104,13 +107,16 @@ public class Configuracion {
     private String facturacionEndpoint;
 
     // Token de seguridad para el servicio de facturación
+    @JsonIgnore
     @Column(columnDefinition = "TEXT")
     private String facturacionToken;
 
     // Ruta al certificado digital .pfx (si facturas directo a SUNAT)
+    @JsonIgnore
     private String certificadoDigitalRuta;
 
     // Clave del certificado digital
+    @JsonIgnore
     private String claveCertificado;
 
     // false = Modo pruebas (Beta SUNAT), true = Producción (Facturas reales)
