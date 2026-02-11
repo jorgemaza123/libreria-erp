@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='clientes'">
+
+<head>
+    <title>Detalle Cliente - Sistema</title>
+    <style>
+        .score-circle {
+            width: 80px; height: 80px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: bold; color: #fff;
+            margin: 0 auto;
+        }
+        .score-excelente { background: linear-gradient(135deg, #28a745, #20c997); }
+        .score-bueno { background: linear-gradient(135deg, #17a2b8, #6610f2); }
+        .score-regular { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+        .score-bajo { background: linear-gradient(135deg, #dc3545, #e83e8c); }
+        .stat-card { border-left: 4px solid; padding: 15px; background: #fff; border-radius: 4px; margin-bottom: 10px; }
+        .stat-card .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-card .stat-label { font-size: 0.85rem; color: #6c757d; }
+        .credit-bar { height: 8px; border-radius: 4px; background: #e9ecef; overflow: hidden; }
+        .credit-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .tab-content { min-height: 200px; }
+        .timeline-item { border-left: 3px solid #dee2e6; padding-left: 15px; margin-left: 10px; margin-bottom: 15px; position: relative; }
+        .timeline-item::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: #007bff; position: absolute; left: -7.5px; top: 5px; }
+        .badge-estado { font-size: 0.8rem; }
+    </style>
+</head>
+
+<body>
+<section layout:fragment="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <i class="fas fa-user-circle text-primary mr-2"></i>
+                        <span th:text="${cliente.nombreRazonSocial}">Cliente</span>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/clientes">Clientes</a></li>
+                        <li class="breadcrumb-item active">Detalle</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- FILA 1: Info principal + Score + Acciones rapidas -->
+            <div class="row">
+                <!-- Tarjeta de Identidad -->
+                <div class="col-lg-4">
+                    <div class="card card-outline card-primary">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <span class="badge badge-lg p-2"
+                                      th:classappend="${cliente.categoria == 'VIP'} ? 'badge-success' :
+                                                     (${cliente.categoria == 'FRECUENTE'} ? 'badge-info' :
+                                                     (${cliente.categoria == 'MOROSO'} ? 'badge-danger' :
+                                                     (${cliente.categoria == 'REGULAR'} ? 'badge-primary' : 'badge-secondary')))"
+                                      style="font-size: 1rem;">
+                                    <i class="fas fa-star mr-1" th:if="${cliente.categoria == 'VIP'}"></i>
+                                    <span th:text="${cliente.categoria ?: 'NUEVO'}">NUEVO</span>
+                                </span>
+                                <span th:if="${!cliente.activo}" class="badge badge-dark p-2 ml-1" style="font-size: 1rem;">INACTIVO</span>
+                            </div>
+
+                            <h4 class="mb-1" th:text="${cliente.nombreRazonSocial}">Nombre</h4>
+                            <p class="text-muted mb-3">
+                                <span class="badge badge-secondary" th:text="${cliente.tipoDocumento == '6' ? 'RUC' : (cliente.tipoDocumento == '4' ? 'CE' : 'DNI')}"></span>
+                                <span th:text="${cliente.numeroDocumento}">12345678</span>
+                            </p>
+
+                            <ul class="list-unstyled text-left">
+                                <li th:if="${cliente.telefono}" class="mb-2">
+                                    <i class="fas fa-phone text-success mr-2"></i>
+                                    <span th:text="${cliente.telefono}"></span>
+                                    <small th:if="${cliente.telefonoSecundario}" class="text-muted ml-2">
+                                        / <span th:text="${cliente.telefonoSecundario}"></span>
+                                    </small>
+                                </li>
+                                <li th:if="${cliente.email}" class="mb-2">
+                                    <i class="fas fa-envelope text-info mr-2"></i>
+                                    <span th:text="${cliente.email}"></span>
+                                </li>
+                                <li th:if="${cliente.direccion}" class="mb-2">
+                                    <i class="fas fa-map-marker-alt text-danger mr-2"></i>
+                                    <span th:text="${cliente.direccion}"></span>
+                                </li>
+                                <li th:if="${cliente.empresa}" class="mb-2">
+                                    <i class="fas fa-building text-primary mr-2"></i>
+                                    <span th:text="${cliente.empresa}"></span>
+                                    <small th:if="${cliente.cargo}" class="text-muted"> - <span th:text="${cliente.cargo}"></span></small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-calendar text-muted mr-2"></i>
+                                    Cliente desde: <strong th:text="${cliente.fechaRegistro != null ? #temporals.format(cliente.fechaRegistro, 'dd/MM/yyyy') : '-'}">-</strong>
+                                </li>
+                            </ul>
+
+                            <div th:if="${cliente.etiquetas != null and !cliente.etiquetas.isEmpty()}" class="mt-3">
+                                <span th:each="tag : ${cliente.etiquetas.split(',')}" class="badge badge-outline-primary mr-1 mb-1"
+                                      style="border: 1px solid #007bff; color: #007bff;" th:text="${tag.trim()}"></span>
+                            </div>
+
+                            <div th:if="${cliente.observaciones != null and !cliente.observaciones.isEmpty()}" class="mt-3 text-left">
+                                <small class="text-muted"><i class="fas fa-sticky-note mr-1"></i>Notas:</small>
+                                <p class="small mb-0 bg-light p-2 rounded" th:text="${cliente.observaciones}"></p>
+                            </div>
+                        </div>
+                        <div class="card-footer text-center">
+                            <a th:href="@{/clientes/editar/{id}(id=${cliente.id})}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </a>
+                            <a th:href="@{/ventas/nueva}" class="btn btn-success btn-sm">
+                                <i class="fas fa-cart-plus mr-1"></i>Nueva Venta
+                            </a>
+                            <a th:href="@{/cotizaciones/nueva}" class="btn btn-info btn-sm">
+                                <i class="fas fa-file-invoice mr-1"></i>Cotizar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score + Estadisticas -->
+                <div class="col-lg-8">
+                    <!-- Score y metricas rapidas -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center p-3">
+                                    <small class="text-muted d-block mb-2">Score Cliente</small>
+                                    <div class="score-circle"
+                                         th:classappend="${estadisticas.score >= 80} ? 'score-excelente' :
+                                                        (${estadisticas.score >= 60} ? 'score-bueno' :
+                                                        (${estadisticas.score >= 40} ? 'score-regular' : 'score-bajo'))">
+                                        <span th:text="${estadisticas.score}">0</span>
+                                    </div>
+                                    <small class="d-block mt-2 font-weight-bold"
+                                           th:text="${estadisticas.scoreLabel}">-</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card" style="border-color: #28a745;">
+                                <div class="stat-value text-success">
+                                    S/ <span th:text="${#numbers.formatDecimal(estadisticas.totalCompras, 1, 2)}">0.00</span>
+                                </div>
+                                <div class="stat-label">Total Compras</div>
+                            </div>
+                            <div class="stat-card" style="border-color: #17a2b8;">
+                                <div class="stat-value text-info" th:text="${estadisticas.cantidadCompras}">0</div>
+                                <div class="stat-label">Compras Realizadas</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card" style="border-color: #6f42c1;">
+                                <div class="stat-value" style="color: #6f42c1;">
+                                    S/ <span th:text="${#numbers.formatDecimal(estadisticas.ticketPromedio, 1, 2)}">0.00</span>
+                                </div>
+                                <div class="stat-label">Ticket Promedio</div>
+                            </div>
+                            <div class="stat-card" style="border-color: #fd7e14;">
+                                <div class="stat-value" style="color: #fd7e14;">
+                                    <span th:text="${estadisticas.frecuenciaMensual}">0</span>
+                                </div>
+                                <div class="stat-label">Compras / Mes</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card" style="border-color: #20c997;">
+                                <div class="stat-value" style="color: #20c997;"
+                                     th:text="${estadisticas.fechaUltimaCompra != null ? #temporals.format(estadisticas.fechaUltimaCompra, 'dd/MM/yy') : 'Nunca'}">-</div>
+                                <div class="stat-label">Ultima Compra</div>
+                            </div>
+                            <div class="stat-card" th:style="${estadisticas.diasSinComprar > 180 ? 'border-color: #dc3545;' : (estadisticas.diasSinComprar > 60 ? 'border-color: #ffc107;' : 'border-color: #28a745;')}">
+                                <div class="stat-value"
+                                     th:classappend="${estadisticas.diasSinComprar > 180 ? 'text-danger' : (estadisticas.diasSinComprar > 60 ? 'text-warning' : 'text-success')}"
+                                     th:text="${estadisticas.diasSinComprar >= 0 ? estadisticas.diasSinComprar + ' dias' : '-'}">-</div>
+                                <div class="stat-label">Sin Comprar</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Credito -->
+                    <div class="card" th:classappend="${estadisticas.tieneCredito ? 'card-outline card-warning' : 'card-outline card-secondary'}">
+                        <div class="card-header py-2">
+                            <h3 class="card-title">
+                                <i class="fas fa-credit-card mr-2"></i>Informacion de Credito
+                            </h3>
+                            <div class="card-tools">
+                                <span th:if="${estadisticas.tieneCredito}" class="badge badge-success">HABILITADO</span>
+                                <span th:unless="${estadisticas.tieneCredito}" class="badge badge-secondary">NO HABILITADO</span>
+                            </div>
+                        </div>
+                        <div class="card-body py-2" th:if="${estadisticas.tieneCredito}">
+                            <div class="row align-items-center">
+                                <div class="col-md-3 text-center">
+                                    <small class="text-muted d-block">Limite</small>
+                                    <strong class="text-dark">S/ <span th:text="${#numbers.formatDecimal(estadisticas.limiteCredito, 1, 2)}">0</span></strong>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <small class="text-muted d-block">Deuda Actual</small>
+                                    <strong th:classappend="${estadisticas.saldoDeudor != null and estadisticas.saldoDeudor > 0 ? 'text-danger' : 'text-success'}">
+                                        S/ <span th:text="${#numbers.formatDecimal(estadisticas.saldoDeudor ?: 0, 1, 2)}">0</span>
+                                    </strong>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <small class="text-muted d-block">Disponible</small>
+                                    <strong class="text-success">S/ <span th:text="${#numbers.formatDecimal(estadisticas.creditoDisponible, 1, 2)}">0</span></strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted d-block mb-1">Uso: <span th:text="${estadisticas.porcentajeUsoCredito}">0</span>%</small>
+                                    <div class="credit-bar">
+                                        <div class="credit-bar-fill"
+                                             th:style="'width:' + ${estadisticas.porcentajeUsoCredito} + '%;'"
+                                             th:classappend="${estadisticas.porcentajeUsoCredito > 80 ? 'bg-danger' : (estadisticas.porcentajeUsoCredito > 50 ? 'bg-warning' : 'bg-success')}">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Plazo: <span th:text="${estadisticas.diasCredito}">0</span> dias</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body py-3 text-center text-muted" th:unless="${estadisticas.tieneCredito}">
+                            <i class="fas fa-info-circle mr-1"></i> Este cliente no tiene credito habilitado.
+                            <a th:href="@{/clientes/editar/{id}(id=${cliente.id})}" class="ml-2">Habilitar credito</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILA 2: Historial con Tabs -->
+            <div class="card">
+                <div class="card-header p-0">
+                    <ul class="nav nav-tabs" id="historialTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="ventas-tab" data-toggle="tab" href="#tab-ventas" role="tab">
+                                <i class="fas fa-shopping-cart mr-1"></i>Ventas
+                                <span class="badge badge-primary ml-1" th:text="${#lists.size(historialCompras)}">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="deudas-tab" data-toggle="tab" href="#tab-deudas" role="tab">
+                                <i class="fas fa-hand-holding-usd mr-1"></i>Deudas
+                                <span class="badge badge-danger ml-1" th:text="${#lists.size(deudasPendientes)}">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="cotizaciones-tab" data-toggle="tab" href="#tab-cotizaciones" role="tab">
+                                <i class="fas fa-file-invoice mr-1"></i>Cotizaciones
+                                <span class="badge badge-info ml-1" th:text="${#lists.size(cotizaciones)}">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="servicios-tab" data-toggle="tab" href="#tab-servicios" role="tab">
+                                <i class="fas fa-tools mr-1"></i>Servicios
+                                <span class="badge badge-warning ml-1" th:text="${#lists.size(ordenesServicio)}">0</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+                    <div class="tab-content">
+
+                        <!-- Tab Ventas -->
+                        <div class="tab-pane fade show active" id="tab-ventas" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Comprobante</th>
+                                            <th>Fecha</th>
+                                            <th>Forma Pago</th>
+                                            <th>Metodo</th>
+                                            <th class="text-right">Total</th>
+                                            <th class="text-right">Pendiente</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="v : ${historialCompras}">
+                                            <td>
+                                                <strong th:text="${v.serie + '-' + v.numero}">B001-1</strong>
+                                                <small class="d-block text-muted" th:text="${v.tipoComprobante}">BOLETA</small>
+                                            </td>
+                                            <td th:text="${v.fechaEmision != null ? #temporals.format(v.fechaEmision, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td>
+                                                <span class="badge"
+                                                      th:classappend="${v.formaPago == 'Credito' ? 'badge-warning' : 'badge-success'}"
+                                                      th:text="${v.formaPago}">Contado</span>
+                                            </td>
+                                            <td th:text="${v.metodoPago ?: '-'}">-</td>
+                                            <td class="text-right font-weight-bold">
+                                                S/ <span th:text="${#numbers.formatDecimal(v.total, 1, 2)}">0.00</span>
+                                            </td>
+                                            <td class="text-right">
+                                                <span th:if="${v.saldoPendiente != null and v.saldoPendiente > 0}"
+                                                      class="text-danger font-weight-bold">
+                                                    S/ <span th:text="${#numbers.formatDecimal(v.saldoPendiente, 1, 2)}">0.00</span>
+                                                </span>
+                                                <span th:unless="${v.saldoPendiente != null and v.saldoPendiente > 0}" class="text-success">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-estado"
+                                                      th:classappend="${v.estado == 'PAGADO_TOTAL'} ? 'badge-success' :
+                                                                     (${v.estado == 'EMITIDO'} ? 'badge-primary' :
+                                                                     (${v.estado == 'ANULADO'} ? 'badge-dark' : 'badge-warning'))"
+                                                      th:text="${v.estado}">EMITIDO</span>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(historialCompras)}">
+                                            <td colspan="7" class="text-center py-4 text-muted">
+                                                <i class="fas fa-shopping-cart fa-2x mb-2 d-block"></i>
+                                                Este cliente aun no tiene ventas registradas
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Deudas Pendientes -->
+                        <div class="tab-pane fade" id="tab-deudas" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Comprobante</th>
+                                            <th>Fecha Emision</th>
+                                            <th>Vencimiento</th>
+                                            <th class="text-right">Total</th>
+                                            <th class="text-right">Pagado</th>
+                                            <th class="text-right">Pendiente</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="d : ${deudasPendientes}">
+                                            <td>
+                                                <strong th:text="${d.serie + '-' + d.numero}">-</strong>
+                                                <small class="d-block text-muted" th:text="${d.tipoComprobante}"></small>
+                                            </td>
+                                            <td th:text="${d.fechaEmision != null ? #temporals.format(d.fechaEmision, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td>
+                                                <span th:if="${d.fechaVencimiento != null}"
+                                                      th:text="${#temporals.format(d.fechaVencimiento, 'dd/MM/yyyy')}"
+                                                      th:classappend="${d.fechaVencimiento.isBefore(T(java.time.LocalDate).now())} ? 'text-danger font-weight-bold' : ''">-</span>
+                                                <span th:unless="${d.fechaVencimiento != null}" class="text-muted">-</span>
+                                            </td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(d.total, 1, 2)}">0</span></td>
+                                            <td class="text-right text-success">S/ <span th:text="${#numbers.formatDecimal(d.montoPagado ?: 0, 1, 2)}">0</span></td>
+                                            <td class="text-right text-danger font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(d.saldoPendiente, 1, 2)}">0</span></td>
+                                            <td class="text-center">
+                                                <a th:href="@{/cobranzas}" class="btn btn-sm btn-outline-success" title="Ir a Cobranzas">
+                                                    <i class="fas fa-hand-holding-usd"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(deudasPendientes)}">
+                                            <td colspan="7" class="text-center py-4 text-muted">
+                                                <i class="fas fa-check-circle fa-2x mb-2 d-block text-success"></i>
+                                                Este cliente no tiene deudas pendientes
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Cotizaciones -->
+                        <div class="tab-pane fade" id="tab-cotizaciones" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Cotizacion</th>
+                                            <th>Fecha</th>
+                                            <th>Vencimiento</th>
+                                            <th class="text-right">Total</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="cot : ${cotizaciones}">
+                                            <td>
+                                                <strong th:text="${cot.serie + '-' + cot.numero}">C001-1</strong>
+                                            </td>
+                                            <td th:text="${cot.fechaEmision != null ? #temporals.format(cot.fechaEmision, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td th:text="${cot.fechaVencimiento != null ? #temporals.format(cot.fechaVencimiento, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td class="text-right font-weight-bold">
+                                                S/ <span th:text="${#numbers.formatDecimal(cot.total ?: 0, 1, 2)}">0.00</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-estado"
+                                                      th:classappend="${cot.estado == 'CONVERTIDA' or cot.estado == 'CONVERTIDO_VENTA'} ? 'badge-success' :
+                                                                     (${cot.estado == 'EMITIDA' or cot.estado == 'ENVIADA'} ? 'badge-primary' :
+                                                                     (${cot.estado == 'VENCIDA' or cot.estado == 'ANULADA'} ? 'badge-dark' :
+                                                                     (${cot.estado == 'APROBADA'} ? 'badge-info' : 'badge-secondary')))"
+                                                      th:text="${cot.estado}">BORRADOR</span>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(cotizaciones)}">
+                                            <td colspan="5" class="text-center py-4 text-muted">
+                                                <i class="fas fa-file-invoice fa-2x mb-2 d-block"></i>
+                                                No hay cotizaciones para este cliente
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tab Servicios -->
+                        <div class="tab-pane fade" id="tab-servicios" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Tipo</th>
+                                            <th>Trabajo</th>
+                                            <th>Fecha Recepcion</th>
+                                            <th>Entrega Est.</th>
+                                            <th class="text-right">Total</th>
+                                            <th class="text-right">Saldo</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="os : ${ordenesServicio}">
+                                            <td th:text="${os.id}">1</td>
+                                            <td>
+                                                <span class="badge badge-info" th:text="${os.tipoServicio}">-</span>
+                                            </td>
+                                            <td th:text="${os.tituloTrabajo ?: '-'}">-</td>
+                                            <td th:text="${os.fechaRecepcion != null ? #temporals.format(os.fechaRecepcion, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td th:text="${os.fechaEntregaEstimada != null ? #temporals.format(os.fechaEntregaEstimada, 'dd/MM/yyyy') : '-'}">-</td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(os.total ?: 0, 1, 2)}">0</span></td>
+                                            <td class="text-right">
+                                                <span th:if="${os.saldo != null and os.saldo > 0}" class="text-danger">
+                                                    S/ <span th:text="${#numbers.formatDecimal(os.saldo, 1, 2)}">0</span>
+                                                </span>
+                                                <span th:unless="${os.saldo != null and os.saldo > 0}" class="text-success">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-estado"
+                                                      th:classappend="${os.estado == 'ENTREGADO'} ? 'badge-success' :
+                                                                     (${os.estado == 'PENDIENTE'} ? 'badge-warning' :
+                                                                     (${os.estado == 'EN_PROCESO'} ? 'badge-primary' : 'badge-secondary'))"
+                                                      th:text="${os.estado}">PENDIENTE</span>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${#lists.isEmpty(ordenesServicio)}">
+                                            <td colspan="8" class="text-center py-4 text-muted">
+                                                <i class="fas fa-tools fa-2x mb-2 d-block"></i>
+                                                No hay ordenes de servicio para este cliente
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boton volver -->
+            <div class="mb-4">
+                <a href="/clientes" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left mr-1"></i>Volver a Clientes
+                </a>
+            </div>
+
+        </div>
+    </section>
+</section>
+</body>
+</html>

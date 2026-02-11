@@ -2,10 +2,15 @@ package com.libreria.sistema.repository;
 import com.libreria.sistema.model.OrdenServicio;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Long> {
+    // Ordenes de un cliente por documento
+    @Query("SELECT o FROM OrdenServicio o WHERE o.clienteDocumento = :documento ORDER BY o.fechaRecepcion DESC")
+    List<OrdenServicio> findByClienteDocumentoOrderByFechaRecepcionDesc(@Param("documento") String documento);
+
     List<OrdenServicio> findByTipoServicio(String tipo); // Para filtrar por pestañas
     List<OrdenServicio> findByEstadoNot(String estado); // Para ver pendientes
 

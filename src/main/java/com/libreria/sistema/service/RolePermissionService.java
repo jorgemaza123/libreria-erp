@@ -423,6 +423,9 @@ public class RolePermissionService {
         agregarPermiso(permisosVendedor, "GASTOS_VER");
         agregarPermiso(permisosVendedor, "GASTOS_CREAR");
         agregarPermiso(permisosVendedor, "STOCK_VER");
+        agregarPermiso(permisosVendedor, "CLIENTES_VER");
+        agregarPermiso(permisosVendedor, "CLIENTES_CREAR");
+        agregarPermiso(permisosVendedor, "CLIENTES_EDITAR");
         vendedor.setPermissions(permisosVendedor);
         roleRepository.save(vendedor);
 

@@ -99,6 +99,9 @@
                             </form>
                         </div>
                         <div class="col-md-6 text-right">
+                            <a th:href="@{/clientes/exportar/excel(buscar=${buscar})}" class="btn btn-outline-success" title="Exportar a Excel">
+                                <i class="fas fa-file-excel mr-1"></i>Excel
+                            </a>
                             <a th:href="@{/clientes/creditos}" class="btn btn-warning">
                                 <i class="fas fa-credit-card mr-1"></i>Gestionar Creditos
                             </a>

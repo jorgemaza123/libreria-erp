@@ -14,6 +14,13 @@ import java.util.List;
 
 public interface CotizacionRepository extends JpaRepository<Cotizacion, Long> {
 
+    // Cotizaciones de un cliente por FK
+    List<Cotizacion> findByClienteEntityIdOrderByFechaCreacionDesc(Long clienteId);
+
+    // Cotizaciones de un cliente por documento snapshot
+    @Query("SELECT c FROM Cotizacion c WHERE c.clienteDocumento = :documento ORDER BY c.fechaCreacion DESC")
+    List<Cotizacion> findByClienteDocumento(@Param("documento") String documento);
+
     long countByEstado(String estado);
 
     @Query("SELECT COUNT(c) FROM Cotizacion c WHERE c.estado IN :estados")

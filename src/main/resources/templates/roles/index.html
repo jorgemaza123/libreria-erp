@@ -218,18 +218,30 @@
             const container = $('#permisosContainer');
             container.empty();
 
-            const ordenModulos = ['VENTAS', 'COMPRAS', 'INVENTARIO', 'CAJA', 'REPORTES',
-                                 'CONFIGURACION', 'USUARIOS', 'AUDITORIA'];
+            // Orden preferido de módulos (los que no estén aquí se agregan al final)
+            const ordenPreferido = [
+                'VENTAS', 'COMPRAS', 'CLIENTES', 'COTIZACIONES', 'COBRANZAS', 'DEVOLUCIONES',
+                'INVENTARIO', 'STOCK', 'KARDEX', 'TOMA_INVENTARIO', 'PROVEEDORES',
+                'ORDENES_SERVICIO', 'LISTAS_ESCOLARES', 'SOLICITUDES',
+                'CAJA', 'GASTOS', 'REPORTES', 'REPORTES_FINANCIEROS',
+                'CRM', 'NOTIFICACIONES', 'INCIDENCIAS',
+                'CONFIGURACION', 'USUARIOS', 'ROLES', 'AUDITORIA'
+            ];
+
+            // Agregar módulos que existan en los datos pero no en el orden preferido
+            const modulosExtra = Object.keys(permisosDisponibles).filter(m => !ordenPreferido.includes(m));
+            const ordenModulos = ordenPreferido.concat(modulosExtra);
 
             ordenModulos.forEach(function(modulo) {
                 const permisos = permisosDisponibles[modulo];
                 if (!permisos) return;
 
+                const iconoModulo = getIconoModulo(modulo);
                 const card = $(`
                     <div class="card module-card mb-3">
                         <div class="card-header bg-light">
                             <h6 class="mb-0">
-                                <i class="fas fa-folder-open"></i> ${modulo}
+                                <i class="${iconoModulo}"></i> ${modulo.replace(/_/g, ' ')}
                                 <span class="float-right text-muted">${permisos.length} permisos</span>
                             </h6>
                         </div>
@@ -262,6 +274,37 @@
                     grid.append(item);
                 });
             });
+        }
+
+        function getIconoModulo(modulo) {
+            const iconos = {
+                'VENTAS': 'fas fa-shopping-cart text-primary',
+                'COMPRAS': 'fas fa-dolly text-info',
+                'CLIENTES': 'fas fa-users text-success',
+                'COTIZACIONES': 'fas fa-file-invoice text-purple',
+                'COBRANZAS': 'fas fa-hand-holding-usd text-warning',
+                'DEVOLUCIONES': 'fas fa-undo text-secondary',
+                'INVENTARIO': 'fas fa-boxes text-info',
+                'STOCK': 'fas fa-cubes text-success',
+                'KARDEX': 'fas fa-exchange-alt text-muted',
+                'TOMA_INVENTARIO': 'fas fa-clipboard-check text-info',
+                'PROVEEDORES': 'fas fa-truck text-primary',
+                'ORDENES_SERVICIO': 'fas fa-tools text-warning',
+                'LISTAS_ESCOLARES': 'fas fa-clipboard-list text-success',
+                'SOLICITUDES': 'fas fa-bullhorn text-warning',
+                'CAJA': 'fas fa-wallet text-success',
+                'GASTOS': 'fas fa-file-invoice-dollar text-danger',
+                'REPORTES': 'fas fa-chart-bar text-primary',
+                'REPORTES_FINANCIEROS': 'fas fa-chart-line text-info',
+                'CRM': 'fas fa-handshake text-primary',
+                'NOTIFICACIONES': 'fas fa-bell text-info',
+                'INCIDENCIAS': 'fas fa-exclamation-triangle text-warning',
+                'CONFIGURACION': 'fas fa-cogs text-secondary',
+                'USUARIOS': 'fas fa-users-cog text-primary',
+                'ROLES': 'fas fa-user-tag text-info',
+                'AUDITORIA': 'fas fa-history text-muted'
+            };
+            return iconos[modulo] || 'fas fa-folder-open';
         }
 
         function getIconoAccion(accion) {

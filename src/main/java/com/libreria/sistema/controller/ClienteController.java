@@ -93,15 +93,19 @@ public class ClienteController {
     }
 
     /**
-     * Ver detalle de cliente con historial
+     * Ver detalle de cliente con historial completo (Vista 360°)
      */
     @GetMapping("/ver/{id}")
     @PreAuthorize("hasPermission(null, 'CLIENTES_VER')")
     public String ver(@PathVariable Long id, Model model, RedirectAttributes attributes) {
         return clienteService.obtenerPorId(id).map(cliente -> {
             model.addAttribute("cliente", cliente);
-            model.addAttribute("estadisticas", clienteService.obtenerEstadisticas(id));
+            model.addAttribute("estadisticas", clienteService.obtenerEstadisticasCompletas(id));
             model.addAttribute("historialCompras", clienteService.obtenerHistorialCompras(id));
+            model.addAttribute("cotizaciones", clienteService.obtenerCotizaciones(id));
+            model.addAttribute("ordenesServicio", clienteService.obtenerOrdenesServicio(id));
+            model.addAttribute("deudasPendientes", clienteService.obtenerDeudasPendientes(id));
+            model.addAttribute("active", "clientes");
             return "clientes/detalle";
         }).orElseGet(() -> {
             attributes.addFlashAttribute("error", "Cliente no encontrado");
@@ -386,5 +390,77 @@ public class ClienteController {
             "mensaje", disponible ? "Servicio de consulta SUNAT/RENIEC disponible" :
                 "Token de APISUNAT no configurado. Configure en Configuración > General > Facturación."
         ));
+    }
+
+    // =====================================================
+    //  EXPORTACIÓN
+    // =====================================================
+
+    /**
+     * Exportar listado de clientes a Excel
+     */
+    @GetMapping("/exportar/excel")
+    @PreAuthorize("hasPermission(null, 'CLIENTES_VER')")
+    public void exportarExcel(@RequestParam(defaultValue = "") String buscar,
+                              jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            List<Cliente> clientes = buscar.isEmpty() ? clienteService.listarTodos() : clienteService.buscar(buscar);
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=clientes_" +
+                    java.time.LocalDate.now() + ".xlsx");
+
+            org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Clientes");
+
+            // Estilo cabecera
+            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+
+            // Cabecera
+            String[] headers = {"Tipo Doc", "Documento", "Nombre / Razon Social", "Telefono", "Email",
+                    "Direccion", "Categoria", "Credito", "Limite Credito", "Deuda", "Total Compras",
+                    "Cant. Compras", "Ultima Compra", "Estado"};
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Datos
+            int rowNum = 1;
+            for (Cliente c : clientes) {
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue("6".equals(c.getTipoDocumento()) ? "RUC" : "DNI");
+                row.createCell(1).setCellValue(c.getNumeroDocumento() != null ? c.getNumeroDocumento() : "");
+                row.createCell(2).setCellValue(c.getNombreRazonSocial() != null ? c.getNombreRazonSocial() : "");
+                row.createCell(3).setCellValue(c.getTelefono() != null ? c.getTelefono() : "");
+                row.createCell(4).setCellValue(c.getEmail() != null ? c.getEmail() : "");
+                row.createCell(5).setCellValue(c.getDireccion() != null ? c.getDireccion() : "");
+                row.createCell(6).setCellValue(c.getCategoria() != null ? c.getCategoria() : "NUEVO");
+                row.createCell(7).setCellValue(c.isTieneCredito() ? "SI" : "NO");
+                row.createCell(8).setCellValue(c.getLimiteCredito() != null ? c.getLimiteCredito().doubleValue() : 0);
+                row.createCell(9).setCellValue(c.getSaldoDeudor() != null ? c.getSaldoDeudor().doubleValue() : 0);
+                row.createCell(10).setCellValue(c.getTotalComprasHistorico() != null ? c.getTotalComprasHistorico().doubleValue() : 0);
+                row.createCell(11).setCellValue(c.getCantidadCompras() != null ? c.getCantidadCompras() : 0);
+                row.createCell(12).setCellValue(c.getFechaUltimaCompra() != null ? c.getFechaUltimaCompra().toString() : "Nunca");
+                row.createCell(13).setCellValue(c.isActivo() ? "Activo" : "Inactivo");
+            }
+
+            // Auto-ajustar columnas
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(response.getOutputStream());
+            workbook.close();
+        } catch (Exception e) {
+            log.error("Error exportando clientes a Excel: {}", e.getMessage());
+        }
     }
 }

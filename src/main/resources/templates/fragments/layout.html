@@ -269,6 +269,25 @@
                             </ul>
                         </li>
 
+                        <li class="nav-item" th:classappend="${active == 'clientes' or active == 'clientes_creditos' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'clientes' or active == 'clientes_creditos' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-users"></i>
+                                <p>Clientes <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/clientes" class="nav-link" th:classappend="${active == 'clientes' ? 'active' : ''}">
+                                        <i class="fas fa-address-book nav-icon"></i><p>Gestion de Clientes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/clientes/creditos" class="nav-link" th:classappend="${active == 'clientes_creditos' ? 'active' : ''}">
+                                        <i class="fas fa-credit-card nav-icon text-warning"></i><p>Creditos y Deudas</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>

@@ -2,8 +2,12 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.aspect.Auditable;
 import com.libreria.sistema.model.Cliente;
+import com.libreria.sistema.model.Cotizacion;
+import com.libreria.sistema.model.OrdenServicio;
 import com.libreria.sistema.model.Venta;
 import com.libreria.sistema.repository.ClienteRepository;
+import com.libreria.sistema.repository.CotizacionRepository;
+import com.libreria.sistema.repository.OrdenServicioRepository;
 import com.libreria.sistema.repository.VentaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -13,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +38,15 @@ public class ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final VentaRepository ventaRepository;
+    private final CotizacionRepository cotizacionRepository;
+    private final OrdenServicioRepository ordenServicioRepository;
 
-    public ClienteService(ClienteRepository clienteRepository, VentaRepository ventaRepository) {
+    public ClienteService(ClienteRepository clienteRepository, VentaRepository ventaRepository,
+                          CotizacionRepository cotizacionRepository, OrdenServicioRepository ordenServicioRepository) {
         this.clienteRepository = clienteRepository;
         this.ventaRepository = ventaRepository;
+        this.cotizacionRepository = cotizacionRepository;
+        this.ordenServicioRepository = ordenServicioRepository;
     }
 
     // =====================================================
@@ -293,5 +304,180 @@ public class ClienteService {
      */
     public List<String> obtenerCategorias() {
         return List.of("NUEVO", "REGULAR", "FRECUENTE", "VIP", "MOROSO");
+    }
+
+    // =====================================================
+    //  ESTADÍSTICAS AVANZADAS PARA VISTA 360°
+    // =====================================================
+
+    /**
+     * Estadísticas completas para la vista detalle del cliente
+     */
+    public Map<String, Object> obtenerEstadisticasCompletas(Long clienteId) {
+        Map<String, Object> stats = new HashMap<>();
+
+        // Defaults seguros para evitar NullPointerException en Thymeleaf
+        stats.put("totalCompras", BigDecimal.ZERO);
+        stats.put("cantidadCompras", 0);
+        stats.put("fechaUltimaCompra", null);
+        stats.put("categoria", "NUEVO");
+        stats.put("ticketPromedio", BigDecimal.ZERO);
+        stats.put("frecuenciaMensual", 0.0);
+        stats.put("diasSinComprar", -1L);
+        stats.put("tieneCredito", false);
+        stats.put("score", 0);
+        stats.put("scoreLabel", "Bajo");
+
+        clienteRepository.findById(clienteId).ifPresent(cliente -> {
+            BigDecimal totalCompras = cliente.getTotalComprasHistorico() != null ?
+                    cliente.getTotalComprasHistorico() : BigDecimal.ZERO;
+            Integer cantidadCompras = cliente.getCantidadCompras() != null ?
+                    cliente.getCantidadCompras() : 0;
+
+            stats.put("totalCompras", totalCompras);
+            stats.put("cantidadCompras", cantidadCompras);
+            stats.put("fechaUltimaCompra", cliente.getFechaUltimaCompra());
+            stats.put("categoria", cliente.getCategoria());
+
+            // Ticket promedio
+            if (cantidadCompras > 0) {
+                stats.put("ticketPromedio", totalCompras.divide(
+                        new BigDecimal(cantidadCompras), 2, RoundingMode.HALF_UP));
+            } else {
+                stats.put("ticketPromedio", BigDecimal.ZERO);
+            }
+
+            // Frecuencia: compras por mes desde registro
+            if (cantidadCompras > 0 && cliente.getFechaRegistro() != null) {
+                long mesesDesdeRegistro = ChronoUnit.MONTHS.between(
+                        cliente.getFechaRegistro().toLocalDate(), LocalDate.now());
+                if (mesesDesdeRegistro < 1) mesesDesdeRegistro = 1;
+                double frecuenciaMensual = (double) cantidadCompras / mesesDesdeRegistro;
+                stats.put("frecuenciaMensual", Math.round(frecuenciaMensual * 100.0) / 100.0);
+            } else {
+                stats.put("frecuenciaMensual", 0.0);
+            }
+
+            // Días desde última compra
+            if (cliente.getFechaUltimaCompra() != null) {
+                long diasSinComprar = ChronoUnit.DAYS.between(
+                        cliente.getFechaUltimaCompra(), LocalDate.now());
+                stats.put("diasSinComprar", diasSinComprar);
+            } else {
+                stats.put("diasSinComprar", -1);
+            }
+
+            // Crédito
+            if (cliente.isTieneCredito()) {
+                stats.put("tieneCredito", true);
+                stats.put("limiteCredito", cliente.getLimiteCredito());
+                stats.put("saldoDeudor", cliente.getSaldoDeudor());
+                stats.put("creditoDisponible", cliente.getCreditoDisponible());
+                stats.put("diasCredito", cliente.getDiasCredito());
+
+                // Porcentaje de uso de crédito
+                if (cliente.getLimiteCredito() != null && cliente.getLimiteCredito().compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal deuda = cliente.getSaldoDeudor() != null ? cliente.getSaldoDeudor() : BigDecimal.ZERO;
+                    BigDecimal porcentajeUso = deuda.multiply(new BigDecimal("100"))
+                            .divide(cliente.getLimiteCredito(), 1, RoundingMode.HALF_UP);
+                    stats.put("porcentajeUsoCredito", porcentajeUso);
+                } else {
+                    stats.put("porcentajeUsoCredito", BigDecimal.ZERO);
+                }
+            } else {
+                stats.put("tieneCredito", false);
+            }
+
+            // Scoring del cliente (0-100)
+            int score = calcularScore(cliente);
+            stats.put("score", score);
+            stats.put("scoreLabel", score >= 80 ? "Excelente" : score >= 60 ? "Bueno" : score >= 40 ? "Regular" : "Bajo");
+        });
+
+        return stats;
+    }
+
+    /**
+     * Calcula un score del 0-100 para el cliente basado en múltiples factores
+     */
+    private int calcularScore(Cliente cliente) {
+        int score = 0;
+        Integer compras = cliente.getCantidadCompras() != null ? cliente.getCantidadCompras() : 0;
+        BigDecimal total = cliente.getTotalComprasHistorico() != null ?
+                cliente.getTotalComprasHistorico() : BigDecimal.ZERO;
+
+        // Puntos por cantidad de compras (max 30)
+        score += Math.min(compras * 3, 30);
+
+        // Puntos por monto total (max 30)
+        if (total.compareTo(new BigDecimal("5000")) >= 0) score += 30;
+        else if (total.compareTo(new BigDecimal("2000")) >= 0) score += 20;
+        else if (total.compareTo(new BigDecimal("500")) >= 0) score += 10;
+        else if (total.compareTo(new BigDecimal("100")) >= 0) score += 5;
+
+        // Puntos por recencia - última compra (max 20)
+        if (cliente.getFechaUltimaCompra() != null) {
+            long dias = ChronoUnit.DAYS.between(cliente.getFechaUltimaCompra(), LocalDate.now());
+            if (dias <= 7) score += 20;
+            else if (dias <= 30) score += 15;
+            else if (dias <= 90) score += 10;
+            else if (dias <= 180) score += 5;
+        }
+
+        // Puntos por pago puntual - sin deuda (max 20)
+        BigDecimal deuda = cliente.getSaldoDeudor() != null ? cliente.getSaldoDeudor() : BigDecimal.ZERO;
+        if (deuda.compareTo(BigDecimal.ZERO) == 0) {
+            score += 20;
+        } else if (cliente.getLimiteCredito() != null && cliente.getLimiteCredito().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal porcentaje = deuda.multiply(new BigDecimal("100"))
+                    .divide(cliente.getLimiteCredito(), 0, RoundingMode.HALF_UP);
+            if (porcentaje.intValue() < 30) score += 15;
+            else if (porcentaje.intValue() < 60) score += 10;
+            else if (porcentaje.intValue() < 90) score += 5;
+        }
+
+        return Math.min(score, 100);
+    }
+
+    /**
+     * Obtiene cotizaciones del cliente.
+     * Datos secundarios: si falla, la vista muestra tab vacío en vez de error 500.
+     */
+    public List<Cotizacion> obtenerCotizaciones(Long clienteId) {
+        try {
+            List<Cotizacion> cotizaciones = cotizacionRepository.findByClienteEntityIdOrderByFechaCreacionDesc(clienteId);
+            if (cotizaciones.isEmpty()) {
+                return clienteRepository.findById(clienteId)
+                        .map(c -> cotizacionRepository.findByClienteDocumento(c.getNumeroDocumento()))
+                        .orElse(List.of());
+            }
+            return cotizaciones;
+        } catch (org.springframework.dao.DataAccessException e) {
+            log.error("Error BD obteniendo cotizaciones del cliente {}: {}", clienteId, e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Obtiene órdenes de servicio del cliente.
+     * Datos secundarios: si falla, la vista muestra tab vacío en vez de error 500.
+     */
+    public List<OrdenServicio> obtenerOrdenesServicio(Long clienteId) {
+        try {
+            return clienteRepository.findById(clienteId)
+                    .map(c -> ordenServicioRepository.findByClienteDocumentoOrderByFechaRecepcionDesc(c.getNumeroDocumento()))
+                    .orElse(List.of());
+        } catch (org.springframework.dao.DataAccessException e) {
+            log.error("Error BD obteniendo ordenes de servicio del cliente {}: {}", clienteId, e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Obtiene ventas a crédito pendientes del cliente.
+     * Dato financiero crítico: logueamos como ERROR con stacktrace completo.
+     */
+    public List<Venta> obtenerDeudasPendientes(Long clienteId) {
+        return ventaRepository.findDeudasPorClienteId(clienteId);
     }
 }
