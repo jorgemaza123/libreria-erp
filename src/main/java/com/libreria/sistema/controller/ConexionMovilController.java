@@ -1,7 +1,6 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.service.ConexionMovilService;
-import com.libreria.sistema.util.NetworkUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.CacheControl;
@@ -10,9 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,31 +24,23 @@ public class ConexionMovilController {
     private final ConexionMovilService conexionMovilService;
 
     /**
-     * Vista principal simplificada para el usuario final.
+     * Vista principal — muestra la IP guardada en BD (no recalcula).
      */
     @GetMapping
     public String vistaConexionMovil(Model model) {
-        Map<String, Object> info = conexionMovilService.obtenerInfoConexion();
+        String ip = conexionMovilService.obtenerIpConfigurada();
+        String serverUrl = conexionMovilService.generarServerUrl();
 
-        model.addAttribute("serverUrl", info.get("url"));
-        model.addAttribute("serverIp", info.get("ip"));
-        model.addAttribute("serverPort", info.get("port"));
-        model.addAttribute("sslEnabled", info.get("sslEnabled"));
-        model.addAttribute("allIps", info.get("allIps"));
-        model.addAttribute("allUrls", info.get("allUrls"));
-        model.addAttribute("interfaces", NetworkUtils.getAllNetworkInfo());
-
-        // Verificación de puerto y firewall
-        Map<String, Object> portCheck = conexionMovilService.verificarPuerto();
-        model.addAttribute("portCheck", portCheck);
+        model.addAttribute("serverUrl", serverUrl);
+        model.addAttribute("serverIp", ip);
+        model.addAttribute("serverPort", conexionMovilService.getServerPort());
+        model.addAttribute("sslEnabled", conexionMovilService.isSslEnabled());
 
         return "configuracion/red";
     }
 
     /**
-     * Genera imagen QR dinámicamente como PNG.
-     * No requiere internet — generación local con ZXing.
-     * No cachea — recalcula IP cada vez.
+     * Genera imagen QR con la URL fija guardada en BD.
      */
     @GetMapping("/qr.png")
     @ResponseBody
@@ -70,17 +59,72 @@ public class ConexionMovilController {
     }
 
     /**
-     * API REST: información de conexión completa.
-     * Recalcula IP dinámicamente en cada llamada.
+     * Recalcular IP automáticamente y guardar en BD.
+     */
+    @PostMapping("/recalcular-ip")
+    @PreAuthorize("hasPermission(null, 'CONFIGURACION_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> recalcularIp() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            String nuevaIp = conexionMovilService.recalcularIp();
+            result.put("success", true);
+            result.put("ip", nuevaIp);
+            result.put("url", conexionMovilService.generarServerUrl());
+            result.put("message", "IP detectada y guardada: " + nuevaIp);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error al recalcular IP", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(result);
+        }
+    }
+
+    /**
+     * Guardar IP manualmente escrita por el admin.
+     */
+    @PostMapping("/guardar-ip")
+    @PreAuthorize("hasPermission(null, 'CONFIGURACION_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> guardarIpManual(@RequestParam String ip) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Validación básica de formato IPv4
+        if (ip == null || !ip.trim().matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
+            result.put("success", false);
+            result.put("error", "Formato de IP inválido. Use el formato: 192.168.1.100");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        try {
+            conexionMovilService.guardarIpManual(ip);
+            result.put("success", true);
+            result.put("ip", ip.trim());
+            result.put("url", conexionMovilService.generarServerUrl());
+            result.put("message", "IP guardada correctamente: " + ip.trim());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error al guardar IP manual", e);
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(result);
+        }
+    }
+
+    /**
+     * API REST: información de conexión.
      */
     @GetMapping("/api/info")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> apiInfo() {
         try {
-            Map<String, Object> info = conexionMovilService.obtenerInfoConexion();
+            Map<String, Object> info = new LinkedHashMap<>();
             info.put("success", true);
-            info.put("portCheck", conexionMovilService.verificarPuerto());
-            info.put("interfaces", NetworkUtils.getAllNetworkInfo());
+            info.put("url", conexionMovilService.generarServerUrl());
+            info.put("ip", conexionMovilService.obtenerIpConfigurada());
+            info.put("port", conexionMovilService.getServerPort());
+            info.put("sslEnabled", conexionMovilService.isSslEnabled());
             return ResponseEntity.ok(info);
         } catch (Exception e) {
             log.error("Error al obtener info de conexión", e);
@@ -92,7 +136,7 @@ public class ConexionMovilController {
     }
 
     /**
-     * API REST: QR como Base64 data URI (para embeber directamente en HTML).
+     * API REST: QR como Base64 data URI.
      */
     @GetMapping("/api/qr-base64")
     @ResponseBody
@@ -105,10 +149,6 @@ public class ConexionMovilController {
             result.put("success", true);
             result.put("url", url);
             result.put("qrBase64", qrBase64);
-
-            // URLs alternativas
-            result.put("allUrls", conexionMovilService.obtenerInfoConexion().get("allUrls"));
-
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error al generar QR base64", e);

@@ -118,6 +118,9 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/img/**", "/images/**", "/plugins/**", "/dist/**", "/uploads/**", "/webjars/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
 
+                // PWA (manifest, service worker, offline page)
+                .requestMatchers("/manifest.json", "/service-worker.js", "/offline.html").permitAll()
+
                 // Error pages
                 .requestMatchers("/error", "/error/**").permitAll()
 

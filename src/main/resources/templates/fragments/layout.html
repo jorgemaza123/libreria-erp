@@ -7,8 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-    <title>Librería CHROMA</title>
+    <meta name="theme-color" th:content="${config?.colorPrimario ?: '#007bff'}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title th:text="${config?.nombreEmpresa ?: 'Sistema ERP'}">Sistema ERP</title>
 
+    <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
     <link rel="icon" type="image/png" sizes="192x192" th:href="@{/images/logo.png}">
     <link rel="apple-touch-icon" sizes="180x180" th:href="@{/images/logo.png}">
@@ -56,6 +60,14 @@
             </div>
 
             <ul class="navbar-nav ml-auto">
+                <!-- Botón instalar como App (solo visible cuando el navegador lo permite) -->
+                <li class="nav-item">
+                    <a id="btnInstalarApp" class="nav-link" href="#" onclick="instalarApp(); return false;"
+                       title="Instalar como aplicación" style="display: none;">
+                        <i class="fas fa-download"></i>
+                        <span class="badge badge-success navbar-badge" style="font-size: 8px;">App</span>
+                    </a>
+                </li>
                 <!-- Botón de conexión móvil -->
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="toggleBannerMovil()" title="Conexión Móvil" style="position: relative;">
@@ -902,6 +914,53 @@
                     }
                 });
             }
+        </script>
+
+        <!-- PWA: Service Worker Registration + Install Prompt -->
+        <script>
+            // Registrar Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+                        .then(function(reg) {
+                            console.log('SW registrado:', reg.scope);
+                        })
+                        .catch(function(err) {
+                            console.log('SW no disponible:', err.message);
+                        });
+                });
+            }
+
+            // Capturar evento de instalación PWA
+            var deferredPrompt = null;
+
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                deferredPrompt = e;
+                // Mostrar botón de instalación en el navbar
+                var btnInstall = document.getElementById('btnInstalarApp');
+                if (btnInstall) btnInstall.style.display = 'inline-block';
+            });
+
+            function instalarApp() {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function(choice) {
+                    if (choice.outcome === 'accepted') {
+                        console.log('PWA instalada');
+                        var btnInstall = document.getElementById('btnInstalarApp');
+                        if (btnInstall) btnInstall.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
+
+            // Detectar si ya está instalada como PWA
+            window.addEventListener('appinstalled', function() {
+                deferredPrompt = null;
+                var btnInstall = document.getElementById('btnInstalarApp');
+                if (btnInstall) btnInstall.style.display = 'none';
+            });
         </script>
 
         <th:block layout:fragment="scripts"></th:block>

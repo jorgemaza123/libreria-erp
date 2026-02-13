@@ -7,6 +7,7 @@ import com.libreria.sistema.service.ProductoExcelService;
 import com.libreria.sistema.service.ProductoService;
 import com.libreria.sistema.util.Constants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,6 +38,9 @@ public class ProductoController {
     private final ProductoExcelService productoExcelService;
     private final ProductoRepository productoRepository;
     private final EtiquetaService etiquetaService;
+
+    @Value("${app.upload-dir}")
+    private String uploadDir;
 
     public ProductoController(ProductoService productoService, ProductoExcelService productoExcelService,
                               ProductoRepository productoRepository, EtiquetaService etiquetaService) {
@@ -126,7 +130,7 @@ public class ProductoController {
                 }
 
                 // Crear carpeta uploads si no existe
-                Path rootPath = Paths.get("uploads").toAbsolutePath();
+                Path rootPath = Paths.get(uploadDir).toAbsolutePath();
                 if (!Files.exists(rootPath)) {
                     Files.createDirectories(rootPath);
                 }

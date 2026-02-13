@@ -56,9 +56,8 @@
             font-size: 0.85rem;
             font-weight: 600;
         }
-        .refresh-indicator {
-            font-size: 0.75rem;
-            color: #adb5bd;
+        .ip-config-card {
+            border-left: 4px solid #007bff;
         }
     </style>
 </head>
@@ -105,7 +104,7 @@
                             <i class="fas fa-qrcode mr-2"></i>Escanee para acceder
                         </h5>
 
-                        <!-- QR generado localmente (sin internet) -->
+                        <!-- QR -->
                         <div class="mb-3">
                             <img id="qrImage"
                                  th:src="@{/conexion-movil/qr.png}"
@@ -119,18 +118,11 @@
                             https://192.168.1.100:8443
                         </div>
 
-                        <!-- Botones -->
-                        <div class="d-flex justify-content-center gap-2">
+                        <!-- Botón Copiar -->
+                        <div class="d-flex justify-content-center">
                             <button class="btn btn-primary btn-copiar-url" onclick="copiarUrlMovil()">
                                 <i class="fas fa-copy mr-1"></i> Copiar URL
                             </button>
-                            <button class="btn btn-outline-secondary btn-copiar-url ml-2" onclick="refrescarConexion()">
-                                <i class="fas fa-sync-alt mr-1"></i> Actualizar
-                            </button>
-                        </div>
-
-                        <div class="refresh-indicator mt-3" id="refreshIndicator">
-                            <i class="fas fa-info-circle mr-1"></i>Use "Actualizar" si cambió de red
                         </div>
                     </div>
                 </div>
@@ -151,7 +143,7 @@
                         </div>
                     </div>
 
-                    <!-- Instrucciones SSL simplificadas -->
+                    <!-- Instrucciones SSL -->
                     <div class="card border-warning">
                         <div class="card-body p-3">
                             <h6 class="text-warning mb-2">
@@ -173,142 +165,47 @@
                 </div>
             </div>
 
-            <!-- Advertencia de Firewall (si está bloqueado) -->
-            <div th:if="${portCheck != null and portCheck.status == 'firewall_blocked'}"
-                 class="row justify-content-center mb-4">
+            <!-- Configuración de IP -->
+            <div class="row justify-content-center mb-4">
                 <div class="col-lg-8">
-                    <div class="alert alert-danger mb-0">
-                        <h5 class="mb-2">
-                            <i class="fas fa-shield-alt mr-2"></i>Firewall bloqueando conexiones
-                        </h5>
-                        <p class="mb-2">
-                            El firewall de Windows está impidiendo que los celulares se conecten al sistema.
-                            El puerto <strong th:text="${serverPort}">8443</strong> no es accesible desde la red.
-                        </p>
-                        <hr>
-                        <p class="mb-1"><strong>Para solucionarlo:</strong></p>
-                        <ol class="mb-0 small">
-                            <li>Abra <code>Panel de Control</code> &rarr; <code>Firewall de Windows</code></li>
-                            <li>Clic en <code>Permitir una aplicación a través del firewall</code></li>
-                            <li>Busque <strong>Java</strong> o <strong>OpenJDK</strong> y marque las casillas de red <strong>Privada</strong></li>
-                            <li>Si no aparece, clic en <code>Permitir otra aplicación</code> y agregue <code>javaw.exe</code></li>
-                            <li>Reinicie el sistema ERP</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de Soporte Técnico (colapsada) -->
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="card collapsed-card">
-                        <div class="card-header py-2">
+                    <div class="card ip-config-card">
+                        <div class="card-header">
                             <h3 class="card-title">
-                                <i class="fas fa-tools mr-2"></i>Soporte Técnico
+                                <i class="fas fa-network-wired mr-2"></i>Configuración de IP
                             </h3>
-                            <div class="card-tools">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
                         </div>
-                        <div class="card-body p-0">
-                            <table class="table table-sm table-striped mb-0">
-                                <tbody>
-                                    <tr>
-                                        <td><strong>IP Detectada</strong></td>
-                                        <td><code th:text="${serverIp}">192.168.1.100</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Puerto</strong></td>
-                                        <td th:text="${serverPort}">8443</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Protocolo</strong></td>
-                                        <td>
-                                            <span th:if="${sslEnabled}" class="badge badge-success">HTTPS</span>
-                                            <span th:unless="${sslEnabled}" class="badge badge-warning">HTTP</span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>URL Completa</strong></td>
-                                        <td><a th:href="${serverUrl}" target="_blank" th:text="${serverUrl}"></a></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>IPs Candidatas</strong></td>
-                                        <td>
-                                            <span th:each="ip, iter : ${allIps}">
-                                                <code th:text="${ip}"></code>
-                                                <span th:if="${!iter.last}">, </span>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Firewall</strong></td>
-                                        <td>
-                                            <span th:if="${portCheck != null and portCheck.status == 'ok'}" class="badge badge-success">
-                                                <i class="fas fa-check mr-1"></i>Puerto abierto
-                                            </span>
-                                            <span th:if="${portCheck != null and portCheck.status == 'firewall_blocked'}" class="badge badge-danger">
-                                                <i class="fas fa-times mr-1"></i>Puerto bloqueado
-                                            </span>
-                                            <span th:if="${portCheck == null or portCheck.status == 'error'}" class="badge badge-warning">
-                                                <i class="fas fa-question mr-1"></i>No verificado
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="card-body">
+                            <div class="row align-items-end">
+                                <!-- IP actual -->
+                                <div class="col-md-5 mb-3">
+                                    <label class="font-weight-bold">IP Configurada</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fas fa-globe"></i></span>
+                                        </div>
+                                        <input type="text" id="inputIp" class="form-control form-control-lg"
+                                               th:value="${serverIp}" placeholder="192.168.1.100">
+                                    </div>
+                                </div>
 
-                            <!-- URLs alternativas (solo en soporte técnico) -->
-                            <div th:if="${#lists.size(allUrls) > 1}" class="p-2">
-                                <h6 class="text-muted"><i class="fas fa-exchange-alt mr-1"></i>URLs Alternativas</h6>
-                                <div th:each="altUrl : ${allUrls}" class="mb-1">
-                                    <code th:text="${altUrl}"></code>
-                                    <button class="btn btn-xs btn-outline-secondary ml-1"
-                                            th:onclick="'copiarTexto(\'' + ${altUrl} + '\')'">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
+                                <!-- Botones -->
+                                <div class="col-md-7 mb-3">
+                                    <div class="btn-group">
+                                        <button class="btn btn-outline-primary" onclick="guardarIpManual()" title="Guardar la IP escrita manualmente">
+                                            <i class="fas fa-save mr-1"></i> Guardar IP
+                                        </button>
+                                        <button class="btn btn-outline-success" onclick="recalcularIp()" title="Detectar automáticamente la IP de esta computadora">
+                                            <i class="fas fa-sync-alt mr-1"></i> Detectar IP Automáticamente
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Diagnóstico de interfaces -->
-                            <div class="p-2">
-                                <h6 class="text-muted"><i class="fas fa-network-wired mr-1"></i>Interfaces de Red</h6>
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                La IP se detecta automáticamente la primera vez que se instala el sistema.
+                                Use <strong>"Detectar IP"</strong> si cambió de red, o escriba la IP manualmente si la detección no es correcta.
                             </div>
-                            <table class="table table-sm table-hover mb-0">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>Interfaz</th>
-                                        <th>IP</th>
-                                        <th>Activa</th>
-                                        <th>Virtual</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr th:each="iface : ${interfaces}"
-                                        th:class="${iface.ip == serverIp ? 'table-success' : ''}">
-                                        <td>
-                                            <small th:text="${iface.interface}">eth0</small>
-                                        </td>
-                                        <td>
-                                            <code th:text="${iface.ip}">192.168.1.100</code>
-                                            <span th:if="${iface.ip == serverIp}" class="badge badge-primary badge-sm ml-1">PRINCIPAL</span>
-                                        </td>
-                                        <td>
-                                            <i th:if="${iface.isUp == 'true'}" class="fas fa-check text-success"></i>
-                                            <i th:unless="${iface.isUp == 'true'}" class="fas fa-times text-danger"></i>
-                                        </td>
-                                        <td>
-                                            <i th:if="${iface.isVirtual == 'true'}" class="fas fa-check text-info"></i>
-                                            <i th:unless="${iface.isVirtual == 'true'}" class="fas fa-times text-muted"></i>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="card-footer text-muted small">
-                            La IP resaltada en verde es la detectada automáticamente via gateway del sistema operativo.
                         </div>
                     </div>
                 </div>
@@ -329,12 +226,9 @@
         function copiarTexto(texto) {
             navigator.clipboard.writeText(texto).then(function() {
                 Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
+                    toast: true, position: 'top-end', icon: 'success',
                     title: 'URL copiada al portapapeles',
-                    showConfirmButton: false,
-                    timer: 2000
+                    showConfirmButton: false, timer: 2000
                 });
             }).catch(function() {
                 var tempInput = document.createElement('input');
@@ -344,39 +238,81 @@
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
                 Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
+                    toast: true, position: 'top-end', icon: 'success',
                     title: 'URL copiada',
-                    showConfirmButton: false,
-                    timer: 2000
+                    showConfirmButton: false, timer: 2000
                 });
             });
         }
 
-        function refrescarConexion() {
-            // Recargar QR y URL dinámicamente
-            var qrImg = document.getElementById('qrImage');
-            qrImg.src = '/conexion-movil/qr.png?t=' + Date.now();
-
-            $.get('/conexion-movil/api/info', function(data) {
-                if (data.success) {
-                    document.getElementById('urlDisplay').textContent = data.url;
-                }
+        function recalcularIp() {
+            Swal.fire({
+                title: 'Detectando IP...',
+                text: 'Analizando la red de esta computadora',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
             });
 
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: 'Conexión actualizada',
-                showConfirmButton: false,
-                timer: 1500
+            $.post('/conexion-movil/recalcular-ip', function(data) {
+                if (data.success) {
+                    document.getElementById('inputIp').value = data.ip;
+                    actualizarVista(data.ip, data.url);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'IP Detectada',
+                        html: 'Nueva IP: <strong>' + data.ip + '</strong><br><small>Guardada en el sistema</small>',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo detectar la IP', 'error');
+                }
+            }).fail(function() {
+                Swal.fire('Error', 'Error de conexión al servidor', 'error');
             });
         }
 
-        // Sin auto-refresh: el QR solo se actualiza con el botón manual
-        // para evitar invalidar URLs ya escaneadas por el usuario
+        function guardarIpManual() {
+            var ip = document.getElementById('inputIp').value.trim();
+            if (!ip) {
+                Swal.fire('Error', 'Escriba una dirección IP', 'warning');
+                return;
+            }
+            // Validación básica
+            if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                Swal.fire('Error', 'Formato inválido. Use el formato: 192.168.1.100', 'warning');
+                return;
+            }
+
+            $.post('/conexion-movil/guardar-ip', { ip: ip }, function(data) {
+                if (data.success) {
+                    actualizarVista(data.ip, data.url);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'IP Guardada',
+                        html: 'IP configurada: <strong>' + data.ip + '</strong>',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo guardar la IP', 'error');
+                }
+            }).fail(function(xhr) {
+                var msg = 'Error de conexión';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    msg = xhr.responseJSON.error;
+                }
+                Swal.fire('Error', msg, 'error');
+            });
+        }
+
+        function actualizarVista(ip, url) {
+            // Actualizar URL display
+            document.getElementById('urlDisplay').textContent = url;
+            // Recargar QR
+            var qrImg = document.getElementById('qrImage');
+            qrImg.src = '/conexion-movil/qr.png?t=' + Date.now();
+        }
     </script>
 </th:block>
 

@@ -1,8 +1,10 @@
 package com.libreria.sistema.config;
 
+import com.libreria.sistema.service.ConexionMovilService;
 import com.libreria.sistema.util.NetworkUtils;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,10 +20,7 @@ import java.util.stream.Collectors;
  * Servicio de configuración SSL que genera automáticamente un certificado
  * autofirmado si no existe, permitiendo conexiones HTTPS desde dispositivos móviles.
  *
- * El certificado NO está ligado a una IP fija — usa SAN=dns:localhost
- * para que funcione sin importar cambios de red.
- *
- * La detección de IP es siempre dinámica (delegada a NetworkUtils).
+ * La IP se lee desde BD (ConexionMovilService) — no se recalcula dinámicamente.
  */
 @Service
 @Slf4j
@@ -42,6 +41,9 @@ public class SslConfigService {
     @Value("${server.ssl.enabled:true}")
     private boolean sslEnabled;
 
+    @Autowired(required = false)
+    private ConexionMovilService conexionMovilService;
+
     @PostConstruct
     public void init() {
         try {
@@ -54,11 +56,13 @@ public class SslConfigService {
                 log.info("Keystore existente encontrado: {}", keystoreFile.getAbsolutePath());
             }
 
-            // Log informativo con IP actual (no cacheada)
-            String currentIp = NetworkUtils.getLocalIpAddress();
+            // Log informativo — IP se lee de BD (ya inicializada por ConexionMovilService)
+            String currentIp = conexionMovilService != null
+                    ? conexionMovilService.obtenerIpConfigurada()
+                    : NetworkUtils.detectarIpLan();
             log.info("========================================");
             log.info("SERVIDOR HTTPS ACTIVO");
-            log.info("IP actual detectada: {}", currentIp);
+            log.info("IP configurada: {}", currentIp);
             log.info("URL de acceso: https://{}:{}", currentIp, serverPort);
             log.info("========================================");
 
@@ -162,9 +166,10 @@ public class SslConfigService {
         sanEntries.add("dns:localhost");
         sanEntries.add("ip:127.0.0.1");
 
-        List<String> detectedIps = NetworkUtils.getAllCandidateIps();
-        for (String ip : detectedIps) {
-            String entry = "ip:" + ip;
+        // Agregar la IP detectada/configurada
+        String detectedIp = NetworkUtils.detectarIpLan();
+        if (detectedIp != null && !detectedIp.equals("localhost")) {
+            String entry = "ip:" + detectedIp;
             if (!sanEntries.contains(entry)) {
                 sanEntries.add(entry);
             }
@@ -176,17 +181,22 @@ public class SslConfigService {
     }
 
     /**
-     * Obtiene la URL del servidor dinámicamente (recalcula IP cada vez).
+     * Obtiene la URL del servidor usando la IP guardada en BD.
      */
     public String getServerUrl() {
-        return NetworkUtils.getServerUrl(sslEnabled, serverPort);
+        String ip = getLocalIp();
+        String protocol = sslEnabled ? "https" : "http";
+        return String.format("%s://%s:%d", protocol, ip, serverPort);
     }
 
     /**
-     * Obtiene la IP local detectada dinámicamente.
+     * Obtiene la IP configurada desde BD.
      */
     public String getLocalIp() {
-        return NetworkUtils.getLocalIpAddress();
+        if (conexionMovilService != null) {
+            return conexionMovilService.obtenerIpConfigurada();
+        }
+        return NetworkUtils.detectarIpLan();
     }
 
     /**

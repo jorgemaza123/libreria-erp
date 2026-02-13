@@ -22,7 +22,11 @@
       "Bash(find:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Bash(cmd /c:*)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\jorge\\\\Desktop\\\\sistema && mvnw.cmd clean package -DskipTests 2>&1\")",
+      "Bash(C:/Users/jorge/Desktop/sistema/mvnw.cmd clean package -DskipTests)"
     ]
   }
 }

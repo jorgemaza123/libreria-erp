@@ -10,14 +10,24 @@ services:
     depends_on:
       - db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/libreria_db
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=1234
-      - SERVER_PORT=8443
-      - SERVER_SSL_ENABLED=true
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://db:5432/libreria_db}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-1234}
+      - SERVER_PORT=${SERVER_PORT:-8443}
+      - SERVER_SSL_ENABLED=${SERVER_SSL_ENABLED:-true}
+      - AUTO_UPDATE_ENABLED=${AUTO_UPDATE_ENABLED:-true}
+
+      # Para override manual de IP (descomentar y poner la IP del host si la detección automática falla):
+      # - HOST_IP=192.168.1.100
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # Persistir el certificado para que no pida confirmación cada vez que se reinicia
       - ./datos_seguridad:/app/datos_seguridad
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./backups_cliente:/backups
+      - ./scripts:/scripts
     restart: always
 
   db:

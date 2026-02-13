@@ -12,20 +12,17 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Utilidad robusta para detectar la dirección IP real de la máquina en la red local (LAN).
+ * Utilidad para detectar la dirección IP real de la máquina en la red local (LAN).
  *
- * Algoritmo de 3 fases:
- *   1. Gateway del SO (route print / ip route) con validación post-detección
- *   2. Enumeración de interfaces con filtrado de virtuales y priorización RFC1918
- *   3. Fallback a localhost
+ * Se usa UNA SOLA VEZ en el primer arranque (o cuando el admin presiona "Recalcular IP").
+ * La IP detectada se persiste en BD y no se vuelve a calcular en runtime.
  *
- * Toda IP detectada via gateway se VALIDA contra NetworkInterface real:
- *   - Debe existir en una interfaz activa del sistema
- *   - Debe ser IPv4
- *   - Debe ser RFC1918 (privada)
- *   - La interfaz debe tener broadcast configurado
- *
- * No cachea resultados — cada llamada recalcula dinámicamente.
+ * Algoritmo de detección (ejecutado bajo demanda):
+ *   1. Variable de entorno HOST_IP (override para Docker / casos especiales)
+ *   2. Si corre en Docker → resolver host.docker.internal
+ *   3. Gateway del SO (route print / ip route)
+ *   4. Enumeración de interfaces de red
+ *   5. Fallback a localhost
  */
 @Slf4j
 public final class NetworkUtils {
@@ -33,10 +30,11 @@ public final class NetworkUtils {
     private static final Set<String> VIRTUAL_KEYWORDS = Set.of(
             "docker", "vbox", "virtualbox", "vmware", "vmnet", "veth",
             "virbr", "hyper-v", "virtual", "tap0", "tun0", "tun", "tap",
-            "wsl", "podman", "br-", "vethernet", "loopback"
+            "wsl", "podman", "br-", "vethernet", "loopback",
+            "nat", "vpn", "zt", "zerotier", "tailscale", "hamachi",
+            "isatap", "teredo", "6to4"
     );
 
-    /** Patrón para detectar IPs IPv4 válidas en texto plano */
     private static final Pattern IPV4_PATTERN = Pattern.compile(
             "\\b(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\b"
     );
@@ -44,25 +42,43 @@ public final class NetworkUtils {
     private NetworkUtils() {
     }
 
+    // =======================================================================
+    //  MÉTODO PRINCIPAL — llamado una sola vez al instalar / recalcular
+    // =======================================================================
+
     /**
-     * Detecta la IP local principal.
-     * Algoritmo de 3 fases con validación post-detección.
+     * Detecta la IP LAN real del host. Se ejecuta bajo demanda, no en runtime.
      */
-    public static String getLocalIpAddress() {
+    public static String detectarIpLan() {
         try {
-            // Fase 1: Intentar detectar via gateway del SO
-            String gatewayIp = detectarIpViaGateway();
-            if (gatewayIp != null && validarIpEnInterfazReal(gatewayIp)) {
-                log.debug("IP detectada y validada via gateway: {}", gatewayIp);
-                return gatewayIp;
-            } else if (gatewayIp != null) {
-                log.warn("IP {} detectada via gateway pero NO validada en interfaces reales — fallback", gatewayIp);
+            // 1. Override explícito via variable de entorno
+            String envIp = System.getenv("HOST_IP");
+            if (envIp != null && !envIp.isBlank() && isPrivateIp(envIp.trim())) {
+                log.info("IP obtenida de variable de entorno HOST_IP: {}", envIp.trim());
+                return envIp.trim();
             }
 
-            // Fase 2: Fallback — enumerar interfaces activas
+            // 2. Si estamos dentro de Docker, resolver la IP del host
+            if (isRunningInDocker()) {
+                String hostIp = resolverHostDockerInternal();
+                if (hostIp != null && isLanIp(hostIp)) {
+                    log.info("IP del host detectada via Docker: {}", hostIp);
+                    return hostIp;
+                }
+                log.warn("Dentro de Docker pero no se pudo resolver IP del host — continuando con otros métodos");
+            }
+
+            // 3. Intentar detectar via gateway del SO
+            String gatewayIp = detectarIpViaGateway();
+            if (gatewayIp != null) {
+                log.info("IP detectada via gateway del SO: {}", gatewayIp);
+                return gatewayIp;
+            }
+
+            // 4. Fallback — enumerar interfaces activas
             String interfaceIp = detectarIpViaInterfaces();
             if (interfaceIp != null) {
-                log.debug("IP detectada via enumeración de interfaces: {}", interfaceIp);
+                log.info("IP detectada via interfaces de red: {}", interfaceIp);
                 return interfaceIp;
             }
 
@@ -74,151 +90,80 @@ public final class NetworkUtils {
         return "localhost";
     }
 
-    /**
-     * VALIDACIÓN POST-DETECCIÓN: Verifica que una IP realmente existe
-     * en una interfaz de red activa del sistema.
-     *
-     * Valida:
-     * - Existe en NetworkInterface real
-     * - La interfaz está UP
-     * - Es IPv4
-     * - Es RFC1918 (privada)
-     * - La interfaz tiene broadcast (no es point-to-point/virtual)
-     * - No es interfaz virtual (Docker, VBox, etc.)
-     */
-    private static boolean validarIpEnInterfazReal(String ip) {
-        if (ip == null || !isPrivateIp(ip)) return false;
+    // =======================================================================
+    //  DETECCIÓN DOCKER
+    // =======================================================================
+
+    static boolean isRunningInDocker() {
+        try {
+            if (new java.io.File("/.dockerenv").exists()) return true;
+        } catch (Exception ignored) {}
 
         try {
-            InetAddress targetAddr = InetAddress.getByName(ip);
-            NetworkInterface ni = NetworkInterface.getByInetAddress(targetAddr);
-
-            if (ni == null) {
-                log.debug("Validación falló: IP {} no encontrada en ninguna interfaz", ip);
-                return false;
-            }
-
-            if (!ni.isUp()) {
-                log.debug("Validación falló: interfaz {} no está activa", ni.getDisplayName());
-                return false;
-            }
-
-            if (ni.isLoopback()) {
-                log.debug("Validación falló: interfaz {} es loopback", ni.getDisplayName());
-                return false;
-            }
-
-            if (isVirtualInterface(ni)) {
-                log.debug("Validación falló: interfaz {} es virtual", ni.getDisplayName());
-                return false;
-            }
-
-            // Verificar que tiene broadcast (interfaces reales de LAN tienen broadcast)
-            boolean hasBroadcast = false;
-            for (InterfaceAddress ifAddr : ni.getInterfaceAddresses()) {
-                if (ifAddr.getAddress().equals(targetAddr) && ifAddr.getBroadcast() != null) {
-                    hasBroadcast = true;
-                    break;
+            java.nio.file.Path cgroupPath = java.nio.file.Path.of("/proc/1/cgroup");
+            if (java.nio.file.Files.exists(cgroupPath)) {
+                String content = java.nio.file.Files.readString(cgroupPath).toLowerCase();
+                if (content.contains("docker") || content.contains("containerd") || content.contains("/lxc/")) {
+                    return true;
                 }
             }
+        } catch (Exception ignored) {}
 
-            if (!hasBroadcast) {
-                log.debug("Validación: IP {} sin broadcast — puede ser point-to-point, aceptando con menor confianza", ip);
-                // No rechazar, pero es sospechoso
+        String dsUrl = System.getenv("SPRING_DATASOURCE_URL");
+        if (dsUrl != null && dsUrl.contains("://db:")) return true;
+
+        return false;
+    }
+
+    private static String resolverHostDockerInternal() {
+        try {
+            InetAddress addr = InetAddress.getByName("host.docker.internal");
+            String ip = addr.getHostAddress();
+            if (ip != null && !ip.equals("127.0.0.1") && isPrivateIp(ip)) {
+                return ip;
             }
-
-            log.debug("Validación exitosa: IP {} en interfaz {} (up={}, broadcast={})",
-                    ip, ni.getDisplayName(), ni.isUp(), hasBroadcast);
-            return true;
-
         } catch (Exception e) {
-            log.debug("Error validando IP {}: {}", ip, e.getMessage());
-            return false;
+            log.debug("No se pudo resolver host.docker.internal: {}", e.getMessage());
         }
-    }
 
-    /**
-     * Retorna TODAS las IPs privadas válidas en interfaces reales.
-     * Solo incluye IPs que pasan validación completa.
-     */
-    public static List<String> getAllCandidateIps() {
-        List<String> candidates = new ArrayList<>();
-
+        // Fallback: default gateway del contenedor (es la IP del host en bridge)
         try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            if (interfaces == null) return candidates;
-
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface ni = interfaces.nextElement();
-
-                if (!ni.isUp() || ni.isLoopback()) continue;
-                if (isVirtualInterface(ni)) continue;
-
-                // Verificar que la interfaz tiene al menos una dirección con broadcast
-                boolean hasBroadcastAddr = ni.getInterfaceAddresses().stream()
-                        .anyMatch(ia -> ia.getBroadcast() != null);
-
-                Enumeration<InetAddress> addresses = ni.getInetAddresses();
-                while (addresses.hasMoreElements()) {
-                    InetAddress addr = addresses.nextElement();
-                    if (!(addr instanceof Inet4Address)) continue;
-
-                    String ip = addr.getHostAddress();
-                    if (ip.startsWith("127.")) continue;
-
-                    if (isPrivateIp(ip) && !candidates.contains(ip)) {
-                        // Priorizar IPs con broadcast (interfaces LAN reales)
-                        if (hasBroadcastAddr) {
-                            candidates.add(0, ip); // Al inicio
-                        } else {
-                            candidates.add(ip); // Al final
-                        }
-                    }
-                }
+            ProcessBuilder pb = new ProcessBuilder("ip", "route", "show", "default");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining(" "));
             }
-        } catch (SocketException e) {
-            log.error("Error al enumerar interfaces: {}", e.getMessage());
+            if (process.waitFor(5, TimeUnit.SECONDS)) {
+                Matcher matcher = Pattern.compile("default\\s+via\\s+(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})").matcher(output);
+                if (matcher.find()) {
+                    String gw = matcher.group(1);
+                    if (isPrivateIp(gw)) return gw;
+                }
+            } else {
+                process.destroyForcibly();
+            }
+        } catch (Exception e) {
+            log.debug("Fallback gateway Docker falló: {}", e.getMessage());
         }
-
-        // Ordenar: 192.168.* primero, luego 10.*, luego 172.*
-        candidates.sort(Comparator.comparingInt(NetworkUtils::getIpPriority));
-
-        return candidates;
+        return null;
     }
 
     // =======================================================================
-    //  DETECCIÓN VIA GATEWAY DEL SISTEMA OPERATIVO
+    //  DETECCIÓN VIA GATEWAY DEL SO
     // =======================================================================
 
-    /**
-     * Detecta la IP asociada al default gateway.
-     * Usa parseo robusto con regex (no depende de formato de columnas/idioma).
-     */
     private static String detectarIpViaGateway() {
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("windows");
-
         try {
-            if (isWindows) {
-                return detectarIpViaGatewayWindows();
-            } else {
-                return detectarIpViaGatewayLinux();
-            }
+            return isWindows ? detectarIpViaGatewayWindows() : detectarIpViaGatewayLinux();
         } catch (Exception e) {
             log.debug("No se pudo detectar gateway: {}", e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Windows: ejecuta "route print 0.0.0.0" y busca IPs privadas en líneas
-     * que contienen "0.0.0.0" al inicio.
-     *
-     * Parseo robusto: usa regex para extraer IPs, no depende de columnas fijas
-     * ni encabezados de idioma (funciona en Windows español/inglés/Server).
-     *
-     * Formato típico (puede variar en orden/espaciado):
-     *   0.0.0.0          0.0.0.0     192.168.1.1     192.168.1.100     25
-     */
     private static String detectarIpViaGatewayWindows() throws Exception {
         ProcessBuilder pb = new ProcessBuilder("cmd", "/c", "route", "print", "0.0.0.0");
         pb.redirectErrorStream(true);
@@ -232,129 +177,80 @@ public final class NetworkUtils {
             }
         }
 
-        boolean finished = process.waitFor(10, TimeUnit.SECONDS);
-        if (!finished) {
+        if (!process.waitFor(10, TimeUnit.SECONDS)) {
             process.destroyForcibly();
             return null;
         }
 
-        // Buscar líneas que empiecen con "0.0.0.0" (ruta default)
-        // No dependemos de formato de columnas: extraemos TODAS las IPs de la línea
-        // y buscamos una IP privada que NO sea 0.0.0.0 ni el gateway
-        String bestCandidate = null;
-        int bestMetric = Integer.MAX_VALUE;
-
+        List<IpCandidate> candidates = new ArrayList<>();
         for (String line : lines) {
             if (!line.startsWith("0.0.0.0")) continue;
 
-            // Extraer todas las IPs de esta línea con regex
             Matcher matcher = IPV4_PATTERN.matcher(line);
             List<String> ipsInLine = new ArrayList<>();
-            while (matcher.find()) {
-                ipsInLine.add(matcher.group(1));
-            }
+            while (matcher.find()) ipsInLine.add(matcher.group(1));
 
-            // Buscar la IP de interfaz local: privada, no 0.0.0.0, no igual al gateway
-            // El gateway típicamente es la 3ra IP, la interfaz la 4ta
+            int metric = extractLastNumber(line);
             for (String ip : ipsInLine) {
                 if ("0.0.0.0".equals(ip)) continue;
                 if (isPrivateIp(ip)) {
-                    // Intentar extraer métrica (último número de la línea)
-                    int metric = extractLastNumber(line);
-                    if (metric < bestMetric) {
-                        bestMetric = metric;
-                        bestCandidate = ip;
-                    }
+                    candidates.add(new IpCandidate(ip, metric, getIpPriority(ip)));
                 }
             }
         }
 
-        if (bestCandidate != null) {
-            log.info("IP detectada via route print (Windows): {} (métrica: {})", bestCandidate, bestMetric);
+        if (candidates.isEmpty()) return null;
+
+        // Ordenar: primero LAN real (192.168 > 10 > 172), luego por métrica
+        candidates.sort(Comparator
+                .comparingInt(IpCandidate::rangePriority)
+                .thenComparingInt(IpCandidate::metric));
+
+        // Retornar el primer candidato que sea interfaz real
+        for (IpCandidate c : candidates) {
+            if (validarIpEnInterfazReal(c.ip())) {
+                return c.ip();
+            }
         }
-        return bestCandidate;
+        return candidates.get(0).ip();
     }
 
-    /**
-     * Linux: ejecuta "ip route get 1.1.1.1" y busca "src X.X.X.X".
-     * Fallback a "ip route show default" si el primer comando falla.
-     * Parseo robusto con regex.
-     */
     private static String detectarIpViaGatewayLinux() throws Exception {
-        // Intento 1: ip route get (más confiable, funciona en la mayoría de distros)
+        // ip route get 1.1.1.1 → buscar "src X.X.X.X"
         String ip = ejecutarYBuscarSrc("ip", "route", "get", "1.1.1.1");
-        if (ip != null) return ip;
+        if (ip != null && isLanIp(ip)) return ip;
 
-        // Intento 2: ip route show default + buscar interfaz
         ip = ejecutarYBuscarSrc("ip", "route", "show", "default");
-        if (ip != null) return ip;
+        if (ip != null && isLanIp(ip)) return ip;
 
-        // Intento 3: route -n (disponible en BusyBox y sistemas legacy)
-        try {
-            ProcessBuilder pb = new ProcessBuilder("route", "-n");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            String output;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                output = reader.lines().collect(Collectors.joining("\n"));
-            }
-            process.waitFor(10, TimeUnit.SECONDS);
-
-            // Buscar línea con destino 0.0.0.0
-            for (String line : output.split("\n")) {
-                if (line.startsWith("0.0.0.0")) {
-                    Matcher matcher = IPV4_PATTERN.matcher(line);
-                    List<String> ips = new ArrayList<>();
-                    while (matcher.find()) ips.add(matcher.group(1));
-                    // En route -n: destino, gateway, mask, ..., interfaz
-                    // La IP de la interfaz se obtiene del nombre, no de la tabla
-                    // Pero podemos obtener el gateway y buscar la interfaz asociada
-                    if (ips.size() >= 2) {
-                        String gateway = ips.get(1);
-                        if (!gateway.equals("0.0.0.0") && isPrivateIp(gateway)) {
-                            // Buscar IP local en el mismo subnet
-                            return buscarIpEnMismoSubnet(gateway);
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.debug("route -n no disponible: {}", e.getMessage());
+        // Si la IP es 172.x (Docker), buscar mejor alternativa
+        if (ip != null && isDockerLikeIp(ip)) {
+            String lanIp = detectarIpViaInterfaces();
+            if (lanIp != null) return lanIp;
         }
 
-        return null;
+        return ip;
     }
 
-    /**
-     * Ejecuta un comando y busca "src X.X.X.X" en la salida.
-     */
     private static String ejecutarYBuscarSrc(String... command) {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-
             String output;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 output = reader.lines().collect(Collectors.joining(" "));
             }
-
-            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
-            if (!finished) {
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return null;
             }
-
             if (process.exitValue() != 0) return null;
 
-            // Buscar "src X.X.X.X"
             Matcher matcher = Pattern.compile("src\\s+(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})").matcher(output);
             if (matcher.find()) {
                 String ip = matcher.group(1);
-                if (isPrivateIp(ip)) {
-                    log.info("IP detectada via {} (Linux): {}", String.join(" ", command), ip);
-                    return ip;
-                }
+                if (isPrivateIp(ip)) return ip;
             }
         } catch (Exception e) {
             log.debug("Comando {} falló: {}", String.join(" ", command), e.getMessage());
@@ -362,59 +258,78 @@ public final class NetworkUtils {
         return null;
     }
 
-    /**
-     * Busca una IP local que esté en el mismo subnet que el gateway dado.
-     */
-    private static String buscarIpEnMismoSubnet(String gatewayIp) {
-        String gatewayPrefix = gatewayIp.substring(0, gatewayIp.lastIndexOf('.') + 1);
-        List<String> candidates = getAllCandidateIps();
-        for (String ip : candidates) {
-            if (ip.startsWith(gatewayPrefix)) {
-                return ip;
-            }
-        }
-        return candidates.isEmpty() ? null : candidates.get(0);
-    }
-
     // =======================================================================
     //  FALLBACK: ENUMERACIÓN DE INTERFACES
     // =======================================================================
 
-    private static String detectarIpViaInterfaces() throws SocketException {
-        List<String> candidates = getAllCandidateIps();
-        if (!candidates.isEmpty()) {
-            String best = candidates.get(0);
-            log.info("IP seleccionada via interfaces: {}", best);
-            return best;
+    private static String detectarIpViaInterfaces() {
+        List<String> candidates = listarIpsCandidatas();
+        for (String ip : candidates) {
+            if (isLanIp(ip)) return ip;
         }
-        return null;
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    private static List<String> listarIpsCandidatas() {
+        List<String> candidates = new ArrayList<>();
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            if (interfaces == null) return candidates;
+
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface ni = interfaces.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                if (isVirtualInterface(ni)) continue;
+
+                Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (!(addr instanceof Inet4Address)) continue;
+                    String ip = addr.getHostAddress();
+                    if (ip.startsWith("127.")) continue;
+                    if (isPrivateIp(ip) && !candidates.contains(ip)) {
+                        candidates.add(ip);
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            log.error("Error al enumerar interfaces: {}", e.getMessage());
+        }
+        candidates.sort(Comparator.comparingInt(NetworkUtils::getIpPriority));
+        return candidates;
+    }
+
+    // =======================================================================
+    //  VALIDACIÓN
+    // =======================================================================
+
+    private static boolean validarIpEnInterfazReal(String ip) {
+        if (ip == null || !isPrivateIp(ip)) return false;
+        try {
+            InetAddress targetAddr = InetAddress.getByName(ip);
+            NetworkInterface ni = NetworkInterface.getByInetAddress(targetAddr);
+            if (ni == null || !ni.isUp() || ni.isLoopback()) return false;
+            return !isVirtualInterface(ni);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // =======================================================================
     //  UTILIDADES
     // =======================================================================
 
-    /**
-     * Verifica si una interfaz de red es virtual.
-     */
     private static boolean isVirtualInterface(NetworkInterface ni) {
         if (ni.isVirtual()) return true;
-
         String displayName = ni.getDisplayName().toLowerCase();
         String name = ni.getName().toLowerCase();
-
         for (String keyword : VIRTUAL_KEYWORDS) {
-            if (displayName.contains(keyword) || name.contains(keyword)) {
-                return true;
-            }
+            if (displayName.contains(keyword) || name.contains(keyword)) return true;
         }
-
+        if (displayName.contains("switch") || displayName.contains("dockernat")) return true;
         return false;
     }
 
-    /**
-     * Verifica si una IP es privada (RFC 1918).
-     */
     static boolean isPrivateIp(String ip) {
         if (ip == null) return false;
         if (ip.startsWith("10.")) return true;
@@ -423,9 +338,23 @@ public final class NetworkUtils {
             try {
                 int second = Integer.parseInt(ip.split("\\.")[1]);
                 return second >= 16 && second <= 31;
-            } catch (Exception e) {
-                return false;
-            }
+            } catch (Exception e) { return false; }
+        }
+        return false;
+    }
+
+    static boolean isLanIp(String ip) {
+        if (ip == null) return false;
+        return ip.startsWith("192.168.") || ip.startsWith("10.");
+    }
+
+    static boolean isDockerLikeIp(String ip) {
+        if (ip == null) return false;
+        if (ip.startsWith("172.")) {
+            try {
+                int second = Integer.parseInt(ip.split("\\.")[1]);
+                return second >= 16 && second <= 31;
+            } catch (Exception e) { return false; }
         }
         return false;
     }
@@ -437,61 +366,14 @@ public final class NetworkUtils {
         return 4;
     }
 
-    /**
-     * Extrae el último número entero de una línea de texto.
-     * Usado para obtener la métrica de la tabla de rutas.
-     */
     private static int extractLastNumber(String line) {
         Matcher matcher = Pattern.compile("(\\d+)\\s*$").matcher(line.trim());
         if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group(1));
-            } catch (NumberFormatException e) {
-                return Integer.MAX_VALUE;
-            }
+            try { return Integer.parseInt(matcher.group(1)); }
+            catch (NumberFormatException e) { return Integer.MAX_VALUE; }
         }
         return Integer.MAX_VALUE;
     }
 
-    /**
-     * Obtiene información detallada de todas las interfaces de red.
-     */
-    public static List<Map<String, String>> getAllNetworkInfo() {
-        List<Map<String, String>> result = new ArrayList<>();
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            if (interfaces == null) return result;
-
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface ni = interfaces.nextElement();
-                Enumeration<InetAddress> addresses = ni.getInetAddresses();
-
-                while (addresses.hasMoreElements()) {
-                    InetAddress address = addresses.nextElement();
-                    if (address instanceof Inet4Address) {
-                        Map<String, String> info = new LinkedHashMap<>();
-                        info.put("interface", ni.getDisplayName());
-                        info.put("name", ni.getName());
-                        info.put("ip", address.getHostAddress());
-                        info.put("isUp", String.valueOf(ni.isUp()));
-                        info.put("isLoopback", String.valueOf(ni.isLoopback()));
-                        info.put("isVirtual", String.valueOf(isVirtualInterface(ni)));
-                        result.add(info);
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            log.error("Error al obtener información de red: {}", e.getMessage());
-        }
-        return result;
-    }
-
-    /**
-     * Genera la URL completa del servidor.
-     */
-    public static String getServerUrl(boolean useHttps, int port) {
-        String ip = getLocalIpAddress();
-        String protocol = useHttps ? "https" : "http";
-        return String.format("%s://%s:%d", protocol, ip, port);
-    }
+    private record IpCandidate(String ip, int metric, int rangePriority) {}
 }

@@ -2,7 +2,7 @@ package com.libreria.sistema.config;
 
 import com.libreria.sistema.model.Configuracion;
 import com.libreria.sistema.service.ConfiguracionService;
-import com.libreria.sistema.util.NetworkUtils;
+import com.libreria.sistema.service.ConexionMovilService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -14,6 +14,8 @@ import java.util.Map;
 /**
  * Configuración global para TODAS las vistas del sistema.
  * Inyecta automáticamente la configuración en cada vista para eliminar valores hardcodeados.
+ *
+ * La IP y URL del servidor se leen desde BD (ConexionMovilService) — no se recalculan.
  */
 @ControllerAdvice
 public class GlobalControllerAdvice {
@@ -22,7 +24,7 @@ public class GlobalControllerAdvice {
     private ConfiguracionService configuracionService;
 
     @Autowired(required = false)
-    private SslConfigService sslConfigService;
+    private ConexionMovilService conexionMovilService;
 
     @Value("${server.port:8443}")
     private int serverPort;
@@ -30,50 +32,34 @@ public class GlobalControllerAdvice {
     @Value("${server.ssl.enabled:true}")
     private boolean sslEnabled;
 
-    /**
-     * Inyecta la configuración global en TODAS las vistas automáticamente.
-     * Accesible en Thymeleaf como ${config}
-     */
     @ModelAttribute("config")
     public Configuracion agregarConfiguracionGlobal() {
         return configuracionService.obtenerConfiguracion();
     }
 
-    /**
-     * Inyecta la URL del servidor para conexiones móviles.
-     * Accesible en Thymeleaf como ${serverUrl}
-     * Ejemplo: https://192.168.1.100:8443
-     */
     @ModelAttribute("serverUrl")
     public String agregarServerUrl() {
-        if (sslConfigService != null) {
-            return sslConfigService.getServerUrl();
+        if (conexionMovilService != null) {
+            return conexionMovilService.generarServerUrl();
         }
-        return NetworkUtils.getServerUrl(sslEnabled, serverPort);
+        String protocol = sslEnabled ? "https" : "http";
+        return String.format("%s://localhost:%d", protocol, serverPort);
     }
 
-    /**
-     * Inyecta la IP local del servidor.
-     * Accesible en Thymeleaf como ${serverIp}
-     * Ejemplo: 192.168.1.100
-     */
     @ModelAttribute("serverIp")
     public String agregarServerIp() {
-        if (sslConfigService != null) {
-            return sslConfigService.getLocalIp();
+        if (conexionMovilService != null) {
+            return conexionMovilService.obtenerIpConfigurada();
         }
-        return NetworkUtils.getLocalIpAddress();
+        return "localhost";
     }
 
-    /**
-     * Inyecta información completa de red.
-     * Accesible en Thymeleaf como ${networkInfo}
-     */
     @ModelAttribute("networkInfo")
     public Map<String, Object> agregarNetworkInfo() {
         Map<String, Object> info = new HashMap<>();
-        String ip = sslConfigService != null ? sslConfigService.getLocalIp() : NetworkUtils.getLocalIpAddress();
-        String url = sslConfigService != null ? sslConfigService.getServerUrl() : NetworkUtils.getServerUrl(sslEnabled, serverPort);
+        String ip = conexionMovilService != null ? conexionMovilService.obtenerIpConfigurada() : "localhost";
+        String url = conexionMovilService != null ? conexionMovilService.generarServerUrl()
+                : String.format("%s://localhost:%d", sslEnabled ? "https" : "http", serverPort);
 
         info.put("ip", ip);
         info.put("port", serverPort);
