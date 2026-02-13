@@ -1,13 +1,9 @@
 package com.libreria.sistema.controller;
 
-import com.libreria.sistema.config.SslConfigService;
 import com.libreria.sistema.model.Configuracion;
 import com.libreria.sistema.service.BackupService;
 import com.libreria.sistema.service.ConfiguracionService;
-import com.libreria.sistema.util.NetworkUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,8 +16,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -32,15 +26,6 @@ public class ConfiguracionController {
 
     private final ConfiguracionService configuracionService;
     private final BackupService backupService;
-
-    @Autowired(required = false)
-    private SslConfigService sslConfigService;
-
-    @Value("${server.port:8443}")
-    private int serverPort;
-
-    @Value("${server.ssl.enabled:true}")
-    private boolean sslEnabled;
 
     public ConfiguracionController(ConfiguracionService configuracionService, BackupService backupService) {
         this.configuracionService = configuracionService;
@@ -173,58 +158,16 @@ public class ConfiguracionController {
         }
     }
 
-    // =====================================================
-    //  INFORMACIÓN DE RED - CONEXIÓN MÓVIL
-    // =====================================================
-
     /**
-     * Obtiene la información de red del servidor para conexiones móviles.
-     * Muestra la IP detectada, URL del servidor y estado de SSL.
-     */
-    @GetMapping("/red")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> obtenerInfoRed() {
-        Map<String, Object> info = new HashMap<>();
-
-        try {
-            String ip = sslConfigService != null ? sslConfigService.getLocalIp() : NetworkUtils.getLocalIpAddress();
-            String url = sslConfigService != null ? sslConfigService.getServerUrl() : NetworkUtils.getServerUrl(sslEnabled, serverPort);
-
-            info.put("success", true);
-            info.put("ip", ip);
-            info.put("port", serverPort);
-            info.put("url", url);
-            info.put("sslEnabled", sslEnabled);
-            info.put("protocol", sslEnabled ? "https" : "http");
-
-            // Información adicional de diagnóstico
-            List<Map<String, String>> interfaces = NetworkUtils.getAllNetworkInfo();
-            info.put("interfaces", interfaces);
-
-            return ResponseEntity.ok(info);
-        } catch (Exception e) {
-            log.error("Error al obtener información de red", e);
-            info.put("success", false);
-            info.put("error", e.getMessage());
-            return ResponseEntity.internalServerError().body(info);
-        }
-    }
-
-    /**
-     * Vista de diagnóstico de red para el administrador.
-     * Muestra todas las interfaces y la IP detectada.
+     * Redirige la ruta antigua /red/diagnostico al nuevo módulo /conexion-movil.
      */
     @GetMapping("/red/diagnostico")
-    public String diagnosticoRed(Model model) {
-        String ip = sslConfigService != null ? sslConfigService.getLocalIp() : NetworkUtils.getLocalIpAddress();
-        String url = sslConfigService != null ? sslConfigService.getServerUrl() : NetworkUtils.getServerUrl(sslEnabled, serverPort);
+    public String redirigirRed() {
+        return "redirect:/conexion-movil";
+    }
 
-        model.addAttribute("serverIp", ip);
-        model.addAttribute("serverUrl", url);
-        model.addAttribute("serverPort", serverPort);
-        model.addAttribute("sslEnabled", sslEnabled);
-        model.addAttribute("interfaces", NetworkUtils.getAllNetworkInfo());
-
-        return "configuracion/red";
+    @GetMapping("/red")
+    public String redirigirRedApi() {
+        return "redirect:/conexion-movil";
     }
 }

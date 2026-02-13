@@ -419,8 +419,8 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="/configuracion/red/diagnostico" class="nav-link" th:classappend="${active == 'red' ? 'active' : ''}">
-                                        <i class="fas fa-wifi nav-icon text-info"></i><p>Red / Conexión Móvil</p>
+                                    <a href="/conexion-movil" class="nav-link" th:classappend="${active == 'red' ? 'active' : ''}">
+                                        <i class="fas fa-wifi nav-icon text-info"></i><p>Conexión Móvil</p>
                                     </a>
                                 </li>
                                 <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
@@ -484,7 +484,7 @@
                         </p>
                         <small class="text-white-50">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Si ve advertencia de seguridad: clic en "Opciones Avanzadas" → "Continuar". Es normal en red local.
+                            Si aparece advertencia: presione "Avanzado" y luego "Continuar". Es normal.
                         </small>
                     </div>
                     <div class="ml-3">
@@ -882,15 +882,14 @@
                     title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
                     html: '<div id="qrcode-container" class="text-center mb-3">' +
                           '<div class="d-flex justify-content-center">' +
-                          '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(serverUrlGlobal) + '" alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
+                          '<img src="/conexion-movil/qr.png?t=' + Date.now() + '" alt="QR Code" width="250" height="250" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px; image-rendering: pixelated;">' +
                           '</div>' +
                           '</div>' +
                           '<p class="mb-2"><strong>URL:</strong> <code>' + serverUrlGlobal + '</code></p>' +
                           '<div class="alert alert-warning small text-left mb-0">' +
                           '<i class="fas fa-exclamation-triangle mr-1"></i>' +
-                          '<strong>Nota:</strong> Al entrar verá una advertencia de seguridad. ' +
-                          'Esto es normal en redes locales. Haga clic en:<br>' +
-                          '<code>Opciones Avanzadas → Continuar de todos modos</code>' +
+                          '<strong>Nota:</strong> Si aparece advertencia, es normal.<br>' +
+                          'Presione <b>Avanzado</b> y luego <b>Continuar</b>. Solo la primera vez.' +
                           '</div>',
                     width: 400,
                     showCloseButton: true,

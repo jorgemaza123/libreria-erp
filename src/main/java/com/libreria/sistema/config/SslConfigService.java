@@ -9,14 +9,19 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de configuración SSL que genera automáticamente un certificado
  * autofirmado si no existe, permitiendo conexiones HTTPS desde dispositivos móviles.
  *
- * Usa keytool (incluido en JDK) para generar el certificado, evitando dependencias
- * de paquetes internos de Java que no son accesibles en Java 9+.
+ * El certificado NO está ligado a una IP fija — usa SAN=dns:localhost
+ * para que funcione sin importar cambios de red.
+ *
+ * La detección de IP es siempre dinámica (delegada a NetworkUtils).
  */
 @Service
 @Slf4j
@@ -34,24 +39,13 @@ public class SslConfigService {
     @Value("${server.port:8443}")
     private int serverPort;
 
-    private String serverUrl;
-    private String localIp;
+    @Value("${server.ssl.enabled:true}")
+    private boolean sslEnabled;
 
     @PostConstruct
     public void init() {
         try {
-            // Detectar IP local
-            this.localIp = NetworkUtils.getLocalIpAddress();
-            this.serverUrl = NetworkUtils.getServerUrl(true, serverPort);
-
-            log.info("========================================");
-            log.info("CONFIGURACIÓN DE RED DEL SERVIDOR");
-            log.info("========================================");
-            log.info("IP Local detectada: {}", localIp);
-            log.info("URL del servidor: {}", serverUrl);
-            log.info("Puerto HTTPS: {}", serverPort);
-
-            // Verificar y generar keystore si no existe
+            // Solo generar keystore si no existe
             File keystoreFile = new File(keystorePath);
             if (!keystoreFile.exists()) {
                 log.info("Keystore no encontrado. Generando certificado SSL automáticamente...");
@@ -60,9 +54,12 @@ public class SslConfigService {
                 log.info("Keystore existente encontrado: {}", keystoreFile.getAbsolutePath());
             }
 
+            // Log informativo con IP actual (no cacheada)
+            String currentIp = NetworkUtils.getLocalIpAddress();
             log.info("========================================");
-            log.info("ACCESO MÓVIL HABILITADO");
-            log.info("Conecte dispositivos a: {}", serverUrl);
+            log.info("SERVIDOR HTTPS ACTIVO");
+            log.info("IP actual detectada: {}", currentIp);
+            log.info("URL de acceso: https://{}:{}", currentIp, serverPort);
             log.info("========================================");
 
         } catch (Exception e) {
@@ -71,37 +68,35 @@ public class SslConfigService {
     }
 
     /**
-     * Genera el keystore usando el comando keytool del JDK.
-     * Este método es compatible con todas las versiones de Java (8+).
+     * Genera el keystore usando keytool del JDK.
+     * SAN incluye dns:localhost, ip:127.0.0.1 y TODAS las IPs privadas detectadas
+     * al momento de generar. Esto minimiza errores NET::ERR_CERT_COMMON_NAME_INVALID
+     * en navegadores móviles (especialmente Android 7+/Chrome).
      */
     private void generateKeystoreWithKeytool(File keystoreFile) {
         try {
-            log.info("Generando keystore con keytool...");
-
-            // Detectar ruta de Java
             String javaHome = System.getProperty("java.home");
             String keytoolPath = javaHome + File.separator + "bin" + File.separator + "keytool";
 
-            // En Windows agregar .exe
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
                 keytoolPath += ".exe";
             }
 
-            // Verificar que keytool existe
             File keytoolFile = new File(keytoolPath);
             if (!keytoolFile.exists()) {
                 log.warn("keytool no encontrado en: {}. Intentando con PATH del sistema...", keytoolPath);
-                keytoolPath = "keytool"; // Intentar con PATH del sistema
+                keytoolPath = "keytool";
             }
 
-            // Crear directorio padre si no existe
             File parentDir = keystoreFile.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
                 parentDir.mkdirs();
             }
 
-            // Construir comando keytool
-            ProcessBuilder pb = new ProcessBuilder(
+            // Construir SAN con TODAS las IPs privadas detectadas + localhost + 127.0.0.1
+            String sanValue = buildSanWithAllIps();
+
+            List<String> command = new ArrayList<>(List.of(
                     keytoolPath,
                     "-genkeypair",
                     "-alias", keyAlias,
@@ -111,15 +106,15 @@ public class SslConfigService {
                     "-keystore", keystoreFile.getAbsolutePath(),
                     "-storepass", keystorePassword,
                     "-keypass", keystorePassword,
-                    "-validity", "3650", // 10 años
+                    "-validity", "3650",
                     "-dname", "CN=SistemaERP, OU=Desarrollo, O=Libreria, L=Lima, ST=Lima, C=PE",
-                    "-ext", "SAN=ip:" + localIp + ",dns:localhost" // Subject Alternative Names
-            );
+                    "-ext", sanValue
+            ));
 
+            ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
-            // Leer salida del proceso
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
@@ -128,7 +123,6 @@ public class SslConfigService {
                 }
             }
 
-            // Esperar a que termine el proceso (máximo 30 segundos)
             boolean finished = process.waitFor(30, TimeUnit.SECONDS);
 
             if (!finished) {
@@ -145,42 +139,54 @@ public class SslConfigService {
                 log.info("  - Alias: {}", keyAlias);
                 log.info("  - Validez: 10 años");
                 log.info("  - Algoritmo: RSA 2048 bits");
-                log.info("  - SAN: ip:{}, dns:localhost", localIp);
+                log.info("  - SAN: {}", sanValue);
             } else {
                 log.error("Error ejecutando keytool (código {}): {}", exitCode, output.toString());
-                log.info("Para generar el certificado manualmente, ejecute:");
-                log.info("keytool -genkeypair -alias {} -keyalg RSA -keysize 2048 -storetype PKCS12 " +
-                         "-keystore {} -storepass {} -validity 3650 -dname \"CN=SistemaERP\"",
-                         keyAlias, keystorePath, keystorePassword);
             }
 
         } catch (Exception e) {
             log.error("Error al ejecutar keytool: {}", e.getMessage(), e);
-            log.info("Para generar el certificado manualmente, ejecute:");
-            log.info("keytool -genkeypair -alias {} -keyalg RSA -keysize 2048 -storetype PKCS12 " +
-                     "-keystore {} -storepass {} -validity 3650 -dname \"CN=SistemaERP\"",
-                     keyAlias, keystorePath, keystorePassword);
         }
     }
 
     /**
-     * Obtiene la URL completa del servidor para conexiones móviles.
+     * Construye el valor SAN incluyendo:
+     * - dns:localhost (siempre)
+     * - ip:127.0.0.1 (siempre)
+     * - ip:X.X.X.X para cada IP privada detectada en el sistema
+     *
+     * Ejemplo resultado: "SAN=dns:localhost,ip:127.0.0.1,ip:192.168.1.100,ip:192.168.18.25"
+     */
+    private String buildSanWithAllIps() {
+        List<String> sanEntries = new ArrayList<>();
+        sanEntries.add("dns:localhost");
+        sanEntries.add("ip:127.0.0.1");
+
+        List<String> detectedIps = NetworkUtils.getAllCandidateIps();
+        for (String ip : detectedIps) {
+            String entry = "ip:" + ip;
+            if (!sanEntries.contains(entry)) {
+                sanEntries.add(entry);
+            }
+        }
+
+        String san = "SAN=" + sanEntries.stream().collect(Collectors.joining(","));
+        log.info("SAN generado para certificado: {}", san);
+        return san;
+    }
+
+    /**
+     * Obtiene la URL del servidor dinámicamente (recalcula IP cada vez).
      */
     public String getServerUrl() {
-        if (serverUrl == null) {
-            serverUrl = NetworkUtils.getServerUrl(true, serverPort);
-        }
-        return serverUrl;
+        return NetworkUtils.getServerUrl(sslEnabled, serverPort);
     }
 
     /**
-     * Obtiene la IP local detectada.
+     * Obtiene la IP local detectada dinámicamente.
      */
     public String getLocalIp() {
-        if (localIp == null) {
-            localIp = NetworkUtils.getLocalIpAddress();
-        }
-        return localIp;
+        return NetworkUtils.getLocalIpAddress();
     }
 
     /**
@@ -194,6 +200,6 @@ public class SslConfigService {
      * Verifica si SSL está habilitado.
      */
     public boolean isSslEnabled() {
-        return new File(keystorePath).exists();
+        return sslEnabled && new File(keystorePath).exists();
     }
 }

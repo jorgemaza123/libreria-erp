@@ -125,6 +125,7 @@ public class SecurityConfig {
                 // RUTAS DE ADMINISTRACION EXCLUSIVA - solo ADMIN
                 // ============================================================
                 .requestMatchers("/configuracion/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
+                .requestMatchers("/conexion-movil/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
                 .requestMatchers("/licencia/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
                 .requestMatchers("/auditoria/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")
                 .requestMatchers("/roles/**").hasAnyAuthority("ROLE_ADMIN", "ADMIN")

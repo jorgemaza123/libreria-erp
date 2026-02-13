@@ -2,9 +2,65 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
-      th:with="active='configuracion'">
+      th:with="active='red'">
 <head>
-    <title>Configuración de Red</title>
+    <title>Conexión Móvil</title>
+    <style>
+        .qr-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            text-align: center;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .qr-container img {
+            border: 4px solid #f8f9fa;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .wifi-instruction {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            text-align: center;
+        }
+        .wifi-instruction i.fa-wifi {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        .url-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #495057;
+            border: 2px dashed #dee2e6;
+            word-break: break-all;
+        }
+        .btn-copiar-url {
+            border-radius: 25px;
+            padding: 10px 30px;
+            font-weight: 600;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .refresh-indicator {
+            font-size: 0.75rem;
+            color: #adb5bd;
+        }
+    </style>
 </head>
 <body>
 
@@ -13,12 +69,12 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1><i class="fas fa-network-wired"></i> Configuración de Red</h1>
+                    <h1><i class="fas fa-mobile-alt"></i> Conexión Móvil</h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="/configuracion/general">Configuración</a></li>
-                        <li class="breadcrumb-item active">Red</li>
+                        <li class="breadcrumb-item active">Conexión Móvil</li>
                     </ol>
                 </div>
             </div>
@@ -28,65 +84,140 @@
     <section class="content">
         <div class="container-fluid">
 
-            <!-- Tarjeta principal con URL de conexión -->
-            <div class="card card-primary card-outline">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-mobile-alt mr-2"></i>Conexión Móvil</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="callout callout-info">
-                                <h5><i class="fas fa-link mr-2"></i>URL del Servidor</h5>
-                                <p class="h3 text-primary" th:text="${serverUrl}">https://192.168.1.100:8443</p>
-                                <button class="btn btn-primary btn-sm" onclick="copiarUrl()">
-                                    <i class="fas fa-copy mr-1"></i> Copiar URL
-                                </button>
-                                <button class="btn btn-info btn-sm ml-2" onclick="mostrarQR()">
-                                    <i class="fas fa-qrcode mr-1"></i> Ver Código QR
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="callout callout-success">
-                                <h5><i class="fas fa-qrcode mr-2"></i>Código QR</h5>
-                                <div class="text-center">
-                                    <img th:src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + ${#uris.escapeQueryParam(serverUrl)}"
-                                         alt="QR Code" class="img-thumbnail" style="max-width: 150px;">
-                                </div>
-                                <p class="small text-muted mt-2 text-center">Escanee con la cámara de su celular</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-warning">
-                        <h5><i class="fas fa-exclamation-triangle mr-2"></i>Nota sobre Seguridad</h5>
-                        <p class="mb-0">
-                            Al acceder desde un dispositivo móvil, verá una advertencia de seguridad del navegador.
-                            Esto es <strong>normal</strong> en redes locales con certificados auto-firmados.
-                        </p>
-                        <hr>
-                        <p class="mb-0">
-                            <strong>Para continuar:</strong> Haga clic en <code>Opciones Avanzadas</code> (o "Mostrar detalles")
-                            y luego en <code>Continuar de todos modos</code> (o "Ir al sitio").
+            <!-- Instrucción principal -->
+            <div class="row justify-content-center mb-4">
+                <div class="col-lg-8">
+                    <div class="wifi-instruction">
+                        <i class="fas fa-wifi d-block"></i>
+                        <h4 class="mb-2">Conecte su celular al mismo WiFi que esta computadora</h4>
+                        <p class="mb-0 small" style="opacity: 0.85;">
+                            Luego escanee el código QR de abajo con la cámara de su celular
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Información de Red -->
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-server mr-2"></i>Información del Servidor</h3>
+            <!-- QR + URL -->
+            <div class="row justify-content-center mb-4">
+                <div class="col-lg-5">
+                    <div class="qr-container">
+                        <h5 class="text-muted mb-3">
+                            <i class="fas fa-qrcode mr-2"></i>Escanee para acceder
+                        </h5>
+
+                        <!-- QR generado localmente (sin internet) -->
+                        <div class="mb-3">
+                            <img id="qrImage"
+                                 th:src="@{/conexion-movil/qr.png}"
+                                 alt="Código QR"
+                                 width="250" height="250"
+                                 style="image-rendering: pixelated;">
+                        </div>
+
+                        <!-- URL -->
+                        <div class="url-display mb-3" id="urlDisplay" th:text="${serverUrl}">
+                            https://192.168.1.100:8443
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-center gap-2">
+                            <button class="btn btn-primary btn-copiar-url" onclick="copiarUrlMovil()">
+                                <i class="fas fa-copy mr-1"></i> Copiar URL
+                            </button>
+                            <button class="btn btn-outline-secondary btn-copiar-url ml-2" onclick="refrescarConexion()">
+                                <i class="fas fa-sync-alt mr-1"></i> Actualizar
+                            </button>
+                        </div>
+
+                        <div class="refresh-indicator mt-3" id="refreshIndicator">
+                            <i class="fas fa-info-circle mr-1"></i>Use "Actualizar" si cambió de red
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 d-flex flex-column justify-content-center">
+                    <!-- Estado de conexión -->
+                    <div class="card mb-3">
+                        <div class="card-body text-center p-3">
+                            <div class="mb-2">
+                                <span th:if="${sslEnabled}" class="status-badge bg-success text-white">
+                                    <i class="fas fa-lock"></i> HTTPS Activo
+                                </span>
+                                <span th:unless="${sslEnabled}" class="status-badge bg-warning text-dark">
+                                    <i class="fas fa-unlock"></i> HTTP
+                                </span>
+                            </div>
+                            <small class="text-muted">Puerto: <strong th:text="${serverPort}">8443</strong></small>
+                        </div>
+                    </div>
+
+                    <!-- Instrucciones SSL simplificadas -->
+                    <div class="card border-warning">
+                        <div class="card-body p-3">
+                            <h6 class="text-warning mb-2">
+                                <i class="fas fa-mobile-alt mr-1"></i>Al abrir en el celular
+                            </h6>
+                            <p class="small mb-2">
+                                Aparecerá un mensaje de advertencia.<br>
+                                Esto es <strong>completamente normal</strong>.
+                            </p>
+                            <div class="small bg-light rounded p-2">
+                                <strong>Paso 1:</strong> Presione <span class="badge badge-secondary">Avanzado</span><br>
+                                <strong>Paso 2:</strong> Presione <span class="badge badge-secondary">Continuar</span>
+                            </div>
+                            <p class="small text-muted mt-2 mb-0">
+                                Solo aparece la primera vez.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advertencia de Firewall (si está bloqueado) -->
+            <div th:if="${portCheck != null and portCheck.status == 'firewall_blocked'}"
+                 class="row justify-content-center mb-4">
+                <div class="col-lg-8">
+                    <div class="alert alert-danger mb-0">
+                        <h5 class="mb-2">
+                            <i class="fas fa-shield-alt mr-2"></i>Firewall bloqueando conexiones
+                        </h5>
+                        <p class="mb-2">
+                            El firewall de Windows está impidiendo que los celulares se conecten al sistema.
+                            El puerto <strong th:text="${serverPort}">8443</strong> no es accesible desde la red.
+                        </p>
+                        <hr>
+                        <p class="mb-1"><strong>Para solucionarlo:</strong></p>
+                        <ol class="mb-0 small">
+                            <li>Abra <code>Panel de Control</code> &rarr; <code>Firewall de Windows</code></li>
+                            <li>Clic en <code>Permitir una aplicación a través del firewall</code></li>
+                            <li>Busque <strong>Java</strong> o <strong>OpenJDK</strong> y marque las casillas de red <strong>Privada</strong></li>
+                            <li>Si no aparece, clic en <code>Permitir otra aplicación</code> y agregue <code>javaw.exe</code></li>
+                            <li>Reinicie el sistema ERP</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Soporte Técnico (colapsada) -->
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card collapsed-card">
+                        <div class="card-header py-2">
+                            <h3 class="card-title">
+                                <i class="fas fa-tools mr-2"></i>Soporte Técnico
+                            </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-striped mb-0">
+                            <table class="table table-sm table-striped mb-0">
                                 <tbody>
                                     <tr>
                                         <td><strong>IP Detectada</strong></td>
-                                        <td class="text-primary" th:text="${serverIp}">192.168.1.100</td>
+                                        <td><code th:text="${serverIp}">192.168.1.100</code></td>
                                     </tr>
                                     <tr>
                                         <td><strong>Puerto</strong></td>
@@ -95,103 +226,91 @@
                                     <tr>
                                         <td><strong>Protocolo</strong></td>
                                         <td>
-                                            <span th:if="${sslEnabled}" class="badge badge-success">
-                                                <i class="fas fa-lock mr-1"></i> HTTPS (SSL Activo)
-                                            </span>
-                                            <span th:unless="${sslEnabled}" class="badge badge-warning">
-                                                <i class="fas fa-unlock mr-1"></i> HTTP
-                                            </span>
+                                            <span th:if="${sslEnabled}" class="badge badge-success">HTTPS</span>
+                                            <span th:unless="${sslEnabled}" class="badge badge-warning">HTTP</span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td><strong>URL Completa</strong></td>
+                                        <td><a th:href="${serverUrl}" target="_blank" th:text="${serverUrl}"></a></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>IPs Candidatas</strong></td>
                                         <td>
-                                            <a th:href="${serverUrl}" target="_blank" th:text="${serverUrl}"></a>
+                                            <span th:each="ip, iter : ${allIps}">
+                                                <code th:text="${ip}"></code>
+                                                <span th:if="${!iter.last}">, </span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Firewall</strong></td>
+                                        <td>
+                                            <span th:if="${portCheck != null and portCheck.status == 'ok'}" class="badge badge-success">
+                                                <i class="fas fa-check mr-1"></i>Puerto abierto
+                                            </span>
+                                            <span th:if="${portCheck != null and portCheck.status == 'firewall_blocked'}" class="badge badge-danger">
+                                                <i class="fas fa-times mr-1"></i>Puerto bloqueado
+                                            </span>
+                                            <span th:if="${portCheck == null or portCheck.status == 'error'}" class="badge badge-warning">
+                                                <i class="fas fa-question mr-1"></i>No verificado
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- URLs alternativas (solo en soporte técnico) -->
+                            <div th:if="${#lists.size(allUrls) > 1}" class="p-2">
+                                <h6 class="text-muted"><i class="fas fa-exchange-alt mr-1"></i>URLs Alternativas</h6>
+                                <div th:each="altUrl : ${allUrls}" class="mb-1">
+                                    <code th:text="${altUrl}"></code>
+                                    <button class="btn btn-xs btn-outline-secondary ml-1"
+                                            th:onclick="'copiarTexto(\'' + ${altUrl} + '\')'">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Diagnóstico de interfaces -->
+                            <div class="p-2">
+                                <h6 class="text-muted"><i class="fas fa-network-wired mr-1"></i>Interfaces de Red</h6>
+                            </div>
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Interfaz</th>
+                                        <th>IP</th>
+                                        <th>Activa</th>
+                                        <th>Virtual</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="iface : ${interfaces}"
+                                        th:class="${iface.ip == serverIp ? 'table-success' : ''}">
+                                        <td>
+                                            <small th:text="${iface.interface}">eth0</small>
+                                        </td>
+                                        <td>
+                                            <code th:text="${iface.ip}">192.168.1.100</code>
+                                            <span th:if="${iface.ip == serverIp}" class="badge badge-primary badge-sm ml-1">PRINCIPAL</span>
+                                        </td>
+                                        <td>
+                                            <i th:if="${iface.isUp == 'true'}" class="fas fa-check text-success"></i>
+                                            <i th:unless="${iface.isUp == 'true'}" class="fas fa-times text-danger"></i>
+                                        </td>
+                                        <td>
+                                            <i th:if="${iface.isVirtual == 'true'}" class="fas fa-check text-info"></i>
+                                            <i th:unless="${iface.isVirtual == 'true'}" class="fas fa-times text-muted"></i>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-wifi mr-2"></i>Instrucciones de Conexión</h3>
-                        </div>
-                        <div class="card-body">
-                            <ol class="pl-3">
-                                <li class="mb-2">
-                                    <strong>Conecte el celular al mismo WiFi</strong> que la computadora donde está instalado el sistema.
-                                </li>
-                                <li class="mb-2">
-                                    <strong>Abra el navegador</strong> del celular (Chrome, Safari, etc.)
-                                </li>
-                                <li class="mb-2">
-                                    <strong>Escriba la URL</strong> mostrada arriba o escanee el código QR.
-                                </li>
-                                <li class="mb-2">
-                                    <strong>Acepte la advertencia de seguridad</strong> (normal en red local).
-                                </li>
-                                <li>
-                                    <strong>Inicie sesión</strong> con su usuario y contraseña.
-                                </li>
-                            </ol>
+                        <div class="card-footer text-muted small">
+                            La IP resaltada en verde es la detectada automáticamente via gateway del sistema operativo.
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Interfaces de Red (Diagnóstico) -->
-            <div class="card collapsed-card">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-diagnoses mr-2"></i>Diagnóstico de Interfaces de Red</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Interfaz</th>
-                                <th>Nombre</th>
-                                <th>IP</th>
-                                <th>Activa</th>
-                                <th>Loopback</th>
-                                <th>Virtual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="iface : ${interfaces}"
-                                th:class="${iface.ip == serverIp ? 'table-success' : ''}">
-                                <td th:text="${iface.interface}">eth0</td>
-                                <td th:text="${iface.name}">eth0</td>
-                                <td>
-                                    <code th:text="${iface.ip}">192.168.1.100</code>
-                                    <span th:if="${iface.ip == serverIp}" class="badge badge-primary ml-1">DETECTADA</span>
-                                </td>
-                                <td>
-                                    <i th:if="${iface.isUp == 'true'}" class="fas fa-check text-success"></i>
-                                    <i th:unless="${iface.isUp == 'true'}" class="fas fa-times text-danger"></i>
-                                </td>
-                                <td>
-                                    <i th:if="${iface.isLoopback == 'true'}" class="fas fa-check text-warning"></i>
-                                    <i th:unless="${iface.isLoopback == 'true'}" class="fas fa-times text-muted"></i>
-                                </td>
-                                <td>
-                                    <i th:if="${iface.isVirtual == 'true'}" class="fas fa-check text-info"></i>
-                                    <i th:unless="${iface.isVirtual == 'true'}" class="fas fa-times text-muted"></i>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-footer text-muted small">
-                    La IP resaltada en verde es la que el sistema detectó automáticamente para conexiones de red local.
                 </div>
             </div>
 
@@ -201,10 +320,14 @@
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
-        const serverUrl = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+        const currentServerUrl = /*[[${serverUrl}]]*/ 'https://localhost:8443';
 
-        function copiarUrl() {
-            navigator.clipboard.writeText(serverUrl).then(function() {
+        function copiarUrlMovil() {
+            copiarTexto(currentServerUrl);
+        }
+
+        function copiarTexto(texto) {
+            navigator.clipboard.writeText(texto).then(function() {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
@@ -213,27 +336,47 @@
                     showConfirmButton: false,
                     timer: 2000
                 });
+            }).catch(function() {
+                var tempInput = document.createElement('input');
+                tempInput.value = texto;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'URL copiada',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
             });
         }
 
-        function mostrarQR() {
-            Swal.fire({
-                title: '<i class="fas fa-qrcode mr-2"></i>Escanear con Celular',
-                html: '<div class="text-center mb-3">' +
-                      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(serverUrl) + '" ' +
-                      'alt="QR Code" style="border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 10px;">' +
-                      '</div>' +
-                      '<p><strong>URL:</strong> <code>' + serverUrl + '</code></p>',
-                width: 400,
-                showCloseButton: true,
-                confirmButtonText: '<i class="fas fa-copy mr-1"></i> Copiar URL',
-                confirmButtonColor: '#17a2b8'
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    copiarUrl();
+        function refrescarConexion() {
+            // Recargar QR y URL dinámicamente
+            var qrImg = document.getElementById('qrImage');
+            qrImg.src = '/conexion-movil/qr.png?t=' + Date.now();
+
+            $.get('/conexion-movil/api/info', function(data) {
+                if (data.success) {
+                    document.getElementById('urlDisplay').textContent = data.url;
                 }
             });
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Conexión actualizada',
+                showConfirmButton: false,
+                timer: 1500
+            });
         }
+
+        // Sin auto-refresh: el QR solo se actualiza con el botón manual
+        // para evitar invalidar URLs ya escaneadas por el usuario
     </script>
 </th:block>
 
