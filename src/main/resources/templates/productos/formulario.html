@@ -33,6 +33,7 @@
                 <form th:action="@{/productos/guardar}" th:object="${producto}" method="post" enctype="multipart/form-data">
                     <input type="hidden" th:field="*{id}" />
                     <input type="hidden" th:field="*{activo}" />
+                    <input type="hidden" th:field="*{version}" />
                     <div class="card-body">
 
                         <div class="row">

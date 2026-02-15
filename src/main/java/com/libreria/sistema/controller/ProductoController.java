@@ -106,6 +106,21 @@ public class ProductoController {
                           @RequestParam("file") MultipartFile imagen, 
                           RedirectAttributes attributes) {
         try {
+            // 0. Si es EDICIÓN, preservar datos de auditoría del producto existente
+            if (producto.getId() != null) {
+                Producto pDb = productoService.obtenerPorId(producto.getId()).orElse(null);
+                if (pDb != null) {
+                    // Preservar fecha de creación siempre
+                    if (producto.getFechaCreacion() == null) {
+                        producto.setFechaCreacion(pDb.getFechaCreacion());
+                    }
+                    // Si no subió foto nueva, mantener la anterior
+                    if (imagen.isEmpty()) {
+                        producto.setImagen(pDb.getImagen());
+                    }
+                }
+            }
+
             // 1. MANEJO DE IMAGEN CON VALIDACIÓN
             if (!imagen.isEmpty()) {
                 // Validar tamaño de archivo
@@ -139,18 +154,6 @@ public class ProductoController {
                 String nombreUnico = UUID.randomUUID().toString() + extension;
                 Files.copy(imagen.getInputStream(), rootPath.resolve(nombreUnico));
                 producto.setImagen(nombreUnico);
-            } else {
-                // Si es EDICIÓN y no subió foto nueva, mantener la anterior
-                if (producto.getId() != null) {
-                    Producto pDb = productoService.obtenerPorId(producto.getId()).orElse(null);
-                    if (pDb != null) {
-                        producto.setImagen(pDb.getImagen());
-                        // Mantener fechas de auditoría si el formulario no las envía
-                        if(producto.getFechaCreacion() == null) {
-                            producto.setFechaCreacion(pDb.getFechaCreacion());
-                        }
-                    }
-                }
             }
 
             // 2. VALIDACIONES DE NEGOCIO
@@ -176,23 +179,23 @@ public class ProductoController {
             // Validación de archivo
             log.warn("Validación de archivo fallida: {}", e.getMessage());
             attributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/productos/nuevo";
+            return producto.getId() != null ? "redirect:/productos/editar/" + producto.getId() : "redirect:/productos/nuevo";
 
         } catch (DataIntegrityViolationException e) {
             // ERROR DE DUPLICADOS (Código Barras o SKU repetido)
             log.error("Error de integridad de datos al guardar producto", e);
             attributes.addFlashAttribute("error", "Error: El Código de Barras o Código Interno ya existe en otro producto.");
-            return "redirect:/productos/nuevo";
+            return producto.getId() != null ? "redirect:/productos/editar/" + producto.getId() : "redirect:/productos/nuevo";
 
         } catch (IOException e) {
             log.error("Error de I/O al subir imagen", e);
             attributes.addFlashAttribute("error", "Error al subir la imagen. Por favor intente nuevamente.");
-            return "redirect:/productos/nuevo";
+            return producto.getId() != null ? "redirect:/productos/editar/" + producto.getId() : "redirect:/productos/nuevo";
 
         } catch (Exception e) {
             log.error("Error inesperado al guardar producto", e);
             attributes.addFlashAttribute("error", "Error al guardar el producto. Por favor intente nuevamente.");
-            return "redirect:/productos/nuevo";
+            return producto.getId() != null ? "redirect:/productos/editar/" + producto.getId() : "redirect:/productos/nuevo";
         }
     }
 

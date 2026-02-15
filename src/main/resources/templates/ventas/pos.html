@@ -1254,7 +1254,7 @@
                 let stockBadge = p.stockBajo ? 'bg-warning text-dark' : (p.tieneStock ? 'bg-success' : 'bg-danger');
 
                 // Imagen del producto (40x40px)
-                let imgSrc = p.imagen ? '/images/' + p.imagen : IMG_PLACEHOLDER;
+                let imgSrc = p.imagen ? '/uploads/' + p.imagen : IMG_PLACEHOLDER;
 
                 let html = `<div class="select2-producto-item">
                     <img src="${imgSrc}" class="select2-producto-img" alt="" onerror="this.src='${IMG_PLACEHOLDER}'">
@@ -1376,7 +1376,7 @@
 
         // Imagen
         if (data.imagen) {
-            $("#visorImagen").attr("src", "/images/" + data.imagen);
+            $("#visorImagen").attr("src", "/uploads/" + data.imagen);
         } else {
             $("#visorImagen").attr("src", IMG_PLACEHOLDER);
         }
@@ -1413,7 +1413,7 @@
     // Ampliar imagen del producto
     function ampliarImagen() {
         if (!productoActual) return;
-        let imgSrc = productoActual.imagen ? '/images/' + productoActual.imagen : IMG_PLACEHOLDER;
+        let imgSrc = productoActual.imagen ? '/uploads/' + productoActual.imagen : IMG_PLACEHOLDER;
         Swal.fire({
             title: productoActual.nombre,
             imageUrl: imgSrc,
@@ -1443,7 +1443,7 @@
 
                 let html = '<div class="row">';
                 productos.forEach(function(p) {
-                    let imgSrc = p.imagen ? '/images/' + p.imagen : IMG_PLACEHOLDER;
+                    let imgSrc = p.imagen ? '/uploads/' + p.imagen : IMG_PLACEHOLDER;
                     let stockClass = p.stock <= 0 ? 'text-danger' : (p.stock <= 5 ? 'text-warning' : 'text-muted');
                     html += `
                         <div class="col-6 col-md-4 mb-2">

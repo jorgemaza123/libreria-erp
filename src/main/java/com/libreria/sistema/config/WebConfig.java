@@ -15,8 +15,8 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Mapea la URL "/images/**" a la carpeta física de uploads (configurable)
-        registry.addResourceHandler("/images/**")
+        // Mapea la URL "/uploads/**" a la carpeta física de uploads (configurable)
+        registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadDir + "/");
     }
 
