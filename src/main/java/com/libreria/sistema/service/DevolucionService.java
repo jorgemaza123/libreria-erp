@@ -208,7 +208,7 @@ public class DevolucionService {
      */
     private void registrarEgresoCaja(DevolucionVenta devolucion) {
         String concepto = "REEMBOLSO DEVOLUCIÓN NC " + devolucion.getSerie() + "-" + devolucion.getNumero();
-        cajaService.registrarMovimiento("EGRESO", concepto, devolucion.getTotalDevuelto());
+        cajaService.registrarMovimiento("EGRESO", concepto, devolucion.getTotalDevuelto(), CategoriaMovimiento.DEVOLUCION);
     }
 
     /**
@@ -366,7 +366,7 @@ public class DevolucionService {
         if ("EFECTIVO".equals(devolucion.getMetodoReembolso()) && devolucion.getTotalDevuelto() != null) {
             try {
                 String concepto = "ANULACIÓN REEMBOLSO NC " + devolucion.getSerie() + "-" + devolucion.getNumero();
-                cajaService.registrarMovimiento("INGRESO", concepto, devolucion.getTotalDevuelto());
+                cajaService.registrarMovimiento("INGRESO", concepto, devolucion.getTotalDevuelto(), CategoriaMovimiento.OTRO_INGRESO);
             } catch (Exception e) {
                 log.warn("No se pudo registrar ingreso de anulación de devolución (¿caja cerrada?): {}", e.getMessage());
                 // No bloqueamos la anulación si la caja está cerrada, pero queda registrado

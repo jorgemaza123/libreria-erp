@@ -69,6 +69,16 @@
                     </div>
                 </div>
 
+                <!-- Botones de Exportación -->
+                <div class="mb-3">
+                    <a href="/listas-escolares/faltantes/pdf" target="_blank" class="btn btn-danger">
+                        <i class="fas fa-file-pdf mr-1"></i> Exportar PDF
+                    </a>
+                    <a href="/listas-escolares/faltantes/excel" class="btn btn-success">
+                        <i class="fas fa-file-excel mr-1"></i> Exportar Excel
+                    </a>
+                </div>
+
                 <!-- Tabs -->
                 <div class="card card-primary card-outline card-tabs">
                     <div class="card-header p-0 pt-1 border-bottom-0">
@@ -98,11 +108,24 @@
                                     No hay productos faltantes. Todos los items tienen producto asignado.
                                 </div>
 
-                                <div class="table-responsive" th:unless="${#lists.isEmpty(faltantes)}">
+                                <div th:unless="${#lists.isEmpty(faltantes)}">
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarSeleccionados()">
+                                            <i class="fas fa-trash mr-1"></i> Eliminar Seleccionados
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarTodos()">
+                                            <i class="fas fa-trash-alt mr-1"></i> Eliminar Todos
+                                        </button>
+                                        <span class="ml-2 text-muted" id="contadorSeleccion"></span>
+                                    </div>
+                                    <div class="table-responsive">
                                     <table class="table table-hover table-striped" id="tablaFaltantes">
                                         <thead class="thead-dark">
                                             <tr>
-                                                <th style="width: 40%;">Producto Solicitado</th>
+                                                <th style="width: 40px;" class="text-center">
+                                                    <input type="checkbox" id="checkAll" title="Seleccionar todos">
+                                                </th>
+                                                <th style="width: 38%;">Producto Solicitado</th>
                                                 <th class="text-center">Veces</th>
                                                 <th class="text-center">Cant. Total</th>
                                                 <th class="text-center">Acciones</th>
@@ -110,6 +133,10 @@
                                         </thead>
                                         <tbody>
                                             <tr th:each="f : ${faltantes}">
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="faltante-check"
+                                                           th:data-texto="${f.textoOriginal}">
+                                                </td>
                                                 <td>
                                                     <strong th:text="${f.textoOriginal}">Producto</strong>
                                                 </td>
@@ -124,12 +151,14 @@
                                                 <td class="text-center">
                                                     <div class="btn-group btn-group-sm">
                                                         <button type="button" class="btn btn-info"
-                                                                th:onclick="'verDetalles(\'' + ${f.textoOriginal} + '\')'"
+                                                                th:data-texto="${f.textoOriginal}"
+                                                                onclick="verDetalles(this.dataset.texto)"
                                                                 title="Ver listas que lo piden">
                                                             <i class="fas fa-eye"></i>
                                                         </button>
                                                         <button type="button" class="btn btn-success"
-                                                                th:onclick="'asignarMasivo(\'' + ${f.textoOriginal} + '\')'"
+                                                                th:data-texto="${f.textoOriginal}"
+                                                                onclick="asignarMasivo(this.dataset.texto)"
                                                                 title="Asignar producto a todos">
                                                             <i class="fas fa-link"></i>
                                                         </button>
@@ -138,6 +167,7 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             </div>
 
@@ -198,7 +228,9 @@
                                                 <td class="text-center">
                                                     <div class="btn-group btn-group-sm">
                                                         <button type="button" class="btn btn-success"
-                                                                th:onclick="'vincularProducto(' + ${item.id} + ', \'' + ${item.textoOriginal} + '\')'"
+                                                                th:data-id="${item.id}"
+                                                                th:data-texto="${item.textoOriginal}"
+                                                                onclick="vincularProducto(parseInt(this.dataset.id), this.dataset.texto)"
                                                                 title="Vincular producto del inventario">
                                                             <i class="fas fa-link"></i> Vincular
                                                         </button>
@@ -341,8 +373,9 @@ $(document).ready(function() {
     if ($('#tablaFaltantes tbody tr').length > 0) {
         $('#tablaFaltantes').DataTable({
             language: { url: '/js/datatables-es.json' },
-            order: [[1, 'desc']],
-            pageLength: 25
+            order: [[3, 'desc']],
+            pageLength: 25,
+            columnDefs: [{ orderable: false, targets: [0, 4] }]
         });
     }
 
@@ -353,6 +386,13 @@ $(document).ready(function() {
             pageLength: 25
         });
     }
+
+    // Check all
+    $('#checkAll').on('change', function() {
+        $('.faltante-check').prop('checked', this.checked);
+        actualizarContador();
+    });
+    $(document).on('change', '.faltante-check', actualizarContador);
 
     // Inicializar Select2 para modales
     inicializarSelect2('#asignarProductoSelect');
@@ -512,6 +552,102 @@ function confirmarVinculacion() {
         },
         error: function(xhr) {
             Swal.fire('Error', xhr.responseJSON?.error || 'Error al vincular', 'error');
+        }
+    });
+}
+
+function actualizarContador() {
+    const total = $('.faltante-check').length;
+    const seleccionados = $('.faltante-check:checked').length;
+    if (seleccionados > 0) {
+        $('#contadorSeleccion').text(seleccionados + ' de ' + total + ' seleccionados');
+    } else {
+        $('#contadorSeleccion').text('');
+    }
+}
+
+function eliminarSeleccionados() {
+    const textos = [];
+    $('.faltante-check:checked').each(function() {
+        textos.push($(this).data('texto'));
+    });
+
+    if (textos.length === 0) {
+        Swal.fire('Atencion', 'Debe seleccionar al menos un producto', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Eliminar ' + textos.length + ' producto(s) faltante(s)?',
+        html: 'Se eliminaran estos items de todas las listas escolares pendientes.<br><small class="text-danger">Esta accion no se puede deshacer.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Si, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/listas-escolares/api/faltantes/eliminar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ textos: textos }),
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Eliminados',
+                            text: resp.eliminados + ' items eliminados',
+                            timer: 2000
+                        }).then(() => location.reload());
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.error || 'Error al eliminar', 'error');
+                }
+            });
+        }
+    });
+}
+
+function eliminarTodos() {
+    const total = $('.faltante-check').length;
+    if (total === 0) return;
+
+    Swal.fire({
+        title: 'Eliminar TODOS los productos faltantes?',
+        html: 'Se eliminaran <strong>' + total + '</strong> productos de todas las listas escolares pendientes.<br><small class="text-danger">Esta accion no se puede deshacer.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Si, eliminar todos',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const textos = [];
+            $('.faltante-check').each(function() {
+                textos.push($(this).data('texto'));
+            });
+
+            $.ajax({
+                url: '/listas-escolares/api/faltantes/eliminar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ textos: textos }),
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Eliminados',
+                            text: resp.eliminados + ' items eliminados',
+                            timer: 2000
+                        }).then(() => location.reload());
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.error || 'Error al eliminar', 'error');
+                }
+            });
         }
     });
 }

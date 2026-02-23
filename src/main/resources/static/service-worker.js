@@ -10,7 +10,7 @@
  * Su propósito: instalación como app, carga rápida, experiencia nativa.
  */
 
-const CACHE_NAME = 'sistema-erp-v1';
+const CACHE_NAME = 'sistema-erp-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets estáticos a pre-cachear en install
@@ -102,30 +102,23 @@ function cacheFirst(request) {
 }
 
 /**
- * Network-First: intenta red, si falla usa cache, si no hay cache → offline.
- * Ideal para páginas HTML y datos que necesitan estar frescos.
+ * Network-First: intenta red, si falla → offline.
+ * Las páginas de navegación NUNCA se cachean para evitar que el kiosko
+ * restaure páginas autenticadas tras un reinicio del servidor.
  */
 function networkFirst(request) {
     return fetch(request).then(function(response) {
-        // Solo cachear respuestas exitosas de navegación
-        if (response && response.status === 200 && request.mode === 'navigate') {
-            var responseClone = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-                cache.put(request, responseClone);
-            });
-        }
+        // Nunca cachear páginas de navegación (HTML autenticado).
+        // Solo cachear respuestas de APIs/recursos no-navigate si fuera necesario.
         return response;
     }).catch(function() {
-        return caches.match(request).then(function(cached) {
-            if (cached) return cached;
+        // Si es navegación y el server no responde, mostrar offline.html.
+        // Nunca servir una página autenticada cacheada.
+        if (request.mode === 'navigate') {
+            return caches.match(OFFLINE_URL);
+        }
 
-            // Si es navegación, mostrar página offline
-            if (request.mode === 'navigate') {
-                return caches.match(OFFLINE_URL);
-            }
-
-            return new Response('', { status: 503 });
-        });
+        return new Response('', { status: 503 });
     });
 }
 

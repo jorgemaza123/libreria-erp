@@ -65,6 +65,7 @@ public class ConfiguracionService {
         config.setPermitirStockNegativo(false);
         config.setPermitirVentaFraccionada(false);
         config.setPorcentajeDescuentoMaximo(new BigDecimal("10.00"));
+        config.setMargenMinimoAlerta(new BigDecimal("15.00"));
         config.setPreciosIncluyenImpuesto(true);
 
         // Facturación electrónica
@@ -128,7 +129,8 @@ public class ConfiguracionService {
         configDB.setDiasVencimientoCredito(nuevosDatos.getDiasVencimientoCredito());
         configDB.setDiasDevolucion(nuevosDatos.getDiasDevolucion());
         configDB.setPorcentajeDescuentoMaximo(nuevosDatos.getPorcentajeDescuentoMaximo());
-        
+        configDB.setMargenMinimoAlerta(nuevosDatos.getMargenMinimoAlerta());
+
         // --- BOOLEANS (Checkboxes) - CORRECCIÓN MASIVA ---
         // Cambiado de is...() a get...()
         configDB.setAperturaCajaObligatoria(nuevosDatos.getAperturaCajaObligatoria());

@@ -106,9 +106,14 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="form-group">
-                                        <label for="contactoNombre">Nombre del Contacto</label>
-                                        <input type="text" class="form-control" id="contactoNombre"
-                                               name="contactoNombre" placeholder="Ej: María López (Madre)">
+                                        <label for="contactoNombre" class="font-weight-bold">
+                                            Nombre del Padre/Apoderado <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control form-control-lg" id="contactoNombre"
+                                               name="contactoNombre" placeholder="Ej: María López (Madre)" required>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle"></i> Este nombre aparecerá en la cotización PDF
+                                        </small>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
@@ -238,6 +243,13 @@ $(document).ready(function() {
     // Enviar formulario
     $('#formLista').submit(function(e) {
         e.preventDefault();
+
+        // Validar nombre del padre/apoderado
+        if (!$('#contactoNombre').val().trim()) {
+            Swal.fire('Atención', 'Debe ingresar el nombre del padre/apoderado', 'warning');
+            $('#contactoNombre').focus();
+            return;
+        }
 
         const datos = {
             nombreAlumno: $('#nombreAlumno').val(),

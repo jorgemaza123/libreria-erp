@@ -16,6 +16,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Servicio principal para gestión de Listas Escolares.
@@ -135,6 +136,10 @@ public class ListaEscolarService {
         int sinMatch = 0;
 
         for (DetalleListaEscolar detalle : lista.getDetalles()) {
+            // Saltar regalos y servicios (no aplica cotizacion automatica)
+            if (detalle.esItemRegalo() || detalle.esItemServicio()) {
+                continue;
+            }
             // Buscar match para este item
             MatcherProductosService.ResultadoMatch match =
                 matcherService.buscarMatch(detalle.getTextoOriginal(), detalle.getCantidadSolicitada());
@@ -192,13 +197,13 @@ public class ListaEscolarService {
         for (DetalleListaEscolar d : lista.getDetalles()) {
             BigDecimal cantidad = BigDecimal.valueOf(d.getCantidadSolicitada());
 
-            if (d.getPrecioEconomico() != null) {
+            if (d.getPrecioEconomico() != null && !d.esOmitidoPorNivel("ECONOMICO")) {
                 totalEconomico = totalEconomico.add(d.getPrecioEconomico().multiply(cantidad));
             }
-            if (d.getPrecioMedio() != null) {
+            if (d.getPrecioMedio() != null && !d.esOmitidoPorNivel("MEDIO")) {
                 totalMedio = totalMedio.add(d.getPrecioMedio().multiply(cantidad));
             }
-            if (d.getPrecioPremium() != null) {
+            if (d.getPrecioPremium() != null && !d.esOmitidoPorNivel("PREMIUM")) {
                 totalPremium = totalPremium.add(d.getPrecioPremium().multiply(cantidad));
             }
         }
@@ -394,6 +399,7 @@ public class ListaEscolarService {
 
         // 5. Crear venta
         Venta venta = crearVentaDesdeListaEscolar(dto, lista, totalVenta);
+        venta = ventaRepository.save(venta);
 
         // 6. Procesar cada item
         BigDecimal totalGravada = BigDecimal.ZERO;
@@ -415,6 +421,13 @@ public class ListaEscolarService {
             detalleVenta.setUnidadMedida(producto.getUnidadMedida() != null ? producto.getUnidadMedida() : "NIU");
             detalleVenta.setPrecioUnitario(itemDTO.getPrecioUnitario());
             detalleVenta.setSubtotal(itemDTO.getSubtotal());
+
+            // Congelar costo al momento de la venta
+            BigDecimal costoUnit = producto.getPrecioCompra() != null ? producto.getPrecioCompra() : BigDecimal.ZERO;
+            detalleVenta.setCostoUnitario(costoUnit);
+            detalleVenta.setUtilidadUnitaria(itemDTO.getPrecioUnitario().subtract(costoUnit));
+            detalleVenta.setUtilidadTotal(itemDTO.getPrecioUnitario().subtract(costoUnit)
+                .multiply(BigDecimal.valueOf(itemDTO.getCantidad())));
 
             // Cálculos IGV
             BigDecimal valorUnitario = itemDTO.getPrecioUnitario().divide(igvFactor, 6, RoundingMode.HALF_UP);
@@ -596,7 +609,7 @@ public class ListaEscolarService {
 
         cajaService.registrarMovimiento("INGRESO",
             "VENTA LISTA ESC. " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")",
-            monto);
+            monto, CategoriaMovimiento.VENTA);
     }
 
     // =========================================================
@@ -605,11 +618,79 @@ public class ListaEscolarService {
 
     /**
      * Busca listas con filtros y paginación.
+     * La búsqueda es global: alumno, colegio, contacto, teléfono, grado, código.
+     * Se normaliza el texto removiendo tildes para búsqueda flexible.
      */
     @Transactional(readOnly = true)
-    public Page<ListaEscolar> buscar(String estado, String colegio, String grado,
+    public Page<ListaEscolar> buscar(String estado, String busqueda,
                                       Integer anio, Pageable pageable) {
-        return listaRepository.buscarConFiltros(estado, colegio, grado, anio, pageable);
+        // Normalizar: remover tildes/acentos para búsqueda flexible
+        String busquedaNormalizada = normalizarBusqueda(busqueda);
+        String estadoLimpio = (estado != null && estado.trim().isEmpty()) ? null : estado;
+        return listaRepository.buscarConFiltros(estadoLimpio, busquedaNormalizada, anio, pageable);
+    }
+
+    /**
+     * Normaliza texto de búsqueda: remueve acentos/tildes y caracteres especiales.
+     */
+    private String normalizarBusqueda(String texto) {
+        if (texto == null || texto.trim().isEmpty()) return null;
+        String normalizado = java.text.Normalizer.normalize(texto.trim(), java.text.Normalizer.Form.NFD);
+        normalizado = normalizado.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+        return normalizado;
+    }
+
+    /**
+     * Omite o des-omite un item para un nivel específico.
+     * No elimina el producto/precio asignado — solo lo oculta de la cotización.
+     */
+    @Transactional
+    public DetalleListaEscolar omitirPorNivel(Long detalleId, String nivel, boolean omitir) {
+        DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
+            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+
+        if ("VENDIDO".equals(detalle.getEstado())) {
+            throw new RuntimeException("No se puede omitir un item ya vendido");
+        }
+
+        detalle.setOmitidoPorNivel(nivel, omitir);
+        detalle = detalleRepository.save(detalle);
+
+        // Recalcular totales de la lista
+        recalcularTotales(detalle.getListaEscolar());
+        listaRepository.save(detalle.getListaEscolar());
+
+        log.info("Detalle {} {} en nivel {}", detalleId, omitir ? "omitido" : "restaurado", nivel);
+        return detalle;
+    }
+
+    /**
+     * Actualiza las cantidades solicitadas de varios detalles en lote.
+     * Usado para persistir los cambios de cantidad antes de generar el PDF.
+     */
+    @Transactional
+    public void actualizarCantidades(Long listaId, List<Map<String, Object>> cantidades) {
+        for (Map<String, Object> entry : cantidades) {
+            Long detalleId = Long.valueOf(entry.get("id").toString());
+            int cantidad = Integer.parseInt(entry.get("cantidad").toString());
+            if (cantidad < 1) cantidad = 1;
+            final int cantidadFinal = cantidad;
+            detalleRepository.findById(detalleId).ifPresent(detalle -> {
+                if (detalle.getListaEscolar() != null
+                        && detalle.getListaEscolar().getId().equals(listaId)) {
+                    detalle.setCantidadSolicitada(cantidadFinal);
+                    detalleRepository.save(detalle);
+                }
+            });
+        }
+    }
+
+    /**
+     * Guarda cambios en una lista existente.
+     */
+    @Transactional
+    public ListaEscolar guardarLista(ListaEscolar lista) {
+        return listaRepository.save(lista);
     }
 
     /**
@@ -729,6 +810,19 @@ public class ListaEscolarService {
             default -> throw new RuntimeException("Nivel inválido: " + nivel);
         }
 
+        // FIX: Si nivelSeleccionado es null (item venía de NO_COTIZADO sin match automático),
+        // establecerlo al nivel asignado manualmente.
+        // Sin esto, getProductoFinal() retorna el campo genérico 'producto' (que también es null)
+        // ignorando productoMedio/productoEconomico/productoPremium recién asignados,
+        // y el POS muestra el item como "Sin asignar" aunque el producto sí esté persistido.
+        if (detalle.getNivelSeleccionado() == null) {
+            detalle.setNivelSeleccionado(nivel.toUpperCase());
+            detalle.setPrecioFinal(precio);
+        } else if (nivel.equalsIgnoreCase(detalle.getNivelSeleccionado())) {
+            // Si el nivel activo es el mismo que se actualiza, refrescar precioFinal
+            detalle.setPrecioFinal(precio);
+        }
+
         // Si no estaba cotizado, ahora lo está
         if ("NO_COTIZADO".equals(detalle.getEstado()) && producto != null) {
             detalle.setEstado("COTIZADO");
@@ -797,6 +891,70 @@ public class ListaEscolarService {
         log.info("Regalo {} eliminado de lista {}", detalleId, lista.getCodigoCompleto());
     }
 
+    // =========================================================
+    //  SERVICIOS ADICIONALES
+    // =========================================================
+
+    /**
+     * Agrega un servicio adicional a una lista (ej: forrado de cuadernos).
+     * A diferencia del regalo, el servicio tiene un precio que se suma al total.
+     */
+    @Transactional
+    public DetalleListaEscolar agregarServicio(Long listaId, String texto, BigDecimal precio, String nivel) {
+        ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
+            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+
+        if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("El precio del servicio debe ser mayor a cero");
+        }
+
+        // Determinar el orden
+        int maxOrden = lista.getDetalles().stream()
+            .mapToInt(DetalleListaEscolar::getOrden)
+            .max()
+            .orElse(0);
+
+        DetalleListaEscolar servicio = DetalleListaEscolar.crearServicio(lista, texto, nivel, precio, maxOrden + 1);
+        servicio = detalleRepository.save(servicio);
+
+        lista.getDetalles().add(servicio);
+        lista.setItemsTotal(lista.getDetalles().size());
+        lista.recalcularPendientes();
+        recalcularTotales(lista);
+        listaRepository.save(lista);
+
+        log.info("Servicio '{}' (S/ {}) agregado a lista {} para nivel {}", texto, precio, lista.getCodigoCompleto(), nivel);
+        return servicio;
+    }
+
+    /**
+     * Elimina un servicio de una lista.
+     */
+    @Transactional
+    public void eliminarServicio(Long detalleId) {
+        DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
+            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+
+        if (!detalle.esItemServicio()) {
+            throw new RuntimeException("Solo se pueden eliminar items de tipo servicio");
+        }
+
+        if ("VENDIDO".equals(detalle.getEstado())) {
+            throw new RuntimeException("No se puede eliminar un servicio ya vendido");
+        }
+
+        ListaEscolar lista = detalle.getListaEscolar();
+        lista.getDetalles().remove(detalle);
+        detalleRepository.delete(detalle);
+
+        lista.setItemsTotal(lista.getDetalles().size());
+        lista.recalcularPendientes();
+        recalcularTotales(lista);
+        listaRepository.save(lista);
+
+        log.info("Servicio {} eliminado de lista {}", detalleId, lista.getCodigoCompleto());
+    }
+
     /**
      * Copia los productos de un nivel a otro.
      */
@@ -814,8 +972,9 @@ public class ListaEscolarService {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
             .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
+        int copiados = 0;
         for (DetalleListaEscolar detalle : lista.getDetalles()) {
-            if ("VENDIDO".equals(detalle.getEstado()) || detalle.esItemRegalo()) {
+            if ("VENDIDO".equals(detalle.getEstado()) || detalle.esItemRegalo() || detalle.esItemServicio()) {
                 continue;
             }
 
@@ -834,6 +993,11 @@ public class ListaEscolarService {
                 default -> BigDecimal.ZERO;
             };
 
+            // Si el origen no tiene nada que copiar, saltar (no sobreescribir destino con null)
+            if (productoOrigen == null && (precioOrigen == null || precioOrigen.compareTo(BigDecimal.ZERO) == 0)) {
+                continue;
+            }
+
             // Asignar al nivel destino
             switch (nivelDestino.toUpperCase()) {
                 case "ECONOMICO" -> {
@@ -851,6 +1015,7 @@ public class ListaEscolarService {
             }
 
             detalleRepository.save(detalle);
+            copiados++;
         }
 
         recalcularTotales(lista);
@@ -940,6 +1105,8 @@ public class ListaEscolarService {
 
         for (Object[] row : faltantesAgrupados) {
             String textoOriginal = (String) row[0];
+            if (textoOriginal == null || textoOriginal.isBlank()) continue;
+
             Long veces = (Long) row[1];
             Long cantidad = (Long) row[2];
 
@@ -960,26 +1127,19 @@ public class ListaEscolarService {
      */
     @Transactional(readOnly = true)
     public List<ProductoFaltanteDTO.DetalleFaltante> obtenerDetallesFaltante(String textoNormalizado) {
-        // Buscar todos los items sin producto que coincidan con el texto
-        List<DetalleListaEscolar> todosItems = detalleRepository.findAll();
+        if (textoNormalizado == null || textoNormalizado.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        // Buscar solo los items que coinciden con el texto (query optimizada, no findAll)
+        List<DetalleListaEscolar> items = detalleRepository.findFaltantesPorTexto(textoNormalizado);
         List<ProductoFaltanteDTO.DetalleFaltante> detalles = new ArrayList<>();
 
-        for (DetalleListaEscolar item : todosItems) {
-            if (item.esItemRegalo() || "VENDIDO".equals(item.getEstado()) || "CANCELADO".equals(item.getEstado())) {
-                continue;
-            }
-
+        for (DetalleListaEscolar item : items) {
             ListaEscolar lista = item.getListaEscolar();
-            if (lista == null || "COMPLETADA".equals(lista.getEstado()) || "CANCELADA".equals(lista.getEstado())) {
-                continue;
-            }
+            if (lista == null) continue;
 
-            String textoItem = ProductoFaltanteDTO.normalizarTexto(item.getTextoOriginal());
-            if (!textoItem.equals(textoNormalizado)) {
-                continue;
-            }
-
-            // Verificar si falta en algún nivel
+            // Verificar niveles faltantes
             boolean faltaEconomico = item.getProductoEconomico() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorEconomico());
             boolean faltaMedio = item.getProductoMedio() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorMedio());
             boolean faltaPremium = item.getProductoPremium() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorPremium());
@@ -995,7 +1155,6 @@ public class ListaEscolarService {
                 detalle.setCantidad(item.getCantidadSolicitada());
                 detalle.setFechaSolicitud(lista.getFechaCreacion());
 
-                // Determinar niveles faltantes
                 StringBuilder niveles = new StringBuilder();
                 if (faltaEconomico) niveles.append("E");
                 if (faltaMedio) niveles.append("M");
@@ -1005,13 +1164,6 @@ public class ListaEscolarService {
                 detalles.add(detalle);
             }
         }
-
-        // Ordenar por fecha más reciente
-        detalles.sort((a, b) -> {
-            if (a.getFechaSolicitud() == null) return 1;
-            if (b.getFechaSolicitud() == null) return -1;
-            return b.getFechaSolicitud().compareTo(a.getFechaSolicitud());
-        });
 
         return detalles;
     }
@@ -1065,6 +1217,36 @@ public class ListaEscolarService {
     }
 
     /**
+     * Elimina items faltantes (sin producto asignado) agrupados por texto.
+     */
+    @Transactional
+    public int eliminarItemsFaltantes(List<String> textos) {
+        int eliminados = 0;
+        for (String texto : textos) {
+            String textoNormalizado = texto.toLowerCase().trim();
+            List<DetalleListaEscolar> items = detalleRepository.findFaltantesPorTexto(textoNormalizado);
+            for (DetalleListaEscolar item : items) {
+                // Solo eliminar items que realmente no tienen producto en ningún nivel
+                if (item.getProductoEconomico() == null && item.getProductoMedio() == null
+                        && item.getProductoPremium() == null
+                        && !Boolean.TRUE.equals(item.getCotizadoProveedorEconomico())
+                        && !Boolean.TRUE.equals(item.getCotizadoProveedorMedio())
+                        && !Boolean.TRUE.equals(item.getCotizadoProveedorPremium())) {
+                    ListaEscolar lista = item.getListaEscolar();
+                    lista.getDetalles().remove(item);
+                    detalleRepository.delete(item);
+                    lista.setItemsTotal(lista.getDetalles().size());
+                    lista.recalcularPendientes();
+                    listaRepository.save(lista);
+                    eliminados++;
+                }
+            }
+        }
+        log.info("Eliminados {} items faltantes", eliminados);
+        return eliminados;
+    }
+
+    /**
      * Estadísticas de productos faltantes.
      */
     @Transactional(readOnly = true)
@@ -1082,5 +1264,269 @@ public class ListaEscolarService {
             "totalCotizadosProveedor", totalCotizadosProveedor,
             "topFaltantes", faltantes.stream().limit(10).toList()
         );
+    }
+
+    // =========================================================
+    //  RESUMEN FINANCIERO - Cálculo en memoria sin queries
+    // =========================================================
+
+    /**
+     * Calcula el resumen financiero de una lista escolar.
+     * Recalcula totalVenta desde detalles (no confía en valor almacenado).
+     * Si precioCompra es null, lo trata como 0 y cuenta como item sin costo.
+     * Solo afecta módulo de listas escolares.
+     */
+    @Transactional(readOnly = true)
+    public ResumenFinancieroDTO calcularResumenFinanciero(Long listaId) {
+        ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+
+        ResumenFinancieroDTO resumen = new ResumenFinancieroDTO();
+        Set<Long> productosSinCosto = new HashSet<>();
+
+        for (DetalleListaEscolar detalle : lista.getDetalles()) {
+            if (Boolean.TRUE.equals(detalle.getEsRegalo())) continue;
+            if (Boolean.TRUE.equals(detalle.getEsServicio())) continue;
+
+            int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
+            resumen.setItemsTotal(resumen.getItemsTotal() + 1);
+
+            // ECONOMICO
+            acumularNivel(resumen.getEconomico(), detalle.getProductoEconomico(),
+                    detalle.getPrecioEconomico(), cantidad, productosSinCosto);
+
+            // MEDIO
+            acumularNivel(resumen.getMedio(), detalle.getProductoMedio(),
+                    detalle.getPrecioMedio(), cantidad, productosSinCosto);
+
+            // PREMIUM
+            acumularNivel(resumen.getPremium(), detalle.getProductoPremium(),
+                    detalle.getPrecioPremium(), cantidad, productosSinCosto);
+        }
+
+        resumen.setItemsSinCosto(productosSinCosto.size());
+
+        resumen.getEconomico().calcular();
+        resumen.getMedio().calcular();
+        resumen.getPremium().calcular();
+
+        return resumen;
+    }
+
+    // =========================================================
+    //  EDITAR TEXTO ORIGINAL Y REPROCESAR
+    // =========================================================
+
+    /**
+     * Actualiza el texto original de la lista y sincroniza los detalles:
+     * - Líneas que permanecen en el texto → se mantienen sin cambios (respeta ediciones manuales)
+     * - Líneas eliminadas del texto → se borran si no están VENDIDO
+     * - Líneas nuevas en el texto → se crean y se cotizan automáticamente
+     * Los ítems con estado VENDIDO nunca son afectados (validación dentro de la transacción).
+     *
+     * @return Map con: success, mensaje, itemsTotal, totales y listas de cambios para UI dinámica
+     */
+    @Transactional
+    public Map<String, Object> actualizarTextoYReprocesar(Long listaId, String nuevoTexto) {
+        ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
+            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+
+        // Validar estado (no modificar listas cerradas)
+        if ("COMPLETADA".equals(lista.getEstado()) || "CANCELADA".equals(lista.getEstado())
+                || "ELIMINADA".equals(lista.getEstado())) {
+            throw new RuntimeException("No se puede modificar una lista en estado " + lista.getEstado());
+        }
+
+        // Actualizar texto almacenado
+        lista.setTextoOriginal(nuevoTexto);
+
+        // Parsear nuevo texto
+        List<TextoListaParser.ItemParseado> nuevosItemsParseados = parser.parsear(nuevoTexto);
+
+        // Set de textos normalizados del nuevo texto (para comparar)
+        Set<String> nuevosTextosNorm = nuevosItemsParseados.stream()
+            .map(i -> normalizarParaComparar(i.getTextoOriginal()))
+            .collect(Collectors.toSet());
+
+        // Separar detalles vendidos (intocables) y no-vendidos
+        // IMPORTANTE: Se re-lee el estado de cada detalle desde la colección ya cargada
+        // (dentro de la transacción, refleja el estado actual en BD gracias al SELECT FOR UPDATE implícito)
+        List<DetalleListaEscolar> detallesNoVendidos = lista.getDetalles().stream()
+            .filter(d -> !"VENDIDO".equals(d.getEstado()))
+            .collect(Collectors.toList());
+
+        // Set de textos normalizados de los existentes no-vendidos
+        Set<String> existentesTextosNorm = detallesNoVendidos.stream()
+            .map(d -> normalizarParaComparar(d.getTextoOriginal()))
+            .collect(Collectors.toSet());
+
+        // 1. Identificar detalles a eliminar (están en BD pero ya no en el nuevo texto)
+        List<Long> idsEliminados = new ArrayList<>();
+        Iterator<DetalleListaEscolar> iter = lista.getDetalles().iterator();
+        while (iter.hasNext()) {
+            DetalleListaEscolar d = iter.next();
+            // Nunca eliminar vendidos
+            if ("VENDIDO".equals(d.getEstado())) continue;
+            // Si ya no está en el nuevo texto, eliminar
+            if (!nuevosTextosNorm.contains(normalizarParaComparar(d.getTextoOriginal()))) {
+                idsEliminados.add(d.getId());
+                iter.remove(); // orphanRemoval lo borrará de BD al hacer save
+            }
+        }
+
+        // 2. Identificar e insertar ítems nuevos (están en el nuevo texto pero no en BD)
+        List<TextoListaParser.ItemParseado> itemsNuevos = nuevosItemsParseados.stream()
+            .filter(i -> !existentesTextosNorm.contains(normalizarParaComparar(i.getTextoOriginal())))
+            .collect(Collectors.toList());
+
+        int maxOrden = lista.getDetalles().stream()
+            .mapToInt(DetalleListaEscolar::getOrden)
+            .max().orElse(0);
+
+        List<DetalleListaEscolar> nuevosDetalles = new ArrayList<>();
+
+        for (TextoListaParser.ItemParseado item : itemsNuevos) {
+            DetalleListaEscolar detalle = new DetalleListaEscolar();
+            detalle.setListaEscolar(lista);
+            detalle.setTextoOriginal(item.getTextoOriginal());
+            detalle.setCantidadSolicitada(item.getCantidad());
+            detalle.setEstado("NO_COTIZADO");
+            detalle.setOrden(++maxOrden);
+
+            // Buscar match automático para el nuevo ítem
+            MatcherProductosService.ResultadoMatch match =
+                matcherService.buscarMatch(item.getTextoOriginal(), item.getCantidad());
+
+            if (match.isTieneMatch()) {
+                detalle.setProducto(match.getProductoPrincipal());
+                detalle.setProductoNombreSnapshot(match.getProductoPrincipal().getNombre());
+                detalle.setConfianzaMatch(BigDecimal.valueOf(match.getConfianza()));
+                detalle.setMatchAutomatico(true);
+                if (match.getProductoEconomico() != null) {
+                    detalle.setProductoEconomico(match.getProductoEconomico());
+                    detalle.setPrecioEconomico(match.getPrecioEconomico());
+                }
+                if (match.getProductoMedio() != null) {
+                    detalle.setProductoMedio(match.getProductoMedio());
+                    detalle.setPrecioMedio(match.getPrecioMedio());
+                }
+                if (match.getProductoPremium() != null) {
+                    detalle.setProductoPremium(match.getProductoPremium());
+                    detalle.setPrecioPremium(match.getPrecioPremium());
+                }
+                detalle.setNivelSeleccionado("MEDIO");
+                detalle.setPrecioFinal(match.getPrecioMedio());
+                detalle.setEstado("COTIZADO");
+            }
+
+            lista.getDetalles().add(detalle);
+            nuevosDetalles.add(detalle);
+        }
+
+        // Actualizar conteos y totales
+        lista.setItemsTotal(lista.getDetalles().size());
+        lista.recalcularPendientes();
+        recalcularTotales(lista);
+
+        // Guardar: cascade persiste nuevos detalles y orphanRemoval borra los eliminados
+        lista = listaRepository.save(lista);
+
+        // Construir datos de nuevos ítems para actualización dinámica del frontend
+        List<Map<String, Object>> nuevosItemsInfo = new ArrayList<>();
+        for (DetalleListaEscolar det : nuevosDetalles) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("id", det.getId());
+            info.put("textoOriginal", det.getTextoOriginal());
+            info.put("cantidad", det.getCantidadSolicitada());
+            info.put("estado", det.getEstado());
+            info.put("orden", det.getOrden());
+            info.put("nivelSeleccionado", det.getNivelSeleccionado());
+            info.put("precioEconomico", det.getPrecioEconomico());
+            info.put("precioMedio", det.getPrecioMedio());
+            info.put("precioPremium", det.getPrecioPremium());
+            info.put("productoEconomicoId", det.getProductoEconomico() != null ? det.getProductoEconomico().getId() : null);
+            info.put("productoEconomicoNombre", det.getProductoEconomico() != null ? det.getProductoEconomico().getNombre() : null);
+            info.put("productoMedioId", det.getProductoMedio() != null ? det.getProductoMedio().getId() : null);
+            info.put("productoMedioNombre", det.getProductoMedio() != null ? det.getProductoMedio().getNombre() : null);
+            info.put("productoPremiumId", det.getProductoPremium() != null ? det.getProductoPremium().getId() : null);
+            info.put("productoPremiumNombre", det.getProductoPremium() != null ? det.getProductoPremium().getNombre() : null);
+            info.put("productoNombre", det.getProductoFinal() != null ? det.getProductoFinal().getNombre() : null);
+            info.put("tieneMatch", !"NO_COTIZADO".equals(det.getEstado()));
+            nuevosItemsInfo.add(info);
+        }
+
+        log.info("Lista {} actualizada: {} items eliminados, {} items nuevos agregados y cotizados",
+            lista.getCodigoCompleto(), idsEliminados.size(), nuevosDetalles.size());
+
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("success", true);
+        resultado.put("mensaje", String.format(
+            "Lista actualizada. %d item(s) eliminado(s), %d item(s) nuevo(s) agregado(s).",
+            idsEliminados.size(), nuevosDetalles.size()));
+        resultado.put("itemsTotal", lista.getItemsTotal());
+        resultado.put("totalEconomico", lista.getTotalEconomico());
+        resultado.put("totalMedio", lista.getTotalMedio());
+        resultado.put("totalPremium", lista.getTotalPremium());
+        resultado.put("itemsEliminados", idsEliminados);
+        resultado.put("nuevosItems", nuevosItemsInfo);
+        return resultado;
+    }
+
+    /**
+     * Normaliza texto para comparación de ítems (trim + minúsculas + espacios normalizados).
+     */
+    private String normalizarParaComparar(String texto) {
+        if (texto == null) return "";
+        return texto.toLowerCase().trim().replaceAll("\\s+", " ");
+    }
+
+    // =========================================================
+    //  ELIMINACIÓN LÓGICA DE LISTA
+    // =========================================================
+
+    /**
+     * Elimina lógicamente una lista marcándola como ELIMINADA.
+     * Solo se permite si la lista no tiene ventas realizadas.
+     * Los datos permanecen en BD (soft delete) para auditoría.
+     */
+    @Transactional
+    public void eliminarLista(Long listaId) {
+        ListaEscolar lista = listaRepository.findById(listaId)
+            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+
+        if (lista.getItemsVendidos() > 0) {
+            throw new RuntimeException(
+                "No se puede eliminar una lista con ventas realizadas. " +
+                "La lista tiene " + lista.getItemsVendidos() + " item(s) vendido(s). " +
+                "Use 'Cancelar' en su lugar.");
+        }
+
+        lista.setEstado("ELIMINADA");
+        listaRepository.save(lista);
+        log.info("Lista {} marcada como ELIMINADA (soft delete)", lista.getCodigoCompleto());
+    }
+
+    /**
+     * Acumula venta y costo de un detalle para un nivel específico.
+     */
+    private void acumularNivel(ResumenFinancieroDTO.NivelFinanciero nivel,
+                               Producto producto, BigDecimal precioVenta,
+                               int cantidad, Set<Long> productosSinCosto) {
+        if (producto == null || precioVenta == null || precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
+            return; // Item no cotizado en este nivel
+        }
+
+        BigDecimal ventaItem = precioVenta.multiply(BigDecimal.valueOf(cantidad));
+        nivel.setTotalVenta(nivel.getTotalVenta().add(ventaItem));
+        nivel.setItemsCotizados(nivel.getItemsCotizados() + 1);
+
+        // Costo: si precioCompra es null o 0, se trata como 0 pero se marca advertencia
+        BigDecimal costoUnitario = producto.getPrecioCompra();
+        if (costoUnitario == null || costoUnitario.compareTo(BigDecimal.ZERO) <= 0) {
+            costoUnitario = BigDecimal.ZERO;
+            productosSinCosto.add(producto.getId());
+        }
+        BigDecimal costoItem = costoUnitario.multiply(BigDecimal.valueOf(cantidad));
+        nivel.setTotalCosto(nivel.getTotalCosto().add(costoItem));
     }
 }

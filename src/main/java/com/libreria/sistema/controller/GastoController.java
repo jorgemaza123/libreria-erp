@@ -56,7 +56,8 @@ public class GastoController {
             }
 
             // Registramos usando el Service para que descuente de la CAJA ABIERTA
-            cajaService.registrarMovimiento("EGRESO", "GASTO OP: " + concepto.toUpperCase(), monto);
+            cajaService.registrarMovimiento("EGRESO", "GASTO OP: " + concepto.toUpperCase(), monto,
+                    com.libreria.sistema.model.CategoriaMovimiento.GASTO_OPERATIVO);
             
             attr.addFlashAttribute("success", "Gasto registrado correctamente.");
         } catch (Exception e) {

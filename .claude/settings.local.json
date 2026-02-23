@@ -26,7 +26,16 @@
       "Bash(dir:*)",
       "Bash(cmd /c:*)",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\jorge\\\\Desktop\\\\sistema && mvnw.cmd clean package -DskipTests 2>&1\")",
-      "Bash(C:/Users/jorge/Desktop/sistema/mvnw.cmd clean package -DskipTests)"
+      "Bash(C:/Users/jorge/Desktop/sistema/mvnw.cmd clean package -DskipTests)",
+      "Bash(git -C /c/Users/jorge/Desktop/sistema log --oneline --all -- \"*faltantes*\" \"*lista-escolar*\")",
+      "Bash(git -C /c/Users/jorge/Desktop/sistema diff HEAD~5..HEAD -- src/main/java/com/libreria/sistema/service/ListaEscolarService.java)",
+      "Bash(curl:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -File -:*)",
+      "Bash(psql:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)"
     ]
   }
 }

@@ -256,13 +256,28 @@
     /* === METADATOS PRODUCTO === */
     .producto-meta {
         font-size: 0.7rem;
-        color: var(--pos-text-muted);
-        margin-top: 2px;
-        opacity: 0.8;
+        color: #4b5563;
+        margin-top: 3px;
     }
 
     .producto-meta .stock-cero { color: #ef4444; font-weight: 600; }
     .producto-meta .stock-bajo { color: #f59e0b; }
+
+    /* === BADGE DE UBICACIÓN === */
+    .ubicacion-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        border: 1px solid #93c5fd;
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .ubicacion-badge i { font-size: 0.6rem; }
 
     /* === VISOR DE PRODUCTO - CONTEXTUAL === */
     .visor-producto {
@@ -1553,6 +1568,9 @@
                 // Metadatos adicionales para UX mejorada
                 marca: productoActual.marca || '',
                 ubicacion: productoActual.ubicacion || '',
+                ubicacionEstante: productoActual.ubicacionEstante || '',
+                ubicacionFila: productoActual.ubicacionFila || '',
+                ubicacionColumna: productoActual.ubicacionColumna || '',
                 stockMinimo: parseInt(productoActual.stockMinimo) || 5
             });
             dibujarCarrito(true, carrito.length - 1);
@@ -1794,9 +1812,29 @@ function agregarRapido(codigoBusqueda) {
                 // Metadatos adicionales para UX mejorada
                 marca: prod.marca || '',
                 ubicacion: prod.ubicacion || '',
-                stockMinimo: parseInt(prod.stockMinimo) || 5
+                ubicacionEstante: prod.ubicacionEstante || '',
+                ubicacionFila: prod.ubicacionFila || '',
+                ubicacionColumna: prod.ubicacionColumna || '',
+                stockMinimo: parseInt(prod.stockMinimo) || 5,
+                // Margen bajo (calculado en backend)
+                margenActual: prod.margenActual != null ? parseFloat(prod.margenActual) : null,
+                margenBajo: prod.margenBajo || false,
+                precioMinimoRecomendado: prod.precioMinimoRecomendado != null ? parseFloat(prod.precioMinimoRecomendado) : null
             });
             dibujarCarrito(true, carrito.length - 1);
+
+            // Alerta de margen bajo (solo advertencia, no bloquea)
+            if (prod.margenBajo) {
+                let margen = parseFloat(prod.margenActual || 0).toFixed(1);
+                let precioMin = prod.precioMinimoRecomendado ? parseFloat(prod.precioMinimoRecomendado).toFixed(2) : '?';
+                toastr.warning(
+                    '<b>' + escapeHtml(prod.nombre) + '</b><br>' +
+                    'Margen actual: <b>' + margen + '%</b><br>' +
+                    'Precio min. recomendado: <b>S/ ' + precioMin + '</b>',
+                    'Margen Bajo',
+                    {timeOut: 6000, closeButton: true, progressBar: true, enableHtml: true}
+                );
+            }
         }
     }
 
@@ -1817,6 +1855,14 @@ function agregarRapido(codigoBusqueda) {
 
             let activeClass = (index === indexFocus) ? 'table-active-row' : '';
 
+            // === ALERTA MARGEN BAJO (color de fila) ===
+            let margenRowStyle = '';
+            if (item.margenBajo) {
+                margenRowStyle = item.margenActual != null && item.margenActual < 0
+                    ? 'background-color: #f8d7da;'   // rojo claro — margen negativo
+                    : 'background-color: #fff3cd;';   // amarillo claro — margen bajo
+            }
+
             // === METADATOS DEL PRODUCTO ===
             let stockClass = '';
             if (item.stock <= 0) {
@@ -1828,9 +1874,21 @@ function agregarRapido(codigoBusqueda) {
             let metaInfo = [];
             if (item.marca) metaInfo.push(`Marca: ${escapeHtml(item.marca)}`);
             metaInfo.push(`Stock: <span class="${stockClass}">${item.stock}</span>`);
-            if (item.ubicacion) metaInfo.push(`Ubic: ${escapeHtml(item.ubicacion)}`);
+            if (item.margenBajo && item.margenActual != null) {
+                metaInfo.push(`<span class="text-danger font-weight-bold">Margen: ${item.margenActual.toFixed(1)}%</span>`);
+            }
 
-            let metaHtml = `<small class="producto-meta d-block">${metaInfo.join(' | ')}</small>`;
+            // Badge de ubicación visible
+            let locParts = [];
+            if (item.ubicacionEstante) locParts.push('Est.<b>' + escapeHtml(item.ubicacionEstante) + '</b>');
+            if (item.ubicacionFila)    locParts.push('Fila:<b>' + escapeHtml(item.ubicacionFila) + '</b>');
+            if (item.ubicacionColumna) locParts.push('Col:<b>' + escapeHtml(item.ubicacionColumna) + '</b>');
+            let ubicBadge = locParts.length > 0
+                ? `<span class="ubicacion-badge"><i class="fas fa-map-marker-alt"></i> ${locParts.join(' · ')}</span>`
+                : '';
+
+            let metaHtml = `<small class="producto-meta d-block">${metaInfo.join(' | ')}</small>` +
+                           (ubicBadge ? `<span class="d-block mt-1">${ubicBadge}</span>` : '');
 
             // === VALIDACIÓN DE CANTIDAD ===
             let cantidadExcedeStock = item.cantidad > item.stock;
@@ -1846,7 +1904,7 @@ function agregarRapido(codigoBusqueda) {
                 stockTooltip = `<span class="stock-tooltip" style="background:#ffc107;color:#333;">Sin stock</span>`;
             }
 
-            html += `<tr class="${activeClass}">
+            html += `<tr class="${activeClass}" style="${margenRowStyle}">
                 <td class="text-center text-muted">${index + 1}</td>
                 <td>
                     <span class="font-weight-bold text-dark">${escapeHtml(item.nombre)}</span>

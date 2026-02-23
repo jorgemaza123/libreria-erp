@@ -8,7 +8,8 @@ services:
     ports:
       - "8443:8443" # PUERTO HTTPS SEGURO
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://db:5432/libreria_db}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-postgres}
@@ -28,6 +29,7 @@ services:
       - ./logs:/app/logs
       - ./backups_cliente:/backups
       - ./scripts:/scripts
+
     restart: always
 
   db:
@@ -38,11 +40,16 @@ services:
       POSTGRES_PASSWORD: 1234
       POSTGRES_USER: postgres
     volumes:
-      # CAMBIO IMPORTANTE: Usar "./pgdata" guarda los datos en Windows, no en Docker
       - ./pgdata:/var/lib/postgresql/data
       - ./backups_cliente:/backups
       - ./scripts:/scripts
     restart: always
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Cron para Backups Automáticos (Comprimidos)
   backup-cron:

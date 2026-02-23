@@ -4,6 +4,7 @@ import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.dto.ReporteDTO;
 import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.repository.CotizacionRepository;
+import com.libreria.sistema.repository.DetalleVentaRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.VentaRepository;
 import org.springframework.data.domain.PageRequest;
@@ -35,21 +36,27 @@ public class DashboardService {
     private final VentaRepository ventaRepository;
     private final CajaRepository cajaRepository;
     private final CotizacionRepository cotizacionRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
     private final SunatBillingService sunatBillingService;
     private final LicenseValidationService licenseService;
+    private final ConfiguracionService configuracionService;
 
     public DashboardService(ProductoRepository productoRepository,
                            VentaRepository ventaRepository,
                            CajaRepository cajaRepository,
                            CotizacionRepository cotizacionRepository,
+                           DetalleVentaRepository detalleVentaRepository,
                            SunatBillingService sunatBillingService,
-                           LicenseValidationService licenseService) {
+                           LicenseValidationService licenseService,
+                           ConfiguracionService configuracionService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.cajaRepository = cajaRepository;
         this.cotizacionRepository = cotizacionRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
         this.sunatBillingService = sunatBillingService;
         this.licenseService = licenseService;
+        this.configuracionService = configuracionService;
     }
 
     public Map<String, Object> obtenerDatosDashboard() {
@@ -137,9 +144,38 @@ public class DashboardService {
         double tasaConversionCoti = cotizacionesMes > 0 ? (double) convertidasMes / cotizacionesMes * 100 : 0;
 
         // ============================================================
-        // 5. ALERTA STOCK (query optimizado)
+        // 4.5. KPIs UTILIDAD BRUTA (solo hoy y mes — queries livianas)
+        // ============================================================
+        BigDecimal utilidadHoy = detalleVentaRepository.sumarUtilidadPorPeriodo(hoy, hoy);
+        BigDecimal utilidadMes = detalleVentaRepository.sumarUtilidadPorPeriodo(inicioMes, hoy);
+        BigDecimal utilidadMesPasado = detalleVentaRepository.sumarUtilidadPorPeriodo(inicioMesPasado, finMesPasado);
+        BigDecimal variacionUtilidadMensual = calcularVariacion(utilidadMes, utilidadMesPasado);
+        BigDecimal margenPromedioMes = (totalVentasMes != null && totalVentasMes.compareTo(BigDecimal.ZERO) > 0)
+                ? utilidadMes.divide(totalVentasMes, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // ============================================================
+        // 5. ALERTAS STOCK + MARGEN BAJO
         // ============================================================
         List<Producto> stockCritico = productoRepository.obtenerStockCritico();
+
+        // Alerta de productos con margen bajo en el mes
+        BigDecimal margenMinimoAlerta = configuracionService.obtenerConfiguracion().getMargenMinimoAlerta();
+        if (margenMinimoAlerta == null) margenMinimoAlerta = new BigDecimal("15.00");
+        List<Object[]> allMargenBajo = detalleVentaRepository.productosConMargenBajo(inicioMes, hoy, margenMinimoAlerta);
+        int cantidadMargenBajo = allMargenBajo.size();
+        List<Map<String, Object>> alertasMargenBajo = new ArrayList<>();
+        int limit = Math.min(allMargenBajo.size(), 10);
+        for (int i = 0; i < limit; i++) {
+            Object[] row = allMargenBajo.get(i);
+            Map<String, Object> item = new HashMap<>();
+            item.put("productoId", row[0]);
+            item.put("nombre", row[1]);
+            item.put("ingreso", row[2]);
+            item.put("utilidad", row[3]);
+            item.put("margen", ((Number) row[4]).doubleValue());
+            alertasMargenBajo.add(item);
+        }
 
         // ============================================================
         // 5. DATOS SUNAT Y LICENCIA
@@ -181,12 +217,21 @@ public class DashboardService {
         // Alertas
         resultado.put("stockCritico", stockCritico);
         resultado.put("sinMovimiento", new ArrayList<>());
+        resultado.put("alertasMargenBajo", alertasMargenBajo);
+        resultado.put("cantidadMargenBajo", cantidadMargenBajo);
+        resultado.put("margenMinimoConfig", margenMinimoAlerta);
 
         // Cotizaciones
         resultado.put("cotizacionesPendientes", cotizacionesPendientes);
         resultado.put("montoCotizadoMes", montoCotizadoMes);
         resultado.put("cotizacionesMes", cotizacionesMes);
         resultado.put("tasaConversionCoti", Math.round(tasaConversionCoti * 10.0) / 10.0);
+
+        // Utilidad bruta
+        resultado.put("utilidadHoy", utilidadHoy);
+        resultado.put("utilidadMes", utilidadMes);
+        resultado.put("variacionUtilidadMensual", variacionUtilidadMensual);
+        resultado.put("margenPromedioMes", margenPromedioMes);
 
         // SUNAT y Licencia
         resultado.put("sunatStats", sunatStats);

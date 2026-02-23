@@ -365,6 +365,13 @@ public class CotizacionService {
             dv.setPrecioUnitario(precioFinal);
             dv.setValorUnitario(valorUnitario);
             dv.setSubtotal(subtotal);
+
+            // Congelar costo al momento de la conversión
+            BigDecimal costoUnit = p != null && p.getPrecioCompra() != null ? p.getPrecioCompra() : BigDecimal.ZERO;
+            dv.setCostoUnitario(costoUnit);
+            dv.setUtilidadUnitaria(precioFinal.subtract(costoUnit));
+            dv.setUtilidadTotal(precioFinal.subtract(costoUnit).multiply(cantidad));
+
             dv.setPorcentajeIgv(igvPorcentaje);
             dv.setCodigoTipoAfectacionIgv(Constants.AFECTACION_GRAVADO);
 

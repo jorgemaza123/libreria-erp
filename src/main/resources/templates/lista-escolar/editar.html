@@ -85,6 +85,9 @@
                     .item-regalo {
                         background-color: #d4edda !important;
                     }
+                    .item-servicio {
+                        background-color: #e2d9f3 !important;
+                    }
                     .item-vendido {
                         background-color: #e9ecef !important;
                         opacity: 0.7;
@@ -229,9 +232,14 @@
                                     <h5 class="mb-0 text-secondary">
                                         <i class="fas fa-coins mr-2"></i>Cotizacion Economica
                                     </h5>
-                                    <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('ECONOMICO')">
-                                        <i class="fas fa-gift mr-1"></i> Agregar Regalo
-                                    </button>
+                                    <div>
+                                        <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('ECONOMICO')">
+                                            <i class="fas fa-gift mr-1"></i> Regalo
+                                        </button>
+                                        <button class="btn btn-purple btn-sm btn-regalo ml-1" onclick="agregarServicio('ECONOMICO')" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                            <i class="fas fa-concierge-bell mr-1"></i> Servicio
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover table-bordered table-nivel" id="tablaEconomico">
@@ -267,9 +275,14 @@
                                     <h5 class="mb-0 text-info">
                                         <i class="fas fa-balance-scale mr-2"></i>Cotizacion Media
                                     </h5>
-                                    <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('MEDIO')">
-                                        <i class="fas fa-gift mr-1"></i> Agregar Regalo
-                                    </button>
+                                    <div>
+                                        <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('MEDIO')">
+                                            <i class="fas fa-gift mr-1"></i> Regalo
+                                        </button>
+                                        <button class="btn btn-purple btn-sm btn-regalo ml-1" onclick="agregarServicio('MEDIO')" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                            <i class="fas fa-concierge-bell mr-1"></i> Servicio
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover table-bordered table-nivel" id="tablaMedio">
@@ -305,9 +318,14 @@
                                     <h5 class="mb-0 text-warning">
                                         <i class="fas fa-star mr-2"></i>Cotizacion Premium
                                     </h5>
-                                    <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('PREMIUM')">
-                                        <i class="fas fa-gift mr-1"></i> Agregar Regalo
-                                    </button>
+                                    <div>
+                                        <button class="btn btn-success btn-sm btn-regalo" onclick="agregarRegalo('PREMIUM')">
+                                            <i class="fas fa-gift mr-1"></i> Regalo
+                                        </button>
+                                        <button class="btn btn-purple btn-sm btn-regalo ml-1" onclick="agregarServicio('PREMIUM')" style="background-color: #6f42c1; color: white; border-color: #6f42c1;">
+                                            <i class="fas fa-concierge-bell mr-1"></i> Servicio
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover table-bordered table-nivel" id="tablaPremium">
@@ -337,6 +355,24 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Sección de Comentarios -->
+                    <div class="card-body border-top">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">
+                                <i class="fas fa-comment-alt text-primary mr-1"></i> Comentarios / Notas
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnGuardarComentarios" onclick="guardarComentarios()">
+                                <i class="fas fa-save mr-1"></i> Guardar
+                            </button>
+                        </div>
+                        <textarea class="form-control" id="comentariosLista" rows="3"
+                                  placeholder="Agregar comentarios, notas especiales o instrucciones que aparecerán al final de la cotización PDF..."
+                                  maxlength="2000"></textarea>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> Los comentarios se incluyen al final del PDF de cotización
+                        </small>
                     </div>
 
                     <!-- Footer con Acciones -->
@@ -401,6 +437,55 @@
                     </button>
                     <button type="button" class="btn btn-success" onclick="confirmarRegalo()">
                         <i class="fas fa-plus mr-1"></i>Agregar Regalo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Servicio -->
+    <div class="modal fade" id="modalServicio" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header text-white" style="background-color: #6f42c1;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-concierge-bell mr-2"></i>Agregar Servicio Adicional
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="servicioNivel">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Descripcion del Servicio</label>
+                        <input type="text" class="form-control form-control-lg" id="servicioTexto"
+                               placeholder="Ej: Forrado de cuadernos personalizados, Etiquetado de utiles..."
+                               maxlength="200">
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Este texto aparecera en la cotizacion del cliente
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Precio del Servicio <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">S/</span>
+                            </div>
+                            <input type="number" class="form-control form-control-lg" id="servicioPrecio"
+                                   step="0.50" min="0.50" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-concierge-bell mr-2"></i>
+                        Los servicios se incluyen en la cotizacion con su precio. Si el cliente acepta, se puede procesar como venta.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn text-white" onclick="confirmarServicio()" style="background-color: #6f42c1;">
+                        <i class="fas fa-plus mr-1"></i>Agregar Servicio
                     </button>
                 </div>
             </div>
@@ -629,6 +714,10 @@ function renderizarTodo() {
     renderizarTabla('MEDIO', 'bodyMedio');
     renderizarTabla('PREMIUM', 'bodyPremium');
     actualizarTotales();
+    // Cargar comentarios
+    if (datosLista.comentarios !== undefined) {
+        $('#comentariosLista').val(datosLista.comentarios);
+    }
 }
 
 function renderizarTabla(nivel, tbodyId) {
@@ -639,6 +728,11 @@ function renderizarTabla(nivel, tbodyId) {
     datosLista.detalles.forEach((item) => {
         // Determinar si el regalo aplica a este nivel
         if (item.esRegalo && item.nivelRegalo && item.nivelRegalo !== nivel) {
+            return;
+        }
+
+        // Determinar si el servicio aplica a este nivel
+        if (item.esServicio && item.nivelServicio && item.nivelServicio !== nivel) {
             return;
         }
 
@@ -655,17 +749,19 @@ function renderizarTabla(nivel, tbodyId) {
         const subtotal = precio * cantidad;
 
         const esRegalo = item.esRegalo === true;
+        const esServicio = item.esServicio === true;
 
         // Verificar si tiene cotizacion de proveedor para este nivel
         const cotizadoProveedor = item[`cotizadoProveedor${capitalizar(nivel.toLowerCase())}`] === true;
         const descripcionManual = item[`descripcionManual${capitalizar(nivel.toLowerCase())}`];
         const nombreProveedor = item.nombreProveedor;
 
-        const sinProducto = !productoId && !esRegalo && !cotizadoProveedor;
+        const sinProducto = !productoId && !esRegalo && !esServicio && !cotizadoProveedor;
         const tieneAsignacion = productoId || cotizadoProveedor;
 
         let rowClass = '';
         if (esRegalo) rowClass = 'item-regalo';
+        else if (esServicio) rowClass = 'item-servicio';
         else if (item.estado === 'VENDIDO') rowClass = 'item-vendido';
         else if (cotizadoProveedor && !productoId) rowClass = 'table-info';
         else if (sinProducto) rowClass = 'table-warning';
@@ -674,8 +770,12 @@ function renderizarTabla(nivel, tbodyId) {
         let productoCell = '';
         if (item.estado === 'VENDIDO') {
             productoCell = `<span class="text-muted"><i class="fas fa-check-circle text-success mr-1"></i>${productoNombre || '-'}</span>`;
+        } else if (esServicio) {
+            productoCell = `<span class="font-weight-bold" style="color: #6f42c1;"><i class="fas fa-concierge-bell mr-1"></i>${item.textoServicio || item.textoOriginal}</span>
+                            <span class="badge ml-2" style="background-color: #6f42c1; color: white;">SERVICIO</span>`;
         } else if (esRegalo) {
-            productoCell = `<span class="text-success font-weight-bold"><i class="fas fa-gift mr-1"></i>${item.textoOriginal}</span>`;
+            productoCell = `<span class="text-success font-weight-bold"><i class="fas fa-gift mr-1"></i>${item.textoRegalo || item.textoOriginal}</span>
+                            <span class="badge badge-success ml-2">REGALO</span>`;
         } else if (cotizadoProveedor && !productoId) {
             // Item con cotizacion de proveedor (sin producto vinculado)
             productoCell = `<div>
@@ -698,6 +798,8 @@ function renderizarTabla(nivel, tbodyId) {
         let precioCell = '';
         if (esRegalo) {
             precioCell = '<span class="badge badge-success">GRATIS</span>';
+        } else if (esServicio) {
+            precioCell = `<span class="font-weight-bold" style="color: #6f42c1;">S/ ${precio.toFixed(2)}</span>`;
         } else if (sinProducto) {
             precioCell = '<span class="text-warning">-</span>';
         } else if (cotizadoProveedor && !productoId) {
@@ -711,6 +813,8 @@ function renderizarTabla(nivel, tbodyId) {
         let subtotalCell = '';
         if (esRegalo) {
             subtotalCell = '-';
+        } else if (esServicio) {
+            subtotalCell = `<span style="color: #6f42c1;">S/ ${subtotal.toFixed(2)}</span>`;
         } else if (sinProducto) {
             subtotalCell = '<span class="text-warning">-</span>';
         } else {
@@ -721,6 +825,10 @@ function renderizarTabla(nivel, tbodyId) {
         let accionesCell = '';
         if (item.estado === 'VENDIDO') {
             accionesCell = '<span class="badge badge-success" title="Vendido"><i class="fas fa-check"></i></span>';
+        } else if (esServicio) {
+            accionesCell = `<button class="btn btn-xs btn-outline-danger" onclick="eliminarServicio(${item.id})" title="Eliminar servicio">
+                <i class="fas fa-trash"></i>
+            </button>`;
         } else if (esRegalo) {
             accionesCell = `<button class="btn btn-xs btn-outline-danger" onclick="eliminarRegalo(${item.id})" title="Eliminar regalo">
                 <i class="fas fa-trash"></i>
@@ -755,6 +863,7 @@ function renderizarTabla(nivel, tbodyId) {
                 <td class="text-center">${numFila}</td>
                 <td>
                     ${esRegalo ? '<i class="fas fa-gift text-success mr-1"></i>' : ''}
+                    ${esServicio ? '<i class="fas fa-concierge-bell mr-1" style="color: #6f42c1;"></i>' : ''}
                     ${sinProducto ? '<i class="fas fa-exclamation-triangle text-warning mr-1" title="Sin producto asignado"></i>' : ''}
                     ${cotizadoProveedor && !productoId ? '<i class="fas fa-phone-alt text-info mr-1" title="Cotizado con proveedor"></i>' : ''}
                     <small class="text-muted">${escapeHtml(item.textoOriginal)}</small>
@@ -763,7 +872,7 @@ function renderizarTabla(nivel, tbodyId) {
                     ${item.estado === 'VENDIDO' ? cantidad :
                       `<input type="number" class="form-control form-control-sm text-center cantidad-input"
                               value="${cantidad}" min="1" max="99" style="width: 50px;"
-                              data-id="${item.id}" data-nivel="${nivel}" ${esRegalo ? 'disabled' : ''}>`}
+                              data-id="${item.id}" data-nivel="${nivel}" ${esRegalo || esServicio ? 'disabled' : ''}>`}
                 </td>
                 <td>${productoCell}</td>
                 <td class="text-right precio-cell" data-id="${item.id}" data-nivel="${nivel}">${precioCell}</td>
@@ -833,6 +942,7 @@ function inicializarSelect2(select) {
                 results: data.map(p => ({
                     id: p.id,
                     text: `${p.nombre} (${p.marca || 'S/M'}) - S/${parseFloat(p.precio).toFixed(2)}`,
+                    nombre: p.nombre,
                     precio: p.precio
                 }))
             })
@@ -841,15 +951,16 @@ function inicializarSelect2(select) {
         const detalleId = $(this).data('id');
         const nivel = $(this).data('nivel');
         const productoId = e.params.data.id;
-        actualizarProductoNivel(detalleId, nivel, productoId);
+        const productoNombre = e.params.data.nombre || e.params.data.text;
+        actualizarProductoNivel(detalleId, nivel, productoId, productoNombre);
     }).on('select2:clear', function() {
         const detalleId = $(this).data('id');
         const nivel = $(this).data('nivel');
-        actualizarProductoNivel(detalleId, nivel, null);
+        actualizarProductoNivel(detalleId, nivel, null, null);
     });
 }
 
-function actualizarProductoNivel(detalleId, nivel, productoId) {
+function actualizarProductoNivel(detalleId, nivel, productoId, productoNombre) {
     $.ajax({
         url: `/listas-escolares/api/detalle/${detalleId}/nivel/${nivel}`,
         method: 'POST',
@@ -857,14 +968,23 @@ function actualizarProductoNivel(detalleId, nivel, productoId) {
         data: JSON.stringify({ productoId: productoId })
     }).done(function(resp) {
         if (resp.success) {
-            // Actualizar datos locales
+            // Actualizar estado local sin recargar del servidor (preserva cantidades)
             const item = datosLista.detalles.find(d => d.id === detalleId);
             if (item) {
-                item[`precio${capitalizar(nivel.toLowerCase())}`] = resp[`precio${capitalizar(nivel.toLowerCase())}`];
+                const n = capitalizar(nivel.toLowerCase());
+                item[`producto${n}Id`]     = productoId   || null;
+                item[`producto${n}Nombre`] = productoNombre || null;
+                // Actualizar precios de los 3 niveles desde la respuesta
+                if (resp.precioEconomico !== undefined) item.precioEconomico = resp.precioEconomico;
+                if (resp.precioMedio     !== undefined) item.precioMedio     = resp.precioMedio;
+                if (resp.precioPremium   !== undefined) item.precioPremium   = resp.precioPremium;
+                // Actualizar estado si aplica
+                if (productoId && item.estado === 'NO_COTIZADO') item.estado = 'COTIZADO';
             }
-            actualizarSubtotal(detalleId, nivel);
+            // Re-renderizar solo la tabla afectada
+            const tbodyId = `body${capitalizar(nivel.toLowerCase())}`;
+            renderizarTabla(nivel, tbodyId);
             actualizarTotales();
-
             toastr.success('Producto actualizado', '', {positionClass: 'toast-bottom-right', timeOut: 1500});
         }
     }).fail(function(xhr) {
@@ -899,13 +1019,17 @@ function actualizarTotales() {
             if (item.esRegalo && item.nivelRegalo && item.nivelRegalo !== nivel) {
                 return;
             }
+            // Saltar servicios de otros niveles
+            if (item.esServicio && item.nivelServicio && item.nivelServicio !== nivel) {
+                return;
+            }
             // Saltar items omitidos
             if (item[`omitido${capitalizar(nivel.toLowerCase())}`] === true) {
                 return;
             }
 
             const precio = parseFloat(item[`precio${capitalizar(nivel.toLowerCase())}`] || 0);
-            if (precio > 0 || item.esRegalo) {
+            if (precio > 0 || item.esRegalo || item.esServicio) {
                 contadores[nivel]++;
                 totales[nivel] += precio * cantidad;
             }
@@ -933,7 +1057,7 @@ function actualizarTotales() {
 function omitirProducto(detalleId, nivel) {
     Swal.fire({
         title: 'Omitir producto?',
-        html: 'El item sera excluido de la cotizacion <strong>' + nivel + '</strong>',
+        html: 'El item sera excluido de la cotizacion <strong>' + nivel + '</strong>.<br><small class="text-muted">El producto asignado no se eliminara, solo se ocultara.</small>',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
@@ -941,22 +1065,32 @@ function omitirProducto(detalleId, nivel) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Marcar como omitido localmente
-            const item = datosLista.detalles.find(d => d.id === detalleId);
-            if (item) {
-                item[`omitido${capitalizar(nivel.toLowerCase())}`] = true;
-                // Limpiar producto asignado para este nivel
-                item[`producto${capitalizar(nivel.toLowerCase())}Id`] = null;
-                item[`producto${capitalizar(nivel.toLowerCase())}Nombre`] = null;
-                item[`precio${capitalizar(nivel.toLowerCase())}`] = 0;
-            }
+            // Persistir en servidor
+            $.ajax({
+                url: `/listas-escolares/api/detalle/${detalleId}/omitir`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ nivel: nivel, omitir: true }),
+                success: function(resp) {
+                    if (resp.success) {
+                        // Actualizar estado local
+                        const item = datosLista.detalles.find(d => d.id === detalleId);
+                        if (item) {
+                            item[`omitido${capitalizar(nivel.toLowerCase())}`] = true;
+                        }
 
-            // Re-renderizar la tabla del nivel afectado
-            const tbodyId = `body${capitalizar(nivel.toLowerCase())}`;
-            renderizarTabla(nivel, tbodyId);
-            actualizarTotales();
+                        // Re-renderizar la tabla del nivel afectado
+                        const tbodyId = `body${capitalizar(nivel.toLowerCase())}`;
+                        renderizarTabla(nivel, tbodyId);
+                        actualizarTotales();
 
-            toastr.info('Item omitido de ' + nivel, '', {positionClass: 'toast-bottom-right'});
+                        toastr.info('Item omitido de ' + nivel, '', {positionClass: 'toast-bottom-right'});
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.error || 'Error al omitir', 'error');
+                }
+            });
         }
     });
 }
@@ -989,10 +1123,11 @@ function enviarWhatsApp() {
     let itemsPendientes = 0;
     datosLista.detalles.forEach(item => {
         if (item.esRegalo && item.nivelRegalo && item.nivelRegalo !== nivel) return;
+        if (item.esServicio && item.nivelServicio && item.nivelServicio !== nivel) return;
         if (item[`omitido${capitalizar(nivel.toLowerCase())}`]) return;
 
         const precio = parseFloat(item[`precio${capitalizar(nivel.toLowerCase())}`] || 0);
-        if (precio > 0 || item.esRegalo) {
+        if (precio > 0 || item.esRegalo || item.esServicio) {
             itemsCotizados++;
         } else {
             itemsPendientes++;
@@ -1037,6 +1172,28 @@ function escapeHtml(text) {
 }
 
 // ============================================
+// COMENTARIOS
+// ============================================
+
+function guardarComentarios() {
+    const comentarios = $('#comentariosLista').val().trim();
+    $.ajax({
+        url: `/listas-escolares/api/${listaId}/comentarios`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify({ comentarios: comentarios }),
+        success: function(resp) {
+            if (resp.success) {
+                toastr.success('Comentarios guardados', '', {positionClass: 'toast-bottom-right', timeOut: 1500});
+            }
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al guardar comentarios', 'error');
+        }
+    });
+}
+
+// ============================================
 // REGALOS
 // ============================================
 
@@ -1063,9 +1220,25 @@ function confirmarRegalo() {
         data: JSON.stringify({ texto: texto, nivel: nivel }),
         success: function(resp) {
             if (resp.success) {
+                // Agregar al estado local sin recargar del servidor (preserva cantidades)
+                const nuevoRegalo = {
+                    id: resp.id, textoOriginal: resp.texto, textoRegalo: resp.texto,
+                    nivelRegalo: resp.nivel, esRegalo: true, esServicio: false,
+                    cantidad: 1, estado: 'COTIZADO', orden: datosLista.detalles.length + 1,
+                    precioEconomico: 0, precioMedio: 0, precioPremium: 0,
+                    productoEconomicoId: null, productoEconomicoNombre: null,
+                    productoMedioId: null, productoMedioNombre: null,
+                    productoPremiumId: null, productoPremiumNombre: null,
+                    cotizadoProveedorEconomico: false, cotizadoProveedorMedio: false, cotizadoProveedorPremium: false,
+                    omitidoEconomico: false, omitidoMedio: false, omitidoPremium: false
+                };
+                datosLista.detalles.push(nuevoRegalo);
                 $('#modalRegalo').modal('hide');
                 toastr.success('Regalo agregado exitosamente', '', {positionClass: 'toast-bottom-right'});
-                cargarDatos();
+                const nivelTab = resp.nivel;
+                renderizarTabla(nivelTab, `body${capitalizar(nivelTab.toLowerCase())}`);
+                actualizarTotales();
+                $(`#tab-${nivelTab.toLowerCase()}`).tab('show');
             }
         },
         error: function(xhr) {
@@ -1085,13 +1258,129 @@ function eliminarRegalo(id) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
+            // Capturar nivel antes del DELETE
+            const itemRegalo = datosLista.detalles.find(d => d.id === id);
+            const nivelRegalo = itemRegalo?.nivelRegalo;
+
             $.ajax({
                 url: `/listas-escolares/api/regalo/${id}`,
                 method: 'DELETE',
                 success: function(resp) {
                     if (resp.success) {
+                        // Eliminar del estado local (preserva cantidades de otros items)
+                        datosLista.detalles = datosLista.detalles.filter(d => d.id !== id);
                         toastr.success('Regalo eliminado', '', {positionClass: 'toast-bottom-right'});
-                        cargarDatos();
+                        // Re-renderizar solo la tabla afectada
+                        if (nivelRegalo) {
+                            renderizarTabla(nivelRegalo, `body${capitalizar(nivelRegalo.toLowerCase())}`);
+                        } else {
+                            renderizarTodo();
+                        }
+                        actualizarTotales();
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', xhr.responseJSON?.error || 'Error al eliminar', 'error');
+                }
+            });
+        }
+    });
+}
+
+// ============================================
+// SERVICIOS
+// ============================================
+
+function agregarServicio(nivel) {
+    $('#servicioNivel').val(nivel);
+    $('#servicioTexto').val('');
+    $('#servicioPrecio').val('');
+    $('#modalServicio').modal('show');
+    setTimeout(() => $('#servicioTexto').focus(), 500);
+}
+
+function confirmarServicio() {
+    const nivel = $('#servicioNivel').val();
+    const texto = $('#servicioTexto').val().trim();
+    const precio = parseFloat($('#servicioPrecio').val());
+
+    if (!texto) {
+        Swal.fire('Atencion', 'Debe ingresar una descripcion para el servicio', 'warning');
+        return;
+    }
+
+    if (!precio || precio <= 0) {
+        Swal.fire('Atencion', 'Debe ingresar un precio valido mayor a 0', 'warning');
+        return;
+    }
+
+    $.ajax({
+        url: `/listas-escolares/api/${listaId}/servicio`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ texto: texto, nivel: nivel, precio: precio }),
+        success: function(resp) {
+            if (resp.success) {
+                const nivelServicio = resp.nivel;
+                const precioServicio = parseFloat(resp.precio);
+                // Agregar al estado local sin recargar del servidor (preserva cantidades)
+                const nuevoServicio = {
+                    id: resp.id, textoOriginal: resp.texto, textoServicio: resp.texto,
+                    nivelServicio: nivelServicio, esRegalo: false, esServicio: true,
+                    cantidad: 1, estado: 'COTIZADO', orden: datosLista.detalles.length + 1,
+                    precioEconomico: nivelServicio === 'ECONOMICO' ? precioServicio : 0,
+                    precioMedio:     nivelServicio === 'MEDIO'     ? precioServicio : 0,
+                    precioPremium:   nivelServicio === 'PREMIUM'   ? precioServicio : 0,
+                    productoEconomicoId: null, productoEconomicoNombre: null,
+                    productoMedioId: null, productoMedioNombre: null,
+                    productoPremiumId: null, productoPremiumNombre: null,
+                    cotizadoProveedorEconomico: false, cotizadoProveedorMedio: false, cotizadoProveedorPremium: false,
+                    omitidoEconomico: false, omitidoMedio: false, omitidoPremium: false
+                };
+                datosLista.detalles.push(nuevoServicio);
+                $('#modalServicio').modal('hide');
+                toastr.success('Servicio agregado exitosamente', '', {positionClass: 'toast-bottom-right'});
+                renderizarTabla(nivelServicio, `body${capitalizar(nivelServicio.toLowerCase())}`);
+                actualizarTotales();
+                $(`#tab-${nivelServicio.toLowerCase()}`).tab('show');
+            }
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al agregar servicio', 'error');
+        }
+    });
+}
+
+function eliminarServicio(id) {
+    Swal.fire({
+        title: 'Eliminar servicio?',
+        text: 'Esta accion no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Si, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Capturar nivel antes del DELETE
+            const itemServicio = datosLista.detalles.find(d => d.id === id);
+            const nivelServicio = itemServicio?.nivelServicio;
+
+            $.ajax({
+                url: `/listas-escolares/api/servicio/${id}`,
+                method: 'DELETE',
+                success: function(resp) {
+                    if (resp.success) {
+                        // Eliminar del estado local (preserva cantidades de otros items)
+                        datosLista.detalles = datosLista.detalles.filter(d => d.id !== id);
+                        toastr.success('Servicio eliminado', '', {positionClass: 'toast-bottom-right'});
+                        // Re-renderizar solo la tabla afectada
+                        if (nivelServicio) {
+                            renderizarTabla(nivelServicio, `body${capitalizar(nivelServicio.toLowerCase())}`);
+                        } else {
+                            renderizarTodo();
+                        }
+                        actualizarTotales();
                     }
                 },
                 error: function(xhr) {
@@ -1203,13 +1492,8 @@ function buscarProductosModal(termino, detalleId, nivel) {
 
 function seleccionarDesdeModal(detalleId, nivel, productoId, productoNombre) {
     Swal.close();
-    actualizarProductoNivel(detalleId, nivel, productoId);
-
-    // Actualizar el select2 visualmente
-    const select = $(`.producto-select[data-id="${detalleId}"][data-nivel="${nivel}"]`);
-    if (select.length) {
-        select.empty().append(new Option(productoNombre, productoId, true, true)).trigger('change');
-    }
+    // actualizarProductoNivel re-renderiza la tabla, no hace falta actualizar select2 manualmente
+    actualizarProductoNivel(detalleId, nivel, productoId, productoNombre);
 }
 
 // ============================================
@@ -1243,11 +1527,11 @@ function abrirModalCotizacionProveedor(detalleId, nivel, textoOriginal) {
 }
 
 function confirmarCotizacionProveedor() {
-    const detalleId = $('#cotProvDetalleId').val();
+    const detalleId = parseInt($('#cotProvDetalleId').val());
     const nivel = $('#cotProvNivel').val();
     const precio = parseFloat($('#cotProvPrecio').val());
-    const nombreProveedor = $('#cotProvNombreProveedor').val().trim();
-    const descripcion = $('#cotProvDescripcion').val().trim();
+    const nombreProveedorVal = $('#cotProvNombreProveedor').val().trim();
+    const descripcionVal = $('#cotProvDescripcion').val().trim();
 
     if (!precio || precio <= 0) {
         Swal.fire('Atencion', 'Debe ingresar un precio valido mayor a 0', 'warning');
@@ -1262,16 +1546,26 @@ function confirmarCotizacionProveedor() {
         data: JSON.stringify({
             nivel: nivel,
             precio: precio,
-            proveedor: nombreProveedor,
-            descripcion: descripcion
+            proveedor: nombreProveedorVal,
+            descripcion: descripcionVal
         }),
         success: function(resp) {
             if (resp.success) {
+                // Actualizar estado local (preserva cantidades de otros items)
+                const item = datosLista.detalles.find(d => d.id === detalleId);
+                if (item) {
+                    const n = capitalizar(nivel.toLowerCase());
+                    item[`precio${n}`]              = precio;
+                    item[`cotizadoProveedor${n}`]   = true;
+                    item[`descripcionManual${n}`]   = descripcionVal;
+                    item.nombreProveedor            = nombreProveedorVal;
+                    if (item.estado === 'NO_COTIZADO') item.estado = 'COTIZADO';
+                }
                 $('#modalCotizacionProveedor').modal('hide');
                 toastr.success('Cotizacion de proveedor guardada', '', {positionClass: 'toast-bottom-right'});
-
-                // Recargar todos los datos del servidor para asegurar sincronización
-                cargarDatos();
+                // Re-renderizar solo la tabla afectada
+                renderizarTabla(nivel, `body${capitalizar(nivel.toLowerCase())}`);
+                actualizarTotales();
             }
         },
         error: function(xhr) {
@@ -1334,6 +1628,17 @@ function abrirModalPDF() {
     $('#modalPDF').modal('show');
 }
 
+function guardarCantidades() {
+    if (!datosLista || !datosLista.detalles) return $.Deferred().resolve().promise();
+    const cantidades = datosLista.detalles.map(item => ({ id: item.id, cantidad: item.cantidad || 1 }));
+    return $.ajax({
+        url: `/listas-escolares/api/${listaId}/cantidades`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify(cantidades)
+    });
+}
+
 function descargarPDF() {
     let niveles = [];
     if ($('#pdfEconomico').is(':checked')) niveles.push('ECONOMICO');
@@ -1347,10 +1652,12 @@ function descargarPDF() {
 
     $('#modalPDF').modal('hide');
 
-    // Abrir PDF en nueva ventana
     const nivelesParam = niveles.join(',');
     const url = `/listas-escolares/${listaId}/pdf?niveles=${nivelesParam}`;
-    window.open(url, '_blank');
+    // Persistir cantidades modificadas antes de abrir el PDF
+    guardarCantidades().always(function() {
+        window.open(url, '_blank');
+    });
 }
 </script>
 </body>

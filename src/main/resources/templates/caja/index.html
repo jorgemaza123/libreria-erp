@@ -22,6 +22,7 @@
 
     <section class="content">
         <div class="container-fluid">
+            <!-- Balance boxes -->
             <div class="row">
                 <div class="col-md-3">
                     <div class="info-box">
@@ -61,13 +62,134 @@
                 </div>
             </div>
 
+            <!-- Resumen Financiero por Categoria -->
+            <div class="row" th:if="${resumenCategoria != null and !resumenCategoria.isEmpty()}">
+                <div class="col-12">
+                    <div class="card card-outline card-primary collapsed-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-chart-pie mr-2"></i>Resumen Financiero del Turno
+                            </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- INGRESOS -->
+                                <div class="col-md-6">
+                                    <h6 class="text-success font-weight-bold mb-3">
+                                        <i class="fas fa-arrow-up mr-1"></i> INGRESOS
+                                    </h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr th:if="${resumenCategoria.containsKey('VENTA')}">
+                                            <td><span class="badge badge-success">Ventas</span></td>
+                                            <td class="text-right font-weight-bold text-success"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('VENTA'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('COBRANZA')}">
+                                            <td><span class="badge badge-info">Cobranzas</span></td>
+                                            <td class="text-right font-weight-bold text-info"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('COBRANZA'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('APORTE_DUENO')}">
+                                            <td><span class="badge badge-primary">Aporte Dueno</span></td>
+                                            <td class="text-right font-weight-bold"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('APORTE_DUENO'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('OTRO_INGRESO')}">
+                                            <td><span class="badge badge-secondary">Otros Ingresos</span></td>
+                                            <td class="text-right"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('OTRO_INGRESO'), 1, 2)}"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <!-- EGRESOS -->
+                                <div class="col-md-6">
+                                    <h6 class="text-danger font-weight-bold mb-3">
+                                        <i class="fas fa-arrow-down mr-1"></i> EGRESOS
+                                    </h6>
+                                    <table class="table table-sm table-borderless">
+                                        <tr th:if="${resumenCategoria.containsKey('COMPRA_MERCADERIA')}">
+                                            <td><span class="badge badge-warning">Compra Mercaderia</span></td>
+                                            <td class="text-right font-weight-bold text-warning"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('COMPRA_MERCADERIA'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('GASTO_OPERATIVO')}">
+                                            <td><span class="badge badge-danger">Gasto Operativo</span></td>
+                                            <td class="text-right font-weight-bold text-danger"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('GASTO_OPERATIVO'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('RETIRO_DUENO')}">
+                                            <td><span class="badge badge-dark">Retiro Dueno</span></td>
+                                            <td class="text-right font-weight-bold"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('RETIRO_DUENO'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('DEVOLUCION')}">
+                                            <td><span class="badge badge-danger">Devoluciones</span></td>
+                                            <td class="text-right"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('DEVOLUCION'), 1, 2)}"></td>
+                                        </tr>
+                                        <tr th:if="${resumenCategoria.containsKey('OTRO_EGRESO')}">
+                                            <td><span class="badge badge-secondary">Otros Egresos</span></td>
+                                            <td class="text-right"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(resumenCategoria.get('OTRO_EGRESO'), 1, 2)}"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- Utilidad estimada -->
+                            <hr>
+                            <div class="row">
+                                <div class="col-12 text-center">
+                                    <th:block th:with="
+                                        ventas=${resumenCategoria.getOrDefault('VENTA', T(java.math.BigDecimal).ZERO)},
+                                        cobranzas=${resumenCategoria.getOrDefault('COBRANZA', T(java.math.BigDecimal).ZERO)},
+                                        compras=${resumenCategoria.getOrDefault('COMPRA_MERCADERIA', T(java.math.BigDecimal).ZERO)},
+                                        gastos=${resumenCategoria.getOrDefault('GASTO_OPERATIVO', T(java.math.BigDecimal).ZERO)},
+                                        retiros=${resumenCategoria.getOrDefault('RETIRO_DUENO', T(java.math.BigDecimal).ZERO)}">
+                                        <h5>
+                                            Utilidad Estimada =
+                                            <span class="text-success" th:text="'S/ ' + ${#numbers.formatDecimal(ventas.add(cobranzas), 1, 2)}">0</span>
+                                            (ingresos)
+                                            -
+                                            <span class="text-danger" th:text="'S/ ' + ${#numbers.formatDecimal(compras.add(gastos), 1, 2)}">0</span>
+                                            (costos)
+                                            =
+                                            <strong th:classappend="${ventas.add(cobranzas).subtract(compras).subtract(gastos).signum() >= 0} ? 'text-success' : 'text-danger'"
+                                                    th:text="'S/ ' + ${#numbers.formatDecimal(ventas.add(cobranzas).subtract(compras).subtract(gastos), 1, 2)}">0</strong>
+                                        </h5>
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Utilidad = Ventas + Cobranzas - Compras - Gastos Operativos (no incluye retiros ni devoluciones)
+                                        </small>
+                                    </th:block>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-md-4">
+                    <!-- Form EGRESO con categoria -->
                     <div class="card card-warning">
                         <div class="card-header"><h3 class="card-title">Registrar Gasto / Salida</h3></div>
                         <div class="card-body">
                             <form action="/caja/movimiento" method="post">
                                 <input type="hidden" name="tipo" value="EGRESO">
+                                <div class="form-group">
+                                    <label>Categoria</label>
+                                    <select name="categoria" class="form-control form-control-sm">
+                                        <option value="GASTO_OPERATIVO">Gasto Operativo (luz, agua, almuerzo...)</option>
+                                        <option value="COMPRA_MERCADERIA">Compra de Mercaderia</option>
+                                        <option value="RETIRO_DUENO">Retiro del Dueno</option>
+                                        <option value="OTRO_EGRESO">Otro Egreso</option>
+                                    </select>
+                                </div>
                                 <div class="form-group">
                                     <label>Concepto</label>
                                     <input type="text" name="concepto" class="form-control" placeholder="Ej: Pago de Luz, Almuerzo..." required>
@@ -81,14 +203,22 @@
                         </div>
                     </div>
 
+                    <!-- Form INGRESO con categoria -->
                     <div class="card card-success mt-3">
                         <div class="card-header"><h3 class="card-title">Ingreso Manual (Extra)</h3></div>
                         <div class="card-body">
                             <form action="/caja/movimiento" method="post">
                                 <input type="hidden" name="tipo" value="INGRESO">
                                 <div class="form-group">
+                                    <label>Categoria</label>
+                                    <select name="categoria" class="form-control form-control-sm">
+                                        <option value="APORTE_DUENO">Aporte del Dueno</option>
+                                        <option value="OTRO_INGRESO">Otro Ingreso</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label>Concepto</label>
-                                    <input type="text" name="concepto" class="form-control" placeholder="Ej: Cambio, Sencillo..." required>
+                                    <input type="text" name="concepto" class="form-control" placeholder="Ej: Aporte capital, Sencillo..." required>
                                 </div>
                                 <div class="form-group">
                                     <label>Monto (S/)</label>
@@ -100,15 +230,17 @@
                     </div>
                 </div>
 
+                <!-- Tabla de movimientos con columna Categoria -->
                 <div class="col-md-8">
                     <div class="card">
                         <div class="card-header"><h3 class="card-title">Movimientos del Turno</h3></div>
-                        <div class="card-body table-responsive p-0" style="height: 400px;">
+                        <div class="card-body table-responsive p-0" style="height: 500px;">
                             <table class="table table-head-fixed text-nowrap">
                                 <thead>
                                     <tr>
                                         <th>Hora</th>
                                         <th>Concepto</th>
+                                        <th>Categoria</th>
                                         <th>Tipo</th>
                                         <th class="text-right">Monto</th>
                                     </tr>
@@ -117,6 +249,11 @@
                                     <tr th:each="m : ${movimientos}">
                                         <td th:text="${#temporals.format(m.fecha, 'HH:mm')}"></td>
                                         <td th:text="${m.concepto}"></td>
+                                        <td>
+                                            <span class="badge"
+                                                  th:classappend="${T(com.libreria.sistema.model.CategoriaMovimiento).badgeClass(m.categoriaMovimiento)}"
+                                                  th:text="${T(com.libreria.sistema.model.CategoriaMovimiento).etiqueta(m.categoriaMovimiento)}">-</span>
+                                        </td>
                                         <td>
                                             <span th:if="${m.tipo == 'INGRESO'}" class="badge badge-success">INGRESO</span>
                                             <span th:if="${m.tipo == 'EGRESO'}" class="badge badge-danger">EGRESO</span>
@@ -138,7 +275,7 @@
         // ============================================
         // POLLING - REFRESCO AUTOMATICO DE CAJA
         // ============================================
-        const CAJA_POLLING_INTERVAL = 15000; // 15 segundos (más frecuente por ser crítico)
+        const CAJA_POLLING_INTERVAL = 15000;
         let cajaPollingTimer = null;
 
         $(document).ready(function() {
@@ -164,7 +301,6 @@
             }
         }
 
-        // Detener polling cuando la pestaña no está visible
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 detenerPollingCaja();
@@ -180,12 +316,10 @@
                 method: 'GET',
                 success: function(data) {
                     if (!data.sesionActiva) {
-                        // Si la sesión se cerró, recargar la página
                         window.location.reload();
                         return;
                     }
 
-                    // Actualizar balance
                     if (data.balance) {
                         $('#balanceInicial').text('S/ ' + parseFloat(data.balance.inicial || 0).toFixed(2));
                         $('#balanceIngresos').text('S/ ' + parseFloat(data.balance.ingresos || 0).toFixed(2));
@@ -193,7 +327,6 @@
                         $('#balanceSaldo').text('S/ ' + parseFloat(data.balance.saldo || 0).toFixed(2));
                     }
 
-                    // Actualizar tabla de movimientos
                     if (data.movimientos) {
                         actualizarTablaMovimientos(data.movimientos);
                     }
@@ -206,21 +339,36 @@
             });
         }
 
+        // Mapeo de categorias a badges y etiquetas
+        const categoriasMap = {
+            'VENTA': { etiqueta: 'Venta', badge: 'badge-success' },
+            'COBRANZA': { etiqueta: 'Cobranza', badge: 'badge-info' },
+            'APORTE_DUENO': { etiqueta: 'Aporte Dueno', badge: 'badge-primary' },
+            'OTRO_INGRESO': { etiqueta: 'Otro Ingreso', badge: 'badge-secondary' },
+            'COMPRA_MERCADERIA': { etiqueta: 'Compra Mercaderia', badge: 'badge-warning' },
+            'GASTO_OPERATIVO': { etiqueta: 'Gasto Operativo', badge: 'badge-danger' },
+            'RETIRO_DUENO': { etiqueta: 'Retiro Dueno', badge: 'badge-dark' },
+            'DEVOLUCION': { etiqueta: 'Devolucion', badge: 'badge-danger' },
+            'OTRO_EGRESO': { etiqueta: 'Otro Egreso', badge: 'badge-secondary' }
+        };
+
         function actualizarTablaMovimientos(movimientos) {
             var tbody = $('#tbodyMovimientos');
             tbody.empty();
 
             if (!movimientos || movimientos.length === 0) {
-                tbody.html('<tr><td colspan="4" class="text-center text-muted">No hay movimientos registrados</td></tr>');
+                tbody.html('<tr><td colspan="5" class="text-center text-muted">No hay movimientos registrados</td></tr>');
                 return;
             }
 
             movimientos.forEach(function(m) {
                 var badgeClass = m.tipo === 'INGRESO' ? 'badge-success' : 'badge-danger';
+                var cat = categoriasMap[m.categoria] || { etiqueta: m.categoria || 'Sin categoria', badge: 'badge-secondary' };
                 tbody.append(
                     '<tr>' +
                         '<td>' + m.hora + '</td>' +
                         '<td>' + m.concepto + '</td>' +
+                        '<td><span class="badge ' + cat.badge + '">' + cat.etiqueta + '</span></td>' +
                         '<td><span class="badge ' + badgeClass + '">' + m.tipo + '</span></td>' +
                         '<td class="text-right font-weight-bold">S/ ' + parseFloat(m.monto).toFixed(2) + '</td>' +
                     '</tr>'

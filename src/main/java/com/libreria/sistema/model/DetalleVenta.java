@@ -36,6 +36,16 @@ public class DetalleVenta {
     @Column(precision = 10, scale = 2)
     private BigDecimal subtotal; // cantidad * precioUnitario
 
+    // Costo congelado al momento de la venta (para rentabilidad real)
+    @Column(precision = 10, scale = 2)
+    private BigDecimal costoUnitario; // precioCompra del producto al momento de la venta
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal utilidadUnitaria; // precioUnitario - costoUnitario
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal utilidadTotal; // utilidadUnitaria * cantidad
+
     // Tipo de item y categoría (propagados desde cotización para rentabilidad)
     private String tipoItem; // PRODUCTO o SERVICIO
 

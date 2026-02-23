@@ -26,16 +26,35 @@ public interface ListaEscolarRepository extends JpaRepository<ListaEscolar, Long
     // --- LISTADOS CON PAGINACIÓN ---
     Page<ListaEscolar> findByEstadoOrderByFechaCreacionDesc(String estado, Pageable pageable);
 
-    @Query("SELECT l FROM ListaEscolar l WHERE " +
-           "(:estado IS NULL OR l.estado = :estado) AND " +
-           "(:colegio IS NULL OR :colegio = '' OR LOWER(COALESCE(l.colegio, '')) LIKE LOWER(CONCAT('%', :colegio, '%'))) AND " +
-           "(:grado IS NULL OR :grado = '' OR l.grado = :grado) AND " +
-           "(:anio IS NULL OR l.anioEscolar = :anio) " +
-           "ORDER BY l.fechaCreacion DESC")
+    @Query(value = "SELECT * FROM listas_escolares l WHERE " +
+           "(:estado IS NULL OR l.estado = CAST(:estado AS VARCHAR)) AND " +
+           "(:busqueda IS NULL OR :busqueda = '' OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.nombre_alumno, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.colegio, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.contacto_nombre, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  LOWER(COALESCE(l.contacto_telefono, '')) LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.grado, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  LOWER(CONCAT(l.serie, '-', LPAD(CAST(l.numero AS VARCHAR), 6, '0'))) LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%')" +
+           ") AND " +
+           "(:anio IS NULL OR l.anio_escolar = :anio) AND " +
+           "l.estado != 'ELIMINADA' " +
+           "ORDER BY l.fecha_creacion DESC",
+           countQuery = "SELECT COUNT(*) FROM listas_escolares l WHERE " +
+           "(:estado IS NULL OR l.estado = CAST(:estado AS VARCHAR)) AND " +
+           "(:busqueda IS NULL OR :busqueda = '' OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.nombre_alumno, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.colegio, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.contacto_nombre, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  LOWER(COALESCE(l.contacto_telefono, '')) LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  TRANSLATE(LOWER(COALESCE(l.grado, '')), 'áéíóúàèìòùâêîôûäëïöüñ', 'aeiouaeiouaeiouaeioun') LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%') OR " +
+           "  LOWER(CONCAT(l.serie, '-', LPAD(CAST(l.numero AS VARCHAR), 6, '0'))) LIKE CONCAT('%', CAST(:busqueda AS VARCHAR), '%')" +
+           ") AND " +
+           "(:anio IS NULL OR l.anio_escolar = :anio) AND " +
+           "l.estado != 'ELIMINADA'",
+           nativeQuery = true)
     Page<ListaEscolar> buscarConFiltros(
         @Param("estado") String estado,
-        @Param("colegio") String colegio,
-        @Param("grado") String grado,
+        @Param("busqueda") String busqueda,
         @Param("anio") Integer anio,
         Pageable pageable
     );
@@ -55,7 +74,7 @@ public interface ListaEscolarRepository extends JpaRepository<ListaEscolar, Long
 
     // --- LISTAS VENCIDAS ---
     @Query("SELECT l FROM ListaEscolar l WHERE " +
-           "l.estado NOT IN ('COMPLETADA', 'CANCELADA', 'VENCIDA') AND " +
+           "l.estado NOT IN ('COMPLETADA', 'CANCELADA', 'VENCIDA', 'ELIMINADA') AND " +
            "l.fechaVencimiento < :fecha")
     List<ListaEscolar> findListasVencidas(@Param("fecha") LocalDateTime fecha);
 
@@ -68,7 +87,7 @@ public interface ListaEscolarRepository extends JpaRepository<ListaEscolar, Long
     @Query("SELECT COUNT(l) FROM ListaEscolar l WHERE l.estado = :estado")
     Long countByEstado(@Param("estado") String estado);
 
-    @Query("SELECT COUNT(l) FROM ListaEscolar l WHERE l.anioEscolar = :anio")
+    @Query("SELECT COUNT(l) FROM ListaEscolar l WHERE l.anioEscolar = :anio AND l.estado != 'ELIMINADA'")
     Long countByAnioEscolar(@Param("anio") Integer anio);
 
     @Query("SELECT l.colegio, COUNT(l) FROM ListaEscolar l " +

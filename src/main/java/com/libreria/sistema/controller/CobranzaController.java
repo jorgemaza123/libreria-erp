@@ -81,7 +81,8 @@ public class CobranzaController {
             ventaRepository.save(venta);
 
             // Registrar movimiento en caja - OBLIGATORIO: Si falla, debe abortar la transacción (ahora con @Transactional)
-            cajaService.registrarMovimiento("INGRESO", "COBRO CUOTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")", montoPago);
+            cajaService.registrarMovimiento("INGRESO", "COBRO CUOTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")", montoPago,
+                    com.libreria.sistema.model.CategoriaMovimiento.COBRANZA);
 
             // Devolvemos el ID del pago para que el JS abra el ticket
             return ResponseEntity.ok(Map.of(

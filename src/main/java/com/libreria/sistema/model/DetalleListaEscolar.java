@@ -136,6 +136,16 @@ public class DetalleListaEscolar {
     @Column(name = "fecha_cotizacion_proveedor")
     private LocalDateTime fechaCotizacionProveedor;
 
+    // --- OMISIÓN POR NIVEL ---
+    @Column(name = "omitido_economico")
+    private Boolean omitidoEconomico = false;
+
+    @Column(name = "omitido_medio")
+    private Boolean omitidoMedio = false;
+
+    @Column(name = "omitido_premium")
+    private Boolean omitidoPremium = false;
+
     // --- REGALOS/OFERTAS ---
     @Column(name = "es_regalo")
     private Boolean esRegalo = false;
@@ -145,6 +155,16 @@ public class DetalleListaEscolar {
 
     @Column(name = "nivel_regalo", length = 20)
     private String nivelRegalo; // ECONOMICO, MEDIO, PREMIUM - indica a qué nivel aplica el regalo
+
+    // --- SERVICIOS ADICIONALES ---
+    @Column(name = "es_servicio")
+    private Boolean esServicio = false;
+
+    @Column(name = "texto_servicio", length = 200)
+    private String textoServicio;
+
+    @Column(name = "nivel_servicio", length = 20)
+    private String nivelServicio; // ECONOMICO, MEDIO, PREMIUM - indica a qué nivel aplica el servicio
 
     // --- MÉTODOS DE UTILIDAD ---
 
@@ -272,6 +292,36 @@ public class DetalleListaEscolar {
     }
 
     /**
+     * Verifica si el item es un servicio adicional.
+     */
+    public boolean esItemServicio() {
+        return Boolean.TRUE.equals(esServicio);
+    }
+
+    /**
+     * Verifica si el item está omitido para un nivel específico.
+     */
+    public boolean esOmitidoPorNivel(String nivel) {
+        return switch (nivel.toUpperCase()) {
+            case "ECONOMICO" -> Boolean.TRUE.equals(omitidoEconomico);
+            case "MEDIO" -> Boolean.TRUE.equals(omitidoMedio);
+            case "PREMIUM" -> Boolean.TRUE.equals(omitidoPremium);
+            default -> false;
+        };
+    }
+
+    /**
+     * Establece la omisión de un item para un nivel.
+     */
+    public void setOmitidoPorNivel(String nivel, boolean omitido) {
+        switch (nivel.toUpperCase()) {
+            case "ECONOMICO" -> this.omitidoEconomico = omitido;
+            case "MEDIO" -> this.omitidoMedio = omitido;
+            case "PREMIUM" -> this.omitidoPremium = omitido;
+        }
+    }
+
+    /**
      * Crea un item como regalo.
      */
     public static DetalleListaEscolar crearRegalo(ListaEscolar lista, String texto, String nivel, int orden) {
@@ -292,11 +342,37 @@ public class DetalleListaEscolar {
     }
 
     /**
+     * Crea un item como servicio adicional (con precio).
+     */
+    public static DetalleListaEscolar crearServicio(ListaEscolar lista, String texto, String nivel,
+                                                      BigDecimal precio, int orden) {
+        DetalleListaEscolar servicio = new DetalleListaEscolar();
+        servicio.setListaEscolar(lista);
+        servicio.setTextoOriginal(texto);
+        servicio.setTextoServicio(texto);
+        servicio.setCantidadSolicitada(1);
+        servicio.setEsServicio(true);
+        servicio.setNivelServicio(nivel);
+        servicio.setEstado("COTIZADO");
+        servicio.setOrden(orden);
+        // Establecer precio en el nivel correspondiente
+        switch (nivel.toUpperCase()) {
+            case "ECONOMICO" -> servicio.setPrecioEconomico(precio);
+            case "MEDIO" -> servicio.setPrecioMedio(precio);
+            case "PREMIUM" -> servicio.setPrecioPremium(precio);
+        }
+        return servicio;
+    }
+
+    /**
      * Obtiene el nombre para mostrar del producto por nivel.
      */
     public String getNombreProductoPorNivel(String nivel) {
         if (esItemRegalo()) {
             return textoRegalo != null ? textoRegalo : textoOriginal;
+        }
+        if (esItemServicio()) {
+            return textoServicio != null ? textoServicio : textoOriginal;
         }
         Producto p = switch (nivel) {
             case "ECONOMICO" -> productoEconomico;
@@ -372,6 +448,10 @@ public class DetalleListaEscolar {
         // Si es regalo
         if (esItemRegalo()) {
             return textoRegalo != null ? textoRegalo : textoOriginal;
+        }
+        // Si es servicio
+        if (esItemServicio()) {
+            return textoServicio != null ? textoServicio : textoOriginal;
         }
         // Si tiene producto de la BD
         String nombreProducto = getNombreProductoPorNivel(nivel);

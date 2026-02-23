@@ -98,6 +98,10 @@ public class Configuracion {
     @Column(precision = 5, scale = 2)
     private BigDecimal porcentajeDescuentoMaximo;
 
+    // Margen mínimo para alertas (ej: 15.00 = 15%). Productos vendidos con margen menor se alertan.
+    @Column(precision = 5, scale = 2)
+    private BigDecimal margenMinimoAlerta;
+
     // true = Precio incluye IGV (B2C), false = Se suma IGV al final (B2B)
     private Boolean preciosIncluyenImpuesto;
 
@@ -229,6 +233,7 @@ public class Configuracion {
         this.permitirStockNegativo = false;
         this.permitirVentaFraccionada = false;
         this.porcentajeDescuentoMaximo = new BigDecimal("10.00");
+        this.margenMinimoAlerta = new BigDecimal("15.00");
         this.preciosIncluyenImpuesto = true;
 
         // Facturación electrónica

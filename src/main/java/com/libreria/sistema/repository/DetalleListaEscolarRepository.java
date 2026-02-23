@@ -140,7 +140,8 @@ public interface DetalleListaEscolarRepository extends JpaRepository<DetalleList
     @Query("SELECT LOWER(TRIM(d.textoOriginal)) as texto, COUNT(d) as veces, SUM(d.cantidadSolicitada) as cantidad " +
            "FROM DetalleListaEscolar d " +
            "JOIN d.listaEscolar l " +
-           "WHERE d.productoEconomico IS NULL AND d.productoMedio IS NULL AND d.productoPremium IS NULL " +
+           "WHERE d.textoOriginal IS NOT NULL " +
+           "AND d.productoEconomico IS NULL AND d.productoMedio IS NULL AND d.productoPremium IS NULL " +
            "AND d.cotizadoProveedorEconomico = false " +
            "AND d.cotizadoProveedorMedio = false " +
            "AND d.cotizadoProveedorPremium = false " +
@@ -150,4 +151,21 @@ public interface DetalleListaEscolarRepository extends JpaRepository<DetalleList
            "GROUP BY LOWER(TRIM(d.textoOriginal)) " +
            "ORDER BY COUNT(d) DESC")
     List<Object[]> countFaltantesAgrupados();
+
+    /**
+     * Busca items faltantes por texto original (para detalle de un producto faltante específico).
+     * Reemplaza findAll() + filtrado en memoria.
+     */
+    @Query("SELECT d FROM DetalleListaEscolar d " +
+           "JOIN FETCH d.listaEscolar l " +
+           "WHERE d.textoOriginal IS NOT NULL " +
+           "AND d.esRegalo = false " +
+           "AND d.estado NOT IN ('VENDIDO', 'CANCELADO') " +
+           "AND l.estado NOT IN ('COMPLETADA', 'CANCELADA') " +
+           "AND LOWER(TRIM(d.textoOriginal)) = :textoNormalizado " +
+           "AND (d.productoEconomico IS NULL AND d.cotizadoProveedorEconomico = false " +
+           "  OR d.productoMedio IS NULL AND d.cotizadoProveedorMedio = false " +
+           "  OR d.productoPremium IS NULL AND d.cotizadoProveedorPremium = false) " +
+           "ORDER BY l.fechaCreacion DESC")
+    List<DetalleListaEscolar> findFaltantesPorTexto(@Param("textoNormalizado") String textoNormalizado);
 }

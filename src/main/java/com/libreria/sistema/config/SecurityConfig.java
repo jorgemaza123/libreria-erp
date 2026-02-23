@@ -195,7 +195,12 @@ public class SecurityConfig {
             // ============================================================
             .logout(logout -> logout
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .logoutSuccessUrl("/login?logout")
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    // Indica al navegador que borre cache, cookies y storage al cerrar sesion.
+                    // Evita que el kiosko restaure paginas autenticadas tras reinicio.
+                    response.setHeader("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"");
+                    response.sendRedirect("/login?logout");
+                })
                 .deleteCookies("JSESSIONID")  // CRITICO: Limpia la cookie de sesion
                 .invalidateHttpSession(true)   // Invalida la sesion HTTP
                 .clearAuthentication(true)     // Limpia el contexto de autenticacion

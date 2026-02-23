@@ -25,7 +25,7 @@ public class MatcherProductosService {
     private final TextoListaParser parser;
 
     // Configuración
-    private static final int MAX_RESULTADOS_BUSQUEDA = 20;
+    private static final int MAX_RESULTADOS_BUSQUEDA = 50;
     private static final double UMBRAL_CONFIANZA_MINIMO = 0.3;
 
     /**
@@ -72,8 +72,8 @@ public class MatcherProductosService {
         resultado.setTextoOriginal(textoItem);
         resultado.setCantidad(cantidad);
 
-        // Buscar productos usando el omnibuscador
-        List<Producto> encontrados = busquedaService.buscar(textoItem, MAX_RESULTADOS_BUSQUEDA);
+        // Buscar productos usando búsqueda flexible multi-pass (exclusiva listas escolares)
+        List<Producto> encontrados = busquedaService.buscarFlexibleEscolar(textoItem, MAX_RESULTADOS_BUSQUEDA);
 
         if (encontrados.isEmpty()) {
             resultado.setTieneMatch(false);
@@ -83,10 +83,10 @@ public class MatcherProductosService {
             return resultado;
         }
 
-        // Filtrar solo productos con stock o servicios
+        // Filtrar productos con stock > 0 (no exige stock >= cantidad para no perder matches)
         List<Producto> conStock = encontrados.stream()
             .filter(p -> "SERVICIO".equals(p.getTipo()) ||
-                        (p.getStockActual() != null && p.getStockActual() >= cantidad))
+                        (p.getStockActual() != null && p.getStockActual() > 0))
             .collect(Collectors.toList());
 
         // Si no hay con stock suficiente, usar todos los encontrados pero marcar

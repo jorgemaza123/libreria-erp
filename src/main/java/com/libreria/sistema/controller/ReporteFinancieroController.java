@@ -116,7 +116,34 @@ public class ReporteFinancieroController {
     ) {
         try {
             List<Map<String, Object>> rentabilidad = reporteService.generarRentabilidadProductos(fechaInicio, fechaFin);
-            return ResponseEntity.ok(rentabilidad);
+
+            // Calcular resumen general
+            java.math.BigDecimal totalGanancia = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal totalIngreso = java.math.BigDecimal.ZERO;
+            int productosMargenBajo = 0;
+
+            for (Map<String, Object> item : rentabilidad) {
+                totalGanancia = totalGanancia.add((java.math.BigDecimal) item.get("gananciaTotal"));
+                totalIngreso = totalIngreso.add((java.math.BigDecimal) item.get("totalVendido"));
+                if (((java.math.BigDecimal) item.get("margenPorcentaje")).doubleValue() < 10) {
+                    productosMargenBajo++;
+                }
+            }
+
+            java.math.BigDecimal margenGlobal = totalIngreso.compareTo(java.math.BigDecimal.ZERO) > 0
+                    ? totalGanancia.divide(totalIngreso, 4, java.math.RoundingMode.HALF_UP)
+                            .multiply(java.math.BigDecimal.valueOf(100))
+                    : java.math.BigDecimal.ZERO;
+
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("productos", rentabilidad);
+            response.put("totalGanancia", totalGanancia);
+            response.put("totalIngreso", totalIngreso);
+            response.put("margenGlobal", margenGlobal);
+            response.put("productosMargenBajo", productosMargenBajo);
+            response.put("totalProductos", rentabilidad.size());
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error generando rentabilidad: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

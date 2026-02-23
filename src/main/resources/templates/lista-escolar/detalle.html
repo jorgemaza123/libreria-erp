@@ -147,6 +147,102 @@
                             </div>
                         </div>
 
+                        <!-- Resumen Financiero -->
+                        <div class="card card-outline" th:if="${resumenFinanciero != null}"
+                             th:classappend="${resumenFinanciero.medio.margen.doubleValue() >= 30} ? 'card-success' : (${resumenFinanciero.medio.margen.doubleValue() >= 15} ? 'card-warning' : 'card-danger')">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-chart-line"></i> Resumen Financiero</h3>
+                                <div class="card-tools">
+                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-bordered mb-0" style="font-size: 0.85rem;">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Nivel</th>
+                                            <th class="text-right">Venta</th>
+                                            <th class="text-right">Costo</th>
+                                            <th class="text-right">Ganancia</th>
+                                            <th class="text-center">Margen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><i class="fas fa-coins text-secondary"></i> Econ.</td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.economico.totalVenta, 1, 2)}">0</span></td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.economico.totalCosto, 1, 2)}">0</span></td>
+                                            <td class="text-right font-weight-bold"
+                                                th:classappend="${resumenFinanciero.economico.ganancia.doubleValue() >= 0} ? 'text-success' : 'text-danger'">
+                                                S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.economico.ganancia, 1, 2)}">0</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge"
+                                                      th:classappend="${resumenFinanciero.economico.margen.doubleValue() >= 30} ? 'badge-success' : (${resumenFinanciero.economico.margen.doubleValue() >= 15} ? 'badge-warning' : 'badge-danger')"
+                                                      th:text="${#numbers.formatDecimal(resumenFinanciero.economico.margen, 1, 1)} + '%'">0%</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="bg-light">
+                                            <td><i class="fas fa-balance-scale text-info"></i> <strong>Medio</strong></td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.medio.totalVenta, 1, 2)}">0</span></td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.medio.totalCosto, 1, 2)}">0</span></td>
+                                            <td class="text-right font-weight-bold"
+                                                th:classappend="${resumenFinanciero.medio.ganancia.doubleValue() >= 0} ? 'text-success' : 'text-danger'">
+                                                S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.medio.ganancia, 1, 2)}">0</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge"
+                                                      th:classappend="${resumenFinanciero.medio.margen.doubleValue() >= 30} ? 'badge-success' : (${resumenFinanciero.medio.margen.doubleValue() >= 15} ? 'badge-warning' : 'badge-danger')"
+                                                      th:text="${#numbers.formatDecimal(resumenFinanciero.medio.margen, 1, 1)} + '%'">0%</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-star text-warning"></i> Premium</td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.premium.totalVenta, 1, 2)}">0</span></td>
+                                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.premium.totalCosto, 1, 2)}">0</span></td>
+                                            <td class="text-right font-weight-bold"
+                                                th:classappend="${resumenFinanciero.premium.ganancia.doubleValue() >= 0} ? 'text-success' : 'text-danger'">
+                                                S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.premium.ganancia, 1, 2)}">0</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge"
+                                                      th:classappend="${resumenFinanciero.premium.margen.doubleValue() >= 30} ? 'badge-success' : (${resumenFinanciero.premium.margen.doubleValue() >= 15} ? 'badge-warning' : 'badge-danger')"
+                                                      th:text="${#numbers.formatDecimal(resumenFinanciero.premium.margen, 1, 1)} + '%'">0%</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <!-- Ganancia promedio por item (nivel medio) -->
+                                <div class="px-3 py-2 border-top" style="font-size: 0.8rem;">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Ganancia prom/item (medio):</span>
+                                        <strong>S/ <span th:text="${#numbers.formatDecimal(resumenFinanciero.medio.gananciaPromedioPorItem, 1, 2)}">0</span></strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Items cotizados:</span>
+                                        <span th:text="${resumenFinanciero.medio.itemsCotizados} + ' / ' + ${resumenFinanciero.itemsTotal}">0/0</span>
+                                    </div>
+                                </div>
+                                <!-- Advertencia items sin costo -->
+                                <div th:if="${resumenFinanciero.itemsSinCosto > 0}"
+                                     class="border-top px-3 py-2"
+                                     style="background: #fff3cd; border-left: 4px solid #ffc107 !important;">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-exclamation-triangle text-warning mr-2" style="font-size: 1.3rem;"></i>
+                                        <div>
+                                            <strong class="text-dark">
+                                                <span th:text="${resumenFinanciero.itemsSinCosto}">0</span> producto(s) sin precio de compra
+                                            </strong>
+                                            <br>
+                                            <small class="text-danger font-weight-bold">Margen puede estar inflado. Actualice costos en inventario.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Acciones -->
                         <div class="card">
                             <div class="card-body">
@@ -196,66 +292,105 @@
                                     <span class="badge badge-warning" th:text="${#lists.size(detallesVendibles)}">5</span>
                                 </h3>
                             </div>
+
+                            <!-- Selector de nivel global -->
+                            <div class="card-body border-bottom py-2 px-3" th:if="${!#lists.isEmpty(detallesVendibles)}">
+                                <div class="d-flex align-items-center flex-wrap">
+                                    <small class="font-weight-bold text-muted mr-2">Nivel de venta para todos:</small>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="aplicarNivelGlobal('ECONOMICO')">
+                                            <i class="fas fa-coins"></i> Económico
+                                            <small class="ml-1 font-weight-bold">S/<span id="totalEconomicoSpan" th:text="${#numbers.formatDecimal(lista.totalEconomico,1,2)}">0</span></small>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info" onclick="aplicarNivelGlobal('MEDIO')">
+                                            <i class="fas fa-balance-scale"></i> Medio
+                                            <small class="ml-1 font-weight-bold">S/<span id="totalMedioSpan" th:text="${#numbers.formatDecimal(lista.totalMedio,1,2)}">0</span></small>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning" onclick="aplicarNivelGlobal('PREMIUM')">
+                                            <i class="fas fa-star"></i> Premium
+                                            <small class="ml-1 font-weight-bold">S/<span id="totalPremiumSpan" th:text="${#numbers.formatDecimal(lista.totalPremium,1,2)}">0</span></small>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted ml-2">— o elige nivel por item en la columna <strong>Nivel</strong></small>
+                                </div>
+                            </div>
+
                             <div class="card-body table-responsive p-0">
                                 <table class="table table-hover table-striped mb-0">
                                     <thead class="thead-light">
                                         <tr>
-                                            <th style="width: 30px;">#</th>
-                                            <th>Item Original</th>
-                                            <th class="text-center">Cant</th>
-                                            <th>Producto Asignado</th>
-                                            <th class="text-center">Nivel</th>
-                                            <th class="text-right">Precio</th>
-                                            <th class="text-right">Subtotal</th>
-                                            <th>Estado</th>
+                                            <th style="width:30px;">#</th>
+                                            <th>Item Solicitado</th>
+                                            <th class="text-center" style="width:50px;">Cant</th>
+                                            <th>Producto</th>
+                                            <th class="text-center" style="width:165px;">Nivel de Venta</th>
+                                            <th class="text-right" style="width:80px;">Precio</th>
+                                            <th class="text-right" style="width:90px;">Subtotal</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr th:each="d, iter : ${detallesVendibles}">
+                                        <tr th:each="d, iter : ${detallesVendibles}"
+                                            class="item-pendiente-row"
+                                            th:data-id="${d.id}"
+                                            th:data-cantidad="${d.cantidadSolicitada}"
+                                            th:data-precio-economico="${d.precioEconomico != null ? d.precioEconomico : 0}"
+                                            th:data-precio-medio="${d.precioMedio != null ? d.precioMedio : 0}"
+                                            th:data-precio-premium="${d.precioPremium != null ? d.precioPremium : 0}"
+                                            th:data-producto-economico-id="${d.productoEconomico != null ? d.productoEconomico.id : ''}"
+                                            th:data-producto-medio-id="${d.productoMedio != null ? d.productoMedio.id : ''}"
+                                            th:data-producto-premium-id="${d.productoPremium != null ? d.productoPremium.id : ''}"
+                                            th:data-producto-economico-nombre="${d.productoEconomico != null ? d.productoEconomico.nombre : ''}"
+                                            th:data-producto-medio-nombre="${d.productoMedio != null ? d.productoMedio.nombre : ''}"
+                                            th:data-producto-premium-nombre="${d.productoPremium != null ? d.productoPremium.nombre : ''}"
+                                            th:data-loc-economico="${d.productoEconomico != null ? (d.productoEconomico.ubicacionEstante ?: '') + '|' + (d.productoEconomico.ubicacionFila ?: '') + '|' + (d.productoEconomico.ubicacionColumna ?: '') : ''}"
+                                            th:data-loc-medio="${d.productoMedio != null ? (d.productoMedio.ubicacionEstante ?: '') + '|' + (d.productoMedio.ubicacionFila ?: '') + '|' + (d.productoMedio.ubicacionColumna ?: '') : ''}"
+                                            th:data-loc-premium="${d.productoPremium != null ? (d.productoPremium.ubicacionEstante ?: '') + '|' + (d.productoPremium.ubicacionFila ?: '') + '|' + (d.productoPremium.ubicacionColumna ?: '') : ''}"
+                                            th:data-tiene-proveedor="${d.tieneCotizacionProveedor()}">
                                             <td th:text="${d.orden}">1</td>
-                                            <td>
-                                                <small class="text-muted" th:text="${d.textoOriginal}">2 cuadernos cuadriculados</small>
-                                            </td>
+                                            <td><small th:text="${d.textoOriginal}">2 cuadernos</small></td>
                                             <td class="text-center" th:text="${d.cantidadSolicitada}">2</td>
-                                            <td>
-                                                <!-- Producto del inventario -->
-                                                <span th:if="${d.productoFinal != null}" th:text="${d.productoFinal.nombre}">Cuaderno Stanford A4</span>
-                                                <!-- Cotización de proveedor (sin producto vinculado) -->
+                                            <td class="col-producto-display">
+                                                <span th:if="${d.productoFinal != null}" th:text="${d.productoFinal.nombre}">Producto</span>
                                                 <span th:if="${d.productoFinal == null and d.tieneCotizacionProveedor()}" class="text-info">
-                                                    <i class="fas fa-phone-alt mr-1" title="Cotizado con proveedor"></i>
-                                                    <span th:text="${d.getNombreMostrarPorNivel(d.nivelSeleccionado ?: 'MEDIO')}">Producto cotizado</span>
+                                                    <i class="fas fa-phone-alt mr-1"></i>
+                                                    <span th:text="${d.getNombreMostrarPorNivel(d.nivelSeleccionado ?: 'MEDIO')}">Cotizado</span>
                                                     <br th:if="${d.nombreProveedor != null}">
-                                                    <small th:if="${d.nombreProveedor != null}" class="text-muted">
-                                                        <i class="fas fa-store mr-1"></i><span th:text="${d.nombreProveedor}">Proveedor</span>
-                                                    </small>
+                                                    <small th:if="${d.nombreProveedor != null}" class="text-muted"><i class="fas fa-store mr-1"></i><span th:text="${d.nombreProveedor}"></span></small>
                                                 </span>
-                                                <!-- Sin asignar -->
                                                 <span th:if="${d.productoFinal == null and !d.tieneCotizacionProveedor()}" class="text-danger">
                                                     <i class="fas fa-exclamation-triangle mr-1"></i>Sin asignar
                                                 </span>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge"
-                                                      th:classappend="${d.nivelSeleccionado == 'ECONOMICO'} ? 'badge-secondary' :
-                                                                      (${d.nivelSeleccionado == 'MEDIO'} ? 'badge-info' : 'badge-warning')"
-                                                      th:text="${d.nivelSeleccionado ?: '-'}">MEDIO</span>
+                                                <select class="nivel-selector form-control form-control-sm px-1"
+                                                        style="font-size:0.8rem;"
+                                                        onchange="actualizarFilaNivel(this)">
+                                                    <option value="ECONOMICO"
+                                                            th:selected="${d.nivelSeleccionado == 'ECONOMICO'}"
+                                                            th:disabled="${d.precioEconomico == null}"
+                                                            th:text="${d.precioEconomico != null ? '💰 Econ. S/' + #numbers.formatDecimal(d.precioEconomico,1,2) : '— Económico (sin precio)'}">
+                                                        💰 Económico</option>
+                                                    <option value="MEDIO"
+                                                            th:selected="${d.nivelSeleccionado == 'MEDIO' or d.nivelSeleccionado == null}"
+                                                            th:disabled="${d.precioMedio == null}"
+                                                            th:text="${d.precioMedio != null ? '⚖️ Medio S/' + #numbers.formatDecimal(d.precioMedio,1,2) : '— Medio (sin precio)'}">
+                                                        ⚖️ Medio</option>
+                                                    <option value="PREMIUM"
+                                                            th:selected="${d.nivelSeleccionado == 'PREMIUM'}"
+                                                            th:disabled="${d.precioPremium == null}"
+                                                            th:text="${d.precioPremium != null ? '⭐ Prem. S/' + #numbers.formatDecimal(d.precioPremium,1,2) : '— Premium (sin precio)'}">
+                                                        ⭐ Premium</option>
+                                                </select>
                                             </td>
-                                            <td class="text-right">
-                                                S/ <span th:text="${d.precioFinal != null ? #numbers.formatDecimal(d.precioFinal, 1, 2) : '-'}">5.00</span>
+                                            <td class="text-right col-precio-display">
+                                                S/ <span th:text="${d.precioFinal != null ? #numbers.formatDecimal(d.precioFinal,1,2) : '0.00'}">5.00</span>
                                             </td>
-                                            <td class="text-right font-weight-bold">
-                                                S/ <span th:text="${#numbers.formatDecimal(d.subtotal, 1, 2)}">10.00</span>
-                                            </td>
-                                            <td>
-                                                <span class="badge"
-                                                      th:classappend="${d.estado == 'COTIZADO'} ? 'badge-info' :
-                                                                      (${d.estado == 'PENDIENTE'} ? 'badge-warning' :
-                                                                      (${d.estado == 'REEMPLAZADO'} ? 'badge-primary' : 'badge-secondary'))"
-                                                      th:text="${d.estado}">COTIZADO</span>
+                                            <td class="text-right font-weight-bold col-subtotal-display">
+                                                S/ <span th:text="${#numbers.formatDecimal(d.subtotal,1,2)}">10.00</span>
                                             </td>
                                         </tr>
                                         <tr th:if="${#lists.isEmpty(detallesVendibles)}">
-                                            <td colspan="8" class="text-center text-muted py-3">
+                                            <td colspan="7" class="text-center text-muted py-3">
                                                 <i class="fas fa-check-circle fa-2x text-success mb-2 d-block"></i>
                                                 Todos los items han sido vendidos
                                             </td>
@@ -347,17 +482,36 @@
         </section>
     </div>
 
-    <!-- Modal Texto Original -->
+    <!-- Modal Texto Original (Editable) -->
     <div class="modal fade" id="modalTextoOriginal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-info">
-                    <h5 class="modal-title"><i class="fas fa-file-alt"></i> Texto Original de la Lista</h5>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Editar Texto Original de la Lista</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
-                <div class="modal-body">
-                    <pre class="bg-light p-3" style="white-space: pre-wrap; max-height: 500px; overflow-y: auto;"
-                         th:text="${lista.textoOriginal}">Texto original aquí...</pre>
+                <div class="modal-body pb-1">
+                    <div class="alert alert-info py-2 mb-2 small">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Una línea = un producto.</strong>
+                        Agrega, edita o elimina líneas. Los ítems ya <strong>vendidos</strong> no serán afectados.
+                        Los ítems que permanezcan conservarán su cotización actual.
+                    </div>
+                    <textarea id="textoOriginalEdit" class="form-control" rows="16"
+                              style="font-family: monospace; font-size: 0.85rem; resize: vertical;"
+                              th:text="${lista.textoOriginal}">Texto original aquí...</textarea>
+                    <small class="text-muted">Líneas vacías y títulos serán ignorados automáticamente al procesar.</small>
+                </div>
+                <div class="modal-footer">
+                    <span id="textoSavingMsg" class="text-muted mr-auto" style="display:none;">
+                        <i class="fas fa-spinner fa-spin"></i> Procesando y cotizando nuevos ítems...
+                    </span>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarTexto" onclick="guardarTextoOriginal()">
+                        <i class="fas fa-save"></i> Guardar y Actualizar Lista
+                    </button>
                 </div>
             </div>
         </div>
@@ -487,7 +641,7 @@
 
                                 <!-- Botones -->
                                 <div class="mt-4">
-                                    <button type="button" class="btn btn-success btn-lg btn-block" id="btnProcesarVenta">
+                                    <button type="button" class="btn btn-success btn-lg btn-block" id="btnProcesarVenta" onclick="procesarVenta()">
                                         <i class="fas fa-check"></i> PROCESAR VENTA (F2)
                                     </button>
                                     <button type="button" class="btn btn-warning btn-block" onclick="marcarPendientes()">
@@ -647,17 +801,147 @@ $(document).ready(function() {
     });
 });
 
+// Recoge la selección de nivel y producto de cada fila de la tabla de pendientes
+function recogerSeleccionesTabla() {
+    const selecciones = {};
+    $('.item-pendiente-row').each(function() {
+        const row = $(this);
+        const id = parseInt(row.data('id'));
+        const nivel = row.find('.nivel-selector').val() || 'MEDIO';
+        let productoId = null;
+        let precio = 0;
+        if (nivel === 'ECONOMICO') {
+            productoId = row.data('producto-economico-id') || null;
+            precio = parseFloat(row.data('precio-economico')) || 0;
+        } else if (nivel === 'MEDIO') {
+            productoId = row.data('producto-medio-id') || null;
+            precio = parseFloat(row.data('precio-medio')) || 0;
+        } else if (nivel === 'PREMIUM') {
+            productoId = row.data('producto-premium-id') || null;
+            precio = parseFloat(row.data('precio-premium')) || 0;
+        }
+        if (productoId === '') productoId = null;
+        selecciones[id] = { nivel, productoId: productoId ? parseInt(productoId) : null, precio };
+    });
+    return selecciones;
+}
+
+// Actualiza la fila de la tabla cuando cambia el nivel en el selector
+function actualizarFilaNivel(select) {
+    const row = $(select).closest('tr');
+    const nivel = select.value;
+    const cantidad = parseInt(row.data('cantidad')) || 1;
+    let productoNombre = '';
+    let precio = 0;
+    if (nivel === 'ECONOMICO') {
+        productoNombre = row.data('producto-economico-nombre') || '';
+        precio = parseFloat(row.data('precio-economico')) || 0;
+    } else if (nivel === 'MEDIO') {
+        productoNombre = row.data('producto-medio-nombre') || '';
+        precio = parseFloat(row.data('precio-medio')) || 0;
+    } else if (nivel === 'PREMIUM') {
+        productoNombre = row.data('producto-premium-nombre') || '';
+        precio = parseFloat(row.data('precio-premium')) || 0;
+    }
+    const tieneProveedor = row.data('tiene-proveedor') === true || row.data('tiene-proveedor') === 'true';
+    const productoCell = row.find('.col-producto-display');
+    if (productoNombre) {
+        productoCell.html(`<span>${productoNombre}</span>`);
+    } else if (tieneProveedor) {
+        productoCell.html('<span class="text-info"><i class="fas fa-phone-alt mr-1"></i>Cotizado proveedor</span>');
+    } else {
+        productoCell.html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Sin asignar</span>');
+    }
+    row.find('.col-precio-display').html('S/ ' + precio.toFixed(2));
+    row.find('.col-subtotal-display').html('S/ ' + (precio * cantidad).toFixed(2));
+}
+
+// Aplica el nivel seleccionado a todos los items de la tabla
+function aplicarNivelGlobal(nivel) {
+    $('.item-pendiente-row').each(function() {
+        const sel = $(this).find('.nivel-selector');
+        const opt = sel.find(`option[value="${nivel}"]`);
+        if (opt.length && !opt.prop('disabled')) {
+            sel.val(nivel);
+            actualizarFilaNivel(sel[0]);
+        }
+    });
+}
+
 function abrirPOSModal() {
-    // Cargar items
-    $.get(`/listas-escolares/api/${listaId}/detalles-pos`)
-        .done(function(data) {
-            itemsPOS = data.items;
-            renderizarItemsPOS();
-            $('#modalPOS').modal('show');
-        })
-        .fail(function(xhr) {
-            Swal.fire('Error', xhr.responseJSON?.error || 'Error al cargar items', 'error');
+    // Construir los items directamente desde el DOM de la tabla de pendientes.
+    // Esto garantiza que el nivel y producto sean exactamente los que el usuario
+    // eligió en los selectores, sin depender de merges con datos del servidor.
+    itemsPOS = [];
+
+    $('.item-pendiente-row').each(function() {
+        const row = $(this);
+        const id       = parseInt(row.data('id'));
+        const cantidad = parseInt(row.data('cantidad')) || 1;
+        const nivel    = row.find('.nivel-selector').val() || 'MEDIO';
+
+        let productoId = null, productoNombre = '', precio = 0;
+
+        if (nivel === 'ECONOMICO') {
+            const pid = row.data('producto-economico-id');
+            productoId    = pid ? parseInt(pid) : null;
+            productoNombre = row.data('producto-economico-nombre') || '';
+            precio         = parseFloat(row.data('precio-economico')) || 0;
+        } else if (nivel === 'MEDIO') {
+            const pid = row.data('producto-medio-id');
+            productoId    = pid ? parseInt(pid) : null;
+            productoNombre = row.data('producto-medio-nombre') || '';
+            precio         = parseFloat(row.data('precio-medio')) || 0;
+        } else if (nivel === 'PREMIUM') {
+            const pid = row.data('producto-premium-id');
+            productoId    = pid ? parseInt(pid) : null;
+            productoNombre = row.data('producto-premium-nombre') || '';
+            precio         = parseFloat(row.data('precio-premium')) || 0;
+        }
+
+        const textoOriginal = row.find('td:nth-child(2) small').text().trim();
+        const tieneProveedor = row.data('tiene-proveedor') === true || row.data('tiene-proveedor') === 'true';
+
+        let ubicacionRaw = '';
+        if (nivel === 'ECONOMICO') ubicacionRaw = row.data('loc-economico') || '';
+        else if (nivel === 'MEDIO') ubicacionRaw = row.data('loc-medio') || '';
+        else if (nivel === 'PREMIUM') ubicacionRaw = row.data('loc-premium') || '';
+
+        itemsPOS.push({
+            id:               id,
+            textoOriginal:    textoOriginal,
+            cantidad:         cantidad,
+            nivelSeleccionado: nivel,
+            precioFinal:      precio,
+            subtotal:         precio * cantidad,
+            productoId:       productoId,
+            productoNombre:   productoNombre || null,
+            ubicacionRaw:     ubicacionRaw,
+            // Si no hay producto real pero tiene cotización de proveedor, se permite
+            tieneStock:       !!productoId || tieneProveedor,
+            estado:           'COTIZADO'   // findVendibles() solo devuelve COTIZADO/PENDIENTE/REEMPLAZADO
         });
+    });
+
+    if (itemsPOS.length === 0) {
+        Swal.fire('Info', 'No hay items pendientes de venta', 'info');
+        return;
+    }
+
+    renderizarItemsPOS();
+    $('#modalPOS').modal('show');
+}
+
+function formatUbicacion(raw) {
+    if (!raw) return '';
+    const parts = raw.split('|');
+    const est = parts[0] || '', fil = parts[1] || '', col = parts[2] || '';
+    if (!est && !fil && !col) return '';
+    const out = [];
+    if (est) out.push('Est.<b>' + est + '</b>');
+    if (fil) out.push('Fila:<b>' + fil + '</b>');
+    if (col) out.push('Col:<b>' + col + '</b>');
+    return out.join(' · ');
 }
 
 function renderizarItemsPOS() {
@@ -665,12 +949,30 @@ function renderizarItemsPOS() {
     tbody.empty();
 
     itemsPOS.forEach((item, index) => {
-        const tieneStock = item.tieneStock !== false;
-        const checked = tieneStock && item.estado !== 'NO_COTIZADO' ? 'checked' : '';
-        const disabled = !tieneStock ? 'disabled' : '';
+        const tieneProducto = !!item.productoId;
+        const tieneStock = tieneProducto && item.tieneStock !== false;
+        const vendible = tieneStock && item.estado !== 'NO_COTIZADO';
+        const checked = vendible ? 'checked' : '';
+        const disabled = !vendible ? 'disabled' : '';
+
+        let motivo = '';
+        if (!tieneProducto) motivo = '<br><small class="text-danger">Sin producto asignado</small>';
+        else if (!tieneStock) motivo = '<br><small class="text-danger">Sin stock</small>';
+
+        const nivel = item.nivelSeleccionado || 'MEDIO';
+        const nivelBadge = {
+            'ECONOMICO': '<span class="badge badge-secondary" title="Económico">💰 Econ.</span>',
+            'MEDIO':     '<span class="badge badge-info"      title="Medio">⚖️ Medio</span>',
+            'PREMIUM':   '<span class="badge badge-warning"   title="Premium">⭐ Prem.</span>'
+        }[nivel] || '';
+
+        const ubicFmt = formatUbicacion(item.ubicacionRaw);
+        const ubicBadge = ubicFmt
+            ? `<br><span style="display:inline-flex;align-items:center;gap:3px;background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:4px;padding:1px 6px;font-size:0.68rem;font-weight:600;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> ${ubicFmt}</span>`
+            : '';
 
         tbody.append(`
-            <tr class="${!tieneStock ? 'table-danger' : ''}">
+            <tr class="${!vendible ? 'table-danger' : ''}">
                 <td>
                     <input type="checkbox" class="item-check" data-index="${index}"
                            ${checked} ${disabled}>
@@ -684,8 +986,10 @@ function renderizarItemsPOS() {
                            style="width: 60px;" ${disabled}>
                 </td>
                 <td>
+                    ${nivelBadge}
                     ${item.productoNombre || '<span class="text-danger">Sin asignar</span>'}
-                    ${!tieneStock ? '<br><small class="text-danger">Sin stock</small>' : ''}
+                    ${motivo}
+                    ${ubicBadge}
                 </td>
                 <td class="text-right">
                     S/ ${parseFloat(item.precioFinal || 0).toFixed(2)}
@@ -731,6 +1035,8 @@ function deseleccionarTodos() {
 
 function procesarVenta() {
     const itemsSeleccionados = [];
+    // También guardamos info de picking (no se envía al servidor, solo para UI)
+    const itemsParaPicking = [];
 
     $('.item-check:checked').each(function() {
         const index = $(this).data('index');
@@ -743,6 +1049,11 @@ function procesarVenta() {
             cantidad: cantidad,
             precioUnitario: parseFloat(item.precioFinal),
             nivelSeleccionado: item.nivelSeleccionado
+        });
+        itemsParaPicking.push({
+            nombre: item.productoNombre || item.textoOriginal || 'Producto',
+            cantidad: cantidad,
+            ubicacionRaw: item.ubicacionRaw || ''
         });
     });
 
@@ -771,13 +1082,54 @@ function procesarVenta() {
         data: JSON.stringify(datos),
         success: function(resp) {
             if (resp.success) {
+                $('#modalPOS').modal('hide');
+
+                // Ordenar por ubicación para la guía de picking
+                itemsParaPicking.sort((a, b) => {
+                    const la = a.ubicacionRaw || 'ZZZ', lb = b.ubicacionRaw || 'ZZZ';
+                    return la.localeCompare(lb);
+                });
+
+                let pickingRows = '';
+                itemsParaPicking.forEach((p, i) => {
+                    const loc = formatUbicacion(p.ubicacionRaw);
+                    const locDisplay = loc
+                        ? `<span style="background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:1px 5px;font-size:0.75rem;font-weight:600;">${loc}</span>`
+                        : '<span class="text-muted" style="font-size:0.75rem;">Sin ubicación</span>';
+                    pickingRows += `<tr>
+                        <td style="text-align:center;font-weight:bold;">${i+1}</td>
+                        <td>${locDisplay}</td>
+                        <td style="text-align:left;">${p.nombre}</td>
+                        <td style="text-align:center;font-weight:bold;">${p.cantidad}</td>
+                    </tr>`;
+                });
+
+                const pickingHtml = `
+                    <div style="text-align:left;margin-top:8px;">
+                        <p style="margin:0 0 6px;"><strong>Comprobante:</strong> ${resp.serie}-${resp.numero} &nbsp;|&nbsp; <strong>Items:</strong> ${resp.itemsVendidos}</p>
+                        <p style="margin:0 0 8px;font-size:0.8rem;color:#6b7280;">Productos ordenados por ubicación para rellenar la caja:</p>
+                        <div style="max-height:320px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                            <thead>
+                                <tr style="background:#f3f4f6;position:sticky;top:0;">
+                                    <th style="padding:6px;text-align:center;width:30px;">#</th>
+                                    <th style="padding:6px;text-align:left;width:120px;">Ubicación</th>
+                                    <th style="padding:6px;text-align:left;">Producto</th>
+                                    <th style="padding:6px;text-align:center;width:45px;">Cant.</th>
+                                </tr>
+                            </thead>
+                            <tbody>${pickingRows}</tbody>
+                        </table>
+                        </div>
+                    </div>`;
+
                 Swal.fire({
                     icon: 'success',
-                    title: 'Venta Procesada',
-                    html: `<p>Comprobante: <strong>${resp.serie}-${resp.numero}</strong></p>
-                           <p>Items vendidos: ${resp.itemsVendidos}</p>
-                           <p>Items pendientes: ${resp.itemsPendientes}</p>`,
-                    confirmButtonText: 'Aceptar'
+                    title: '<i class="fas fa-boxes"></i> Guía de Picking',
+                    html: pickingHtml,
+                    confirmButtonText: '<i class="fas fa-check"></i> Listo, continuar',
+                    confirmButtonColor: '#16a34a',
+                    width: 650
                 }).then(() => {
                     window.location.reload();
                 });
@@ -909,6 +1261,182 @@ function enviarWhatsApp() {
     // Abrir WhatsApp
     window.open(urlWhatsApp, '_blank');
     $('#modalWhatsApp').modal('hide');
+}
+
+// =====================================================================
+//  EDITAR TEXTO ORIGINAL — Actualización dinámica sin reload de página
+// =====================================================================
+
+// Backup del texto antes de abrir el modal (para restaurar si el usuario cancela)
+let _textoOriginalBackup = '';
+
+// Al abrir el modal: guardar el texto actual como backup
+$('#modalTextoOriginal').on('show.bs.modal', function() {
+    _textoOriginalBackup = $('#textoOriginalEdit').val();
+});
+
+// Al cerrar el modal (por cualquier vía que no sea guardar): restaurar el backup
+$('#modalTextoOriginal').on('hidden.bs.modal', function() {
+    $('#textoOriginalEdit').val(_textoOriginalBackup);
+});
+
+function guardarTextoOriginal() {
+    const nuevoTexto = document.getElementById('textoOriginalEdit').value.trim();
+    if (!nuevoTexto) {
+        alert('El texto no puede estar vacío.');
+        return;
+    }
+
+    const btn = document.getElementById('btnGuardarTexto');
+    const msg = document.getElementById('textoSavingMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    msg.style.display = 'inline';
+
+    $.ajax({
+        url: '/listas-escolares/api/' + listaId + '/texto-original',
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify({ textoOriginal: nuevoTexto }),
+        success: function(res) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar y Actualizar Lista';
+            msg.style.display = 'none';
+
+            if (!res.success) {
+                mostrarNotificacion('Error: ' + (res.error || 'Error desconocido'), 'danger');
+                return;
+            }
+
+            // Actualizar backup con el texto guardado (para que si se vuelve a abrir, no revierta)
+            _textoOriginalBackup = nuevoTexto;
+
+            // Cerrar modal
+            $('#modalTextoOriginal').modal('hide');
+
+            // 1. Eliminar filas de ítems que ya no están en el texto
+            if (res.itemsEliminados && res.itemsEliminados.length > 0) {
+                res.itemsEliminados.forEach(function(id) {
+                    $('.item-pendiente-row[data-id="' + id + '"]').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                });
+            }
+
+            // 2. Agregar filas de ítems nuevos a la tabla de pendientes
+            if (res.nuevosItems && res.nuevosItems.length > 0) {
+                // Buscar el tbody de la tabla de ítems pendientes
+                const tbody = $('table.table.table-hover.table-striped.mb-0 tbody').first();
+                res.nuevosItems.forEach(function(item) {
+                    const fila = construirFilaNuevoItem(item);
+                    tbody.append(fila);
+                    tbody.find('tr[data-id="' + item.id + '"]').hide().fadeIn(500);
+                });
+            }
+
+            // 3. Actualizar totales en los botones de nivel global
+            if (res.totalEconomico !== undefined) {
+                $('#totalEconomicoSpan').text(parseFloat(res.totalEconomico || 0).toFixed(2));
+                $('#totalMedioSpan').text(parseFloat(res.totalMedio || 0).toFixed(2));
+                $('#totalPremiumSpan').text(parseFloat(res.totalPremium || 0).toFixed(2));
+            }
+
+            // 4. Notificar al usuario
+            mostrarNotificacion(res.mensaje || 'Lista actualizada correctamente', 'success');
+        },
+        error: function(xhr) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar y Actualizar Lista';
+            msg.style.display = 'none';
+            const err = xhr.responseJSON ? xhr.responseJSON.error : 'Error al guardar';
+            mostrarNotificacion('Error: ' + err, 'danger');
+        }
+    });
+}
+
+/**
+ * Construye una fila <tr> para un ítem nuevo, compatible con la estructura de la tabla.
+ */
+function construirFilaNuevoItem(item) {
+    const precioE = item.precioEconomico ? parseFloat(item.precioEconomico).toFixed(2) : null;
+    const precioM = item.precioMedio ? parseFloat(item.precioMedio).toFixed(2) : null;
+    const precioP = item.precioPremium ? parseFloat(item.precioPremium).toFixed(2) : null;
+    const nivelSel = item.nivelSeleccionado || 'MEDIO';
+    const productoNombre = item.productoNombre || '';
+
+    // Columna producto
+    let colProducto;
+    if (productoNombre) {
+        colProducto = `<span>${productoNombre}</span>`;
+    } else {
+        colProducto = `<span class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Sin asignar</span>`;
+    }
+
+    // Opciones del selector de nivel
+    const optE = precioE
+        ? `<option value="ECONOMICO" ${nivelSel === 'ECONOMICO' ? 'selected' : ''}>💰 Econ. S/${precioE}</option>`
+        : `<option value="ECONOMICO" disabled>— Económico (sin precio)</option>`;
+    const optM = precioM
+        ? `<option value="MEDIO" ${(nivelSel === 'MEDIO' || !nivelSel) ? 'selected' : ''}>⚖️ Medio S/${precioM}</option>`
+        : `<option value="MEDIO" disabled>— Medio (sin precio)</option>`;
+    const optP = precioP
+        ? `<option value="PREMIUM" ${nivelSel === 'PREMIUM' ? 'selected' : ''}>⭐ Prem. S/${precioP}</option>`
+        : `<option value="PREMIUM" disabled>— Premium (sin precio)</option>`;
+
+    // Precio y subtotal según nivel seleccionado
+    let precioFinal = precioM || precioE || precioP || '0.00';
+    if (nivelSel === 'ECONOMICO') precioFinal = precioE || '0.00';
+    if (nivelSel === 'PREMIUM') precioFinal = precioP || '0.00';
+    const subtotalFinal = (parseFloat(precioFinal) * item.cantidad).toFixed(2);
+
+    return `<tr class="item-pendiente-row"
+               data-id="${item.id}"
+               data-cantidad="${item.cantidad}"
+               data-precio-economico="${item.precioEconomico || 0}"
+               data-precio-medio="${item.precioMedio || 0}"
+               data-precio-premium="${item.precioPremium || 0}"
+               data-producto-economico-id="${item.productoEconomicoId || ''}"
+               data-producto-medio-id="${item.productoMedioId || ''}"
+               data-producto-premium-id="${item.productoPremiumId || ''}"
+               data-producto-economico-nombre="${item.productoEconomicoNombre || ''}"
+               data-producto-medio-nombre="${item.productoMedioNombre || ''}"
+               data-producto-premium-nombre="${item.productoPremiumNombre || ''}"
+               data-loc-economico=""
+               data-loc-medio=""
+               data-loc-premium=""
+               data-tiene-proveedor="false">
+        <td>${item.orden}</td>
+        <td><small>${item.textoOriginal || ''}</small></td>
+        <td class="text-center">${item.cantidad}</td>
+        <td class="col-producto-display">${colProducto}</td>
+        <td class="text-center">
+            <select class="nivel-selector form-control form-control-sm px-1"
+                    style="font-size:0.8rem;"
+                    onchange="actualizarFilaNivel(this)">
+                ${optE}${optM}${optP}
+            </select>
+        </td>
+        <td class="text-right precio-display">S/ ${precioFinal}</td>
+        <td class="text-right subtotal-display">S/ ${subtotalFinal}</td>
+    </tr>`;
+}
+
+/**
+ * Muestra una notificación temporal en la parte superior.
+ */
+function mostrarNotificacion(mensaje, tipo) {
+    if (typeof Swal !== 'undefined' && tipo === 'success') {
+        Swal.fire({ icon: 'success', title: 'Listo', text: mensaje, timer: 2500, showConfirmButton: false });
+        return;
+    }
+    const cssClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
+    const div = $(`<div class="alert ${cssClass} alert-dismissible fade show"
+                        style="position:fixed;top:15px;right:15px;z-index:9999;min-width:300px;max-width:500px;">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    ${mensaje}
+                   </div>`);
+    $('body').append(div);
+    setTimeout(() => div.alert('close'), 4000);
 }
 </script>
 </body>

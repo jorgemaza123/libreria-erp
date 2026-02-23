@@ -37,6 +37,7 @@ public class CajaController {
 
         model.addAttribute("movimientos", cajaService.listarMovimientosSesion());
         model.addAttribute("balance", cajaService.obtenerBalanceSesion());
+        model.addAttribute("resumenCategoria", cajaService.obtenerResumenPorCategoria());
         return "caja/index";
     }
 
@@ -88,9 +89,14 @@ public class CajaController {
     public String movimiento(@RequestParam String tipo,
                              @RequestParam String concepto,
                              @RequestParam BigDecimal monto,
+                             @RequestParam(required = false) String categoria,
                              RedirectAttributes attr) {
         try {
-            cajaService.registrarMovimiento(tipo, concepto, monto);
+            if (categoria != null && !categoria.isBlank()) {
+                cajaService.registrarMovimiento(tipo, concepto, monto, categoria);
+            } else {
+                cajaService.registrarMovimiento(tipo, concepto, monto);
+            }
             attr.addFlashAttribute("success", "Registrado");
         } catch (Exception e) {
             attr.addFlashAttribute("error", e.getMessage());
@@ -127,11 +133,13 @@ public class CajaController {
                 mov.put("concepto", m.getConcepto());
                 mov.put("tipo", m.getTipo());
                 mov.put("monto", m.getMonto());
+                mov.put("categoria", m.getCategoriaMovimiento());
                 return mov;
             })
             .collect(Collectors.toList());
 
         datos.put("movimientos", movimientosJson);
+        datos.put("resumenCategoria", cajaService.obtenerResumenPorCategoria());
         datos.put("ultimaActualizacion",
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 

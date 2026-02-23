@@ -105,6 +105,10 @@ public class ListaEscolar {
     @Column(name = "monto_pendiente", precision = 12, scale = 2)
     private BigDecimal montoPendiente = BigDecimal.ZERO;
 
+    // --- COMENTARIOS ---
+    @Column(columnDefinition = "TEXT")
+    private String comentarios;
+
     // --- AUDITORÍA ---
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")

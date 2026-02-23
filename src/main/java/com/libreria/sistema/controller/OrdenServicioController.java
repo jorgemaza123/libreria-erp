@@ -89,7 +89,8 @@ public String nuevaOrden(Model model) {
             OrdenServicio guardada = ordenRepository.save(orden);
 
             if (orden.getACuenta().compareTo(BigDecimal.ZERO) > 0) {
-                cajaService.registrarMovimiento("INGRESO", "ADELANTO SERV #" + guardada.getId(), orden.getACuenta());
+                cajaService.registrarMovimiento("INGRESO", "ADELANTO SERV #" + guardada.getId(), orden.getACuenta(),
+                        com.libreria.sistema.model.CategoriaMovimiento.VENTA);
             }
             return ResponseEntity.ok(Map.of("message", "Orden registrada", "id", guardada.getId()));
         } catch (Exception e) {
@@ -106,7 +107,8 @@ public String nuevaOrden(Model model) {
             return ordenRepository.findById(id).map(orden -> {
                 try {
                     if (cobrarSaldo && orden.getSaldo().compareTo(BigDecimal.ZERO) > 0) {
-                        cajaService.registrarMovimiento("INGRESO", "SALDO FINAL SERV #" + orden.getId(), orden.getSaldo());
+                        cajaService.registrarMovimiento("INGRESO", "SALDO FINAL SERV #" + orden.getId(), orden.getSaldo(),
+                                com.libreria.sistema.model.CategoriaMovimiento.VENTA);
                         orden.setACuenta(orden.getTotal());
                         orden.setSaldo(BigDecimal.ZERO);
                     }

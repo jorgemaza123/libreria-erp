@@ -423,7 +423,10 @@ public class ReporteUniversalService {
 
             for (var item : v.getItems()) {
                 Producto prod = item.getProducto();
-                BigDecimal precioCompra = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
+                // Usar costo congelado si existe, sino fallback al producto actual
+                BigDecimal precioCompra = item.getCostoUnitario() != null
+                        ? item.getCostoUnitario()
+                        : (prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO);
                 BigDecimal costo = precioCompra.multiply(item.getCantidad());
                 BigDecimal ingreso = item.getSubtotal();
                 BigDecimal ganancia = ingreso.subtract(costo);
@@ -675,7 +678,10 @@ public class ReporteUniversalService {
 
             for (var item : v.getItems()) {
                 Producto prod = item.getProducto();
-                BigDecimal precioCompra = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
+                // Usar costo congelado si existe, sino fallback al producto actual
+                BigDecimal precioCompra = item.getCostoUnitario() != null
+                        ? item.getCostoUnitario()
+                        : (prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO);
                 BigDecimal costo = precioCompra.multiply(item.getCantidad());
                 BigDecimal ingreso = item.getSubtotal();
                 BigDecimal ganancia = ingreso.subtract(costo);

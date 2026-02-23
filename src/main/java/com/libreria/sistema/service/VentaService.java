@@ -295,6 +295,13 @@ public class VentaService {
             det.setPrecioUnitario(precioFinal);
             det.setValorUnitario(valorUnitario);
             det.setSubtotal(subtotalItem);
+
+            // Congelar costo al momento de la venta
+            BigDecimal costoUnit = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
+            det.setCostoUnitario(costoUnit);
+            det.setUtilidadUnitaria(precioFinal.subtract(costoUnit));
+            det.setUtilidadTotal(precioFinal.subtract(costoUnit).multiply(cantidad));
+
             det.setPorcentajeIgv(igvPorcentaje);
             
             // Corrección segura para mapear la afectación sin perder lógica
@@ -380,7 +387,7 @@ public class VentaService {
         // Movimiento de caja - OBLIGATORIO: Si falla, debe abortar la transacción
         cajaService.registrarMovimiento("INGRESO",
                 "VENTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")",
-                monto);
+                monto, CategoriaMovimiento.VENTA);
     }
 
     /**
@@ -604,7 +611,7 @@ public class VentaService {
         if (venta.getMontoPagado() != null && venta.getMontoPagado().compareTo(BigDecimal.ZERO) > 0) {
             try {
                 String concepto = "ANULACIÓN VENTA " + venta.getSerie() + "-" + venta.getNumero();
-                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado());
+                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado(), CategoriaMovimiento.OTRO_EGRESO);
             } catch (Exception e) {
                 // Si la caja está cerrada, no podemos registrar pero no bloqueamos la anulación
                 log.warn("No se pudo registrar egreso por anulación (¿caja cerrada?): {}", e.getMessage());

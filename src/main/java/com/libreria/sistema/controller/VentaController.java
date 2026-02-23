@@ -24,6 +24,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -120,6 +121,10 @@ public class VentaController {
     @GetMapping("/api/buscar-productos")
     @ResponseBody
     public List<Map<String, Object>> buscarProductos(@RequestParam String term) {
+        BigDecimal margenMinimoAlerta = configuracionService.obtenerConfiguracion().getMargenMinimoAlerta();
+        if (margenMinimoAlerta == null) margenMinimoAlerta = new BigDecimal("15.00");
+        final BigDecimal margenMinConfig = margenMinimoAlerta;
+
         return productoBusquedaService.buscar(term, 20).stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
@@ -164,6 +169,26 @@ public class VentaController {
             map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
             map.put("stockBajo", p.getStockActual() != null && p.getStockMinimo() != null
                     && p.getStockActual() <= p.getStockMinimo());
+
+            // Alerta de margen bajo (calculado en backend — no expone precioCompra)
+            BigDecimal precioVenta = p.getPrecioVenta();
+            BigDecimal precioCompra = p.getPrecioCompra();
+            if (precioVenta != null && precioCompra != null && precioVenta.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal margenActual = precioVenta.subtract(precioCompra)
+                        .divide(precioVenta, 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(1, RoundingMode.HALF_UP);
+                map.put("margenActual", margenActual);
+                // Precio mínimo = costoCompra / (1 - margenMinimo/100)
+                BigDecimal divisor = BigDecimal.ONE.subtract(margenMinConfig.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                if (divisor.compareTo(BigDecimal.ZERO) > 0) {
+                    map.put("precioMinimoRecomendado", precioCompra.divide(divisor, 2, RoundingMode.HALF_UP));
+                }
+                map.put("margenBajo", margenActual.compareTo(margenMinConfig) < 0);
+            } else {
+                map.put("margenBajo", false);
+            }
+            map.put("margenMinimoAlerta", margenMinConfig);
 
             return map;
         }).collect(Collectors.toList());

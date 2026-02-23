@@ -97,7 +97,7 @@
                     </div>
                     <div class="card-body">
                         <form method="get" class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label>Estado</label>
                                 <select name="estado" class="form-control form-control-sm">
                                     <option value="">-- Todos --</option>
@@ -108,27 +108,28 @@
                                     <option value="CANCELADA" th:selected="${estadoFiltro == 'CANCELADA'}">Cancelada</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label>Colegio</label>
-                                <input type="text" name="colegio" class="form-control form-control-sm"
-                                       th:value="${colegioFiltro}" placeholder="Buscar colegio...">
-                            </div>
-                            <div class="col-md-2">
-                                <label>Grado</label>
-                                <input type="text" name="grado" class="form-control form-control-sm"
-                                       th:value="${gradoFiltro}" placeholder="Ej: 3° Primaria">
+                            <div class="col-md-5">
+                                <label>Buscar</label>
+                                <div class="input-group input-group-sm">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    </div>
+                                    <input type="text" name="busqueda" class="form-control"
+                                           th:value="${busquedaFiltro}"
+                                           placeholder="Alumno, colegio, padre, teléfono, grado, código...">
+                                </div>
                             </div>
                             <div class="col-md-2">
                                 <label>Año</label>
                                 <input type="number" name="anio" class="form-control form-control-sm"
                                        th:value="${anioFiltro}" placeholder="2025">
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
+                            <div class="col-md-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary btn-sm mr-2">
-                                    <i class="fas fa-search"></i> Filtrar
+                                    <i class="fas fa-search"></i> Buscar
                                 </button>
                                 <a href="/listas-escolares" class="btn btn-secondary btn-sm">
-                                    <i class="fas fa-times"></i>
+                                    <i class="fas fa-times"></i> Limpiar
                                 </a>
                             </div>
                         </form>
@@ -148,6 +149,7 @@
                                     <th>Contacto</th>
                                     <th class="text-center">Items</th>
                                     <th class="text-center">Progreso</th>
+                                    <th class="text-right">Ganancia</th>
                                     <th>Estado</th>
                                     <th>Fecha</th>
                                     <th class="text-center">Acciones</th>
@@ -189,6 +191,27 @@
                                         </div>
                                         <small th:text="${lista.porcentajeAvance} + '%'">50%</small>
                                     </td>
+                                    <td class="text-right" style="min-width: 100px;">
+                                        <th:block th:if="${resumenesMap.containsKey(lista.id)}"
+                                                  th:with="rf=${resumenesMap.get(lista.id)}">
+                                            <strong th:classappend="${rf.medio.ganancia.doubleValue() >= 0} ? 'text-success' : 'text-danger'">
+                                                S/ <span th:text="${#numbers.formatDecimal(rf.medio.ganancia, 1, 2)}">0</span>
+                                            </strong>
+                                            <br>
+                                            <small>
+                                                <span class="badge badge-sm"
+                                                      th:classappend="${rf.medio.margen.doubleValue() >= 30} ? 'badge-success' : (${rf.medio.margen.doubleValue() >= 15} ? 'badge-warning' : 'badge-danger')"
+                                                      th:text="${#numbers.formatDecimal(rf.medio.margen, 1, 1)} + '%'">0%</span>
+                                            </small>
+                                            <span class="ml-1" th:if="${rf.itemsSinCosto > 0}"
+                                                  th:title="'⚠ ' + ${rf.itemsSinCosto} + ' producto(s) sin precio de compra. Margen puede estar inflado.'"
+                                                  data-toggle="tooltip" data-placement="top"
+                                                  style="cursor: help;">
+                                                <i class="fas fa-exclamation-triangle text-danger" style="font-size: 0.9rem;"></i>
+                                            </span>
+                                        </th:block>
+                                        <small class="text-muted" th:unless="${resumenesMap.containsKey(lista.id)}">-</small>
+                                    </td>
                                     <td>
                                         <span class="badge"
                                               th:classappend="${lista.estado == 'PENDIENTE'} ? 'badge-secondary' :
@@ -209,9 +232,18 @@
                                             <a th:href="@{/listas-escolares/{id}/editar(id=${lista.id})}"
                                                class="btn btn-warning"
                                                th:if="${lista.estado != 'COMPLETADA' and lista.estado != 'CANCELADA'}"
-                                               title="Editar">
+                                               title="Editar Cotización">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            <button type="button"
+                                                    class="btn btn-danger btn-eliminar-lista"
+                                                    sec:authorize="hasRole('ADMIN')"
+                                                    th:if="${lista.itemsVendidos == 0}"
+                                                    th:data-id="${lista.id}"
+                                                    th:data-codigo="${lista.codigoCompleto}"
+                                                    title="Eliminar Lista">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -230,17 +262,17 @@
                         <nav>
                             <ul class="pagination pagination-sm m-0 float-right">
                                 <li class="page-item" th:classappend="${listas.first} ? 'disabled'">
-                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number - 1}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}">
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number - 1}, estado=${estadoFiltro}, busqueda=${busquedaFiltro}, anio=${anioFiltro})}">
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
                                 </li>
                                 <li class="page-item" th:each="i : ${#numbers.sequence(0, listas.totalPages - 1)}"
                                     th:classappend="${i == listas.number} ? 'active'">
-                                    <a class="page-link" th:href="@{/listas-escolares(page=${i}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}"
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${i}, estado=${estadoFiltro}, busqueda=${busquedaFiltro}, anio=${anioFiltro})}"
                                        th:text="${i + 1}">1</a>
                                 </li>
                                 <li class="page-item" th:classappend="${listas.last} ? 'disabled'">
-                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number + 1}, estado=${estadoFiltro}, colegio=${colegioFiltro}, grado=${gradoFiltro}, anio=${anioFiltro})}">
+                                    <a class="page-link" th:href="@{/listas-escolares(page=${listas.number + 1}, estado=${estadoFiltro}, busqueda=${busquedaFiltro}, anio=${anioFiltro})}">
                                         <i class="fas fa-chevron-right"></i>
                                     </a>
                                 </li>
@@ -257,9 +289,101 @@
         </section>
     </div>
 
+    <!-- Modal Confirmar Eliminación -->
+    <div class="modal fade" id="modalConfirmarEliminar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro de eliminar la lista <strong id="codigoListaAEliminar"></strong>?</p>
+                    <div class="alert alert-warning py-2 mb-0 small">
+                        <i class="fas fa-info-circle"></i>
+                        La lista quedará marcada como eliminada y no aparecerá en el listado.
+                        Solo se puede eliminar listas sin ventas realizadas.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer th:replace="~{fragments/layout :: footer}"></footer>
 </div>
 
 <script th:replace="~{fragments/layout :: scripts}"></script>
+<script>
+$(function() {
+    $('[data-toggle="tooltip"]').tooltip();
+});
+
+// =====================================================================
+//  ELIMINACIÓN LÓGICA DE LISTA — Soft Delete
+// =====================================================================
+
+let listaIdAEliminar = null;
+let filaAEliminar = null;
+
+// Capturar click en cualquier botón de eliminar de la tabla
+$(document).on('click', '.btn-eliminar-lista', function() {
+    listaIdAEliminar = $(this).data('id');
+    filaAEliminar = $(this).closest('tr');
+    $('#codigoListaAEliminar').text($(this).data('codigo'));
+    $('#btnConfirmarEliminar').prop('disabled', false)
+        .html('<i class="fas fa-trash"></i> Eliminar');
+    $('#modalConfirmarEliminar').modal('show');
+});
+
+// Confirmar y ejecutar eliminación
+$('#btnConfirmarEliminar').on('click', function() {
+    if (!listaIdAEliminar) return;
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Eliminando...');
+
+    $.ajax({
+        url: '/listas-escolares/api/' + listaIdAEliminar,
+        method: 'DELETE',
+        success: function(res) {
+            $('#modalConfirmarEliminar').modal('hide');
+            if (res.success) {
+                // Eliminar la fila de la tabla sin recargar la página
+                filaAEliminar.fadeOut(400, function() {
+                    $(this).remove();
+                    // Actualizar contador si queda vacía la tabla
+                    if ($('tbody tr.item-fila, tbody tr:not(.no-data-row)').length === 0) {
+                        $('tbody').append(
+                            '<tr class="no-data-row"><td colspan="11" class="text-center text-muted py-4">' +
+                            '<i class="fas fa-inbox fa-3x mb-3 d-block"></i>No hay listas escolares registradas</td></tr>'
+                        );
+                    }
+                });
+            } else {
+                alert('No se pudo eliminar: ' + (res.error || 'Error desconocido'));
+            }
+        },
+        error: function(xhr) {
+            const err = xhr.responseJSON ? xhr.responseJSON.error : 'Error al eliminar';
+            alert('Error: ' + err);
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i class="fas fa-trash"></i> Eliminar');
+            listaIdAEliminar = null;
+            filaAEliminar = null;
+        }
+    });
+});
+</script>
 </body>
 </html>

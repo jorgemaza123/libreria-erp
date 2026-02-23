@@ -33,4 +33,8 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
 // Sumar ingresos/egresos de forma segura (evita el error de NULL)
     @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.sesion = :sesion AND m.tipo = :tipo")
     BigDecimal sumarPorSesionYTipo(@Param("sesion") SesionCaja sesion, @Param("tipo") String tipo);
+
+    // Sumar montos agrupados por categoría para una sesión
+    @Query("SELECT m.categoriaMovimiento, COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.sesion = :sesion GROUP BY m.categoriaMovimiento")
+    List<Object[]> sumarPorSesionYCategoria(@Param("sesion") SesionCaja sesion);
 }

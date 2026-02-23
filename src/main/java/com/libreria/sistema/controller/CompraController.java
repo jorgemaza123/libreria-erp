@@ -99,9 +99,24 @@ public class CompraController {
                 kardex.setStockActual(prod.getStockActual() + item.getCantidad());
                 kardexRepository.save(kardex);
 
-                // 3. ACTUALIZAR PRODUCTO (Subir Stock y Actualizar Costo)
-                prod.setStockActual(prod.getStockActual() + item.getCantidad());
-                prod.setPrecioCompra(item.getCosto());
+                // 3. ACTUALIZAR PRODUCTO (Costo Promedio Ponderado + Subir Stock)
+                // IMPORTANTE: Calcular promedio ANTES de sumar stock
+                BigDecimal costoActual = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
+                int stockAntes = prod.getStockActual() != null ? prod.getStockActual() : 0;
+                int cantidadNueva = item.getCantidad();
+                BigDecimal costoNuevo = item.getCosto();
+
+                if (stockAntes + cantidadNueva > 0) {
+                    BigDecimal valorInventarioActual = costoActual.multiply(BigDecimal.valueOf(stockAntes));
+                    BigDecimal valorCompra = costoNuevo.multiply(BigDecimal.valueOf(cantidadNueva));
+                    BigDecimal costoPromedio = valorInventarioActual.add(valorCompra)
+                        .divide(BigDecimal.valueOf(stockAntes + cantidadNueva), 2, java.math.RoundingMode.HALF_UP);
+                    prod.setPrecioCompra(costoPromedio);
+                } else {
+                    prod.setPrecioCompra(costoNuevo);
+                }
+
+                prod.setStockActual(stockAntes + cantidadNueva);
                 productoRepository.save(prod);
             }
 
@@ -112,7 +127,8 @@ public class CompraController {
             cajaService.registrarMovimiento(
                 "EGRESO",
                 "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(),
-                totalCompra
+                totalCompra,
+                com.libreria.sistema.model.CategoriaMovimiento.COMPRA_MERCADERIA
             );
 
             return ResponseEntity.ok(Map.of("message", "Compra registrada exitosamente"));

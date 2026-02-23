@@ -76,6 +76,53 @@
                 </div>
             </div>
 
+            <!-- RESUMEN GENERAL -->
+            <div class="row" id="resumenCards" style="display: none;">
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-success">
+                        <span class="info-box-icon"><i class="fas fa-coins"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ganancia Total</span>
+                            <span class="info-box-number" id="resumenGanancia">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-info">
+                        <span class="info-box-icon"><i class="fas fa-cash-register"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Ingreso Total</span>
+                            <span class="info-box-number" id="resumenIngreso">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box" id="boxMargenGlobal">
+                        <span class="info-box-icon bg-gradient-lime"><i class="fas fa-percentage"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Margen Global</span>
+                            <span class="info-box-number" id="resumenMargen">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box bg-gradient-danger" id="boxMargenBajo" style="display: none;">
+                        <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Margen Bajo (&lt;10%)</span>
+                            <span class="info-box-number" id="resumenMargenBajo">0 productos</span>
+                        </div>
+                    </div>
+                    <div class="info-box bg-gradient-olive" id="boxTotalProductos">
+                        <span class="info-box-icon"><i class="fas fa-boxes"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Productos Analizados</span>
+                            <span class="info-box-number" id="resumenTotalProductos">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card card-success card-outline">
                 <div class="card-header">
                     <h3 class="card-title"><i class="fas fa-chart-line"></i> Rentabilidad por Productos</h3>
@@ -137,15 +184,36 @@
             $.ajax({
                 url: '/reportes/financieros/api/rentabilidad',
                 data: {fechaInicio: fi, fechaFin: ff},
-                success: function(data) {
+                success: function(response) {
                     const tbody = $('#tbody');
                     tbody.empty();
-                    
+
+                    const data = response.productos || response;
+
                     if (!data || data.length === 0) {
                         tbody.html('<tr><td colspan="8" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
+                        $('#resumenCards').hide();
                         return;
                     }
-                    
+
+                    // Actualizar resumen
+                    if (response.totalGanancia !== undefined) {
+                        $('#resumenCards').show();
+                        $('#resumenGanancia').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalGanancia));
+                        $('#resumenIngreso').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalIngreso));
+                        $('#resumenMargen').text(formatear(response.margenGlobal) + '%');
+                        $('#resumenTotalProductos').text(response.totalProductos);
+
+                        if (response.productosMargenBajo > 0) {
+                            $('#boxMargenBajo').show();
+                            $('#boxTotalProductos').hide();
+                            $('#resumenMargenBajo').text(response.productosMargenBajo + ' productos');
+                        } else {
+                            $('#boxMargenBajo').hide();
+                            $('#boxTotalProductos').show();
+                        }
+                    }
+
                     data.forEach(item => {
                         const margenPorc = parseFloat(item.margenPorcentaje);
                         // Color para márgenes bajos/altos
@@ -166,6 +234,18 @@
                             </tr>
                         `);
                     });
+
+                    // Fila de totales
+                    if (response.totalGanancia !== undefined) {
+                        tbody.append(`
+                            <tr class="bg-light font-weight-bold">
+                                <td colspan="5" class="text-right">TOTALES:</td>
+                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia / (data.length || 1))}</td>
+                                <td class="text-right">${formatear(response.margenGlobal)}%</td>
+                                <td class="text-right text-success">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia)}</td>
+                            </tr>
+                        `);
+                    }
                 },
                 error: () => {
                     if(typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');

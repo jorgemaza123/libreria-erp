@@ -1,6 +1,7 @@
 package com.libreria.sistema.service;
 
 import com.libreria.sistema.aspect.Auditable;
+import com.libreria.sistema.model.CategoriaMovimiento;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.SesionCaja;
 import com.libreria.sistema.model.Usuario;
@@ -63,11 +64,14 @@ public class CajaService {
         sesion.setEstado("ABIERTA");
         sesionRepo.save(sesion);
         
-        registrarMovimiento("INGRESO", "APERTURA DE CAJA", montoInicial);
+        registrarMovimiento("INGRESO", "APERTURA DE CAJA", montoInicial, CategoriaMovimiento.OTRO_INGRESO);
     }
 
+    /**
+     * Registra movimiento CON categoría estructurada.
+     */
     @Transactional
-    public void registrarMovimiento(String tipo, String concepto, BigDecimal monto) {
+    public void registrarMovimiento(String tipo, String concepto, BigDecimal monto, String categoria) {
         SesionCaja sesion = obtenerSesionActiva()
                 .orElseThrow(() -> new RuntimeException("CAJA CERRADA: Debe abrir caja antes de operar."));
 
@@ -78,8 +82,19 @@ public class CajaService {
         mov.setFecha(LocalDateTime.now());
         mov.setUsuario(getUsuarioActual());
         mov.setSesion(sesion);
+        mov.setCategoriaMovimiento(categoria);
 
         movimientoRepo.save(mov);
+    }
+
+    /**
+     * Registra movimiento sin categoría (retrocompatibilidad).
+     * Asigna OTRO_INGRESO u OTRO_EGRESO según tipo.
+     */
+    @Transactional
+    public void registrarMovimiento(String tipo, String concepto, BigDecimal monto) {
+        String categoria = "INGRESO".equals(tipo) ? CategoriaMovimiento.OTRO_INGRESO : CategoriaMovimiento.OTRO_EGRESO;
+        registrarMovimiento(tipo, concepto, monto, categoria);
     }
 
     public List<MovimientoCaja> listarMovimientosSesion() {
@@ -130,6 +145,24 @@ public class CajaService {
     
     public Map<String, BigDecimal> obtenerBalanceHoy() {
        return obtenerBalanceSesion();
+    }
+
+    /**
+     * Obtiene resumen de movimientos agrupados por categoría para la sesión activa.
+     * Retorna mapa: categoría → monto total.
+     */
+    public Map<String, BigDecimal> obtenerResumenPorCategoria() {
+        SesionCaja sesion = obtenerSesionActiva().orElse(null);
+        if (sesion == null) return Map.of();
+
+        List<Object[]> resultados = movimientoRepo.sumarPorSesionYCategoria(sesion);
+        Map<String, BigDecimal> resumen = new HashMap<>();
+        for (Object[] row : resultados) {
+            String categoria = row[0] != null ? (String) row[0] : "SIN_CATEGORIA";
+            BigDecimal total = row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO;
+            resumen.put(categoria, total);
+        }
+        return resumen;
     }
 
     // =====================================================

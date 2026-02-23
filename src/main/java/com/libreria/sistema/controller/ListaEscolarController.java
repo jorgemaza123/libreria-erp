@@ -72,24 +72,35 @@ public class ListaEscolarController {
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
     public String index(
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) String colegio,
-            @RequestParam(required = false) String grado,
+            @RequestParam(required = false) String busqueda,
             @RequestParam(required = false) Integer anio,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Model model) {
 
         Page<ListaEscolar> listas = listaService.buscar(
-            estado, colegio, grado, anio,
-            PageRequest.of(page, size, Sort.by("fechaCreacion").descending())
+            estado, busqueda, anio,
+            PageRequest.of(page, size)
         );
 
         model.addAttribute("listas", listas);
         model.addAttribute("estadoFiltro", estado);
-        model.addAttribute("colegioFiltro", colegio);
-        model.addAttribute("gradoFiltro", grado);
+        model.addAttribute("busquedaFiltro", busqueda);
         model.addAttribute("anioFiltro", anio);
         model.addAttribute("estadisticas", listaService.obtenerEstadisticas(anio));
+
+        // Resumen financiero por lista (nivel medio como referencia)
+        Map<Long, com.libreria.sistema.model.dto.ResumenFinancieroDTO> resumenesMap = new java.util.HashMap<>();
+        for (ListaEscolar lista : listas.getContent()) {
+            if (!"PENDIENTE".equals(lista.getEstado()) && !"CANCELADA".equals(lista.getEstado())) {
+                try {
+                    resumenesMap.put(lista.getId(), listaService.calcularResumenFinanciero(lista.getId()));
+                } catch (Exception e) {
+                    // Si falla el calculo, no bloquear la vista
+                }
+            }
+        }
+        model.addAttribute("resumenesMap", resumenesMap);
 
         return "lista-escolar/index";
     }
@@ -119,6 +130,7 @@ public class ListaEscolarController {
         model.addAttribute("detallesVendibles", listaService.obtenerVendibles(id));
         model.addAttribute("detallesVendidos", listaService.obtenerVendidos(id));
         model.addAttribute("historialVentas", listaService.obtenerHistorialVentas(id));
+        model.addAttribute("resumenFinanciero", listaService.calcularResumenFinanciero(id));
 
         // Verificar si la caja está abierta
         try {
@@ -257,12 +269,33 @@ public class ListaEscolarController {
                     item.put("productoNombre", p.getNombre());
                     item.put("productoStock", p.getStockActual());
                     item.put("tieneStock", d.tieneStockDisponible());
+                } else {
+                    item.put("productoId", null);
+                    item.put("productoNombre", null);
+                    item.put("productoStock", 0);
+                    item.put("tieneStock", false);
                 }
 
-                // Opciones de niveles
+                // Precios por nivel
                 item.put("precioEconomico", d.getPrecioEconomico());
                 item.put("precioMedio", d.getPrecioMedio());
                 item.put("precioPremium", d.getPrecioPremium());
+
+                // Productos por nivel (necesarios para selección dinámica en la tabla/POS)
+                Producto pe = d.getProductoEconomico();
+                item.put("productoEconomicoId", pe != null ? pe.getId() : null);
+                item.put("productoEconomicoNombre", pe != null ? pe.getNombre() : null);
+                item.put("productoEconomicoStock", pe != null ? pe.getStockActual() : null);
+
+                Producto pm = d.getProductoMedio();
+                item.put("productoMedioId", pm != null ? pm.getId() : null);
+                item.put("productoMedioNombre", pm != null ? pm.getNombre() : null);
+                item.put("productoMedioStock", pm != null ? pm.getStockActual() : null);
+
+                Producto pp = d.getProductoPremium();
+                item.put("productoPremiumId", pp != null ? pp.getId() : null);
+                item.put("productoPremiumNombre", pp != null ? pp.getNombre() : null);
+                item.put("productoPremiumStock", pp != null ? pp.getStockActual() : null);
 
                 return item;
             }).toList());
@@ -331,7 +364,8 @@ public class ListaEscolarController {
     }
 
     /**
-     * Buscar productos para asignar
+     * Buscar productos para asignar.
+     * FTS + fallback ILIKE está integrado directamente en ProductoBusquedaService.
      */
     @GetMapping("/api/buscar-productos")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
@@ -374,6 +408,7 @@ public class ListaEscolarController {
             response.put("totalEconomico", lista.getTotalEconomico());
             response.put("totalMedio", lista.getTotalMedio());
             response.put("totalPremium", lista.getTotalPremium());
+            response.put("comentarios", lista.getComentarios() != null ? lista.getComentarios() : "");
 
             // Mapear detalles con toda la información por nivel
             response.put("detalles", lista.getDetalles().stream().map(d -> {
@@ -384,7 +419,11 @@ public class ListaEscolarController {
                 item.put("cantidad", d.getCantidadSolicitada());
                 item.put("estado", d.getEstado());
                 item.put("esRegalo", d.esItemRegalo());
+                item.put("textoRegalo", d.getTextoRegalo());
                 item.put("nivelRegalo", d.getNivelRegalo());
+                item.put("esServicio", d.esItemServicio());
+                item.put("textoServicio", d.getTextoServicio());
+                item.put("nivelServicio", d.getNivelServicio());
 
                 // Nivel Económico
                 item.put("productoEconomicoId", d.getProductoEconomico() != null ? d.getProductoEconomico().getId() : null);
@@ -410,6 +449,11 @@ public class ListaEscolarController {
                 item.put("descripcionManualPremium", d.getDescripcionManualPremium() != null ? d.getDescripcionManualPremium() : "");
                 item.put("nombreProveedor", d.getNombreProveedor() != null ? d.getNombreProveedor() : "");
                 item.put("productoComprado", Boolean.TRUE.equals(d.getProductoComprado()));
+
+                // Omisión por nivel
+                item.put("omitidoEconomico", Boolean.TRUE.equals(d.getOmitidoEconomico()));
+                item.put("omitidoMedio", Boolean.TRUE.equals(d.getOmitidoMedio()));
+                item.put("omitidoPremium", Boolean.TRUE.equals(d.getOmitidoPremium()));
 
                 return item;
             }).toList());
@@ -494,6 +538,120 @@ public class ListaEscolarController {
     public ResponseEntity<?> eliminarRegalo(@PathVariable Long id) {
         try {
             listaService.eliminarRegalo(id);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Agregar servicio adicional a un nivel
+     */
+    @PostMapping("/api/{listaId}/servicio")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> agregarServicio(
+            @PathVariable Long listaId,
+            @RequestBody Map<String, Object> datos) {
+        try {
+            String texto = (String) datos.get("texto");
+            String nivel = (String) datos.get("nivel");
+            BigDecimal precio = new BigDecimal(datos.get("precio").toString());
+
+            if (texto == null || texto.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "La descripcion del servicio es requerida"));
+            }
+            if (precio.compareTo(BigDecimal.ZERO) <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El precio debe ser mayor a cero"));
+            }
+
+            DetalleListaEscolar servicio = listaService.agregarServicio(listaId, texto, precio, nivel);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "id", servicio.getId(),
+                "texto", servicio.getTextoOriginal(),
+                "nivel", servicio.getNivelServicio(),
+                "precio", precio
+            ));
+        } catch (Exception e) {
+            log.error("Error al agregar servicio: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Eliminar servicio
+     */
+    @DeleteMapping("/api/servicio/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> eliminarServicio(@PathVariable Long id) {
+        try {
+            listaService.eliminarServicio(id);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Omitir o des-omitir un item para un nivel específico
+     */
+    @PostMapping("/api/detalle/{detalleId}/omitir")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> omitirDetalle(
+            @PathVariable Long detalleId,
+            @RequestBody Map<String, Object> datos) {
+        try {
+            String nivel = (String) datos.get("nivel");
+            boolean omitir = datos.get("omitir") != null ? (Boolean) datos.get("omitir") : true;
+
+            DetalleListaEscolar detalle = listaService.omitirPorNivel(detalleId, nivel, omitir);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "id", detalle.getId(),
+                "omitido", detalle.esOmitidoPorNivel(nivel)
+            ));
+        } catch (Exception e) {
+            log.error("Error al omitir detalle: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Actualizar cantidades solicitadas en lote (para persistir antes de PDF/WhatsApp)
+     */
+    @PutMapping("/api/{listaId}/cantidades")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> actualizarCantidades(
+            @PathVariable Long listaId,
+            @RequestBody List<Map<String, Object>> cantidades) {
+        try {
+            listaService.actualizarCantidades(listaId, cantidades);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            log.error("Error al actualizar cantidades: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Guardar comentarios de la lista
+     */
+    @PutMapping("/api/{id}/comentarios")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> guardarComentarios(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> datos) {
+        try {
+            ListaEscolar lista = listaService.obtenerConDetalles(id)
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+            lista.setComentarios(datos.get("comentarios"));
+            listaService.guardarLista(lista);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
@@ -671,6 +829,27 @@ public class ListaEscolarController {
     }
 
     /**
+     * Sanitiza un nombre para usarlo como parte del nombre de archivo PDF.
+     * Elimina tildes, caracteres especiales y reemplaza espacios con guiones bajos.
+     */
+    private static String sanitizarNombreArchivo(String nombre) {
+        if (nombre == null || nombre.isBlank()) return "";
+        String r = nombre.trim()
+            .replaceAll("[áàäâÁÀÄÂ]", "a")
+            .replaceAll("[éèëêÉÈËÊ]", "e")
+            .replaceAll("[íìïîÍÌÏÎ]", "i")
+            .replaceAll("[óòöôÓÒÖÔ]", "o")
+            .replaceAll("[úùüûÚÙÜÛ]", "u")
+            .replaceAll("[ñÑ]", "n")
+            .replaceAll("[^a-zA-Z0-9 _-]", "")
+            .replaceAll("\\s+", "_")
+            .replaceAll("_+", "_")
+            .replaceAll("^_|_$", "");
+        // Limitar a 40 caracteres para no generar nombres demasiado largos
+        return r.length() > 40 ? r.substring(0, 40) : r;
+    }
+
+    /**
      * Layout adaptativo para PDF A4.
      * No usa estimaciones — el modo se selecciona por cantidad de items
      * y se degrada automáticamente en generarPDF() si la medición real no cabe.
@@ -691,25 +870,29 @@ public class ListaEscolarController {
         static final float ANCHO_DESC_PT = (PageSize.A4.getWidth() - 40f) * (3.8f / 7.5f);
 
         // Modos ordenados del más amplio al más compacto
-        static final String[] MODOS = {"EXPANDED", "NORMAL", "COMPACT", "ULTRA_COMPACT"};
+        static final String[] MODOS = {"EXPANDED", "NORMAL", "COMPACT", "ULTRA_COMPACT", "NANO", "MICRO"};
 
         /** Selecciona modo inicial por cantidad de items (sin verificación de altura). */
         static PdfLayout modoInicial(int totalFilas) {
             PdfLayout l = new PdfLayout();
-            if (totalFilas <= 12) aplicarExpanded(l);
+            if (totalFilas <= 12)      aplicarExpanded(l);
             else if (totalFilas <= 22) aplicarNormal(l);
             else if (totalFilas <= 32) aplicarCompact(l);
-            else aplicarUltraCompact(l);
+            else if (totalFilas <= 44) aplicarUltraCompact(l);
+            else if (totalFilas <= 58) aplicarNano(l);
+            else                       aplicarMicro(l);
             return l;
         }
 
-        /** Degrada al siguiente modo más compacto. Retorna false si ya es ULTRA_COMPACT. */
+        /** Degrada al siguiente modo más compacto. Retorna false si ya es MICRO. */
         boolean degradar() {
             return switch (mode) {
-                case "EXPANDED" -> { aplicarNormal(this); yield true; }
-                case "NORMAL"   -> { aplicarCompact(this); yield true; }
-                case "COMPACT"  -> { aplicarUltraCompact(this); yield true; }
-                default         -> false; // Ya es ULTRA_COMPACT, no se puede degradar más
+                case "EXPANDED"      -> { aplicarNormal(this);       yield true; }
+                case "NORMAL"        -> { aplicarCompact(this);      yield true; }
+                case "COMPACT"       -> { aplicarUltraCompact(this); yield true; }
+                case "ULTRA_COMPACT" -> { aplicarNano(this);         yield true; }
+                case "NANO"          -> { aplicarMicro(this);        yield true; }
+                default              -> false; // Ya es MICRO, no se puede degradar más
             };
         }
 
@@ -773,6 +956,36 @@ public class ListaEscolarController {
             l.mode = "ULTRA_COMPACT";
         }
 
+        /** ~45-58 items: nano compacto */
+        private static void aplicarNano(PdfLayout l) {
+            l.fontSize = 7.5f;
+            l.fontSizeHeader = 8f;
+            l.fontSizeTitle = 7f;
+            l.fontSizeSubtotal = 6.5f;
+            l.fontSizeTotal = 8.5f;
+            l.cellPadding = 0.4f;
+            l.leading = 0.9f;
+            l.spacingBefore = 1f;
+            l.pendientesFontSize = 6.5f;
+            l.condicionesFontSize = 5.5f;
+            l.mode = "NANO";
+        }
+
+        /** 58+ items: mínimo legible */
+        private static void aplicarMicro(PdfLayout l) {
+            l.fontSize = 7f;
+            l.fontSizeHeader = 7.5f;
+            l.fontSizeTitle = 6.5f;
+            l.fontSizeSubtotal = 6f;
+            l.fontSizeTotal = 8f;
+            l.cellPadding = 0.2f;
+            l.leading = 0.85f;
+            l.spacingBefore = 0.5f;
+            l.pendientesFontSize = 6f;
+            l.condicionesFontSize = 5f;
+            l.mode = "MICRO";
+        }
+
         static boolean textoHaraWrap(String texto, float fontSize) {
             if (texto == null || texto.isEmpty()) return false;
             return texto.length() * fontSize * 0.5f > ANCHO_DESC_PT;
@@ -823,7 +1036,14 @@ public class ListaEscolarController {
         java.util.List<String> descripcionesCotizados = new java.util.ArrayList<>();
 
         for (DetalleListaEscolar detalle : lista.getDetalles()) {
+            // Saltar items omitidos para este nivel
+            if (detalle.esOmitidoPorNivel(nivel)) {
+                continue;
+            }
             if (detalle.esItemRegalo() && detalle.getNivelRegalo() != null && !detalle.getNivelRegalo().equals(nivel)) {
+                continue;
+            }
+            if (detalle.esItemServicio() && detalle.getNivelServicio() != null && !detalle.getNivelServicio().equals(nivel)) {
                 continue;
             }
 
@@ -835,6 +1055,9 @@ public class ListaEscolarController {
             if (detalle.esItemRegalo()) {
                 cotizados.add(detalle);
                 descripcionesCotizados.add("REGALO: " + normalizarDescripcion(detalle.getTextoOriginal()));
+            } else if (detalle.esItemServicio()) {
+                cotizados.add(detalle);
+                descripcionesCotizados.add("SERVICIO: " + normalizarDescripcion(detalle.getTextoOriginal()));
             } else if ((tieneProducto && tienePrecio) || (esCotizacionProveedor && tienePrecio)) {
                 cotizados.add(detalle);
                 String desc;
@@ -879,7 +1102,13 @@ public class ListaEscolarController {
             Set<String> nivelesSet = new HashSet<>(Arrays.asList(niveles.toUpperCase().split(",")));
 
             response.setContentType("application/pdf");
-            String filename = "Cotizacion_" + lista.getCodigoCompleto().replace("-", "_") + ".pdf";
+            // Nombre del archivo: NombreAlumno_Cotizacion_LE001_000003.pdf
+            // Usa el nombre del alumno; si no existe, usa el del contacto/apoderado
+            String nombrePersona = lista.getNombreAlumno() != null && !lista.getNombreAlumno().isBlank()
+                    ? sanitizarNombreArchivo(lista.getNombreAlumno())
+                    : sanitizarNombreArchivo(lista.getContactoNombre());
+            String prefijo = (nombrePersona != null && !nombrePersona.isBlank()) ? nombrePersona + "_" : "";
+            String filename = prefijo + "Cotizacion_" + lista.getCodigoCompleto().replace("-", "_") + ".pdf";
             response.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
 
             // A4 con márgenes: 20 laterales, 15 top/bottom
@@ -912,26 +1141,21 @@ public class ListaEscolarController {
                 PdfPTable tAlumno = pdfBuildDatosAlumno(lista, layout);
                 PdfPTable[] bodyTables = pdfBuildSeccionNivel(lista, nivel, config, items, layout);
                 BigDecimal totalNivel = pdfCalcularTotal(items, nivel);
-                PdfPTable tResumen = pdfBuildResumenFinanciero(totalNivel, config, layout);
-                PdfPTable tCondiciones = pdfBuildCondicionesComerciales(config, layout);
-                PdfPTable tFirma = pdfBuildFirma(config, layout);
-                Paragraph pLeyenda = pdfBuildLeyenda(layout);
+                // Footer combinado 2 columnas: total (izq) + condiciones+leyenda+comentarios (der)
+                PdfPTable tFooter = pdfBuildFooterCombinado(totalNivel, config, layout, lista, items);
 
-                // Medir alturas reales
-                float hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tResumen, tCondiciones, tFirma);
-                // Agregar margen para spacingBefore/After y leyenda (~30pt de gaps mínimos + leyenda)
-                float margenGaps = 30f + 12f;
+                // Medir alturas reales — el footer ya incluye condiciones, leyenda y comentarios
+                float hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tFooter);
+                // Gaps entre secciones (~25pt suficiente)
+                float margenGaps = 25f;
 
                 // Loop de degradación: si no cabe, reconstruir con modo más compacto
                 while (hTotal + margenGaps > alturaUtil && layout.degradar()) {
                     tHeader = pdfBuildHeader(config, lista, layout);
                     tAlumno = pdfBuildDatosAlumno(lista, layout);
                     bodyTables = pdfBuildSeccionNivel(lista, nivel, config, items, layout);
-                    tResumen = pdfBuildResumenFinanciero(totalNivel, config, layout);
-                    tCondiciones = pdfBuildCondicionesComerciales(config, layout);
-                    tFirma = pdfBuildFirma(config, layout);
-                    pLeyenda = pdfBuildLeyenda(layout);
-                    hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tResumen, tCondiciones, tFirma);
+                    tFooter = pdfBuildFooterCombinado(totalNivel, config, layout, lista, items);
+                    hTotal = pdfMedirTodo(anchoUtil, tHeader, tAlumno, bodyTables, tFooter);
                 }
 
                 log.debug("PDF modo final: {} | hTotal: {}pt | alturaUtil: {}pt | cabe: {}",
@@ -950,56 +1174,16 @@ public class ListaEscolarController {
                     if (bodyTable != null) document.add(bodyTable);
                 }
 
-                // Nota pendientes (si hay)
-                if (!items.noDisponibles.isEmpty()) {
-                    float pfs = layout.pendientesFontSize;
-                    Paragraph nota = new Paragraph("Items sin producto asignado o no disponibles actualmente.",
-                        FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, Math.max(pfs - 1f, 5.5f), new Color(160, 160, 160)));
-                    nota.setSpacingBefore(1);
-                    document.add(nota);
-                }
-
-                // 4) FOOTER CON DISTRIBUCIÓN ELÁSTICA
+                // 4) FOOTER COMBINADO — total + condiciones + leyenda + comentarios en 2 columnas
+                // Calcula cuánto espacio libre queda y lo usa como spacingBefore del footer
                 float posY = writer.getVerticalPosition(true);
                 float espacioDisponible = posY - document.bottomMargin();
-
-                // Medir footer real con lockedWidth
-                tResumen.setLockedWidth(true);
-                tResumen.setTotalWidth(anchoUtil * 0.50f);
-                float hResumen = tResumen.getTotalHeight();
-
-                tCondiciones.setLockedWidth(true);
-                tCondiciones.setTotalWidth(anchoUtil);
-                float hCondiciones = tCondiciones.getTotalHeight();
-
-                tFirma.setLockedWidth(true);
-                tFirma.setTotalWidth(anchoUtil * 0.80f);
-                float hFirma = tFirma.getTotalHeight();
-
-                float hLeyenda = 12f;
-                float footerReal = hResumen + hCondiciones + hFirma + hLeyenda;
-                float libre = Math.max(espacioDisponible - footerReal, 0);
-
-                // Distribuir espacio libre proporcional (4:3:3:1)
-                float unidad = libre / 11f;
-                float topeMax = 50f;
-
-                float g1 = Math.min(Math.max(unidad * 4f, 4f), topeMax);
-                float g2 = Math.min(Math.max(unidad * 3f, 3f), topeMax);
-                float g3 = Math.min(Math.max(unidad * 3f, 3f), topeMax);
-                float g4 = Math.min(Math.max(unidad * 1f, 2f), 12f);
-
-                tResumen.setSpacingBefore(g1);
-                document.add(tResumen);
-
-                tCondiciones.setSpacingBefore(g2);
-                document.add(tCondiciones);
-
-                tFirma.setSpacingBefore(g3);
-                document.add(tFirma);
-
-                pLeyenda.setSpacingBefore(g4);
-                document.add(pLeyenda);
+                tFooter.setLockedWidth(true);
+                tFooter.setTotalWidth(anchoUtil);
+                float hFooter = tFooter.getTotalHeight();
+                float gapFooter = Math.min(Math.max(espacioDisponible - hFooter, 3f), 50f);
+                tFooter.setSpacingBefore(gapFooter);
+                document.add(tFooter);
             }
 
             document.close();
@@ -1015,10 +1199,10 @@ public class ListaEscolarController {
     /**
      * Mide la altura total de TODOS los componentes del PDF usando getTotalHeight().
      * Todas las tablas se miden con setLockedWidth(true) para resultados precisos.
+     * El footer es la tabla combinada de 2 columnas (total + condiciones + leyenda + comentarios).
      */
     private float pdfMedirTodo(float anchoUtil, PdfPTable tHeader, PdfPTable tAlumno,
-                                PdfPTable[] bodyTables, PdfPTable tResumen,
-                                PdfPTable tCondiciones, PdfPTable tFirma) {
+                                PdfPTable[] bodyTables, PdfPTable tFooter) {
         float total = 0;
 
         // Header
@@ -1043,18 +1227,10 @@ public class ListaEscolarController {
             }
         }
 
-        // Footer
-        tResumen.setLockedWidth(true);
-        tResumen.setTotalWidth(anchoUtil * 0.50f);
-        total += tResumen.getTotalHeight();
-
-        tCondiciones.setLockedWidth(true);
-        tCondiciones.setTotalWidth(anchoUtil);
-        total += tCondiciones.getTotalHeight();
-
-        tFirma.setLockedWidth(true);
-        tFirma.setTotalWidth(anchoUtil * 0.80f);
-        total += tFirma.getTotalHeight();
+        // Footer combinado (2 columnas: total izq + condiciones/leyenda/comentarios der)
+        tFooter.setLockedWidth(true);
+        tFooter.setTotalWidth(anchoUtil);
+        total += tFooter.getTotalHeight();
 
         return total;
     }
@@ -1136,7 +1312,10 @@ public class ListaEscolarController {
 
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         float subFs = 7.5f * escala;
-        Paragraph pCodigo = new Paragraph(lista.getCodigoCompleto() + "  |  " + LocalDate.now().format(fmt),
+        String codigoYApoderado = lista.getCodigoCompleto()
+            + (lista.getContactoNombre() != null && !lista.getContactoNombre().isBlank()
+               ? " - " + lista.getContactoNombre() : "");
+        Paragraph pCodigo = new Paragraph(codigoYApoderado + "  |  " + LocalDate.now().format(fmt),
             FontFactory.getFont(FontFactory.HELVETICA, subFs, new Color(100, 100, 100)));
         pCodigo.setAlignment(Element.ALIGN_RIGHT);
         cellTitulo.addElement(pCodigo);
@@ -1191,7 +1370,7 @@ public class ListaEscolarController {
         table.addCell(pdfCeldaLimpia(lista.getColegio() != null ? lista.getColegio() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
 
         // Fila 2
-        table.addCell(pdfCeldaLimpia("Contacto:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
+        table.addCell(pdfCeldaLimpia("Apoderado:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
         table.addCell(pdfCeldaLimpia(lista.getContactoNombre() != null ? lista.getContactoNombre() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
         table.addCell(pdfCeldaLimpia("Teléfono:", fs, pad, bgLabel, labelColor, Element.ALIGN_LEFT));
         table.addCell(pdfCeldaLimpia(lista.getContactoTelefono() != null ? lista.getContactoTelefono() : "-", fs, pad, Color.WHITE, valorColor, Element.ALIGN_LEFT));
@@ -1299,6 +1478,8 @@ public class ListaEscolarController {
                                            detalle.getNombreProductoPorNivel(nivel) == null;
                 if (detalle.esItemRegalo()) {
                     descripcion = "REGALO: " + normalizarDescripcion(detalle.getTextoOriginal());
+                } else if (detalle.esItemServicio()) {
+                    descripcion = "SERVICIO: " + normalizarDescripcion(detalle.getTextoOriginal());
                 } else if (esCotizacionProv) {
                     String descManual = detalle.getDescripcionManualPorNivel(nivel);
                     String nombreMostrar = descManual != null && !descManual.isBlank() ? descManual : detalle.getTextoOriginal();
@@ -1580,14 +1761,141 @@ public class ListaEscolarController {
         return tabla;
     }
 
-    /** Construye Paragraph de leyenda. */
+    /** Construye Paragraph de leyenda (mantenido por compatibilidad, no usado en layout combinado). */
     private Paragraph pdfBuildLeyenda(PdfLayout layout) {
         float fs = Math.max(layout.condicionesFontSize - 1f, 5.5f);
         Paragraph leyenda = new Paragraph(
-            "[V] Vendido    [  ] Pendiente de venta",
+            "\u25a0 Vendido    \u25a1 Pendiente de venta",
             FontFactory.getFont(FontFactory.HELVETICA, fs, new Color(190, 190, 190)));
         leyenda.setAlignment(Element.ALIGN_CENTER);
         return leyenda;
+    }
+
+    /**
+     * Footer combinado en DOS COLUMNAS:
+     *   Izquierda (42 %): resumen financiero (Subtotal / IGV / TOTAL)
+     *   Derecha  (58 %): condiciones comerciales + comentarios + leyenda [V]/[ ]
+     *
+     * Ocupa la mitad de altura vertical que el layout secuencial original,
+     * evitando que la leyenda y las notas se vayan a una segunda página.
+     */
+    private PdfPTable pdfBuildFooterCombinado(BigDecimal totalNivel, Configuracion config,
+                                               PdfLayout layout, ListaEscolar lista,
+                                               ItemsSeparados items) throws DocumentException {
+        String moneda    = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
+        float  fs        = layout.fontSizeTotal;
+        float  pad       = layout.cellPadding;
+        float  padTotal  = Math.max(pad + 3f, 6f);
+        float  fsCond    = layout.condicionesFontSize;
+        float  fsLey     = Math.max(fsCond - 1f, 5f);
+
+        // ── Cálculo IGV ──────────────────────────────────────────────────────────
+        BigDecimal igvPct     = config.getIgvPorcentaje() != null ? config.getIgvPorcentaje() : new BigDecimal("18.00");
+        boolean    incluyeIgv = Boolean.TRUE.equals(config.getPreciosIncluyenImpuesto());
+        String     textoIgv   = incluyeIgv ? "IGV (incluido):" : "IGV (" + igvPct.stripTrailingZeros().toPlainString() + "%):";
+        BigDecimal montoIgv   = incluyeIgv
+            ? totalNivel.subtract(totalNivel.divide(BigDecimal.ONE.add(igvPct.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP)), 2, java.math.RoundingMode.HALF_UP))
+            : totalNivel.multiply(igvPct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal totalFinal = incluyeIgv ? totalNivel : totalNivel.add(montoIgv);
+
+        // ── Tabla exterior 2 columnas ─────────────────────────────────────────────
+        PdfPTable outer = new PdfPTable(2);
+        outer.setWidthPercentage(100);
+        outer.setWidths(new float[]{42f, 58f});
+
+        // ══ COLUMNA IZQUIERDA: resumen financiero ═══════════════════════════════
+        PdfPTable tFin = new PdfPTable(2);
+        tFin.setWidths(new float[]{3f, 2.5f});
+
+        tFin.addCell(pdfCeldaResumen("Subtotal:", fs - 1.5f, new Color(80, 80, 80), pad));
+        tFin.addCell(pdfCeldaResumen(moneda + String.format("%.2f", totalNivel), fs - 1.5f, new Color(80, 80, 80), pad));
+
+        tFin.addCell(pdfCeldaResumen(textoIgv, fs - 1.5f, new Color(130, 130, 130), pad));
+        tFin.addCell(pdfCeldaResumen(moneda + String.format("%.2f", montoIgv), fs - 1.5f, new Color(130, 130, 130), pad));
+
+        PdfPCell sep = new PdfPCell();
+        sep.setColspan(2);
+        sep.setBorder(Rectangle.TOP);
+        sep.setBorderColor(new Color(180, 180, 180));
+        sep.setBorderWidth(1f);
+        sep.setFixedHeight(3f);
+        tFin.addCell(sep);
+
+        Color fondoTotal = new Color(44, 62, 80);
+        PdfPCell lblTotal = new PdfPCell(new Phrase("TOTAL:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, fs, Color.WHITE)));
+        lblTotal.setBackgroundColor(fondoTotal); lblTotal.setBorder(Rectangle.NO_BORDER);
+        lblTotal.setHorizontalAlignment(Element.ALIGN_RIGHT); lblTotal.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        lblTotal.setPadding(padTotal);
+        tFin.addCell(lblTotal);
+
+        PdfPCell valTotal = new PdfPCell(new Phrase(moneda + String.format("%.2f", totalFinal), FontFactory.getFont(FontFactory.HELVETICA_BOLD, fs, Color.WHITE)));
+        valTotal.setBackgroundColor(fondoTotal); valTotal.setBorder(Rectangle.NO_BORDER);
+        valTotal.setHorizontalAlignment(Element.ALIGN_RIGHT); valTotal.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        valTotal.setPadding(padTotal);
+        tFin.addCell(valTotal);
+
+        PdfPCell leftCell = new PdfPCell();
+        leftCell.setBorder(Rectangle.NO_BORDER);
+        leftCell.setPaddingRight(8f);
+        leftCell.setVerticalAlignment(Element.ALIGN_BOTTOM);
+        leftCell.addElement(tFin);
+        outer.addCell(leftCell);
+
+        // ══ COLUMNA DERECHA: condiciones + nota pendientes + comentarios + leyenda ══
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.LEFT);
+        rightCell.setBorderColor(new Color(210, 210, 210));
+        rightCell.setBorderWidth(0.5f);
+        rightCell.setPaddingLeft(8f);
+        rightCell.setPaddingTop(2f);
+        rightCell.setPaddingBottom(2f);
+        rightCell.setVerticalAlignment(Element.ALIGN_TOP);
+
+        // Título condiciones
+        Paragraph titCond = new Paragraph("CONDICIONES COMERCIALES",
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, fsCond + 0.5f, new Color(44, 62, 80)));
+        titCond.setSpacingAfter(1.5f);
+        rightCell.addElement(titCond);
+
+        // Bullet points condensados en 2 líneas
+        String mon       = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
+        String igvTextoC = Boolean.TRUE.equals(config.getPreciosIncluyenImpuesto()) ? " con IGV" : "";
+        String cond1 = "\u2022 Validez: 7 días.  \u2022 Pago: Contado.  \u2022 Precios en " + mon + igvTextoC + ".";
+        String cond2 = "\u2022 Sujeto a disponibilidad de stock.  \u2022 No incluye productos pendientes.";
+        Paragraph pCond = new Paragraph(cond1 + "\n" + cond2,
+            FontFactory.getFont(FontFactory.HELVETICA, fsCond, new Color(110, 110, 110)));
+        pCond.setLeading(fsCond * 1.5f);
+        rightCell.addElement(pCond);
+
+        // Nota de items no disponibles (si los hay) — antes vivía en el body
+        if (!items.noDisponibles.isEmpty()) {
+            Paragraph notaDisp = new Paragraph(
+                "\u2139 " + items.noDisponibles.size() + " item(s) sin asignar / no disponible(s).",
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, Math.max(fsCond - 0.5f, 5f), new Color(160, 160, 160)));
+            notaDisp.setSpacingBefore(2f);
+            rightCell.addElement(notaDisp);
+        }
+
+        // Comentarios / Notas de la lista (antes vivían en el body)
+        if (lista.getComentarios() != null && !lista.getComentarios().isBlank()) {
+            Paragraph notaTit = new Paragraph("Notas:",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, fsCond, new Color(70, 70, 70)));
+            notaTit.setSpacingBefore(2f);
+            rightCell.addElement(notaTit);
+            Paragraph notaTxt = new Paragraph(lista.getComentarios(),
+                FontFactory.getFont(FontFactory.HELVETICA, Math.max(fsCond - 0.5f, 5f), new Color(80, 80, 80)));
+            rightCell.addElement(notaTxt);
+        }
+
+        // Leyenda [■] Vendido / [□] Pendiente de venta
+        Paragraph leyenda = new Paragraph("\u25a0 Vendido    \u25a1 Pendiente de venta",
+            FontFactory.getFont(FontFactory.HELVETICA, fsLey, new Color(190, 190, 190)));
+        leyenda.setAlignment(Element.ALIGN_RIGHT);
+        leyenda.setSpacingBefore(3f);
+        rightCell.addElement(leyenda);
+
+        outer.addCell(rightCell);
+        return outer;
     }
 
     // =========================================================
@@ -1842,6 +2150,32 @@ public class ListaEscolarController {
     }
 
     /**
+     * API: Elimina productos faltantes (items sin producto asignado) por texto.
+     */
+    @PostMapping("/api/faltantes/eliminar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> eliminarFaltantes(@RequestBody Map<String, Object> datos) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> textos = (List<String>) datos.get("textos");
+            if (textos == null || textos.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Debe especificar productos a eliminar"));
+            }
+
+            int eliminados = listaService.eliminarItemsFaltantes(textos);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "eliminados", eliminados
+            ));
+        } catch (Exception e) {
+            log.error("Error al eliminar faltantes: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
      * API: Marca item como producto comprado.
      */
     @PostMapping("/api/detalle/{detalleId}/marcar-comprado")
@@ -1852,6 +2186,217 @@ public class ListaEscolarController {
             DetalleListaEscolar detalle = listaService.marcarProductoComprado(detalleId);
             return ResponseEntity.ok(Map.of("success", true, "id", detalle.getId()));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Exportar productos faltantes a PDF.
+     */
+    @GetMapping("/faltantes/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public void exportarFaltantesPDF(jakarta.servlet.http.HttpServletResponse response) throws IOException, DocumentException {
+        List<ProductoFaltanteDTO> faltantes = listaService.obtenerProductosFaltantes();
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "inline; filename=\"Productos_Faltantes.pdf\"");
+
+        Document document = new Document(PageSize.A4, 30, 30, 30, 30);
+        PdfWriter.getInstance(document, response.getOutputStream());
+        document.open();
+
+        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.DARK_GRAY);
+        Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
+        Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 9);
+        Font subtitleFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.GRAY);
+
+        // Titulo
+        Paragraph title = new Paragraph("PRODUCTOS FALTANTES - LISTAS ESCOLARES", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(5);
+        document.add(title);
+
+        Paragraph fecha = new Paragraph("Generado: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), subtitleFont);
+        fecha.setAlignment(Element.ALIGN_CENTER);
+        fecha.setSpacingAfter(15);
+        document.add(fecha);
+
+        // Tabla
+        PdfPTable table = new PdfPTable(new float[]{10f, 55f, 15f, 20f});
+        table.setWidthPercentage(100);
+
+        // Headers
+        String[] headers = {"#", "Producto Solicitado", "Veces", "Cant. Total"};
+        for (String h : headers) {
+            PdfPCell cell = new PdfPCell(new Phrase(h, headerFont));
+            cell.setBackgroundColor(new Color(52, 58, 64));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setPadding(6);
+            table.addCell(cell);
+        }
+
+        // Datos ordenados por cantidad desc
+        faltantes.sort((a, b) -> Integer.compare(b.getCantidadTotal(), a.getCantidadTotal()));
+
+        int num = 0;
+        int totalUnidades = 0;
+        for (ProductoFaltanteDTO f : faltantes) {
+            num++;
+            totalUnidades += f.getCantidadTotal();
+            Color bgColor = num % 2 == 0 ? new Color(248, 249, 250) : Color.WHITE;
+
+            PdfPCell c1 = new PdfPCell(new Phrase(String.valueOf(num), cellFont));
+            c1.setHorizontalAlignment(Element.ALIGN_CENTER);
+            c1.setBackgroundColor(bgColor);
+            c1.setPadding(4);
+            table.addCell(c1);
+
+            PdfPCell c2 = new PdfPCell(new Phrase(f.getTextoOriginal(), cellFont));
+            c2.setBackgroundColor(bgColor);
+            c2.setPadding(4);
+            table.addCell(c2);
+
+            PdfPCell c3 = new PdfPCell(new Phrase(String.valueOf(f.getVecessolicitado()), cellFont));
+            c3.setHorizontalAlignment(Element.ALIGN_CENTER);
+            c3.setBackgroundColor(bgColor);
+            c3.setPadding(4);
+            table.addCell(c3);
+
+            PdfPCell c4 = new PdfPCell(new Phrase(String.valueOf(f.getCantidadTotal()), cellFont));
+            c4.setHorizontalAlignment(Element.ALIGN_CENTER);
+            c4.setBackgroundColor(bgColor);
+            c4.setPadding(4);
+            table.addCell(c4);
+        }
+
+        // Fila total
+        Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
+        PdfPCell totalLabel = new PdfPCell(new Phrase("TOTAL", totalFont));
+        totalLabel.setColspan(3);
+        totalLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        totalLabel.setBackgroundColor(new Color(255, 243, 205));
+        totalLabel.setPadding(6);
+        table.addCell(totalLabel);
+
+        PdfPCell totalVal = new PdfPCell(new Phrase(String.valueOf(totalUnidades), totalFont));
+        totalVal.setHorizontalAlignment(Element.ALIGN_CENTER);
+        totalVal.setBackgroundColor(new Color(255, 243, 205));
+        totalVal.setPadding(6);
+        table.addCell(totalVal);
+
+        document.add(table);
+
+        Paragraph resumen = new Paragraph(
+            String.format("%d productos diferentes | %d unidades totales solicitadas", faltantes.size(), totalUnidades),
+            subtitleFont
+        );
+        resumen.setAlignment(Element.ALIGN_CENTER);
+        resumen.setSpacingBefore(10);
+        document.add(resumen);
+
+        document.close();
+    }
+
+    /**
+     * Exportar productos faltantes a Excel.
+     */
+    @GetMapping("/faltantes/excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public void exportarFaltantesExcel(jakarta.servlet.http.HttpServletResponse response) throws IOException {
+        List<ProductoFaltanteDTO> faltantes = listaService.obtenerProductosFaltantes();
+        faltantes.sort((a, b) -> Integer.compare(b.getCantidadTotal(), a.getCantidadTotal()));
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"Productos_Faltantes.xlsx\"");
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            org.apache.poi.xssf.usermodel.XSSFSheet sheet = workbook.createSheet("Productos Faltantes");
+
+            // Estilo header
+            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setColor(org.apache.poi.ss.usermodel.IndexedColors.WHITE.getIndex());
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+
+            // Header row
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+            String[] cols = {"#", "Producto Solicitado", "Veces Solicitado", "Cantidad Total"};
+            for (int i = 0; i < cols.length; i++) {
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                cell.setCellValue(cols[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Datos
+            int rowNum = 1;
+            for (ProductoFaltanteDTO f : faltantes) {
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum);
+                row.createCell(0).setCellValue(rowNum);
+                row.createCell(1).setCellValue(f.getTextoOriginal());
+                row.createCell(2).setCellValue(f.getVecessolicitado());
+                row.createCell(3).setCellValue(f.getCantidadTotal());
+                rowNum++;
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < cols.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(response.getOutputStream());
+        }
+    }
+
+    // =========================================================
+    //  EDITAR TEXTO ORIGINAL Y REPROCESAR
+    // =========================================================
+
+    /**
+     * Actualiza el texto original de la lista y sincroniza los detalles dinámicamente.
+     * Retorna los IDs eliminados y los nuevos ítems para actualización del frontend sin reload.
+     */
+    @PutMapping("/api/{id}/texto-original")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> actualizarTextoOriginal(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String nuevoTexto = body.get("textoOriginal");
+            if (nuevoTexto == null || nuevoTexto.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false, "error", "El texto no puede estar vacío"));
+            }
+            Map<String, Object> resultado = listaService.actualizarTextoYReprocesar(id, nuevoTexto);
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            log.error("Error al actualizar texto original de lista {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    //  ELIMINACIÓN LÓGICA DE LISTA
+    // =========================================================
+
+    /**
+     * Elimina lógicamente una lista (soft delete: estado = ELIMINADA).
+     * Solo ADMIN. Solo si la lista no tiene ventas.
+     */
+    @DeleteMapping("/api/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> eliminarLista(@PathVariable Long id) {
+        try {
+            listaService.eliminarLista(id);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "mensaje", "Lista eliminada exitosamente"));
+        } catch (Exception e) {
+            log.error("Error al eliminar lista {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }

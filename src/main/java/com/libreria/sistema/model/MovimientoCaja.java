@@ -38,7 +38,10 @@ public class MovimientoCaja {
     @JoinColumn(name = "sesion_id")
     private SesionCaja sesion;
 
-    private Long referenciaId; 
+    private Long referenciaId;
+
+    @Column(name = "categoria_movimiento", length = 30)
+    private String categoriaMovimiento;
 
     @PrePersist
     protected void onCreate() {

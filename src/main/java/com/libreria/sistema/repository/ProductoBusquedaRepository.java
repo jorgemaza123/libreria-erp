@@ -142,6 +142,74 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     );
 
     // =====================================================
+    //  OMNIBUSCADOR V3: Búsqueda flexible OR con scoring
+    //  Usado EXCLUSIVAMENTE por listas escolares
+    //  Al menos 1 token debe coincidir, puntúa por relevancia
+    // =====================================================
+
+    @Query(value = """
+        SELECT p.* FROM productos p
+        WHERE p.activo = true
+        AND (
+            p.nombre ILIKE '%' || :t1 || '%'
+            OR p.marca ILIKE '%' || :t1 || '%'
+            OR p.categoria ILIKE '%' || :t1 || '%'
+            OR p.tags ILIKE '%' || :t1 || '%'
+            OR p.descripcion ILIKE '%' || :t1 || '%'
+            OR (:t2 != '' AND (p.nombre ILIKE '%' || :t2 || '%' OR p.marca ILIKE '%' || :t2 || '%' OR p.tags ILIKE '%' || :t2 || '%'))
+            OR (:t3 != '' AND (p.nombre ILIKE '%' || :t3 || '%' OR p.marca ILIKE '%' || :t3 || '%' OR p.tags ILIKE '%' || :t3 || '%'))
+            OR (:t4 != '' AND (p.nombre ILIKE '%' || :t4 || '%' OR p.marca ILIKE '%' || :t4 || '%' OR p.tags ILIKE '%' || :t4 || '%'))
+            OR (:t5 != '' AND (p.nombre ILIKE '%' || :t5 || '%' OR p.marca ILIKE '%' || :t5 || '%' OR p.tags ILIKE '%' || :t5 || '%'))
+            OR (:t6 != '' AND (p.nombre ILIKE '%' || :t6 || '%' OR p.marca ILIKE '%' || :t6 || '%' OR p.tags ILIKE '%' || :t6 || '%'))
+        )
+        ORDER BY
+            (
+                CASE WHEN p.nombre ILIKE '%' || :t1 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN :t2 != '' AND p.nombre ILIKE '%' || :t2 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN :t3 != '' AND p.nombre ILIKE '%' || :t3 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN :t4 != '' AND p.nombre ILIKE '%' || :t4 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN :t5 != '' AND p.nombre ILIKE '%' || :t5 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN :t6 != '' AND p.nombre ILIKE '%' || :t6 || '%' THEN 50 ELSE 0 END +
+                CASE WHEN p.tags IS NOT NULL AND p.tags ILIKE '%' || :t1 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN :t2 != '' AND p.tags IS NOT NULL AND p.tags ILIKE '%' || :t2 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN :t3 != '' AND p.tags IS NOT NULL AND p.tags ILIKE '%' || :t3 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN :t4 != '' AND p.tags IS NOT NULL AND p.tags ILIKE '%' || :t4 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN :t5 != '' AND p.tags IS NOT NULL AND p.tags ILIKE '%' || :t5 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN :t6 != '' AND p.tags IS NOT NULL AND p.tags ILIKE '%' || :t6 || '%' THEN 40 ELSE 0 END +
+                CASE WHEN p.marca ILIKE '%' || :t1 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN :t2 != '' AND p.marca ILIKE '%' || :t2 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN :t3 != '' AND p.marca ILIKE '%' || :t3 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN :t4 != '' AND p.marca ILIKE '%' || :t4 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN :t5 != '' AND p.marca ILIKE '%' || :t5 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN :t6 != '' AND p.marca ILIKE '%' || :t6 || '%' THEN 30 ELSE 0 END +
+                CASE WHEN p.categoria ILIKE '%' || :t1 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN :t2 != '' AND p.categoria ILIKE '%' || :t2 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN :t3 != '' AND p.categoria ILIKE '%' || :t3 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN :t4 != '' AND p.categoria ILIKE '%' || :t4 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN :t5 != '' AND p.categoria ILIKE '%' || :t5 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN :t6 != '' AND p.categoria ILIKE '%' || :t6 || '%' THEN 20 ELSE 0 END +
+                CASE WHEN p.descripcion ILIKE '%' || :t1 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN :t2 != '' AND p.descripcion ILIKE '%' || :t2 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN :t3 != '' AND p.descripcion ILIKE '%' || :t3 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN :t4 != '' AND p.descripcion ILIKE '%' || :t4 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN :t5 != '' AND p.descripcion ILIKE '%' || :t5 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN :t6 != '' AND p.descripcion ILIKE '%' || :t6 || '%' THEN 10 ELSE 0 END +
+                CASE WHEN p.stock_actual > 0 THEN 25 ELSE 0 END
+            ) DESC,
+            p.nombre ASC
+        LIMIT :limite
+        """, nativeQuery = true)
+    List<Producto> omnibuscarFlexible(
+            @Param("t1") String t1,
+            @Param("t2") String t2,
+            @Param("t3") String t3,
+            @Param("t4") String t4,
+            @Param("t5") String t5,
+            @Param("t6") String t6,
+            @Param("limite") int limite
+    );
+
+    // =====================================================
     //  AUTOCOMPLETE: Sugerencias rápidas (3+ caracteres)
     // =====================================================
 
@@ -271,6 +339,86 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
             @Param("productoId") Long productoId,
             @Param("categoria") String categoria,
             @Param("tags") String tags,
+            @Param("limite") int limite
+    );
+
+    // =====================================================
+    //  FULL-TEXT SEARCH (FTS) - NUEVO, no modifica existentes
+    //  Usa columna search_vector + diccionario español
+    //  Maneja plurales, stemming y acentos automáticamente
+    // =====================================================
+
+    /**
+     * Búsqueda full-text usando tsvector con pesos por campo:
+     * A=nombre, B=marca/tags, C=categoria/modelo, D=descripcion.
+     * El diccionario 'spanish' normaliza plurales y acentos.
+     * Requiere columna search_vector inicializada (BusquedaIndexInitializer).
+     */
+    @Query(value = """
+        SELECT * FROM productos p
+        WHERE p.activo = true
+        AND p.search_vector @@ plainto_tsquery('spanish', :termino)
+        ORDER BY
+            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
+            ts_rank(p.search_vector, plainto_tsquery('spanish', :termino)) DESC,
+            p.nombre ASC
+        LIMIT :limite
+        """, nativeQuery = true)
+    List<Producto> buscarFullText(@Param("termino") String termino, @Param("limite") int limite);
+
+    // =====================================================
+    //  FUZZY SEARCH (pg_trgm similarity) - NUEVO
+    //  Para typos y errores ortográficos no cubiertos por FTS
+    //  Requiere extensión pg_trgm habilitada
+    // =====================================================
+
+    /**
+     * Búsqueda difusa TOKEN-AWARE usando trigramas (pg_trgm similarity).
+     *
+     * Por qué tokens y no el término completo:
+     *   similarity("lapizs 2b", "lapiz 2b HB") es bajo porque el término completo
+     *   tiene pocos trigramas en común con el nombre largo.
+     *   similarity("lapizs", "lapiz 2b HB") > threshold porque "lapizs" comparte
+     *   muchos trigramas con "lapiz" aunque el nombre sea más largo.
+     *
+     * Hasta 3 tokens: t1 obligatorio, t2 y t3 opcionales (pasar '' si no aplica).
+     *
+     * IMPORTANTE: No usar CTEs ni casts de parámetros — Hibernate los convierte
+     * incorrectamente. Usar comparación directa con :threshold como double.
+     */
+    @Query(value = """
+        SELECT * FROM productos p
+        WHERE p.activo = true
+        AND (
+            similarity(p.nombre, :t1) > :threshold
+            OR similarity(coalesce(p.marca, ''), :t1) > :threshold
+            OR similarity(coalesce(p.categoria, ''), :t1) > :threshold
+            OR similarity(coalesce(p.tags, ''), :t1) > :threshold
+            OR (:t2 != '' AND similarity(p.nombre, :t2) > :threshold)
+            OR (:t2 != '' AND similarity(coalesce(p.marca, ''), :t2) > :threshold)
+            OR (:t2 != '' AND similarity(coalesce(p.categoria, ''), :t2) > :threshold)
+            OR (:t2 != '' AND similarity(coalesce(p.tags, ''), :t2) > :threshold)
+            OR (:t3 != '' AND similarity(p.nombre, :t3) > :threshold)
+            OR (:t3 != '' AND similarity(coalesce(p.marca, ''), :t3) > :threshold)
+            OR (:t3 != '' AND similarity(coalesce(p.categoria, ''), :t3) > :threshold)
+            OR (:t3 != '' AND similarity(coalesce(p.tags, ''), :t3) > :threshold)
+        )
+        ORDER BY
+            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
+            GREATEST(
+                similarity(p.nombre, :t1),
+                similarity(coalesce(p.marca, ''), :t1),
+                similarity(coalesce(p.categoria, ''), :t1),
+                similarity(coalesce(p.tags, ''), :t1)
+            ) DESC,
+            p.nombre ASC
+        LIMIT :limite
+        """, nativeQuery = true)
+    List<Producto> buscarFuzzyTokenizado(
+            @Param("t1") String t1,
+            @Param("t2") String t2,
+            @Param("t3") String t3,
+            @Param("threshold") double threshold,
             @Param("limite") int limite
     );
 

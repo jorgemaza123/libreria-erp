@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@x.x.x/dist/select2-bootstrap4.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" />
+    <link rel="stylesheet" th:href="@{/css/toastr.min.css}" />
 
     <link rel="stylesheet" th:href="@{/public/css-personalizado(v=${#dates.createNow().time})}" />
 
@@ -527,6 +528,7 @@
         <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script th:src="@{/js/toastr.min.js}"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <script th:inline="javascript">
@@ -964,6 +966,55 @@
         </script>
 
         <th:block layout:fragment="scripts"></th:block>
+
+        <!-- Health check: reconexión automática al reiniciar el servidor -->
+        <div id="reconexion-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; z-index:99999;
+             background:#c0392b; color:#fff; text-align:center; padding:10px; font-size:15px; font-weight:600;">
+            <i class="fas fa-sync-alt fa-spin mr-2"></i> Servidor reiniciando — reconectando automáticamente...
+        </div>
+        <script>
+            (function () {
+                var overlay = document.getElementById('reconexion-overlay');
+                var caido = false;
+                var intervaloNormal = 30000;
+                var intervaloRetry  = 5000;
+                var timer;
+
+                function check() {
+                    fetch('/actuator/health', { cache: 'no-store' })
+                        .then(function (r) {
+                            if (r.ok) {
+                                if (caido) {
+                                    // Servidor volvió — redirigir a login limpio
+                                    window.location.href = '/login';
+                                } else {
+                                    programar(intervaloNormal);
+                                }
+                            } else {
+                                manejarFalla();
+                            }
+                        })
+                        .catch(function () {
+                            manejarFalla();
+                        });
+                }
+
+                function manejarFalla() {
+                    if (!caido) {
+                        caido = true;
+                        overlay.style.display = 'block';
+                    }
+                    programar(intervaloRetry);
+                }
+
+                function programar(ms) {
+                    clearTimeout(timer);
+                    timer = setTimeout(check, ms);
+                }
+
+                programar(intervaloNormal);
+            })();
+        </script>
     </div>
 </body>
 </html>

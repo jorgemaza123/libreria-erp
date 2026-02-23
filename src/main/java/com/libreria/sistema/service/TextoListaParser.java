@@ -218,6 +218,9 @@ public class TextoListaParser {
         // Expandir abreviaturas comunes
         resultado = expandirAbreviaturas(resultado);
 
+        // Expandir sinonimos escolares para matching flexible
+        resultado = expandirSinonimosEscolares(resultado);
+
         return resultado;
     }
 
@@ -241,6 +244,79 @@ public class TextoListaParser {
             .replaceAll("\\besc\\b", "escolar")
             .replaceAll("\\btij\\b", "tijera")
             .replaceAll("\\bpeg\\b", "pegamento");
+    }
+
+    /**
+     * Expande sinonimos y nombres genericos comunes en utiles escolares.
+     * Normaliza marcas usadas como generico y variaciones regionales.
+     * Solo se usa para mejorar el matching de listas escolares.
+     */
+    private String expandirSinonimosEscolares(String texto) {
+        return texto
+            // Marcas usadas como generico
+            .replaceAll("\\bdiurex\\b", "cinta adhesiva")
+            .replaceAll("\\bdurex\\b", "cinta adhesiva")
+            .replaceAll("\\bscotch\\b", "cinta adhesiva")
+            .replaceAll("\\bliquid paper\\b", "corrector")
+            .replaceAll("\\bliquid\\b", "corrector")
+            .replaceAll("\\btipex\\b", "corrector")
+            .replaceAll("\\btip-ex\\b", "corrector")
+            .replaceAll("\\buhupor\\b", "pegamento barra")
+            .replaceAll("\\buhu\\b", "pegamento")
+            .replaceAll("\\bfaber castell\\b", "faber")
+            .replaceAll("\\bfaber-castell\\b", "faber")
+            .replaceAll("\\bartesco\\b", "artesco")
+            .replaceAll("\\bstabilo\\b", "stabilo")
+            .replaceAll("\\bpelikan\\b", "pelikan")
+            // Variaciones regionales / sinonimos
+            .replaceAll("\\btajador\\b", "sacapuntas")
+            .replaceAll("\\btajalapiz\\b", "sacapuntas")
+            .replaceAll("\\btaja lapiz\\b", "sacapuntas")
+            .replaceAll("\\bboligrafo\\b", "lapicero")
+            .replaceAll("\\besfero\\b", "lapicero")
+            .replaceAll("\\bbirome\\b", "lapicero")
+            .replaceAll("\\blibreta\\b", "cuaderno")
+            .replaceAll("\\bblock\\b", "cuaderno")
+            .replaceAll("\\bbloc\\b", "cuaderno")
+            .replaceAll("\\bmarcador\\b", "plumon")
+            .replaceAll("\\bmarcadores\\b", "plumones")
+            .replaceAll("\\bsubrayador\\b", "resaltador")
+            .replaceAll("\\bhighlighter\\b", "resaltador")
+            .replaceAll("\\bcrayola\\b", "crayon")
+            .replaceAll("\\bcrayolas\\b", "crayones")
+            .replaceAll("\\bpasteles\\b", "crayones")
+            .replaceAll("\\bacuarela\\b", "tempera")
+            .replaceAll("\\bacuarelas\\b", "temperas")
+            .replaceAll("\\bgoma eva\\b", "foami")
+            .replaceAll("\\bmicroporoso\\b", "foami")
+            .replaceAll("\\bfomi\\b", "foami")
+            .replaceAll("\\bsilicon\\b", "silicona")
+            .replaceAll("\\bmasking\\b", "cinta masking")
+            .replaceAll("\\bmaskingtape\\b", "cinta masking")
+            .replaceAll("\\bmasking tape\\b", "cinta masking")
+            .replaceAll("\\bpapelote\\b", "papelografo")
+            .replaceAll("\\bpapel sabana\\b", "papelografo")
+            // Utiles comunes - plurales y variantes
+            .replaceAll("\\blapices\\b", "lapiz")
+            .replaceAll("\\blapiceros\\b", "lapicero")
+            .replaceAll("\\bcuadernos\\b", "cuaderno")
+            .replaceAll("\\bfolders\\b", "folder")
+            .replaceAll("\\bsobres\\b", "sobre")
+            .replaceAll("\\btijeras\\b", "tijera")
+            .replaceAll("\\bborradores\\b", "borrador")
+            .replaceAll("\\breglas\\b", "regla")
+            .replaceAll("\\bcolores\\b", "color")
+            .replaceAll("\\btemperas\\b", "tempera")
+            .replaceAll("\\bplumones\\b", "plumon")
+            .replaceAll("\\bcartulinas\\b", "cartulina")
+            // Especificaciones comunes (normalizar)
+            .replaceAll("\\bcuadriculado\\b", "cuadriculado")
+            .replaceAll("\\brayado\\b", "rayado")
+            .replaceAll("\\bdoble raya\\b", "doble raya")
+            .replaceAll("\\btriple raya\\b", "triple raya")
+            .replaceAll("\\bgrapado\\b", "grapado")
+            .replaceAll("\\banillado\\b", "anillado")
+            .replaceAll("\\bespiral\\b", "espiral");
     }
 
     /**

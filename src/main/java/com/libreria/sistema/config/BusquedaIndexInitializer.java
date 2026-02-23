@@ -33,6 +33,7 @@ public class BusquedaIndexInitializer {
                 crearIndiceTrigram("idx_productos_nombre_trgm", "productos", "nombre");
                 crearIndiceTrigram("idx_productos_marca_trgm", "productos", "marca");
                 crearIndiceTrigram("idx_productos_categoria_trgm", "productos", "categoria");
+                crearIndiceTrigram("idx_productos_tags_trgm", "productos", "tags"); // fuzzy en tags
                 log.info("Índices trigram configurados correctamente");
             } else {
                 log.warn("Extensión pg_trgm no disponible. Las búsquedas funcionarán pero más lento.");
@@ -44,11 +45,86 @@ public class BusquedaIndexInitializer {
             crearIndiceBtree("idx_productos_codigo_interno", "productos", "codigo_interno");
             crearIndiceCompuesto("idx_productos_activo_stock", "productos", "activo, stock_actual DESC");
 
+            // 4. Full-text search vector (búsqueda avanzada)
+            inicializarSearchVector();
+
             log.info("Índices de búsqueda verificados correctamente");
 
         } catch (Exception e) {
             // No fallar si no se pueden crear índices - las búsquedas seguirán funcionando
             log.warn("No se pudieron crear algunos índices de búsqueda: {}. Las búsquedas funcionarán pero podrían ser más lentas.", e.getMessage());
+        }
+    }
+
+    /**
+     * Inicializa la columna search_vector para Full-Text Search en español.
+     * - Añade la columna tsvector si no existe
+     * - Popula registros sin vector (primera vez o nuevos)
+     * - Crea índice GIN para consultas eficientes
+     * - Instala trigger para actualización automática en INSERT/UPDATE
+     */
+    private void inicializarSearchVector() {
+        try {
+            // Añadir columna si no existe
+            jdbcTemplate.execute(
+                "ALTER TABLE productos ADD COLUMN IF NOT EXISTS search_vector tsvector"
+            );
+
+            // Poblar entradas con search_vector NULL (primera vez o registros nuevos sin trigger)
+            int actualizados = jdbcTemplate.update("""
+                UPDATE productos SET search_vector =
+                    setweight(to_tsvector('spanish', coalesce(nombre, '')), 'A') ||
+                    setweight(to_tsvector('spanish', coalesce(marca, '')), 'B') ||
+                    setweight(to_tsvector('spanish', coalesce(tags, '')), 'B') ||
+                    setweight(to_tsvector('spanish', coalesce(categoria, '')), 'C') ||
+                    setweight(to_tsvector('spanish', coalesce(modelo, '')), 'C') ||
+                    setweight(to_tsvector('spanish', coalesce(descripcion, '')), 'D')
+                WHERE search_vector IS NULL
+                """);
+            if (actualizados > 0) {
+                log.info("Search vector inicializado para {} productos", actualizados);
+            }
+
+            // Índice GIN sobre search_vector para búsquedas eficientes
+            if (!existeIndice("idx_productos_search_vector")) {
+                jdbcTemplate.execute(
+                    "CREATE INDEX idx_productos_search_vector ON productos USING GIN(search_vector)"
+                );
+                log.info("Índice GIN full-text search creado");
+            }
+
+            // Función trigger para mantener search_vector actualizado automáticamente
+            jdbcTemplate.execute("""
+                CREATE OR REPLACE FUNCTION fn_productos_search_vector()
+                RETURNS trigger AS $$
+                BEGIN
+                    NEW.search_vector :=
+                        setweight(to_tsvector('spanish', coalesce(NEW.nombre, '')), 'A') ||
+                        setweight(to_tsvector('spanish', coalesce(NEW.marca, '')), 'B') ||
+                        setweight(to_tsvector('spanish', coalesce(NEW.tags, '')), 'B') ||
+                        setweight(to_tsvector('spanish', coalesce(NEW.categoria, '')), 'C') ||
+                        setweight(to_tsvector('spanish', coalesce(NEW.modelo, '')), 'C') ||
+                        setweight(to_tsvector('spanish', coalesce(NEW.descripcion, '')), 'D');
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+                """);
+
+            // Trigger antes de INSERT/UPDATE (solo en columnas relevantes)
+            jdbcTemplate.execute(
+                "DROP TRIGGER IF EXISTS trg_productos_search_vector ON productos"
+            );
+            jdbcTemplate.execute("""
+                CREATE TRIGGER trg_productos_search_vector
+                BEFORE INSERT OR UPDATE OF nombre, marca, tags, categoria, modelo, descripcion
+                ON productos
+                FOR EACH ROW EXECUTE FUNCTION fn_productos_search_vector()
+                """);
+
+            log.debug("Trigger de search_vector configurado");
+
+        } catch (Exception e) {
+            log.warn("No se pudo inicializar search_vector para FTS: {}. El sistema usará búsqueda ILIKE estándar.", e.getMessage());
         }
     }
 

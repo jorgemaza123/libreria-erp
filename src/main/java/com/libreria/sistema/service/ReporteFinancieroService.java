@@ -182,36 +182,38 @@ public class ReporteFinancieroService {
 
             Producto producto = detalles.get(0).getProducto();
 
-            // Cantidad vendida
-            int cantidadVendida = detalles.stream()
-                    .mapToInt(d -> d.getCantidad().intValue())
-                    .sum();
+            // Calcular usando costo congelado por detalle (con fallback al producto para ventas antiguas)
+            int cantidadVendida = 0;
+            BigDecimal costoTotal = BigDecimal.ZERO;
+            BigDecimal ingresoTotal = BigDecimal.ZERO;
+            BigDecimal precioCompraFallback = producto.getPrecioCompra() != null
+                    ? producto.getPrecioCompra() : BigDecimal.ZERO;
 
-            // Precio venta promedio
-            BigDecimal precioVentaPromedio = detalles.stream()
-                    .map(DetalleVenta::getPrecioUnitario)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(detalles.size()), 2, RoundingMode.HALF_UP);
+            for (DetalleVenta d : detalles) {
+                int qty = d.getCantidad().intValue();
+                cantidadVendida += qty;
+                ingresoTotal = ingresoTotal.add(d.getSubtotal());
 
-            // Precio compra (del producto actual)
-            BigDecimal precioCompra = producto.getPrecioCompra() != null
-                    ? producto.getPrecioCompra()
-                    : BigDecimal.ZERO;
+                BigDecimal costo = d.getCostoUnitario() != null
+                    ? d.getCostoUnitario() : precioCompraFallback;
+                costoTotal = costoTotal.add(costo.multiply(d.getCantidad()));
+            }
 
-            // Margen bruto
-            BigDecimal margenBruto = precioVentaPromedio.subtract(precioCompra);
-
-            // Margen %
-            BigDecimal margenPorcentaje = precioVentaPromedio.compareTo(BigDecimal.ZERO) > 0
-                    ? margenBruto.divide(precioVentaPromedio, 4, RoundingMode.HALF_UP)
+            BigDecimal gananciaTotal = ingresoTotal.subtract(costoTotal);
+            BigDecimal margenPorcentaje = ingresoTotal.compareTo(BigDecimal.ZERO) > 0
+                    ? gananciaTotal.divide(ingresoTotal, 4, RoundingMode.HALF_UP)
                             .multiply(BigDecimal.valueOf(100))
                     : BigDecimal.ZERO;
 
-            // Ganancia total
-            BigDecimal gananciaTotal = margenBruto.multiply(BigDecimal.valueOf(cantidadVendida));
-
-            // Total vendido
-            BigDecimal totalVendido = precioVentaPromedio.multiply(BigDecimal.valueOf(cantidadVendida));
+            // Promedios para mostrar en reporte
+            BigDecimal precioVentaPromedio = cantidadVendida > 0
+                    ? ingresoTotal.divide(BigDecimal.valueOf(cantidadVendida), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            BigDecimal precioCompra = cantidadVendida > 0
+                    ? costoTotal.divide(BigDecimal.valueOf(cantidadVendida), 2, RoundingMode.HALF_UP)
+                    : precioCompraFallback;
+            BigDecimal margenBruto = precioVentaPromedio.subtract(precioCompra);
+            BigDecimal totalVendido = ingresoTotal;
 
             Map<String, Object> item = new HashMap<>();
             item.put("productoId", productoId);
