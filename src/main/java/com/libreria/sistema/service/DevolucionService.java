@@ -17,8 +17,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -184,12 +186,12 @@ public class DevolucionService {
      * Actualiza el estado de la venta original
      */
     private void actualizarEstadoVenta(Venta venta, BigDecimal totalDevuelto) {
-        // Verificar si es devolución total o parcial
-        if (totalDevuelto.compareTo(venta.getTotal()) >= 0) {
-            venta.setEstado("DEVUELTO_TOTAL");
-        } else {
-            venta.setEstado("DEVUELTO_PARCIAL");
-        }
+        // Determinar nuevo estado
+        String nuevoEstado = totalDevuelto.compareTo(venta.getTotal()) >= 0
+                ? "DEVUELTO_TOTAL" : "DEVUELTO_PARCIAL";
+
+        // UPDATE directo: evita que Hibernate omita el cambio por dirty-checking
+        ventaRepository.actualizarEstado(venta.getId(), nuevoEstado);
 
         // Si la venta era a crédito, ajustar saldo pendiente
         if ("CREDITO".equals(venta.getFormaPago()) && venta.getSaldoPendiente() != null) {
@@ -197,10 +199,8 @@ public class DevolucionService {
             if (nuevoSaldo.compareTo(BigDecimal.ZERO) < 0) {
                 nuevoSaldo = BigDecimal.ZERO;
             }
-            venta.setSaldoPendiente(nuevoSaldo);
+            ventaRepository.actualizarSaldoPendiente(venta.getId(), nuevoSaldo);
         }
-
-        ventaRepository.save(venta);
     }
 
     /**
@@ -305,6 +305,50 @@ public class DevolucionService {
             estado = null;
         }
         return devolucionRepository.buscarConFiltros(estado, fechaInicio, fechaFin, pageable);
+    }
+
+    /**
+     * Mapa productoId → cantidadTotalDevuelta para una venta.
+     * Solo considera devoluciones activas (estado != ANULADA).
+     * Usado por el modal de detalle de venta para mostrar cantidades restantes.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> obtenerCantidadesDevueltasPorVenta(Long ventaId) {
+        Map<Long, BigDecimal> cantidadesDevueltas = new HashMap<>();
+        Venta venta = ventaRepository.findById(ventaId).orElse(null);
+        if (venta == null) return cantidadesDevueltas;
+
+        List<DevolucionVenta> devoluciones = devolucionRepository.findByVentaOriginal(venta);
+        for (DevolucionVenta dev : devoluciones) {
+            if (!"ANULADA".equals(dev.getEstado())) {
+                for (DetalleDevolucion det : dev.getDetalles()) {
+                    if (det.getProducto() != null) {
+                        cantidadesDevueltas.merge(
+                            det.getProducto().getId(),
+                            det.getCantidadDevuelta(),
+                            BigDecimal::add
+                        );
+                    }
+                }
+            }
+        }
+        return cantidadesDevueltas;
+    }
+
+    /**
+     * Suma el totalDevuelto de todas las devoluciones activas de una venta.
+     * Usado para calcular el monto neto restante en el modal y en la impresión.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal obtenerTotalDevueltoPorVenta(Long ventaId) {
+        Venta venta = ventaRepository.findById(ventaId).orElse(null);
+        if (venta == null) return BigDecimal.ZERO;
+        List<DevolucionVenta> devoluciones = devolucionRepository.findByVentaOriginal(venta);
+        return devoluciones.stream()
+                .filter(d -> !"ANULADA".equals(d.getEstado()))
+                .map(DevolucionVenta::getTotalDevuelto)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**

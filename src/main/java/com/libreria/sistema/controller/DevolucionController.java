@@ -155,6 +155,22 @@ public class DevolucionController {
     }
 
     /**
+     * Cantidades ya devueltas por producto para una venta (mapa productoId → cantidad)
+     */
+    @GetMapping("/api/cantidades-devueltas/{ventaId}")
+    @PreAuthorize("hasPermission(null, 'DEVOLUCIONES_VER')")
+    @ResponseBody
+    public ResponseEntity<?> obtenerCantidadesDevueltas(@PathVariable Long ventaId) {
+        try {
+            return ResponseEntity.ok(devolucionService.obtenerCantidadesDevueltasPorVenta(ventaId));
+        } catch (Exception e) {
+            log.error("Error al obtener cantidades devueltas: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Obtener devoluciones de una venta específica
      */
     @GetMapping("/api/por-venta/{ventaId}")

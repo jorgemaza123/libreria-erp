@@ -6,6 +6,7 @@ import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.service.ConfiguracionService;
 import com.libreria.sistema.service.ConsultaDocumentoService;
+import com.libreria.sistema.service.DevolucionService;
 import com.libreria.sistema.service.ProductoBusquedaService;
 import com.libreria.sistema.service.ReporteService;
 import com.libreria.sistema.service.VentaService;
@@ -47,6 +48,9 @@ public class VentaController {
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
+
+    @Autowired
+    private DevolucionService devolucionService;
 
     public VentaController(ProductoRepository productoRepository,
                            VentaRepository ventaRepository,
@@ -442,6 +446,8 @@ public class VentaController {
         Configuracion config = configuracionService.obtenerConfiguracion();
         model.addAttribute("venta", venta);
         model.addAttribute("config", config);
+        model.addAttribute("cantidadesDevueltas", devolucionService.obtenerCantidadesDevueltasPorVenta(id));
+        model.addAttribute("totalDevuelto", devolucionService.obtenerTotalDevueltoPorVenta(id));
 
         // SISTEMA HÍBRIDO: Rutar según formato configurado
         String formato = config.getFormatoImpresion();
@@ -498,11 +504,13 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
 
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
             // SISTEMA HÍBRIDO: Rutar según formato configurado
             if ("TICKET".equalsIgnoreCase(formato)) {
-                reporteService.generarPdfTicketVenta(venta, config, response.getOutputStream());
+                reporteService.generarPdfTicketVenta(venta, config, response.getOutputStream(), cantDev, totalDev);
             } else {
-                reporteService.generarPdfA4Venta(venta, config, response.getOutputStream());
+                reporteService.generarPdfA4Venta(venta, config, response.getOutputStream(), cantDev, totalDev);
             }
         } catch (Exception e) {
             log.error("Error al generar PDF de venta {}: {}", id, e.getMessage());
@@ -533,7 +541,9 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
 
-            reporteService.generarPdfTicketVenta(venta, config, response.getOutputStream());
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
+            reporteService.generarPdfTicketVenta(venta, config, response.getOutputStream(), cantDev, totalDev);
         } catch (Exception e) {
             log.error("Error al generar PDF ticket de venta {}: {}", id, e.getMessage());
             try {
@@ -563,7 +573,9 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
 
-            reporteService.generarPdfA4Venta(venta, config, response.getOutputStream());
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
+            reporteService.generarPdfA4Venta(venta, config, response.getOutputStream(), cantDev, totalDev);
         } catch (Exception e) {
             log.error("Error al generar PDF A4 de venta {}: {}", id, e.getMessage());
             try {
@@ -629,13 +641,12 @@ public class VentaController {
     @GetMapping("/detalle/{id}")
     @PreAuthorize("hasPermission(null, 'VENTAS_VER')")
     public String verDetalle(@PathVariable Long id, Model model) {
-        // Buscamos la venta (asegúrate de que traiga los items/detalles)
-        Venta venta = ventaRepository.findById(id).orElse(null);
-        
+        Venta venta = ventaRepository.findByIdWithDetalles(id).orElse(null);
         model.addAttribute("venta", venta);
-        
-        // "ventas/modal_detalle" es el nombre del archivo HTML (sin .html)
-        // ":: contenido" es el nombre del th:fragment que está en tu archivo
-        return "ventas/modal_detalle :: contenido"; 
+        if (venta != null) {
+            model.addAttribute("cantidadesDevueltas", devolucionService.obtenerCantidadesDevueltasPorVenta(id));
+            model.addAttribute("totalDevuelto", devolucionService.obtenerTotalDevueltoPorVenta(id));
+        }
+        return "ventas/modal_detalle :: contenido";
     }
 }

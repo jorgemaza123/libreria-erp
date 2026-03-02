@@ -1,5 +1,7 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "roles")
 @Data
@@ -43,6 +46,7 @@ public class Role {
     @ToString.Exclude
     private Set<Permission> permissions = new HashSet<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
     @EqualsAndHashCode.Exclude
     @ToString.Exclude

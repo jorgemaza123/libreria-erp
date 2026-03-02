@@ -104,6 +104,7 @@
                                         </th>
                                         <th>Producto</th>
                                         <th class="text-center">Cant. Original</th>
+                                        <th class="text-center">Ya Dev.</th>
                                         <th class="text-center">Cant. a Devolver</th>
                                         <th class="text-right">Precio Unit.</th>
                                         <th class="text-right">Subtotal</th>
@@ -111,12 +112,12 @@
                                 </thead>
                                 <tbody id="tbodyProductos">
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">Cargando productos...</td>
+                                        <td colspan="7" class="text-center text-muted">Cargando productos...</td>
                                     </tr>
                                 </tbody>
                                 <tfoot>
                                     <tr class="bg-light">
-                                        <td colspan="5" class="text-right"><strong>TOTAL A DEVOLVER:</strong></td>
+                                        <td colspan="6" class="text-right"><strong>TOTAL A DEVOLVER:</strong></td>
                                         <td class="text-right text-danger"><strong>S/ <span id="totalDevolver">0.00</span></strong></td>
                                     </tr>
                                 </tfoot>
@@ -172,14 +173,16 @@
         $(document).ready(function() {
             cargarVenta();
 
-            // Check todos
+            // Check todos — solo afecta checkboxes habilitados (items no totalmente devueltos)
             $('#checkTodos').change(function() {
                 const checked = $(this).prop('checked');
-                $('.check-producto').prop('checked', checked);
+                $('.check-producto:not(:disabled)').prop('checked', checked);
                 if (checked) {
                     $('.input-cantidad').each(function() {
-                        const max = $(this).attr('max');
-                        $(this).val(max).prop('disabled', false);
+                        const max = parseFloat($(this).attr('max')) || 0;
+                        if (max > 0) {
+                            $(this).val(max).prop('disabled', false);
+                        }
                     });
                 } else {
                     $('.input-cantidad').val(0).prop('disabled', true);
@@ -195,7 +198,17 @@
                 success: function(venta) {
                     ventaOriginal = venta;
                     renderizarInfoVenta(venta);
-                    renderizarProductos(venta.detalles);
+                    // Cargar cantidades ya devueltas previamente para esta venta
+                    $.ajax({
+                        url: '/devoluciones/api/cantidades-devueltas/' + ventaId,
+                        method: 'GET',
+                        success: function(cantidadesDevueltas) {
+                            renderizarProductos(venta.items, cantidadesDevueltas);
+                        },
+                        error: function() {
+                            renderizarProductos(venta.items, {});
+                        }
+                    });
                 },
                 error: function() {
                     if(typeof toastr !== 'undefined') toastr.error('Error al cargar la venta');
@@ -205,7 +218,7 @@
         }
 
         function renderizarInfoVenta(venta) {
-            const cliente = venta.cliente || {};
+            const cliente = venta.clienteEntity || {};
             
             let badgeClass = 'badge-secondary';
             if(venta.estado === 'EMITIDO') badgeClass = 'badge-primary';
@@ -228,9 +241,9 @@
                     </div>
                     <div class="col-md-4">
                         <p class="mb-1"><strong>Cliente:</strong></p>
-                        <p>${cliente.nombreCompleto || cliente.razonSocial || 'Público general'}</p>
+                        <p>${cliente.nombreRazonSocial || 'Público general'}</p>
                         <p class="mb-1"><strong>Documento:</strong></p>
-                        <p>${cliente.numeroDocumento || '-'}</p>
+                        <p>${cliente.numeroDocumento || venta.clienteNumeroDocumento || '-'}</p>
                     </div>
                     <div class="col-md-2 text-right">
                         <p class="mb-1"><strong>Total Venta:</strong></p>
@@ -241,50 +254,79 @@
             $('#infoVenta').html(html);
         }
 
-        function renderizarProductos(detalles) {
+        function renderizarProductos(detalles, cantidadesDevueltas) {
+            cantidadesDevueltas = cantidadesDevueltas || {};
             const tbody = $('#tbodyProductos');
             tbody.empty();
 
             if (!detalles || detalles.length === 0) {
-                tbody.html('<tr><td colspan="6" class="text-center text-muted">No hay productos en esta venta</td></tr>');
+                tbody.html('<tr><td colspan="7" class="text-center text-muted">No hay productos en esta venta</td></tr>');
                 return;
             }
 
             detalles.forEach((detalle, index) => {
                 const producto = detalle.producto || {};
-                tbody.append(`
-                    <tr>
-                        <td class="text-center align-middle">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input check-producto" 
-                                       id="check_${index}" data-index="${index}" onchange="toggleProducto(${index})">
-                                <label class="custom-control-label" for="check_${index}"></label>
-                            </div>
-                        </td>
-                        <td class="align-middle">
-                            <strong>${detalle.descripcion || producto.nombre}</strong><br>
-                            <small class="text-muted">Código: ${producto.codigoInterno || '-'}</small>
-                        </td>
-                        <td class="text-center align-middle">${detalle.cantidad}</td>
-                        <td class="text-center align-middle">
-                            <input type="number" class="form-control form-control-sm input-cantidad mx-auto"
-                                   id="cantidad_${index}"
-                                   data-index="${index}"
-                                   data-producto-id="${producto.id}"
-                                   data-precio="${detalle.precioUnitario}"
-                                   data-descripcion="${detalle.descripcion || producto.nombre}"
-                                   min="0"
-                                   max="${detalle.cantidad}"
-                                   value="0"
-                                   step="1"
-                                   style="width: 80px;"
-                                   onchange="calcularTotal()"
-                                   disabled>
-                        </td>
-                        <td class="text-right align-middle">S/ ${formatearNumero(detalle.precioUnitario)}</td>
-                        <td class="text-right align-middle font-weight-bold">S/ <span id="subtotal_${index}">0.00</span></td>
-                    </tr>
-                `);
+                const productoId = producto.id;
+                const cantidadOriginal = parseFloat(detalle.cantidad) || 0;
+                const yaDevuelto = productoId ? (parseFloat(cantidadesDevueltas[productoId]) || 0) : 0;
+                const disponible = cantidadOriginal - yaDevuelto;
+                const totalmenteDevuelto = disponible <= 0;
+
+                if (totalmenteDevuelto) {
+                    tbody.append(`
+                        <tr class="table-secondary text-muted">
+                            <td class="text-center align-middle">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input check-producto"
+                                           id="check_${index}" disabled>
+                                    <label class="custom-control-label" for="check_${index}"></label>
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                <strong>${detalle.descripcion || producto.nombre}</strong><br>
+                                <small>Código: ${producto.codigoInterno || '-'}</small>
+                            </td>
+                            <td class="text-center align-middle">${cantidadOriginal}</td>
+                            <td class="text-center align-middle"><span class="badge badge-warning">${yaDevuelto}</span></td>
+                            <td colspan="3" class="text-center align-middle"><span class="badge badge-secondary">Devuelto</span></td>
+                        </tr>
+                    `);
+                } else {
+                    tbody.append(`
+                        <tr>
+                            <td class="text-center align-middle">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input check-producto"
+                                           id="check_${index}" data-index="${index}" onchange="toggleProducto(${index})">
+                                    <label class="custom-control-label" for="check_${index}"></label>
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                <strong>${detalle.descripcion || producto.nombre}</strong><br>
+                                <small class="text-muted">Código: ${producto.codigoInterno || '-'}</small>
+                            </td>
+                            <td class="text-center align-middle">${cantidadOriginal}</td>
+                            <td class="text-center align-middle">${yaDevuelto > 0 ? '<span class="badge badge-warning">' + yaDevuelto + '</span>' : '-'}</td>
+                            <td class="text-center align-middle">
+                                <input type="number" class="form-control form-control-sm input-cantidad mx-auto"
+                                       id="cantidad_${index}"
+                                       data-index="${index}"
+                                       data-producto-id="${productoId}"
+                                       data-precio="${detalle.precioUnitario}"
+                                       data-descripcion="${detalle.descripcion || producto.nombre}"
+                                       min="0"
+                                       max="${disponible}"
+                                       value="0"
+                                       step="1"
+                                       style="width: 80px;"
+                                       onchange="calcularTotal()"
+                                       disabled>
+                            </td>
+                            <td class="text-right align-middle">S/ ${formatearNumero(detalle.precioUnitario)}</td>
+                            <td class="text-right align-middle font-weight-bold">S/ <span id="subtotal_${index}">0.00</span></td>
+                        </tr>
+                    `);
+                }
             });
         }
 

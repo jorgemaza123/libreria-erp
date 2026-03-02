@@ -71,10 +71,14 @@
             </tr>
         </thead>
         <tbody>
-            <tr th:each="item : ${venta.items}">
+            <tr th:each="item : ${venta.items}"
+                th:with="yaDevuelto=${item.producto != null and cantidadesDevueltas != null ? cantidadesDevueltas[item.producto.id] : null},
+                         cantNeta=${yaDevuelto != null ? item.cantidad.subtract(yaDevuelto) : item.cantidad},
+                         subtotalNeto=${cantNeta.multiply(item.precioUnitario)}"
+                th:if="${yaDevuelto == null or cantNeta.signum() > 0}">
                 <td th:text="${item.descripcion}">Producto</td>
-                <td class="right" th:text="${item.cantidad}">1</td>
-                <td class="right" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}">10.00</td>
+                <td class="right" th:text="${cantNeta}">1</td>
+                <td class="right" th:text="${#numbers.formatDecimal(subtotalNeto, 1, 'COMMA', 2, 'POINT')}">10.00</td>
             </tr>
         </tbody>
     </table>
@@ -82,7 +86,13 @@
     <div class="divider"></div>
 
     <div class="right">
-        <div class="bold">TOTAL: S/ <span th:text="${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+        <div th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}">
+            TOTAL ORIGINAL: S/ <span th:text="${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+        </div>
+        <div th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}" style="color:#dc3545;">
+            (-) DEVUELTO: S/ <span th:text="${#numbers.formatDecimal(totalDevuelto, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+        </div>
+        <div class="bold" th:text="${(totalDevuelto != null and totalDevuelto.signum() > 0) ? 'TOTAL NETO: S/ ' + #numbers.formatDecimal(venta.total.subtract(totalDevuelto), 1, 'COMMA', 2, 'POINT') : 'TOTAL: S/ ' + #numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}">TOTAL: S/ 0.00</div>
     </div>
 
     <!-- Mostrar método de pago si está disponible -->

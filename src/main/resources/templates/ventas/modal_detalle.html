@@ -35,14 +35,38 @@
                             <th>Producto</th>
                             <th class="text-right">P. Unit</th>
                             <th class="text-right">Subtotal</th>
+                            <th th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL'}"></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="item : ${venta.items}">
-                            <td th:text="${item.cantidad}"></td>
+                            <td>
+                                <span th:text="${item.cantidad}"></span>
+                                <span th:if="${item.producto != null and cantidadesDevueltas != null and cantidadesDevueltas[item.producto.id] != null}"
+                                      class="badge badge-warning ml-1" style="font-size:0.7em;"
+                                      th:text="'(-' + ${cantidadesDevueltas[item.producto.id]} + ')'"></span>
+                            </td>
                             <td th:text="${item.descripcion}"></td>
                             <td class="text-right" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-right" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL'}">
+                                <th:block th:if="${item.producto != null}"
+                                          th:with="yaDevuelto=${cantidadesDevueltas != null ? cantidadesDevueltas[item.producto.id] : null},
+                                                   restante=${yaDevuelto != null ? item.cantidad.subtract(yaDevuelto) : item.cantidad}">
+                                    <button th:if="${yaDevuelto == null or item.cantidad.compareTo(yaDevuelto) > 0}"
+                                            type="button" class="btn btn-warning btn-xs btn-devolver"
+                                            th:data-venta-id="${venta.id}"
+                                            th:data-producto-id="${item.producto.id}"
+                                            th:data-descripcion="${item.descripcion}"
+                                            th:data-cantidad="${restante}"
+                                            th:data-precio="${item.precioUnitario}"
+                                            title="Devolver este producto">
+                                        <i class="fas fa-undo-alt"></i> Devolver
+                                    </button>
+                                    <span th:if="${yaDevuelto != null and item.cantidad.compareTo(yaDevuelto) <= 0}"
+                                          class="badge badge-secondary">Devuelto</span>
+                                </th:block>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -62,7 +86,19 @@
                             <th>IGV (18%):</th>
                             <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalIgv, 1, 'COMMA', 2, 'POINT')}"></td>
                         </tr>
-                        <tr>
+                        <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}">
+                            <th>Total Original:</th>
+                            <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                        <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}" class="text-danger">
+                            <th class="text-danger">(-) Devuelto:</th>
+                            <td class="font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(totalDevuelto, 1, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                        <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}" style="background-color:#fff3cd;">
+                            <th>Total Neto:</th>
+                            <td class="font-weight-bold" style="font-size: 1.2em;" th:text="'S/ ' + ${#numbers.formatDecimal(venta.total.subtract(totalDevuelto), 1, 'COMMA', 2, 'POINT')}"></td>
+                        </tr>
+                        <tr th:if="${totalDevuelto == null or totalDevuelto.signum() == 0}">
                             <th>Total:</th>
                             <td class="font-weight-bold" style="font-size: 1.2em;" th:text="'S/ ' + ${#numbers.formatDecimal(venta.total, 1, 'COMMA', 2, 'POINT')}"></td>
                         </tr>

@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Servicio de generación de reportes OPTIMIZADO.
@@ -836,7 +837,8 @@ public class ReporteService {
      * Genera PDF en formato TICKET (80mm) para impresoras térmicas.
      * Diseño minimalista, compacto, con fuente pequeña.
      */
-    public void generarPdfTicketVenta(Venta venta, com.libreria.sistema.model.Configuracion config, OutputStream outputStream) throws DocumentException {
+    public void generarPdfTicketVenta(Venta venta, com.libreria.sistema.model.Configuracion config, OutputStream outputStream,
+                                      Map<Long, java.math.BigDecimal> cantidadesDevueltas, java.math.BigDecimal totalDevuelto) throws DocumentException {
         // Tamaño 80mm de ancho, alto automático (inicialmente 200mm, se ajusta)
         float anchoMm = config.getAnchoTicketMm() != null ? config.getAnchoTicketMm() : 80;
         float anchoPuntos = anchoMm * 2.83465f; // mm a puntos (1mm = 2.83465 puntos)
@@ -938,13 +940,20 @@ public class ReporteService {
         // Items
         if (venta.getItems() != null) {
             for (var item : venta.getItems()) {
+                java.math.BigDecimal yaDevuelto = (item.getProducto() != null && cantidadesDevueltas != null)
+                        ? cantidadesDevueltas.getOrDefault(item.getProducto().getId(), java.math.BigDecimal.ZERO)
+                        : java.math.BigDecimal.ZERO;
+                java.math.BigDecimal cantNeta = item.getCantidad().subtract(yaDevuelto);
+                if (cantNeta.signum() <= 0) continue;
+                java.math.BigDecimal subtotalNeto = cantNeta.multiply(item.getPrecioUnitario());
+
                 String descripcion = item.getDescripcion();
                 if (descripcion != null && descripcion.length() > 25) {
                     descripcion = descripcion.substring(0, 25) + "...";
                 }
                 tablaItems.addCell(crearCeldaTicket(descripcion, fontPequena, Element.ALIGN_LEFT, false));
-                tablaItems.addCell(crearCeldaTicket(item.getCantidad().toString(), fontPequena, Element.ALIGN_CENTER, false));
-                tablaItems.addCell(crearCeldaTicket(String.format("%.2f", item.getSubtotal()), fontPequena, Element.ALIGN_RIGHT, false));
+                tablaItems.addCell(crearCeldaTicket(cantNeta.stripTrailingZeros().toPlainString(), fontPequena, Element.ALIGN_CENTER, false));
+                tablaItems.addCell(crearCeldaTicket(String.format("%.2f", subtotalNeto), fontPequena, Element.ALIGN_RIGHT, false));
             }
         }
         document.add(tablaItems);
@@ -969,9 +978,24 @@ public class ReporteService {
             document.add(tablaTotales);
         }
 
-        Paragraph pTotal = new Paragraph("TOTAL: " + moneda + " " + String.format("%.2f", venta.getTotal()), fontBold);
-        pTotal.setAlignment(Element.ALIGN_RIGHT);
-        document.add(pTotal);
+        if (totalDevuelto != null && totalDevuelto.signum() > 0) {
+            PdfPTable tablaDevTicket = new PdfPTable(2);
+            tablaDevTicket.setWidthPercentage(100);
+            tablaDevTicket.setWidths(new float[]{3, 2});
+            tablaDevTicket.addCell(crearCeldaTicket("TOTAL ORIGINAL:", fontNormal, Element.ALIGN_LEFT, false));
+            tablaDevTicket.addCell(crearCeldaTicket(moneda + " " + String.format("%.2f", venta.getTotal()), fontNormal, Element.ALIGN_RIGHT, false));
+            tablaDevTicket.addCell(crearCeldaTicket("(-) DEVUELTO:", fontNormal, Element.ALIGN_LEFT, false));
+            tablaDevTicket.addCell(crearCeldaTicket(moneda + " " + String.format("%.2f", totalDevuelto), fontNormal, Element.ALIGN_RIGHT, false));
+            document.add(tablaDevTicket);
+            java.math.BigDecimal totalNeto = venta.getTotal().subtract(totalDevuelto);
+            Paragraph pTotal = new Paragraph("TOTAL NETO: " + moneda + " " + String.format("%.2f", totalNeto), fontBold);
+            pTotal.setAlignment(Element.ALIGN_RIGHT);
+            document.add(pTotal);
+        } else {
+            Paragraph pTotal = new Paragraph("TOTAL: " + moneda + " " + String.format("%.2f", venta.getTotal()), fontBold);
+            pTotal.setAlignment(Element.ALIGN_RIGHT);
+            document.add(pTotal);
+        }
 
         // === MÉTODO DE PAGO ===
         if (venta.getMetodoPago() != null) {
@@ -1038,7 +1062,8 @@ public class ReporteService {
      * Genera PDF en formato A4 para impresión estándar.
      * Diseño formal para facturas y boletas oficiales.
      */
-    public void generarPdfA4Venta(Venta venta, com.libreria.sistema.model.Configuracion config, OutputStream outputStream) throws DocumentException {
+    public void generarPdfA4Venta(Venta venta, com.libreria.sistema.model.Configuracion config, OutputStream outputStream,
+                                   Map<Long, java.math.BigDecimal> cantidadesDevueltas, java.math.BigDecimal totalDevuelto) throws DocumentException {
         Document document = new Document(PageSize.A4, 30, 30, 30, 30);
         PdfWriter.getInstance(document, outputStream);
         document.open();
@@ -1176,11 +1201,18 @@ public class ReporteService {
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
         if (venta.getItems() != null) {
             for (var item : venta.getItems()) {
-                tablaItems.addCell(crearCeldaPdfCenter(item.getCantidad().toString()));
+                java.math.BigDecimal yaDevuelto = (item.getProducto() != null && cantidadesDevueltas != null)
+                        ? cantidadesDevueltas.getOrDefault(item.getProducto().getId(), java.math.BigDecimal.ZERO)
+                        : java.math.BigDecimal.ZERO;
+                java.math.BigDecimal cantNeta = item.getCantidad().subtract(yaDevuelto);
+                if (cantNeta.signum() <= 0) continue;
+                java.math.BigDecimal subtotalNeto = cantNeta.multiply(item.getPrecioUnitario());
+
+                tablaItems.addCell(crearCeldaPdfCenter(cantNeta.stripTrailingZeros().toPlainString()));
                 tablaItems.addCell(crearCeldaPdfCenter("NIU"));
                 tablaItems.addCell(crearCeldaPdf(item.getDescripcion()));
                 tablaItems.addCell(crearCeldaPdfRight(String.format("%.2f", item.getPrecioUnitario())));
-                tablaItems.addCell(crearCeldaPdfRight(String.format("%.2f", item.getSubtotal())));
+                tablaItems.addCell(crearCeldaPdfRight(String.format("%.2f", subtotalNeto)));
             }
         }
 
@@ -1249,17 +1281,40 @@ public class ReporteService {
             tablaTotales.addCell(crearCeldaPdfRight(moneda + " " + String.format("%.2f", venta.getTotalIgv())));
         }
 
-        // Total final
-        PdfPCell cellTotalLabel = new PdfPCell(new Phrase("IMPORTE TOTAL:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
-        cellTotalLabel.setBorderWidthTop(2);
-        cellTotalLabel.setPadding(6);
-        tablaTotales.addCell(cellTotalLabel);
-
-        PdfPCell cellTotalValor = new PdfPCell(new Phrase(moneda + " " + String.format("%.2f", venta.getTotal()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
-        cellTotalValor.setBorderWidthTop(2);
-        cellTotalValor.setPadding(6);
-        cellTotalValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        tablaTotales.addCell(cellTotalValor);
+        if (totalDevuelto != null && totalDevuelto.signum() > 0) {
+            // Original
+            tablaTotales.addCell(crearCeldaPdf("IMPORTE ORIGINAL:"));
+            tablaTotales.addCell(crearCeldaPdfRight(moneda + " " + String.format("%.2f", venta.getTotal())));
+            // Devuelto en rojo
+            PdfPCell cellDevLabel = new PdfPCell(new Phrase("(-) DEVUELTO:", FontFactory.getFont(FontFactory.HELVETICA, 10, Color.RED)));
+            cellDevLabel.setBorder(Rectangle.NO_BORDER);
+            tablaTotales.addCell(cellDevLabel);
+            PdfPCell cellDevValor = new PdfPCell(new Phrase(moneda + " " + String.format("%.2f", totalDevuelto), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.RED)));
+            cellDevValor.setBorder(Rectangle.NO_BORDER);
+            cellDevValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            tablaTotales.addCell(cellDevValor);
+            // Total neto
+            java.math.BigDecimal totalNeto = venta.getTotal().subtract(totalDevuelto);
+            PdfPCell cellTotalLabel = new PdfPCell(new Phrase("IMPORTE NETO:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+            cellTotalLabel.setBorderWidthTop(2);
+            cellTotalLabel.setPadding(6);
+            tablaTotales.addCell(cellTotalLabel);
+            PdfPCell cellTotalValor = new PdfPCell(new Phrase(moneda + " " + String.format("%.2f", totalNeto), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+            cellTotalValor.setBorderWidthTop(2);
+            cellTotalValor.setPadding(6);
+            cellTotalValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            tablaTotales.addCell(cellTotalValor);
+        } else {
+            PdfPCell cellTotalLabel = new PdfPCell(new Phrase("IMPORTE TOTAL:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+            cellTotalLabel.setBorderWidthTop(2);
+            cellTotalLabel.setPadding(6);
+            tablaTotales.addCell(cellTotalLabel);
+            PdfPCell cellTotalValor = new PdfPCell(new Phrase(moneda + " " + String.format("%.2f", venta.getTotal()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+            cellTotalValor.setBorderWidthTop(2);
+            cellTotalValor.setPadding(6);
+            cellTotalValor.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            tablaTotales.addCell(cellTotalValor);
+        }
 
         cellDer.addElement(tablaTotales);
         tablaFinal.addCell(cellDer);

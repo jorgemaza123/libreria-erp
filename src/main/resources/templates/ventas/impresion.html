@@ -77,12 +77,16 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="item : ${venta.items}">
-                    <td class="text-center" th:text="${item.cantidad}"></td>
+                <tr th:each="item : ${venta.items}"
+                    th:with="yaDevuelto=${item.producto != null and cantidadesDevueltas != null ? cantidadesDevueltas[item.producto.id] : null},
+                             cantNeta=${yaDevuelto != null ? item.cantidad.subtract(yaDevuelto) : item.cantidad},
+                             subtotalNeto=${cantNeta.multiply(item.precioUnitario)}"
+                    th:if="${yaDevuelto == null or cantNeta.signum() > 0}">
+                    <td class="text-center" th:text="${cantNeta}"></td>
                     <td class="text-center">NIU</td>
                     <td th:text="${item.descripcion}"></td>
                     <td class="text-right" th:text="${item.precioUnitario}"></td>
-                    <td class="text-right" th:text="${item.subtotal}"></td>
+                    <td class="text-right" th:text="${#numbers.formatDecimal(subtotalNeto, 1, 'COMMA', 2, 'POINT')}"></td>
                 </tr>
             </tbody>
         </table>
@@ -117,9 +121,19 @@
                         <td class="text-right">I.G.V. (18%):</td>
                         <td class="text-right" th:text="${venta.totalIgv}"></td>
                     </tr>
+                    <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}">
+                        <td class="text-right">IMPORTE ORIGINAL:</td>
+                        <td class="text-right" th:text="'S/ ' + ${venta.total}"></td>
+                    </tr>
+                    <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}" style="color:#dc3545;">
+                        <td class="text-right">(-) DEVUELTO:</td>
+                        <td class="text-right font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(totalDevuelto, 1, 'COMMA', 2, 'POINT')}"></td>
+                    </tr>
                     <tr class="border-top">
-                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;">IMPORTE TOTAL:</td>
-                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;" th:text="'S/ ' + ${venta.total}"></td>
+                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;"
+                            th:text="${totalDevuelto != null and totalDevuelto.signum() > 0} ? 'IMPORTE NETO:' : 'IMPORTE TOTAL:'">IMPORTE TOTAL:</td>
+                        <td class="text-right font-weight-bold" style="font-size: 1.1rem;"
+                            th:text="${totalDevuelto != null and totalDevuelto.signum() > 0} ? 'S/ ' + ${#numbers.formatDecimal(venta.total.subtract(totalDevuelto), 1, 'COMMA', 2, 'POINT')} : 'S/ ' + ${venta.total}"></td>
                     </tr>
                 </table>
             </div>

@@ -1,5 +1,6 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ public class Amortizacion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "venta_id", nullable = false)
     private Venta venta;

@@ -5,8 +5,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -152,8 +154,18 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Buscar ventas para devolución por serie-número, cliente o documento
      */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Venta v SET v.estado = :estado WHERE v.id = :id")
+    void actualizarEstado(@Param("id") Long id, @Param("estado") String estado);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Venta v SET v.saldoPendiente = :saldo WHERE v.id = :id")
+    void actualizarSaldoPendiente(@Param("id") Long id, @Param("saldo") BigDecimal saldo);
+
     @Query("SELECT v FROM Venta v LEFT JOIN FETCH v.clienteEntity c " +
-           "WHERE (CONCAT(v.serie, '-', v.numero) LIKE %:termino% " +
+           "WHERE (CONCAT(v.serie, '-', CAST(v.numero AS string)) LIKE %:termino% " +
            "OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%')) " +
            "OR v.clienteNumeroDocumento LIKE %:termino%) " +
            "AND v.estado != 'ANULADO' " +

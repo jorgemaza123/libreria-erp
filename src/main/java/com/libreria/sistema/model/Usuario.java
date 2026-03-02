@@ -1,5 +1,6 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.Set;
  * - Bloqueo de cuenta por intentos fallidos de login
  * - Sistema dual de roles (legacy y granular)
  */
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Data
 @Entity
 @Table(name = "usuarios")

@@ -329,7 +329,6 @@
                     }
 
                     ventas.forEach(v => {
-                        const cliente = v.cliente || {};
                         let badgeClass = 'badge-warning';
                         if (v.estado === 'EMITIDO') badgeClass = 'badge-primary';
                         else if (v.estado === 'PAGADO_TOTAL') badgeClass = 'badge-success';
@@ -339,7 +338,7 @@
                             <tr>
                                 <td>${v.serie}-${v.numero}</td>
                                 <td>${formatearFecha(v.fechaEmision)}</td>
-                                <td>${cliente.nombreCompleto || cliente.razonSocial || '-'}</td>
+                                <td>${v.clienteDenominacion || '-'}</td>
                                 <td class="text-right">S/ ${formatearNumero(v.total)}</td>
                                 <td><span class="badge ${badgeClass}">${v.estado}</span></td>
                                 <td>

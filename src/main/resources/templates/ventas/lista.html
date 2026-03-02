@@ -52,6 +52,9 @@
                                 <td>
                                     <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
                                     <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
+                                    <span th:if="${v.estado == 'DEVUELTO_PARCIAL'}" class="badge badge-warning">DEV. PARCIAL</span>
+                                    <span th:if="${v.estado == 'DEVUELTO_TOTAL'}" class="badge badge-secondary">DEVUELTO</span>
+                                    <span th:if="${v.estado == 'PAGADO_TOTAL'}" class="badge badge-info">PAGADO</span>
                                 </td>
                                 <td class="text-right">
                                     <button class="btn btn-primary btn-sm btn-detalle" th:data-id="${v.id}" title="Ver Detalle">
@@ -69,6 +72,13 @@
                                             title="Imprimir Comprobante">
                                         <i class="fas fa-print"></i>
                                     </button>
+
+                                    <a th:href="@{/ventas/pdf/{id}(id=${v.id})}"
+                                       class="btn btn-info btn-sm"
+                                       title="Descargar PDF"
+                                       target="_blank">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
 
                                     <form th:if="${v.estado == 'EMITIDO'}" th:action="@{/ventas/anular/{id}(id=${v.id})}" method="post" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Esta acción devolverá el stock.');">
                                         <button type="submit" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-ban"></i></button>
@@ -127,6 +137,91 @@
             var id = $(this).data("id");
             $("#modalBodyContent").load("/ventas/detalle/" + id);
             $("#modalDetalle").modal("show");
+        });
+    });
+
+    // --- HANDLER DEVOLUCIÓN DE PRODUCTO DESDE MODAL ---
+    $(document).on('click', '.btn-devolver', function() {
+        var btn = $(this);
+        var ventaId    = btn.data('venta-id');
+        var productoId = btn.data('producto-id');
+        var descripcion  = btn.data('descripcion');
+        var cantidadMax  = parseFloat(btn.data('cantidad'));
+        var precio       = parseFloat(btn.data('precio'));
+
+        Swal.fire({
+            title: 'Devolución de Producto',
+            icon: 'question',
+            html: '<p class="text-left mb-2"><strong>' + descripcion + '</strong></p>' +
+                  '<div class="form-group text-left mb-2">' +
+                  '<label>Cantidad a devolver (máx: ' + cantidadMax + '):</label>' +
+                  '<input type="number" id="dev-cant" class="form-control" min="0.01" max="' + cantidadMax + '" step="0.01" value="' + cantidadMax + '">' +
+                  '</div>' +
+                  '<div class="form-group text-left mb-2">' +
+                  '<label>Motivo:</label>' +
+                  '<select id="dev-motivo" class="form-control">' +
+                  '<option value="DEFECTO_PRODUCTO">Defecto del producto</option>' +
+                  '<option value="PRODUCTO_INCORRECTO">Producto incorrecto</option>' +
+                  '<option value="CAMBIO_OPINION">Cambio de opinión del cliente</option>' +
+                  '<option value="EXCESO_PEDIDO">Exceso en el pedido</option>' +
+                  '<option value="OTRO">Otro</option>' +
+                  '</select></div>' +
+                  '<div class="form-group text-left">' +
+                  '<label>Método de reembolso:</label>' +
+                  '<select id="dev-metodo" class="form-control">' +
+                  '<option value="EFECTIVO">Efectivo</option>' +
+                  '<option value="TRANSFERENCIA">Transferencia</option>' +
+                  '<option value="CREDITO_TIENDA">Crédito en tienda</option>' +
+                  '</select></div>',
+            showCancelButton: true,
+            confirmButtonText: 'Procesar Devolución',
+            confirmButtonColor: '#f39c12',
+            cancelButtonText: 'Cancelar',
+            focusConfirm: false,
+            preConfirm: function() {
+                var cant = parseFloat(document.getElementById('dev-cant').value);
+                if (!cant || cant <= 0 || cant > cantidadMax) {
+                    Swal.showValidationMessage('Cantidad inválida (máx: ' + cantidadMax + ')');
+                    return false;
+                }
+                return {
+                    cantidad: cant,
+                    motivo: document.getElementById('dev-motivo').value,
+                    metodo: document.getElementById('dev-metodo').value
+                };
+            }
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                var d = result.value;
+                $.ajax({
+                    url: '/devoluciones/api/procesar',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        ventaOriginalId: parseInt(ventaId),
+                        motivoDevolucion: d.motivo,
+                        metodoReembolso: d.metodo,
+                        items: [{
+                            productoId: parseInt(productoId),
+                            cantidadDevuelta: d.cantidad,
+                            precioUnitario: precio,
+                            descripcion: descripcion
+                        }]
+                    }),
+                    success: function(res) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Devolución procesada!',
+                            html: 'Nota de crédito <strong>' + res.serie + '-' + String(res.numero).padStart(8, '0') + '</strong> generada.',
+                            confirmButtonText: 'Aceptar'
+                        }).then(function() { location.reload(); });
+                    },
+                    error: function(xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error al procesar la devolución';
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
+            }
         });
     });
 

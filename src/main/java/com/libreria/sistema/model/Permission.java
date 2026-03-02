@@ -1,5 +1,6 @@
 package com.libreria.sistema.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,6 +30,7 @@ public class Permission {
     @Column(length = 255)
     private String descripcion;
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "permissions", fetch = FetchType.LAZY)
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
