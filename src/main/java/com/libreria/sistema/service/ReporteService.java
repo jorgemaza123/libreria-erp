@@ -1,10 +1,12 @@
 package com.libreria.sistema.service;
 
+import com.libreria.sistema.model.Compra;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.Usuario;
 import com.libreria.sistema.model.Venta;
 import com.libreria.sistema.repository.CajaRepository;
+import com.libreria.sistema.repository.CompraRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.UsuarioRepository;
 import com.libreria.sistema.repository.VentaRepository;
@@ -55,15 +57,18 @@ public class ReporteService {
     private final ProductoRepository productoRepository;
     private final CajaRepository cajaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CompraRepository compraRepository;
     private final ConfiguracionService configuracionService;
 
     public ReporteService(VentaRepository ventaRepository, ProductoRepository productoRepository,
                           CajaRepository cajaRepository, UsuarioRepository usuarioRepository,
+                          CompraRepository compraRepository,
                           ConfiguracionService configuracionService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.cajaRepository = cajaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.compraRepository = compraRepository;
         this.configuracionService = configuracionService;
     }
 
@@ -560,6 +565,7 @@ public class ReporteService {
 
         List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
         List<MovimientoCaja> movimientos = cajaRepository.findByFechaBetweenDates(inicio, fin);
+        List<Compra> compras = compraRepository.findByPeriodo(inicio.atStartOfDay(), fin.atTime(23, 59, 59));
 
         // Calcular totales
         java.math.BigDecimal totalVentas = ventas.stream()
@@ -580,6 +586,10 @@ public class ReporteService {
                 .map(Venta::getTotal)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
 
+        java.math.BigDecimal totalCompras = compras.stream()
+                .map(c -> c.getTotal() != null ? c.getTotal() : java.math.BigDecimal.ZERO)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
         java.math.BigDecimal ingresos = movimientos.stream()
                 .filter(m -> "INGRESO".equals(m.getTipo()))
                 .map(MovimientoCaja::getMonto)
@@ -590,15 +600,21 @@ public class ReporteService {
                 .map(MovimientoCaja::getMonto)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
 
+        java.math.BigDecimal balanceNeto = totalVentas.add(ingresos).subtract(totalCompras).subtract(egresos);
+
         int rowIdx = 1;
+        crearFilaResumen(sheet, rowIdx++, "--- INGRESOS ---", "", dataStyle);
         crearFilaResumen(sheet, rowIdx++, "Total Ventas", moneda + totalVentas, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Total IGV", moneda + totalIgv, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Ventas al Contado", moneda + ventasContado, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Ventas a Crédito", moneda + ventasCredito, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Cantidad de Ventas", String.valueOf(ventas.size()), dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Ingresos Caja", moneda + ingresos, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Egresos Caja", moneda + egresos, dataStyle);
-        crearFilaResumen(sheet, rowIdx++, "Balance Neto", moneda + ingresos.subtract(egresos), dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "  Ventas al Contado", moneda + ventasContado, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "  Ventas a Crédito", moneda + ventasCredito, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "  Total IGV cobrado", moneda + totalIgv, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "  Cantidad de Ventas", String.valueOf(ventas.size()), dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "Otros Ingresos Caja", moneda + ingresos, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "--- EGRESOS ---", "", dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "Total Compras (Inventario)", moneda + totalCompras, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "  Cantidad de Compras", String.valueOf(compras.size()), dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "Gastos / Egresos Caja", moneda + egresos, dataStyle);
+        crearFilaResumen(sheet, rowIdx++, "BALANCE NETO", moneda + balanceNeto, dataStyle);
     }
 
     /**
@@ -729,6 +745,7 @@ public class ReporteService {
 
         List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
         List<MovimientoCaja> movimientos = cajaRepository.findByFechaBetweenDates(inicio, fin);
+        List<Compra> compras = compraRepository.findByPeriodo(inicio.atStartOfDay(), fin.atTime(23, 59, 59));
 
         java.math.BigDecimal totalVentas = ventas.stream()
                 .map(Venta::getTotal)
@@ -748,6 +765,10 @@ public class ReporteService {
                 .map(Venta::getTotal)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
 
+        java.math.BigDecimal totalCompras = compras.stream()
+                .map(c -> c.getTotal() != null ? c.getTotal() : java.math.BigDecimal.ZERO)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
         java.math.BigDecimal ingresos = movimientos.stream()
                 .filter(m -> "INGRESO".equals(m.getTipo()))
                 .map(MovimientoCaja::getMonto)
@@ -758,37 +779,54 @@ public class ReporteService {
                 .map(MovimientoCaja::getMonto)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
 
+        java.math.BigDecimal balanceNeto = totalVentas.add(ingresos).subtract(totalCompras).subtract(egresos);
+
         // Crear tabla de resumen
         PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(60);
+        table.setWidthPercentage(70);
         table.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.setWidths(new float[]{3, 2});
 
         agregarCabeceraPdf(table, config, "CONCEPTO", "MONTO");
 
+        // -- Sección INGRESOS --
+        agregarFilaSeccionPdf(table, "INGRESOS");
         agregarFilaResumenPdf(table, "Total Ventas", moneda + totalVentas);
-        agregarFilaResumenPdf(table, "Total IGV", moneda + totalIgv);
-        agregarFilaResumenPdf(table, "Ventas al Contado", moneda + ventasContado);
-        agregarFilaResumenPdf(table, "Ventas a Crédito", moneda + ventasCredito);
-        agregarFilaResumenPdf(table, "Cantidad de Ventas", String.valueOf(ventas.size()));
-        agregarFilaResumenPdf(table, "Ingresos Caja", moneda + ingresos);
-        agregarFilaResumenPdf(table, "Egresos Caja", moneda + egresos);
+        agregarFilaResumenPdf(table, "  Ventas al Contado", moneda + ventasContado);
+        agregarFilaResumenPdf(table, "  Ventas a Crédito", moneda + ventasCredito);
+        agregarFilaResumenPdf(table, "  IGV cobrado", moneda + totalIgv);
+        agregarFilaResumenPdf(table, "  Cantidad de ventas", String.valueOf(ventas.size()));
+        agregarFilaResumenPdf(table, "Otros Ingresos Caja", moneda + ingresos);
 
-        // Fila de balance con estilo destacado
+        // -- Sección EGRESOS --
+        agregarFilaSeccionPdf(table, "EGRESOS");
+        agregarFilaResumenPdf(table, "Total Compras (Inventario)", moneda + totalCompras);
+        agregarFilaResumenPdf(table, "  Cantidad de compras", String.valueOf(compras.size()));
+        agregarFilaResumenPdf(table, "Gastos / Egresos Caja", moneda + egresos);
+
+        // Fila de balance neto con estilo destacado
+        Color colorBalance = balanceNeto.compareTo(java.math.BigDecimal.ZERO) >= 0 ? new Color(0, 128, 0) : Color.RED;
+
         PdfPCell cellConcepto = new PdfPCell(new Phrase("BALANCE NETO", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
         cellConcepto.setPadding(6);
-        cellConcepto.setBackgroundColor(new Color(230, 230, 230));
+        cellConcepto.setBackgroundColor(new Color(220, 220, 220));
         table.addCell(cellConcepto);
 
-        java.math.BigDecimal balance = ingresos.subtract(egresos);
-        Color colorBalance = balance.compareTo(java.math.BigDecimal.ZERO) >= 0 ? new Color(0, 128, 0) : Color.RED;
-        PdfPCell cellMonto = new PdfPCell(new Phrase(moneda + balance, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorBalance)));
+        PdfPCell cellMonto = new PdfPCell(new Phrase(moneda + balanceNeto, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorBalance)));
         cellMonto.setPadding(6);
         cellMonto.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cellMonto.setBackgroundColor(new Color(230, 230, 230));
+        cellMonto.setBackgroundColor(new Color(220, 220, 220));
         table.addCell(cellMonto);
 
         document.add(table);
+    }
+
+    private void agregarFilaSeccionPdf(PdfPTable table, String titulo) {
+        PdfPCell cell = new PdfPCell(new Phrase(titulo, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9)));
+        cell.setColspan(2);
+        cell.setPadding(5);
+        cell.setBackgroundColor(new Color(200, 220, 240));
+        table.addCell(cell);
     }
 
     /**

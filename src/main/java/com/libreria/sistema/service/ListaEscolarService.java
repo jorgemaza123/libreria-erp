@@ -60,9 +60,13 @@ public class ListaEscolarService {
     public ListaEscolar crearLista(ListaEscolarDTO dto) {
         log.info("Creando nueva lista escolar para alumno: {}", dto.getNombreAlumno());
 
-        // Obtener siguiente número
-        Integer maxNumero = listaRepository.findMaxNumeroBySerie(SERIE_LISTA);
-        int nuevoNumero = (maxNumero != null ? maxNumero : 0) + 1;
+        // FIX ERROR-7: usar correlativo con lock pesimista para evitar duplicados en concurrencia.
+        // El código "LISTA_ESCOLAR" con serie "LE001" se crea automáticamente si no existe.
+        Correlativo correlativoLista = correlativoRepository.findByCodigoAndSerieWithLock("LISTA_ESCOLAR", SERIE_LISTA)
+                .orElseGet(() -> correlativoRepository.save(new Correlativo("LISTA_ESCOLAR", SERIE_LISTA, 0)));
+        int nuevoNumero = (correlativoLista.getUltimoNumero() != null ? correlativoLista.getUltimoNumero() : 0) + 1;
+        correlativoLista.setUltimoNumero(nuevoNumero);
+        correlativoRepository.save(correlativoLista);
 
         // Crear lista
         ListaEscolar lista = new ListaEscolar();
@@ -99,11 +103,26 @@ public class ListaEscolarService {
         List<TextoListaParser.ItemParseado> itemsParseados = parser.parsear(dto.getTextoOriginal());
 
         int orden = 0;
-        for (TextoListaParser.ItemParseado item : itemsParseados) {
+        for (int i = 0; i < itemsParseados.size(); i++) {
+            TextoListaParser.ItemParseado item = itemsParseados.get(i);
             DetalleListaEscolar detalle = new DetalleListaEscolar();
             detalle.setListaEscolar(lista);
-            detalle.setTextoOriginal(item.getTextoOriginal());
-            detalle.setCantidadSolicitada(item.getCantidad());
+
+            // Usar texto editado por el usuario en preview si existe
+            String textoItem = item.getTextoOriginal();
+            if (dto.getTextosEditados() != null && dto.getTextosEditados().containsKey(i)) {
+                String editado = dto.getTextosEditados().get(i);
+                if (editado != null && !editado.isBlank()) textoItem = editado.trim();
+            }
+            detalle.setTextoOriginal(textoItem);
+
+            // Usar cantidad validada por el usuario (preview) si existe, si no la del parser
+            int cantidad = item.getCantidad();
+            if (dto.getCantidadesValidadas() != null &&
+                    dto.getCantidadesValidadas().containsKey(i)) {
+                cantidad = Math.max(1, dto.getCantidadesValidadas().get(i));
+            }
+            detalle.setCantidadSolicitada(cantidad);
             detalle.setEstado("NO_COTIZADO");
             detalle.setOrden(++orden);
             lista.getDetalles().add(detalle);
@@ -360,23 +379,29 @@ public class ListaEscolarService {
         BigDecimal totalVenta = BigDecimal.ZERO;
 
         for (ItemSeleccionadoDTO item : dto.getItemsSeleccionados()) {
-            DetalleListaEscolar detalle = detalleRepository.findById(item.getDetalleListaId())
-                .orElseThrow(() -> new RuntimeException("Item no encontrado: " + item.getDetalleListaId()));
+            DetalleListaEscolar detalle = null;
 
-            // Validar que pertenece a la lista
-            if (!detalle.getListaEscolar().getId().equals(lista.getId())) {
-                throw new RuntimeException("Item no pertenece a la lista");
-            }
+            if (item.getDetalleListaId() != null) {
+                // Item de la lista escolar
+                detalle = detalleRepository.findById(item.getDetalleListaId())
+                    .orElseThrow(() -> new RuntimeException("Item no encontrado: " + item.getDetalleListaId()));
 
-            // Validar que no esté vendido
-            if (detalle.estaVendido()) {
-                throw new RuntimeException("Item ya vendido: " + detalle.getTextoOriginal());
-            }
+                // Validar que pertenece a la lista
+                if (!detalle.getListaEscolar().getId().equals(lista.getId())) {
+                    throw new RuntimeException("Item no pertenece a la lista");
+                }
 
-            // Validar que permita venta
-            if (!detalle.permiteVenta() && !"NO_COTIZADO".equals(detalle.getEstado())) {
-                throw new RuntimeException("Item no permite venta: " + detalle.getTextoOriginal());
+                // Validar que no esté vendido
+                if (detalle.estaVendido()) {
+                    throw new RuntimeException("Item ya vendido: " + detalle.getTextoOriginal());
+                }
+
+                // Validar que permita venta
+                if (!detalle.permiteVenta() && !"NO_COTIZADO".equals(detalle.getEstado())) {
+                    throw new RuntimeException("Item no permite venta: " + detalle.getTextoOriginal());
+                }
             }
+            // else: producto adicional sin entrada en la lista — solo validar stock
 
             // Validar producto asignado
             Producto producto = productoRepository.findByIdWithLock(item.getProductoId())
@@ -389,11 +414,13 @@ public class ListaEscolarService {
                 }
             }
 
-            // Actualizar detalle con selección final
-            detalle.setNivelSeleccionado(item.getNivelSeleccionado());
-            detalle.setPrecioFinal(item.getPrecioUnitario());
+            // Actualizar detalle con selección final (solo si es item de la lista)
+            if (detalle != null) {
+                detalle.setNivelSeleccionado(item.getNivelSeleccionado());
+                detalle.setPrecioFinal(item.getPrecioUnitario());
+            }
 
-            itemsAVender.add(detalle);
+            itemsAVender.add(detalle); // null for additional products
             totalVenta = totalVenta.add(item.getSubtotal());
         }
 
@@ -437,6 +464,17 @@ public class ListaEscolarService {
             detalleVenta.setValorUnitario(valorUnitario);
             detalleVenta.setPorcentajeIgv(configuracionService.getIgvPorcentaje());
 
+            // FIX ERROR-8: asignar codigoTipoAfectacionIgv para cumplimiento SUNAT
+            String codigoAfectacion = com.libreria.sistema.util.Constants.AFECTACION_GRAVADO;
+            if (producto.getTipoAfectacionIgv() != null) {
+                codigoAfectacion = switch (producto.getTipoAfectacionIgv().toUpperCase()) {
+                    case "EXONERADO" -> com.libreria.sistema.util.Constants.AFECTACION_EXONERADO;
+                    case "INAFECTO"  -> com.libreria.sistema.util.Constants.AFECTACION_INAFECTO;
+                    default          -> com.libreria.sistema.util.Constants.AFECTACION_GRAVADO;
+                };
+            }
+            detalleVenta.setCodigoTipoAfectacionIgv(codigoAfectacion);
+
             totalGravada = totalGravada.add(valorVenta);
             totalIgv = totalIgv.add(igvItem);
 
@@ -460,9 +498,11 @@ public class ListaEscolarService {
                 productoRepository.save(producto);
             }
 
-            // Marcar item como vendido
-            detalleLista.marcarVendido(venta, null); // El ID se asigna después de guardar
-            detalleRepository.save(detalleLista);
+            // Marcar item como vendido (solo items de la lista, no productos adicionales)
+            if (detalleLista != null) {
+                detalleLista.marcarVendido(venta, null); // El ID se asigna después de guardar
+                detalleRepository.save(detalleLista);
+            }
         }
 
         // 7. Actualizar totales de venta
@@ -476,11 +516,13 @@ public class ListaEscolarService {
         // 9. Guardar venta
         venta = ventaRepository.save(venta);
 
-        // Actualizar IDs de detalle venta en items lista
+        // Actualizar IDs de detalle venta en items lista (omitir productos adicionales)
         for (int i = 0; i < venta.getItems().size(); i++) {
             DetalleListaEscolar detalleLista = itemsAVender.get(i);
-            detalleLista.setDetalleVentaId(venta.getItems().get(i).getId());
-            detalleRepository.save(detalleLista);
+            if (detalleLista != null) {
+                detalleLista.setDetalleVentaId(venta.getItems().get(i).getId());
+                detalleRepository.save(detalleLista);
+            }
         }
 
         // 10. Registrar pago y caja
@@ -723,6 +765,47 @@ public class ListaEscolarService {
     @Transactional(readOnly = true)
     public List<VentaListaEscolar> obtenerHistorialVentas(Long listaId) {
         return ventaListaRepository.findByListaIdConDatos(listaId);
+    }
+
+    /**
+     * Obtiene todas las transacciones de venta de una lista con sus detalles completos.
+     * Carga los DetalleVenta de cada Venta dentro de la transacción para evitar LazyInit.
+     * Usado para el PDF combinado y el POS modal de devoluciones.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> obtenerTransaccionesLista(Long listaId) {
+        List<VentaListaEscolar> ventasLista = ventaListaRepository.findByListaIdConDatos(listaId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (VentaListaEscolar vl : ventasLista) {
+            Venta venta = vl.getVenta();
+            if (venta == null || "ANULADO".equals(venta.getEstado())) continue;
+            // Acceder a items (LAZY) dentro de la transacción activa
+            List<com.libreria.sistema.model.DetalleVenta> detalles = venta.getItems();
+            Map<String, Object> ventaMap = new LinkedHashMap<>();
+            ventaMap.put("ventaId", venta.getId());
+            ventaMap.put("serie", venta.getSerie());
+            ventaMap.put("numero", venta.getNumero());
+            ventaMap.put("comprobante", venta.getSerie() + "-" + String.format("%08d", venta.getNumero()));
+            ventaMap.put("fecha", venta.getFechaEmision() != null ? venta.getFechaEmision().toString() : "");
+            ventaMap.put("total", venta.getTotal());
+            ventaMap.put("estado", venta.getEstado());
+            List<Map<String, Object>> items = new ArrayList<>();
+            if (detalles != null) {
+                for (com.libreria.sistema.model.DetalleVenta d : detalles) {
+                    if (d.getProducto() == null) continue;
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("productoId", d.getProducto().getId());
+                    item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion() : d.getProducto().getNombre());
+                    item.put("cantidad", d.getCantidad() != null ? d.getCantidad().intValue() : 0);
+                    item.put("precioUnitario", d.getPrecioUnitario());
+                    item.put("subtotal", d.getSubtotal());
+                    items.add(item);
+                }
+            }
+            ventaMap.put("items", items);
+            result.add(ventaMap);
+        }
+        return result;
     }
 
     /**
@@ -1470,6 +1553,154 @@ public class ListaEscolarService {
         resultado.put("itemsEliminados", idsEliminados);
         resultado.put("nuevosItems", nuevosItemsInfo);
         return resultado;
+    }
+
+    /**
+     * Agrega nuevos ítems a una lista existente sin eliminar los ya existentes.
+     * Parsea el texto, crea detalles nuevos con orden continuado y cotiza automáticamente.
+     */
+    @Transactional
+    public Map<String, Object> agregarItemsTexto(Long listaId, String texto) {
+        ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
+            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+
+        if ("CANCELADA".equals(lista.getEstado()) || "ELIMINADA".equals(lista.getEstado())) {
+            throw new RuntimeException("No se puede modificar una lista en estado " + lista.getEstado());
+        }
+
+        // Si estaba COMPLETADA, reabrirla para permitir más ventas
+        boolean eraCompletada = "COMPLETADA".equals(lista.getEstado());
+
+        List<TextoListaParser.ItemParseado> nuevosParseados = parser.parsear(texto);
+        if (nuevosParseados.isEmpty()) {
+            throw new RuntimeException("No se detectaron items en el texto ingresado");
+        }
+
+        int maxOrden = lista.getDetalles().stream()
+            .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
+            .max().orElse(0);
+
+        List<DetalleListaEscolar> nuevosDetalles = new ArrayList<>();
+        for (TextoListaParser.ItemParseado item : nuevosParseados) {
+            DetalleListaEscolar detalle = new DetalleListaEscolar();
+            detalle.setListaEscolar(lista);
+            detalle.setTextoOriginal(item.getTextoOriginal());
+            detalle.setCantidadSolicitada(item.getCantidad());
+            detalle.setEstado("NO_COTIZADO");
+            detalle.setOrden(++maxOrden);
+
+            MatcherProductosService.ResultadoMatch match =
+                matcherService.buscarMatch(item.getTextoOriginal(), item.getCantidad());
+
+            if (match.isTieneMatch()) {
+                detalle.setProducto(match.getProductoPrincipal());
+                detalle.setProductoNombreSnapshot(match.getProductoPrincipal().getNombre());
+                detalle.setConfianzaMatch(BigDecimal.valueOf(match.getConfianza()));
+                detalle.setMatchAutomatico(true);
+                if (match.getProductoEconomico() != null) {
+                    detalle.setProductoEconomico(match.getProductoEconomico());
+                    detalle.setPrecioEconomico(match.getPrecioEconomico());
+                }
+                if (match.getProductoMedio() != null) {
+                    detalle.setProductoMedio(match.getProductoMedio());
+                    detalle.setPrecioMedio(match.getPrecioMedio());
+                }
+                if (match.getProductoPremium() != null) {
+                    detalle.setProductoPremium(match.getProductoPremium());
+                    detalle.setPrecioPremium(match.getPrecioPremium());
+                }
+                detalle.setNivelSeleccionado("MEDIO");
+                detalle.setPrecioFinal(match.getPrecioMedio());
+                detalle.setEstado("COTIZADO");
+            }
+
+            lista.getDetalles().add(detalle);
+            nuevosDetalles.add(detalle);
+        }
+
+        lista.setItemsTotal(lista.getDetalles().size());
+        lista.recalcularPendientes();
+        recalcularTotales(lista);
+        if (eraCompletada) {
+            lista.setEstado("EN_PROCESO");
+        }
+        listaRepository.save(lista);
+
+        log.info("Lista {}: {} items nuevos agregados{}", lista.getCodigoCompleto(), nuevosDetalles.size(),
+                eraCompletada ? " (lista reabierta desde COMPLETADA)" : "");
+
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("success", true);
+        resultado.put("agregados", nuevosDetalles.size());
+        resultado.put("itemsTotal", lista.getItemsTotal());
+        resultado.put("mensaje", nuevosDetalles.size() + " item(s) agregado(s) correctamente");
+        return resultado;
+    }
+
+    /**
+     * Agrega un producto específico directamente a la lista como ítem COTIZADO listo para vender.
+     * Útil cuando el cliente quiere agregar más unidades o productos nuevos sin pasar por el parser OCR.
+     * Si la lista estaba COMPLETADA la reactiva a EN_PROCESO.
+     */
+    @Transactional
+    public DetalleListaEscolar agregarProductoDirecto(Long listaId, Long productoId, int cantidad, BigDecimal precio) {
+        ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
+            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+
+        if ("CANCELADA".equals(lista.getEstado()) || "ELIMINADA".equals(lista.getEstado())) {
+            throw new RuntimeException("No se puede agregar items a una lista en estado " + lista.getEstado());
+        }
+
+        Producto producto = productoRepository.findById(productoId)
+            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
+
+        if (cantidad < 1) cantidad = 1;
+        if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
+            precio = producto.getPrecioVenta() != null ? producto.getPrecioVenta() : BigDecimal.ZERO;
+        }
+
+        int maxOrden = lista.getDetalles().stream()
+            .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
+            .max().orElse(0);
+
+        DetalleListaEscolar detalle = new DetalleListaEscolar();
+        detalle.setListaEscolar(lista);
+        detalle.setTextoOriginal((cantidad > 1 ? cantidad + " " : "") + producto.getNombre());
+        detalle.setCantidadSolicitada(cantidad);
+        detalle.setEstado("COTIZADO");
+        detalle.setOrden(maxOrden + 1);
+        detalle.setObservaciones("ITEM_ADICIONAL");
+
+        // Asignar el producto a los tres niveles con el mismo precio elegido
+        detalle.setProducto(producto);
+        detalle.setProductoNombreSnapshot(producto.getNombre());
+        detalle.setProductoEconomico(producto);
+        detalle.setPrecioEconomico(precio);
+        detalle.setProductoMedio(producto);
+        detalle.setPrecioMedio(precio);
+        detalle.setProductoPremium(producto);
+        detalle.setPrecioPremium(precio);
+        detalle.setNivelSeleccionado("MEDIO");
+        detalle.setPrecioFinal(precio);
+
+        detalle = detalleRepository.save(detalle);
+
+        lista.getDetalles().add(detalle);
+        lista.setItemsTotal(lista.getDetalles().size());
+        lista.recalcularPendientes();
+        recalcularTotales(lista);
+
+        // Si estaba COMPLETADA, reactivar para que el POS permita vender los nuevos items
+        if ("COMPLETADA".equals(lista.getEstado())) {
+            lista.setEstado("EN_PROCESO");
+            log.info("Lista {} reactivada a EN_PROCESO por nuevo producto adicional", lista.getCodigoCompleto());
+        }
+
+        listaRepository.save(lista);
+
+        log.info("Producto '{}' (x{} @ S/{}) agregado directamente a lista {}",
+                producto.getNombre(), cantidad, precio, lista.getCodigoCompleto());
+        return detalle;
     }
 
     /**

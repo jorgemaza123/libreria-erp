@@ -25,7 +25,7 @@
                         <div class="card-header">
                             <h3 class="card-title">Corrección de Stock (Mermas / Sobrantes)</h3>
                         </div>
-                        <form action="/inventario/ajustar" method="post" onsubmit="return confirm('¿Seguro que desea modificar el stock manualmente? Esto quedará registrado en el Kardex.');">
+                        <form action="/inventario/ajustar" method="post" id="formAjuste">
                             <div class="card-body">
                                 
                                 <div class="form-group">
@@ -90,6 +90,22 @@
                 stockActual = parseInt($(this).find(':selected').data('stock')) || 0;
                 $('#lblStockSistema').text(stockActual);
                 $('#lblDiferencia').text('');
+            });
+        });
+
+        document.getElementById('formAjuste').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var form = this;
+            Swal.fire({
+                title: '¿Aplicar Ajuste?',
+                text: 'Esta acción modificará el stock manualmente y quedará registrada en el Kardex.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                confirmButtonText: 'Sí, aplicar',
+                cancelButtonText: 'Cancelar'
+            }).then(function(result) {
+                if (result.isConfirmed) form.submit();
             });
         });
 

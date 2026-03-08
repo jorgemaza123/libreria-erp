@@ -2,6 +2,7 @@ package com.libreria.sistema;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import java.io.File;
 
@@ -10,14 +11,15 @@ import java.io.File;
 public class SistemaApplication {
 
     public static void main(String[] args) {
-        // 1. IMPORTANTE: Verificar y generar certificado ANTES de que Spring intente leerlo
         verificarYGenerarKeystore();
 
         // 2. Iniciar la aplicación
-        SpringApplication.run(SistemaApplication.class, args);
+        ConfigurableApplicationContext ctx = SpringApplication.run(SistemaApplication.class, args);
+        String port = ctx.getEnvironment().getProperty("server.port", "8443");
+        String protocol = Boolean.parseBoolean(ctx.getEnvironment().getProperty("server.ssl.enabled", "true")) ? "https" : "http";
         System.out.println("\n===========================================================");
         System.out.println(" SISTEMA LIBRERÍA INICIADO CON ÉXITO");
-        System.out.println(" ACCESO SEGURO: https://localhost:8443");
+        System.out.println(" ACCESO: " + protocol + "://localhost:" + port);
         System.out.println("===========================================================\n");
     }
 

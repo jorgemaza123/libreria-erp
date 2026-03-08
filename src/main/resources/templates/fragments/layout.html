@@ -189,8 +189,8 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'productos_faltantes' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'productos_faltantes' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
                                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -221,8 +221,8 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="/listas-escolares/faltantes" class="nav-link" th:classappend="${active == 'productos_faltantes' ? 'active' : ''}">
-                                        <i class="fas fa-exclamation-circle nav-icon text-warning"></i><p>Productos Faltantes</p>
+                                    <a href="/faltantes" class="nav-link" th:classappend="${active == 'faltantes_unificado' ? 'active' : ''}">
+                                        <i class="fas fa-exclamation-circle nav-icon text-warning"></i><p>Demanda Insatisfecha</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -301,8 +301,8 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' or active == 'solicitudes' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>
                                 <p>Logística <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -340,11 +340,6 @@
                                 <li class="nav-item">
                                     <a href="/kardex" class="nav-link" th:classappend="${active == 'kardex' ? 'active' : ''}">
                                         <i class="fas fa-exchange-alt nav-icon"></i><p>Kardex</p>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="/solicitudes/lista" class="nav-link" th:classappend="${active == 'solicitudes' ? 'active' : ''}">
-                                        <i class="nav-icon fas fa-bullhorn text-warning"></i><p>Pedidos / Faltantes</p>
                                     </a>
                                 </li>
                             </ul>

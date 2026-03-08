@@ -40,7 +40,7 @@
                                 <td th:text="${c.fecha != null ? #temporals.format(c.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
                                 <td th:text="${c.proveedor != null ? c.proveedor.razonSocial : 'PROVEEDOR ELIMINADO'}"></td>
                                 <td th:text="${c.tipoComprobante} + ' ' + ${c.numeroComprobante}"></td>
-                                <td class="font-weight-bold" th:text="'S/ ' + ${c.total}"></td>
+                                <td class="font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 'COMMA', 2, 'POINT')}"></td>
                                 <td th:text="${c.observaciones}"></td>
                                 <td>
                                     <button class="btn btn-info btn-sm"

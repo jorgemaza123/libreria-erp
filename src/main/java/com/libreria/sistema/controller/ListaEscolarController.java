@@ -4,6 +4,7 @@ import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.*;
 import com.libreria.sistema.repository.ColegioRepository;
 import com.libreria.sistema.service.*;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Controlador para el módulo de Listas Escolares.
@@ -57,9 +59,11 @@ public class ListaEscolarController {
     private final ListaEscolarService listaService;
     private final MatcherProductosService matcherService;
     private final ProductoBusquedaService busquedaService;
+    private final TextoListaParser textoListaParser;
     private final ColegioRepository colegioRepository;
     private final CajaService cajaService;
     private final ConfiguracionService configuracionService;
+    private final DevolucionService devolucionService;
 
     // =========================================================
     //  VISTAS HTML
@@ -163,6 +167,37 @@ public class ListaEscolarController {
     // =========================================================
     //  API REST - CRUD LISTA
     // =========================================================
+
+    /**
+     * Preview del parseo de texto OCR — sin escritura en DB.
+     * Devuelve los items detectados con cantidades y flags de alerta.
+     * El frontend muestra esta tabla al usuario para que corrija antes de confirmar.
+     */
+    @PostMapping("/api/preview")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> previewParseo(@RequestBody Map<String, String> body) {
+        String textoOriginal = body.get("textoOriginal");
+        if (textoOriginal == null || textoOriginal.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Texto vacío"));
+        }
+
+        List<TextoListaParser.ItemParseado> items = textoListaParser.parsear(textoOriginal);
+
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            TextoListaParser.ItemParseado item = items.get(i);
+            Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("indice", i);
+            map.put("textoOriginal", item.getTextoOriginal());
+            map.put("cantidad", item.getCantidad());
+            map.put("esEspecificacion", item.isEsEspecificacion());
+            map.put("alertaCantidad", item.isAlertaCantidad());
+            result.add(map);
+        }
+
+        return ResponseEntity.ok(Map.of("items", result, "total", result.size()));
+    }
 
     /**
      * Crear nueva lista (POST)
@@ -1425,11 +1460,20 @@ public class ListaEscolarController {
 
         java.util.ArrayList<PdfPTable> resultado = new java.util.ArrayList<>();
 
-        // === TABLA COTIZADOS ===
-        if (!items.cotizados.isEmpty()) {
-            PdfPTable table = new PdfPTable(6);
+        // Fusionar cotizados + noDisponibles y ordenar por campo 'orden' para mantener
+        // el orden original ingresado por el usuario (sin agrupar por disponibilidad)
+        java.util.Set<Long> cotizadosIds = items.cotizados.stream()
+            .map(d -> d.getId()).collect(java.util.stream.Collectors.toSet());
+
+        java.util.List<DetalleListaEscolar> todosItems = new java.util.ArrayList<>();
+        todosItems.addAll(items.cotizados);
+        todosItems.addAll(items.noDisponibles);
+        todosItems.sort(java.util.Comparator.comparingInt(d -> (d.getOrden() != null ? d.getOrden() : 999)));
+
+        if (!todosItems.isEmpty()) {
+            PdfPTable table = new PdfPTable(7);
             table.setWidthPercentage(100);
-            table.setWidths(new float[]{0.35f, 0.45f, 3.9f, 0.55f, 1.1f, 1.15f});
+            table.setWidths(new float[]{0.35f, 0.45f, 2.0f, 2.1f, 0.55f, 0.95f, 1.1f});
             table.setSpacingBefore(layout.spacingBefore);
             table.setSplitLate(false);
 
@@ -1439,12 +1483,12 @@ public class ListaEscolarController {
             cellTit.setBackgroundColor(colorNivel);
             cellTit.setPadding(pad + 1.5f);
             cellTit.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cellTit.setColspan(6);
+            cellTit.setColspan(7);
             cellTit.setBorder(Rectangle.NO_BORDER);
             table.addCell(cellTit);
 
             // Cabecera de columnas
-            for (String h : new String[]{"#", "Est.", "Descripción", "Cant", "P.Unit", "Subtotal"}) {
+            for (String h : new String[]{"#", "Est.", "Solicitado", "Entregado", "Cant", "P.Unit", "Subtotal"}) {
                 PdfPCell cell = new PdfPCell(new Phrase(h,
                     FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeHeader, Color.WHITE)));
                 cell.setBackgroundColor(new Color(60, 60, 60));
@@ -1457,44 +1501,63 @@ public class ListaEscolarController {
             BigDecimal totalCotizados = BigDecimal.ZERO;
             int num = 0;
 
-            for (DetalleListaEscolar detalle : items.cotizados) {
+            for (DetalleListaEscolar detalle : todosItems) {
                 num++;
+                boolean esCotizado = cotizadosIds.contains(detalle.getId());
                 BigDecimal precio = detalle.getPrecioPorNivel(nivel);
                 int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
                 BigDecimal subtotal = (precio != null ? precio : BigDecimal.ZERO).multiply(BigDecimal.valueOf(cantidad));
 
                 boolean filaAlterna = (num % 2 == 0);
-                Color bgFila = filaAlterna ? grisSuave : Color.WHITE;
+                // Items pendientes usan fondo gris claro para distinguirlos visualmente
+                Color bgFila = !esCotizado ? new Color(240, 240, 240) : (filaAlterna ? grisSuave : Color.WHITE);
+                Color colorTexto = !esCotizado ? new Color(140, 140, 140) : textoOscuro;
 
-                String iconoEstado = detalle.estaVendido() ? "[V]" : "[  ]";
-                Color colorEstado = detalle.estaVendido() ? new Color(40, 167, 69) : new Color(150, 150, 150);
+                String iconoEstado = detalle.estaVendido() ? "[V]" : (esCotizado ? "[  ]" : "[?]");
+                Color colorEstado = detalle.estaVendido() ? new Color(40, 167, 69)
+                    : (esCotizado ? new Color(150, 150, 150) : new Color(180, 120, 0));
 
-                table.addCell(pdfCeldaLimpia(String.valueOf(num), fs, pad, bgFila, textoOscuro, Element.ALIGN_CENTER));
+                table.addCell(pdfCeldaLimpia(String.valueOf(num), fs, pad, bgFila, colorTexto, Element.ALIGN_CENTER));
                 table.addCell(pdfCeldaLimpia(iconoEstado, fs, pad, bgFila, colorEstado, Element.ALIGN_CENTER));
 
-                // Descripción normalizada
-                String descripcion;
-                boolean esCotizacionProv = detalle.esCotizacionProveedorPorNivel(nivel) &&
-                                           detalle.getNombreProductoPorNivel(nivel) == null;
-                if (detalle.esItemRegalo()) {
-                    descripcion = "REGALO: " + normalizarDescripcion(detalle.getTextoOriginal());
-                } else if (detalle.esItemServicio()) {
-                    descripcion = "SERVICIO: " + normalizarDescripcion(detalle.getTextoOriginal());
-                } else if (esCotizacionProv) {
-                    String descManual = detalle.getDescripcionManualPorNivel(nivel);
-                    String nombreMostrar = descManual != null && !descManual.isBlank() ? descManual : detalle.getTextoOriginal();
-                    descripcion = normalizarDescripcion(nombreMostrar);
-                    if (detalle.getNombreProveedor() != null && !detalle.getNombreProveedor().isBlank()) {
-                        descripcion += " (" + detalle.getNombreProveedor() + ")";
-                    }
-                } else {
-                    String nombreProducto = detalle.getNombreProductoPorNivel(nivel);
-                    descripcion = normalizarDescripcion(nombreProducto != null ? nombreProducto : detalle.getTextoOriginal());
-                }
-                table.addCell(pdfCeldaLimpia(descripcion, fs, pad, bgFila, textoOscuro, Element.ALIGN_LEFT));
-                table.addCell(pdfCeldaLimpia(String.valueOf(cantidad), fs, pad, bgFila, textoOscuro, Element.ALIGN_CENTER));
+                // Columna SOLICITADO — texto original del cliente
+                table.addCell(pdfCeldaLimpia(normalizarDescripcion(detalle.getTextoOriginal()), fs, pad, bgFila, new Color(80, 80, 80), Element.ALIGN_LEFT));
 
-                if (detalle.esItemRegalo()) {
+                // Columna ENTREGADO — producto asignado o indicador de pendiente
+                String descripcion;
+                if (!esCotizado) {
+                    descripcion = "— PENDIENTE —";
+                } else {
+                    boolean esCotizacionProv = detalle.esCotizacionProveedorPorNivel(nivel) &&
+                                               detalle.getNombreProductoPorNivel(nivel) == null;
+                    if (detalle.esItemRegalo()) {
+                        descripcion = "REGALO: " + normalizarDescripcion(detalle.getTextoOriginal());
+                    } else if (detalle.esItemServicio()) {
+                        descripcion = "SERVICIO: " + normalizarDescripcion(detalle.getTextoOriginal());
+                    } else if (esCotizacionProv) {
+                        String descManual = detalle.getDescripcionManualPorNivel(nivel);
+                        String nombreMostrar = descManual != null && !descManual.isBlank() ? descManual : detalle.getTextoOriginal();
+                        descripcion = normalizarDescripcion(nombreMostrar);
+                        if (detalle.getNombreProveedor() != null && !detalle.getNombreProveedor().isBlank()) {
+                            descripcion += " (" + detalle.getNombreProveedor() + ")";
+                        }
+                    } else {
+                        String nombreProducto = detalle.getNombreProductoPorNivel(nivel);
+                        descripcion = normalizarDescripcion(nombreProducto != null ? nombreProducto : detalle.getTextoOriginal());
+                        if (detalle.getProductoReemplazo() != null) {
+                            descripcion += " (Reemplazo)";
+                        }
+                    }
+                }
+                Color colorEntregado = !esCotizado ? new Color(160, 160, 160)
+                    : (detalle.getProductoReemplazo() != null ? new Color(180, 100, 0) : textoOscuro);
+                table.addCell(pdfCeldaLimpia(descripcion, fs, pad, bgFila, colorEntregado, Element.ALIGN_LEFT));
+                table.addCell(pdfCeldaLimpia(String.valueOf(cantidad), fs, pad, bgFila, colorTexto, Element.ALIGN_CENTER));
+
+                if (!esCotizado) {
+                    table.addCell(pdfCeldaLimpia("-", fs, pad, bgFila, colorTexto, Element.ALIGN_RIGHT));
+                    table.addCell(pdfCeldaLimpia("-", fs, pad, bgFila, colorTexto, Element.ALIGN_RIGHT));
+                } else if (detalle.esItemRegalo()) {
                     table.addCell(pdfCeldaLimpia("GRATIS", fs, pad, bgFila, new Color(40, 167, 69), Element.ALIGN_RIGHT));
                     table.addCell(pdfCeldaLimpia("-", fs, pad, bgFila, textoOscuro, Element.ALIGN_RIGHT));
                 } else {
@@ -1506,7 +1569,7 @@ public class ListaEscolarController {
 
             // Línea separadora sutil antes del subtotal
             PdfPCell lineaSep = new PdfPCell();
-            lineaSep.setColspan(6);
+            lineaSep.setColspan(7);
             lineaSep.setBorder(Rectangle.TOP);
             lineaSep.setBorderColor(lineaGris);
             lineaSep.setBorderWidth(0.5f);
@@ -1516,7 +1579,7 @@ public class ListaEscolarController {
             // Fila SUBTOTAL
             PdfPCell cellLabel = new PdfPCell(new Phrase("TOTAL " + tituloNivel,
                 FontFactory.getFont(FontFactory.HELVETICA_BOLD, layout.fontSizeSubtotal, textoOscuro)));
-            cellLabel.setColspan(5);
+            cellLabel.setColspan(6);
             cellLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
             cellLabel.setPadding(pad + 1);
             cellLabel.setBackgroundColor(Color.WHITE);
@@ -1532,77 +1595,6 @@ public class ListaEscolarController {
             table.addCell(cellVal);
 
             resultado.add(table);
-        }
-
-        // === TABLA PENDIENTES ===
-        if (!items.noDisponibles.isEmpty()) {
-            float pfs = layout.pendientesFontSize;
-            float ppad = Math.max(pad * 0.7f, 0.6f);
-
-            PdfPTable tPend = new PdfPTable(3);
-            tPend.setWidthPercentage(100);
-            tPend.setWidths(new float[]{0.3f, 4.5f, 0.7f});
-            tPend.setSpacingBefore(layout.spacingBefore);
-            tPend.setSplitLate(false);
-
-            PdfPCell tit = new PdfPCell(new Phrase("PENDIENTES - " + tituloNivel,
-                FontFactory.getFont(FontFactory.HELVETICA_BOLD, pfs, new Color(120, 120, 120))));
-            tit.setColspan(3);
-            tit.setBorder(Rectangle.BOTTOM);
-            tit.setBorderColor(new Color(200, 200, 200));
-            tit.setBorderWidth(0.5f);
-            tit.setPadding(ppad + 1);
-            tPend.addCell(tit);
-
-            Color grisOscuro = new Color(100, 100, 100);
-            for (String h : new String[]{"#", "Item Solicitado", "Cant"}) {
-                PdfPCell cell = new PdfPCell(new Phrase(h,
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, pfs - 0.5f, grisOscuro)));
-                cell.setBackgroundColor(new Color(240, 240, 240));
-                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                cell.setPadding(ppad);
-                cell.setBorder(Rectangle.NO_BORDER);
-                tPend.addCell(cell);
-            }
-
-            int num = 0;
-            for (DetalleListaEscolar detalle : items.noDisponibles) {
-                num++;
-                int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
-                boolean filaAlterna = (num % 2 == 0);
-                Color bgFila = filaAlterna ? grisSuave : Color.WHITE;
-
-                boolean mostrarLinea = (num % 5 == 0) && num < items.noDisponibles.size();
-                int borderBottom = mostrarLinea ? Rectangle.BOTTOM : Rectangle.NO_BORDER;
-
-                PdfPCell c1 = new PdfPCell(new Phrase(String.valueOf(num),
-                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
-                c1.setHorizontalAlignment(Element.ALIGN_CENTER);
-                c1.setPadding(ppad);
-                c1.setBackgroundColor(bgFila);
-                c1.setBorder(borderBottom);
-                if (mostrarLinea) { c1.setBorderColor(lineaGris); c1.setBorderWidth(0.3f); }
-                tPend.addCell(c1);
-
-                PdfPCell c2 = new PdfPCell(new Phrase(normalizarDescripcion(detalle.getTextoOriginal()),
-                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
-                c2.setPadding(ppad);
-                c2.setBackgroundColor(bgFila);
-                c2.setBorder(borderBottom);
-                if (mostrarLinea) { c2.setBorderColor(lineaGris); c2.setBorderWidth(0.3f); }
-                tPend.addCell(c2);
-
-                PdfPCell c3 = new PdfPCell(new Phrase(String.valueOf(cantidad),
-                    FontFactory.getFont(FontFactory.HELVETICA, pfs, textoOscuro)));
-                c3.setHorizontalAlignment(Element.ALIGN_CENTER);
-                c3.setPadding(ppad);
-                c3.setBackgroundColor(bgFila);
-                c3.setBorder(borderBottom);
-                if (mostrarLinea) { c3.setBorderColor(lineaGris); c3.setBorderWidth(0.3f); }
-                tPend.addCell(c3);
-            }
-
-            resultado.add(tPend);
         }
 
         return resultado.toArray(new PdfPTable[0]);
@@ -2056,11 +2048,8 @@ public class ListaEscolarController {
      */
     @GetMapping("/faltantes")
     @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
-    public String vistaFaltantes(Model model) {
-        model.addAttribute("faltantes", listaService.obtenerProductosFaltantes());
-        model.addAttribute("cotizadosProveedor", listaService.obtenerCotizadosProveedor());
-        model.addAttribute("estadisticas", listaService.obtenerEstadisticasFaltantes());
-        return "lista-escolar/faltantes";
+    public String vistaFaltantes() {
+        return "redirect:/faltantes?tab=listas";
     }
 
     /**
@@ -2222,11 +2211,11 @@ public class ListaEscolarController {
         document.add(fecha);
 
         // Tabla
-        PdfPTable table = new PdfPTable(new float[]{10f, 55f, 15f, 20f});
+        PdfPTable table = new PdfPTable(new float[]{8f, 38f, 27f, 12f, 15f});
         table.setWidthPercentage(100);
 
         // Headers
-        String[] headers = {"#", "Producto Solicitado", "Veces", "Cant. Total"};
+        String[] headers = {"#", "Producto Solicitado", "Proveedor / Alternativa", "Veces", "Cant. Total"};
         for (String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, headerFont));
             cell.setBackgroundColor(new Color(52, 58, 64));
@@ -2256,6 +2245,16 @@ public class ListaEscolarController {
             c2.setPadding(4);
             table.addCell(c2);
 
+            String provInfo = (f.getProveedorSugerido() != null && !f.getProveedorSugerido().isBlank())
+                    ? f.getProveedorSugerido() : "Sin cotizar";
+            Font provFont = FontFactory.getFont(FontFactory.HELVETICA, 9,
+                    (f.getProveedorSugerido() != null && !f.getProveedorSugerido().isBlank())
+                            ? new Color(0, 120, 0) : new Color(180, 100, 0));
+            PdfPCell cProv = new PdfPCell(new Phrase(provInfo, provFont));
+            cProv.setBackgroundColor(bgColor);
+            cProv.setPadding(4);
+            table.addCell(cProv);
+
             PdfPCell c3 = new PdfPCell(new Phrase(String.valueOf(f.getVecessolicitado()), cellFont));
             c3.setHorizontalAlignment(Element.ALIGN_CENTER);
             c3.setBackgroundColor(bgColor);
@@ -2272,7 +2271,7 @@ public class ListaEscolarController {
         // Fila total
         Font totalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10);
         PdfPCell totalLabel = new PdfPCell(new Phrase("TOTAL", totalFont));
-        totalLabel.setColspan(3);
+        totalLabel.setColspan(4);
         totalLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
         totalLabel.setBackgroundColor(new Color(255, 243, 205));
         totalLabel.setPadding(6);
@@ -2374,6 +2373,418 @@ public class ListaEscolarController {
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
             log.error("Error al actualizar texto original de lista {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Agrega nuevos ítems a una lista existente sin eliminar los actuales.
+     * Parsea el texto, auto-cotiza y asigna órdenes continuados.
+     */
+    @PostMapping("/api/{id}/agregar-items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> agregarItems(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String texto = body.get("texto");
+            if (texto == null || texto.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false, "error", "El texto no puede estar vacío"));
+            }
+            Map<String, Object> resultado = listaService.agregarItemsTexto(id, texto);
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            log.error("Error al agregar items a lista {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Agrega un producto directamente a la lista como ítem COTIZADO listo para vender.
+     * Funciona para cualquier estado excepto CANCELADA/ELIMINADA.
+     * Si la lista estaba COMPLETADA la reactiva a EN_PROCESO automáticamente.
+     */
+    @PostMapping("/api/{id}/agregar-producto")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> agregarProducto(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            if (body.get("productoId") == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "El productoId es requerido"));
+            }
+            Long productoId = Long.valueOf(body.get("productoId").toString());
+            int cantidad = body.get("cantidad") != null ? Integer.parseInt(body.get("cantidad").toString()) : 1;
+            BigDecimal precio = body.get("precio") != null && !body.get("precio").toString().isBlank()
+                    ? new BigDecimal(body.get("precio").toString()) : null;
+
+            DetalleListaEscolar detalle = listaService.agregarProductoDirecto(id, productoId, cantidad, precio);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "id", detalle.getId(),
+                "texto", detalle.getTextoOriginal(),
+                "precio", detalle.getPrecioFinal(),
+                "mensaje", "Producto agregado a la lista correctamente"
+            ));
+        } catch (Exception e) {
+            log.error("Error al agregar producto a lista {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    //  PDF COMBINADO DE VENTAS
+    // =========================================================
+
+    /**
+     * PDF combinado con todas las transacciones de venta de la lista.
+     * Muestra: Venta original + Adiciones posteriores, cada una con sus items.
+     * Dinámico: lee datos en tiempo real desde la BD.
+     */
+    @GetMapping("/{id}/pdf-venta")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public void generarPDFVenta(
+            @PathVariable Long id,
+            jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            ListaEscolar lista = listaService.obtenerConDetalles(id)
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+
+            List<Map<String, Object>> transacciones = listaService.obtenerTransaccionesLista(id);
+            if (transacciones.isEmpty()) {
+                response.sendError(404, "Esta lista no tiene ventas registradas");
+                return;
+            }
+
+            Configuracion config = configuracionService.obtenerConfiguracion();
+            String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
+            Color colorPrimario = parseColor(config.getColorPrimario(), new Color(44, 62, 80));
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            response.setContentType("application/pdf");
+            String nombrePersona = lista.getNombreAlumno() != null && !lista.getNombreAlumno().isBlank()
+                    ? sanitizarNombreArchivo(lista.getNombreAlumno())
+                    : sanitizarNombreArchivo(lista.getContactoNombre());
+            String prefijo = (nombrePersona != null && !nombrePersona.isBlank()) ? nombrePersona + "_" : "";
+            String filename = prefijo + "Comprobante_" + lista.getCodigoCompleto().replace("-", "_") + ".pdf";
+            response.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
+
+            Document document = new Document(PageSize.A4, 30, 30, 25, 25);
+            PdfWriter.getInstance(document, response.getOutputStream());
+            document.open();
+
+            float anchoUtil = document.getPageSize().getWidth() - document.leftMargin() - document.rightMargin();
+
+            // ── HEADER ──────────────────────────────────────────────────────
+            boolean hasLogo = Boolean.TRUE.equals(config.getMostrarLogoEnReportes()) && config.getLogoBase64() != null;
+            PdfPTable headerT = new PdfPTable(hasLogo ? 3 : 2);
+            headerT.setWidthPercentage(100);
+            if (hasLogo) headerT.setWidths(new float[]{0.7f, 3.3f, 3f});
+            else         headerT.setWidths(new float[]{3.3f, 3f});
+
+            if (hasLogo) {
+                try {
+                    String b64 = config.getLogoBase64();
+                    if (b64.contains(",")) b64 = b64.split(",")[1];
+                    Image logo = Image.getInstance(Base64.getDecoder().decode(b64));
+                    logo.scaleToFit(50, 35);
+                    PdfPCell logoCell = new PdfPCell(logo, true);
+                    logoCell.setBorder(Rectangle.NO_BORDER);
+                    logoCell.setPadding(2f);
+                    headerT.addCell(logoCell);
+                } catch (Exception ignored) {
+                    hasLogo = false;
+                }
+            }
+
+            PdfPCell cEmpresa = new PdfPCell();
+            cEmpresa.setBorder(Rectangle.NO_BORDER);
+            cEmpresa.setPadding(3f);
+            String nombreEmpresa = config.getNombreEmpresa() != null ? config.getNombreEmpresa() : "Empresa";
+            cEmpresa.addElement(new Paragraph(nombreEmpresa,
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13f, colorPrimario)));
+            if (config.getDireccion() != null && !config.getDireccion().isBlank()) {
+                cEmpresa.addElement(new Paragraph(config.getDireccion(),
+                    FontFactory.getFont(FontFactory.HELVETICA, 8f, Color.GRAY)));
+            }
+            headerT.addCell(cEmpresa);
+
+            PdfPCell cTitulo = new PdfPCell();
+            cTitulo.setBorder(Rectangle.NO_BORDER);
+            cTitulo.setPadding(3f);
+            cTitulo.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            Paragraph pTit = new Paragraph("COMPROBANTE UNIFICADO - LISTA ESCOLAR",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9f, colorPrimario));
+            pTit.setAlignment(Element.ALIGN_RIGHT);
+            cTitulo.addElement(pTit);
+            Paragraph pCod = new Paragraph(lista.getCodigoCompleto(),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14f, colorPrimario));
+            pCod.setAlignment(Element.ALIGN_RIGHT);
+            cTitulo.addElement(pCod);
+            String fechaHoy = java.time.LocalDate.now().format(fmt);
+            Paragraph pFechaDoc = new Paragraph("Emitido: " + fechaHoy,
+                FontFactory.getFont(FontFactory.HELVETICA, 8f, Color.GRAY));
+            pFechaDoc.setAlignment(Element.ALIGN_RIGHT);
+            cTitulo.addElement(pFechaDoc);
+            headerT.addCell(cTitulo);
+            document.add(headerT);
+
+            // Línea separadora azul
+            PdfPTable linea = new PdfPTable(1);
+            linea.setWidthPercentage(100);
+            PdfPCell lc = new PdfPCell();
+            lc.setBackgroundColor(colorPrimario);
+            lc.setFixedHeight(3f);
+            lc.setBorder(Rectangle.NO_BORDER);
+            linea.addCell(lc);
+            document.add(linea);
+
+            // ── DATOS ALUMNO ────────────────────────────────────────────────
+            PdfPTable alumnoT = new PdfPTable(4);
+            alumnoT.setWidthPercentage(100);
+            alumnoT.setSpacingBefore(6f);
+            alumnoT.setWidths(new float[]{1f, 2.5f, 1f, 2.5f});
+
+            alumnoT.addCell(pdfVLblCell("Alumno:"));
+            alumnoT.addCell(pdfVValCell(lista.getNombreAlumno() != null ? lista.getNombreAlumno() : "-"));
+            alumnoT.addCell(pdfVLblCell("Grado:"));
+            String gradoSec = lista.getGrado() != null ? lista.getGrado() : "-";
+            if (lista.getSeccion() != null) gradoSec += " - " + lista.getSeccion();
+            alumnoT.addCell(pdfVValCell(gradoSec));
+            alumnoT.addCell(pdfVLblCell("Colegio:"));
+            alumnoT.addCell(pdfVValCell(lista.getColegio() != null ? lista.getColegio() : "-"));
+            alumnoT.addCell(pdfVLblCell("Contacto:"));
+            String contacto = lista.getContactoNombre() != null ? lista.getContactoNombre() : "-";
+            if (lista.getContactoTelefono() != null) contacto += " — " + lista.getContactoTelefono();
+            alumnoT.addCell(pdfVValCell(contacto));
+            document.add(alumnoT);
+
+            // ── TRANSACCIONES ───────────────────────────────────────────────
+            BigDecimal grandTotal = BigDecimal.ZERO;
+
+            for (int t = 0; t < transacciones.size(); t++) {
+                Map<String, Object> tr = transacciones.get(t);
+                String etiqueta = (t == 0) ? "Venta" : "Adición";
+                String fechaTr = "";
+                if (tr.get("fecha") != null && !tr.get("fecha").toString().isBlank()) {
+                    try {
+                        fechaTr = " del " + java.time.LocalDate.parse(tr.get("fecha").toString()).format(fmt);
+                    } catch (Exception ignored2) {}
+                }
+                String comp = tr.get("comprobante") != null ? " (" + tr.get("comprobante") + ")" : "";
+
+                // Título de sección
+                Paragraph pSec = new Paragraph(etiqueta + fechaTr + comp,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9.5f, colorPrimario));
+                pSec.setSpacingBefore(t == 0 ? 10f : 14f);
+                pSec.setSpacingAfter(3f);
+                document.add(pSec);
+
+                // Tabla items de esta transacción
+                PdfPTable itemsT = new PdfPTable(new float[]{7f, 1.5f, 2f, 2f});
+                itemsT.setWidthPercentage(100);
+                itemsT.setLockedWidth(false);
+
+                // Header de tabla
+                for (String hdr : new String[]{"Descripción", "Cant.", "P.Unit.", "Subtotal"}) {
+                    PdfPCell h = new PdfPCell(new Phrase(hdr,
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, Color.WHITE)));
+                    h.setBackgroundColor(colorPrimario);
+                    h.setBorder(Rectangle.NO_BORDER);
+                    h.setPadding(4f);
+                    h.setHorizontalAlignment("Descripción".equals(hdr) ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
+                    itemsT.addCell(h);
+                }
+
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> items = (List<Map<String, Object>>) tr.get("items");
+                BigDecimal subtotalTr = BigDecimal.ZERO;
+                int rowNum2 = 0;
+
+                if (items != null) {
+                    for (Map<String, Object> item : items) {
+                        Color rowBg = (rowNum2 % 2 == 0) ? Color.WHITE : new Color(248, 250, 252);
+                        String desc = normalizarDescripcion(item.get("descripcion") != null ? item.get("descripcion").toString() : "");
+                        int cant = item.get("cantidad") != null ? ((Number) item.get("cantidad")).intValue() : 0;
+                        BigDecimal precio = item.get("precioUnitario") != null ? new BigDecimal(item.get("precioUnitario").toString()) : BigDecimal.ZERO;
+                        BigDecimal sub = item.get("subtotal") != null ? new BigDecimal(item.get("subtotal").toString()) : BigDecimal.ZERO;
+                        subtotalTr = subtotalTr.add(sub);
+
+                        PdfPCell cd = new PdfPCell(new Phrase(desc, FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                        cd.setBackgroundColor(rowBg); cd.setBorder(Rectangle.NO_BORDER); cd.setPadding(3f);
+                        itemsT.addCell(cd);
+
+                        PdfPCell cc = new PdfPCell(new Phrase(String.valueOf(cant), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                        cc.setBackgroundColor(rowBg); cc.setBorder(Rectangle.NO_BORDER); cc.setPadding(3f);
+                        cc.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                        itemsT.addCell(cc);
+
+                        PdfPCell cp = new PdfPCell(new Phrase(moneda + String.format("%.2f", precio), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                        cp.setBackgroundColor(rowBg); cp.setBorder(Rectangle.NO_BORDER); cp.setPadding(3f);
+                        cp.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                        itemsT.addCell(cp);
+
+                        PdfPCell cs = new PdfPCell(new Phrase(moneda + String.format("%.2f", sub), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                        cs.setBackgroundColor(rowBg); cs.setBorder(Rectangle.NO_BORDER); cs.setPadding(3f);
+                        cs.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                        itemsT.addCell(cs);
+
+                        rowNum2++;
+                    }
+                }
+
+                // Fila subtotal de la transacción
+                PdfPCell emptyC = new PdfPCell(new Phrase(""));
+                emptyC.setColspan(2); emptyC.setBorder(Rectangle.TOP);
+                emptyC.setBorderColor(new Color(200, 200, 200)); emptyC.setBorderWidth(0.5f); emptyC.setFixedHeight(3f);
+                itemsT.addCell(emptyC);
+
+                PdfPCell subLbl = new PdfPCell(new Phrase("Subtotal " + etiqueta + ":",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f)));
+                subLbl.setBorder(Rectangle.TOP); subLbl.setBorderColor(new Color(200, 200, 200));
+                subLbl.setBorderWidth(0.5f); subLbl.setPadding(3f);
+                subLbl.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                itemsT.addCell(subLbl);
+
+                PdfPCell subVal = new PdfPCell(new Phrase(moneda + String.format("%.2f", subtotalTr),
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f)));
+                subVal.setBorder(Rectangle.TOP); subVal.setBorderColor(new Color(200, 200, 200));
+                subVal.setBorderWidth(0.5f); subVal.setPadding(3f);
+                subVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                itemsT.addCell(subVal);
+
+                document.add(itemsT);
+                grandTotal = grandTotal.add(subtotalTr);
+            }
+
+            // ── GRAND TOTAL ─────────────────────────────────────────────────
+            PdfPTable totalT = new PdfPTable(2);
+            totalT.setWidthPercentage(38);
+            totalT.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.setSpacingBefore(10f);
+            totalT.setWidths(new float[]{2f, 1.8f});
+
+            PdfPCell totalLbl = new PdfPCell(new Phrase("TOTAL PAGADO:",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f, Color.WHITE)));
+            totalLbl.setBackgroundColor(colorPrimario); totalLbl.setBorder(Rectangle.NO_BORDER);
+            totalLbl.setPadding(7f); totalLbl.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.addCell(totalLbl);
+
+            PdfPCell totalVal = new PdfPCell(new Phrase(moneda + String.format("%.2f", grandTotal),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f, Color.WHITE)));
+            totalVal.setBackgroundColor(colorPrimario); totalVal.setBorder(Rectangle.NO_BORDER);
+            totalVal.setPadding(7f); totalVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.addCell(totalVal);
+            document.add(totalT);
+
+            // Nota al pie
+            Paragraph nota = new Paragraph(
+                "Este documento es un comprobante de entrega de lista escolar. " + nombreEmpresa,
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 7f, Color.GRAY));
+            nota.setAlignment(Element.ALIGN_CENTER);
+            nota.setSpacingBefore(18f);
+            document.add(nota);
+
+            document.close();
+
+        } catch (Exception e) {
+            log.error("Error al generar PDF de venta de lista {}: {}", id, e.getMessage(), e);
+            try { response.sendError(500, "Error al generar PDF: " + e.getMessage()); } catch (IOException ignored) {}
+        }
+    }
+
+    /** Celda label para PDF de comprobante unificado */
+    private PdfPCell pdfVLblCell(String texto) {
+        PdfPCell c = new PdfPCell(new Phrase(texto,
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f, new Color(80, 80, 80))));
+        c.setBorder(Rectangle.NO_BORDER); c.setPadding(3f);
+        return c;
+    }
+
+    /** Celda valor para PDF de comprobante unificado */
+    private PdfPCell pdfVValCell(String texto) {
+        PdfPCell c = new PdfPCell(new Phrase(texto != null ? texto : "",
+            FontFactory.getFont(FontFactory.HELVETICA, 9f)));
+        c.setBorder(Rectangle.NO_BORDER); c.setPadding(3f);
+        return c;
+    }
+
+    // =========================================================
+    //  API REST - ITEMS VENDIDOS Y DEVOLUCIONES DESDE LISTA
+    // =========================================================
+
+    /**
+     * API: Items ya vendidos de la lista, agrupados por transacción.
+     * Usado en el POS modal para devoluciones parciales.
+     */
+    @GetMapping("/api/{id}/items-vendidos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> obtenerItemsVendidos(@PathVariable Long id) {
+        try {
+            List<Map<String, Object>> transacciones = listaService.obtenerTransaccionesLista(id);
+            return ResponseEntity.ok(Map.of("transacciones", transacciones));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * API: Procesar devolución parcial desde la lista escolar.
+     * Agrupa items por ventaId y procesa una devolución por cada grupo.
+     */
+    @PostMapping("/api/{id}/devolver-items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    @ResponseBody
+    public ResponseEntity<?> devolverItemsLista(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rawItems = (List<Map<String, Object>>) body.get("items");
+            String metodoReembolso = body.get("metodoReembolso") != null
+                    ? body.get("metodoReembolso").toString() : "EFECTIVO";
+            String motivo = "Devolución parcial desde lista escolar";
+
+            if (rawItems == null || rawItems.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false,
+                        "error", "Debe seleccionar al menos un item para devolver"));
+            }
+
+            // Agrupar por ventaId para emitir una NC por venta
+            java.util.LinkedHashMap<Long, List<DevolucionDTO.ItemDevolucion>> porVenta = new java.util.LinkedHashMap<>();
+            for (Map<String, Object> raw : rawItems) {
+                Long ventaId = Long.valueOf(raw.get("ventaId").toString());
+                DevolucionDTO.ItemDevolucion item = new DevolucionDTO.ItemDevolucion();
+                item.setProductoId(Long.valueOf(raw.get("productoId").toString()));
+                item.setCantidadDevuelta(new BigDecimal(raw.get("cantidadDevuelta").toString()));
+                item.setPrecioUnitario(new BigDecimal(raw.get("precioUnitario").toString()));
+                item.setDescripcion(raw.get("descripcion") != null ? raw.get("descripcion").toString() : null);
+                porVenta.computeIfAbsent(ventaId, k -> new java.util.ArrayList<>()).add(item);
+            }
+
+            List<Map<String, Object>> resultados = new java.util.ArrayList<>();
+            for (Map.Entry<Long, List<DevolucionDTO.ItemDevolucion>> entry : porVenta.entrySet()) {
+                DevolucionDTO dto = new DevolucionDTO();
+                dto.setVentaOriginalId(entry.getKey());
+                dto.setMotivoDevolucion(motivo);
+                dto.setObservaciones("Devolución desde lista escolar #" + id);
+                dto.setMetodoReembolso(metodoReembolso);
+                dto.setItems(entry.getValue());
+                resultados.add(devolucionService.procesarDevolucion(dto));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "resultados", resultados,
+                "mensaje", resultados.size() + " devolución(es) procesada(s) correctamente"
+            ));
+        } catch (Exception e) {
+            log.error("Error al procesar devolución desde lista {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }

@@ -750,6 +750,33 @@
         .btn-cobrar { padding: 12px 16px; font-size: 0.95rem; }
     }
 
+    /* === RESPONSIVE TABLET/MÓVIL ≤ 991px === */
+    @media (max-width: 991px) {
+        .col-xl-7.col-lg-7,
+        .col-xl-4.col-lg-5 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        /* Panel de acción primero en pantallas pequeñas */
+        .col-xl-4.col-lg-5 { order: -1; }
+        .col-xl-7.col-lg-7 { order: 1; }
+
+        .card-main { max-height: none; }
+        .total-amount { font-size: 2rem; }
+        .visor-producto { margin: 8px; }
+    }
+
+    /* === RESPONSIVE MÓVIL ≤ 575px === */
+    @media (max-width: 575px) {
+        .total-amount { font-size: 1.6rem; }
+        .btn-cobrar { font-size: 0.9rem; padding: 10px 12px; }
+        .form-section { padding: 8px; }
+        .visor-header { padding: 8px 10px !important; }
+        .visor-stats { flex-direction: column; gap: 4px; }
+        .visor-stat { padding: 4px 6px; }
+        .card-header .btn-group .btn { font-size: 0.75rem; padding: 4px 8px; }
+    }
+
     /* === FIX PARA SELECT2 DROPDOWN === */
     .select2-dropdown {
         border: 1px solid var(--pos-border) !important;
@@ -758,8 +785,33 @@
     }
 
     .select2-results__option--highlighted {
-        background: #f1f5f9 !important;
-        color: var(--pos-text) !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
+    }
+
+    .select2-results__option--highlighted .text-muted,
+    .select2-results__option--highlighted .small,
+    .select2-results__option--highlighted code {
+        color: #bfdbfe !important;
+    }
+
+    .select2-results__option--highlighted .text-primary {
+        color: #fbbf24 !important;
+    }
+
+    .select2-results__option--highlighted .badge.bg-success {
+        background: #16a34a !important;
+        color: #fff !important;
+    }
+
+    .select2-results__option--highlighted .badge.bg-warning {
+        background: #d97706 !important;
+        color: #fff !important;
+    }
+
+    .select2-results__option--highlighted .badge.bg-danger {
+        background: #dc2626 !important;
+        color: #fff !important;
     }
 
     .select2-results__option--selected {
@@ -1198,7 +1250,7 @@
 
                         <!-- BOTONES DE ACCIÓN -->
                         <div class="form-section" style="padding-bottom: 16px;">
-                            <button class="btn-cobrar" onclick="procesarVenta()" id="btnCobrar">
+                            <button class="btn-cobrar" onclick="confirmarYVender()" id="btnCobrar">
                                 <i class="fas fa-cash-register"></i>
                                 <span>COBRAR</span>
                                 <span class="kbd kbd-dark">F2</span>
@@ -1281,7 +1333,7 @@
                         </div>
                     </div>
                     <div class="select2-producto-stats ml-2">
-                        <span class="badge ${stockBadge}">${stockIcon} ${p.stock}</span>
+                        <span class="badge ${stockBadge}" title="Stock disponible">${stockIcon} Stock: ${p.stock}</span>
                         <div class="text-primary font-weight-bold">S/ ${parseFloat(p.precio).toFixed(2)}</div>
                     </div>
                 </div>`;
@@ -1324,7 +1376,7 @@
             // F2: Preparar cobro INMEDIATAMENTE (no pregunta, no navega)
             if (e.key === 'F2') {
                 e.preventDefault();
-                prepararCobro();
+                confirmarYVender();
                 return;
             }
 
@@ -1712,6 +1764,64 @@ function agregarRapido(codigoBusqueda) {
      * - Si es CRÉDITO -> Enfoca #montoInicial
      * - Si es CONTADO -> Enfoca #clienteDoc
      */
+    function confirmarYVender() {
+        if (carrito.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Carrito Vacío',
+                text: 'Agregue productos antes de cobrar',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            abrirBuscadorConFoco();
+            return;
+        }
+
+        // Construir lista de productos del carrito
+        let filas = carrito.map(function(item) {
+            let subtotal = (parseFloat(item.precio) * parseFloat(item.cantidad)).toFixed(2);
+            return '<tr>' +
+                '<td style="text-align:left;padding:4px 8px;">' + item.nombre + '</td>' +
+                '<td style="text-align:center;padding:4px 8px;">' + item.cantidad + '</td>' +
+                '<td style="text-align:right;padding:4px 8px;">S/ ' + subtotal + '</td>' +
+                '</tr>';
+        }).join('');
+
+        let total = carrito.reduce(function(acc, item) {
+            return acc + parseFloat(item.precio) * parseFloat(item.cantidad);
+        }, 0).toFixed(2);
+
+        let htmlTabla = '<div style="max-height:260px;overflow-y:auto;margin-bottom:8px;">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">' +
+            '<thead><tr style="background:#f4f6f9;">' +
+            '<th style="text-align:left;padding:4px 8px;">Producto</th>' +
+            '<th style="text-align:center;padding:4px 8px;">Cant.</th>' +
+            '<th style="text-align:right;padding:4px 8px;">Subtotal</th>' +
+            '</tr></thead>' +
+            '<tbody>' + filas + '</tbody>' +
+            '<tfoot><tr style="font-weight:bold;border-top:2px solid #dee2e6;">' +
+            '<td colspan="2" style="text-align:right;padding:6px 8px;">TOTAL:</td>' +
+            '<td style="text-align:right;padding:6px 8px;">S/ ' + total + '</td>' +
+            '</tr></tfoot>' +
+            '</table></div>';
+
+        Swal.fire({
+            title: '¿Confirmar venta?',
+            html: htmlTabla,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check"></i> Aceptar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            focusConfirm: true
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                procesarVenta();
+            }
+        });
+    }
+
     function prepararCobro() {
         // Validar que hay productos en el carrito
         if (carrito.length === 0) {

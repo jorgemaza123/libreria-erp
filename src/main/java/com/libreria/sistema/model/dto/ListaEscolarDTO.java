@@ -2,6 +2,7 @@ package com.libreria.sistema.model.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import java.util.Map;
 
 /**
  * DTO para creación y actualización de Listas Escolares.
@@ -47,4 +48,13 @@ public class ListaEscolarDTO {
 
     @Size(max = 50)
     private String fuenteTexto = "OCR_WHATSAPP";
+
+    // Cantidades corregidas por el usuario en el paso de preview.
+    // Clave = índice del item (0-based), Valor = cantidad validada.
+    // Si es null o no contiene el índice, se usa la cantidad del parser.
+    private Map<Integer, Integer> cantidadesValidadas;
+
+    // Textos editados por el usuario en el paso de preview.
+    // Clave = índice del item (0-based), Valor = texto editado.
+    private Map<Integer, String> textosEditados;
 }

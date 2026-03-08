@@ -608,10 +608,12 @@ public class VentaService {
         }
 
         // 7. Registrar egreso en caja si fue pagada (revertir el ingreso)
+        // FIX ERROR-10: usar CategoriaMovimiento.DEVOLUCION en lugar de OTRO_EGRESO para
+        // que los reportes financieros distingan correctamente anulaciones de otros egresos.
         if (venta.getMontoPagado() != null && venta.getMontoPagado().compareTo(BigDecimal.ZERO) > 0) {
             try {
                 String concepto = "ANULACIÓN VENTA " + venta.getSerie() + "-" + venta.getNumero();
-                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado(), CategoriaMovimiento.OTRO_EGRESO);
+                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado(), CategoriaMovimiento.DEVOLUCION);
             } catch (Exception e) {
                 // Si la caja está cerrada, no podemos registrar pero no bloqueamos la anulación
                 log.warn("No se pudo registrar egreso por anulación (¿caja cerrada?): {}", e.getMessage());

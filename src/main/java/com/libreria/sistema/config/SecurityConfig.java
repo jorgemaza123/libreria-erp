@@ -269,11 +269,11 @@ public class SecurityConfig {
                     errorMessage = "Cuenta bloqueada por " + Constants.MAX_LOGIN_ATTEMPTS +
                             " intentos fallidos. Intente en " +
                             Constants.ACCOUNT_LOCK_DURATION_MINUTES + " minutos.";
-                } else if (exception.getMessage().contains("bloqueada")) {
+                } else if (exception.getMessage() != null && exception.getMessage().contains("bloqueada")) {
                     errorMessage = exception.getMessage();
-                } else if (exception.getMessage().contains("no está activo")) {
+                } else if (exception.getMessage() != null && exception.getMessage().contains("no está activo")) {
                     errorMessage = "El usuario no está activo. Contacte al administrador.";
-                } else {
+                } else if (username != null) {
                     // Mostrar intentos restantes
                     int intentosFallidos = usuarioService.obtenerIntentosFallidos(username);
                     int intentosRestantes = Constants.MAX_LOGIN_ATTEMPTS - intentosFallidos;

@@ -1,5 +1,6 @@
 package com.libreria.sistema.controller;
 
+import com.libreria.sistema.model.CategoriaMovimiento;
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.repository.CajaRepository;
 import com.libreria.sistema.service.CajaService;
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/gastos")
@@ -29,17 +30,20 @@ public class GastoController {
         this.cajaRepository = cajaRepository;
     }
 
+    // U-2: añadir filtro de fechas con default últimos 30 días para evitar cargar toda la historia
     @GetMapping
-    public String index(Model model) {
-        // Obtenemos solo los movimientos que son GASTOS (Filtrado simple por concepto o tipo)
-        // Nota: En un sistema más grande, tendrías una tabla 'Gastos' separada.
-        // Aquí filtramos los EGRESOS que contienen la palabra "GASTO" o "PAGO SERVICIO"
-        List<MovimientoCaja> gastos = cajaRepository.findAll().stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()) && !m.getConcepto().startsWith("COMPRA"))
-                .sorted((a, b) -> b.getId().compareTo(a.getId())) // Más recientes primero
-                .collect(Collectors.toList());
+    public String index(@RequestParam(required = false) String fechaInicio,
+                        @RequestParam(required = false) String fechaFin,
+                        Model model) {
+        LocalDate fin = (fechaFin != null && !fechaFin.isBlank()) ? LocalDate.parse(fechaFin) : LocalDate.now();
+        LocalDate inicio = (fechaInicio != null && !fechaInicio.isBlank()) ? LocalDate.parse(fechaInicio) : fin.minusDays(30);
 
+        // FIX ERROR-12 + U-2: filtrar por categoría GASTO_OPERATIVO y rango de fechas en BD
+        List<MovimientoCaja> gastos = cajaRepository.findByCategoriaMovimientoAndFechas(
+                CategoriaMovimiento.GASTO_OPERATIVO, inicio, fin);
         model.addAttribute("gastos", gastos);
+        model.addAttribute("fechaInicio", inicio);
+        model.addAttribute("fechaFin", fin);
         return "gastos/index";
     }
 

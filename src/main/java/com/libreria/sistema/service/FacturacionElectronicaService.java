@@ -65,8 +65,8 @@ public class FacturacionElectronicaService {
             // 5. Crear entidad HTTP
             HttpEntity<SunatRequestDTO> entity = new HttpEntity<>(request, headers);
 
-            // 6. Enviar POST a APISUNAT (URL ya incluye el path completo)
-            String url = config.getUrlApiSunat();
+            // 6. Enviar POST a APISUNAT
+            String url = buildBaseUrl(config.getUrlApiSunat()) + "/documents";
             ResponseEntity<SunatResponseDTO> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -109,7 +109,8 @@ public class FacturacionElectronicaService {
         request.setTipoOperacion(venta.getTipoOperacion());
 
         // Fecha de vencimiento (solo crédito)
-        if ("Crédito".equalsIgnoreCase(venta.getFormaPago())) {
+        // NOTA: VentaService guarda "CREDITO" en mayúsculas sin acento
+        if ("CREDITO".equalsIgnoreCase(venta.getFormaPago())) {
             request.setFechaDeVencimiento(venta.getFechaVencimiento().toString());
         }
 
@@ -135,7 +136,7 @@ public class FacturacionElectronicaService {
         request.setItems(items);
 
         // Cuotas (solo para crédito)
-        if ("Crédito".equalsIgnoreCase(venta.getFormaPago())) {
+        if ("CREDITO".equalsIgnoreCase(venta.getFormaPago())) {
             List<SunatRequestDTO.CuotaDTO> cuotas = new ArrayList<>();
             SunatRequestDTO.CuotaDTO cuota = new SunatRequestDTO.CuotaDTO();
             cuota.setImporte(venta.getTotal().toString());
@@ -270,9 +271,7 @@ public class FacturacionElectronicaService {
                                    String tipo, String serie, StringBuilder resultado) {
         try {
             // Consultar último número usado en SUNAT para esta serie
-            // Construir URL para sincronización: reemplazar "/documents" por "/documents/last"
-            String baseUrl = config.getUrlApiSunat();
-            String url = baseUrl.replace("/documents", "/documents/last") + "?serie=" + serie;
+            String url = buildBaseUrl(config.getUrlApiSunat()) + "/documents/last?serie=" + serie;
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
             ResponseEntity<Map> response = restTemplate.exchange(
@@ -361,8 +360,8 @@ public class FacturacionElectronicaService {
             // 4. Crear entidad HTTP
             HttpEntity<SunatRequestDTO> entity = new HttpEntity<>(request, headers);
 
-            // 5. Enviar POST a APISUNAT (URL ya incluye el path completo)
-            String url = config.getUrlApiSunat();
+            // 5. Enviar POST a APISUNAT
+            String url = buildBaseUrl(config.getUrlApiSunat()) + "/documents";
             ResponseEntity<SunatResponseDTO> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -429,29 +428,50 @@ public class FacturacionElectronicaService {
             // 4. Validar configuración
             ConfiguracionSunat config = validarConfiguracion();
 
-            // 5. Preparar request según documentación de APISUNAT
-            Map<String, Object> request = Map.of(
-                "documento", "comunicacion_baja",
-                "motivo", motivo != null ? motivo : "ANULACIÓN DE OPERACIÓN",
-                "documento_afectado", Map.of(
-                    "documento", venta.getTipoComprobante().toLowerCase(),
-                    "serie", venta.getSerie(),
-                    "numero", String.valueOf(venta.getNumero())
-                )
-            );
-
             // 6. Preparar headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(config.getTokenApiSunat());
 
-            // 7. Enviar a endpoint de baja (/api/v3/voided)
-            String baseUrl = config.getUrlApiSunat();
-            String voidedUrl = baseUrl.replace("/documents", "/voided");
+            String baseUrl = buildBaseUrl(config.getUrlApiSunat());
+            HttpEntity<Map<String, Object>> entity;
+            String endpointUrl;
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            if ("BOLETA".equals(venta.getTipoComprobante())) {
+                // Boleta: POST /api/v3/daily-summary con resumen_diario
+                // Según anular-boleta.md del PSE
+                Map<String, Object> docAfectado = new java.util.HashMap<>();
+                docAfectado.put("accion_resumen", "anular");
+                docAfectado.put("documento", "boleta");
+                docAfectado.put("serie", venta.getSerie());
+                docAfectado.put("numero", String.valueOf(venta.getNumero()));
+
+                Map<String, Object> request = new java.util.HashMap<>();
+                request.put("documento", "resumen_diario");
+                request.put("documentos_afectados", List.of(docAfectado));
+
+                endpointUrl = baseUrl + "/daily-summary";
+                entity = new HttpEntity<>(request, headers);
+            } else {
+                // Factura: POST /api/v3/voided con comunicacion_baja
+                // Según anular-factura.md del PSE
+                Map<String, Object> docAfectado = new java.util.HashMap<>();
+                docAfectado.put("documento", "factura");
+                docAfectado.put("serie", venta.getSerie());
+                docAfectado.put("numero", String.valueOf(venta.getNumero()));
+
+                Map<String, Object> request = new java.util.HashMap<>();
+                request.put("documento", "comunicacion_baja");
+                request.put("motivo", motivo != null ? motivo : "ANULACIÓN DE OPERACIÓN");
+                request.put("documento_afectado", docAfectado);
+
+                endpointUrl = baseUrl + "/voided";
+                entity = new HttpEntity<>(request, headers);
+            }
+
+            // 7. Enviar request
             ResponseEntity<SunatResponseDTO> response = restTemplate.exchange(
-                voidedUrl,
+                endpointUrl,
                 HttpMethod.POST,
                 entity,
                 SunatResponseDTO.class
@@ -545,6 +565,22 @@ public class FacturacionElectronicaService {
         request.setTotal(devolucion.getTotalDevuelto().toString());
 
         return request;
+    }
+
+    /**
+     * Extrae la URL base de la API (sin el path final).
+     * Maneja URLs con o sin trailing slash, y con o sin "/documents".
+     * Ej: "https://app.apisunat.pe/api/v3/documents" → "https://app.apisunat.pe/api/v3"
+     *     "https://app.apisunat.pe/api/v3/documents/" → "https://app.apisunat.pe/api/v3"
+     *     "https://app.apisunat.pe/api/v3" → "https://app.apisunat.pe/api/v3"
+     */
+    private String buildBaseUrl(String urlApiSunat) {
+        if (urlApiSunat == null) return "";
+        String url = urlApiSunat.trim().replaceAll("/+$", ""); // Quitar trailing slashes
+        if (url.endsWith("/documents")) {
+            url = url.substring(0, url.length() - "/documents".length());
+        }
+        return url;
     }
 
     /**

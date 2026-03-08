@@ -28,7 +28,7 @@
                 <div class="card-header">
                     <h3 class="card-title">Listado General</h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
@@ -48,7 +48,18 @@
                                     <strong th:text="${v.serie} + '-' + ${v.numero}"></strong>
                                 </td>
                                 <td th:text="${v.clienteDenominacion}"></td>
-                                <td class="font-weight-bold" th:text="'S/ ' + ${v.total}"></td>
+                                <td class="font-weight-bold">
+                                    <th:block th:with="devuelto=${totalesDevueltos != null ? totalesDevueltos[v.id] : null}">
+                                        <th:block th:if="${devuelto != null}">
+                                            <del class="text-muted" style="font-size:0.85em;" th:text="'S/ ' + ${#numbers.formatDecimal(v.total, 1, 2)}"></del><br>
+                                            <span class="text-danger" th:text="'S/ ' + ${#numbers.formatDecimal(v.total.subtract(devuelto), 1, 2)}"></span>
+                                            <span class="badge badge-warning ml-1" th:text="'-S/ ' + ${#numbers.formatDecimal(devuelto, 1, 2)}"></span>
+                                        </th:block>
+                                        <th:block th:unless="${devuelto != null}">
+                                            <span th:text="'S/ ' + ${#numbers.formatDecimal(v.total, 1, 'COMMA', 2, 'POINT')}"></span>
+                                        </th:block>
+                                    </th:block>
+                                </td>
                                 <td>
                                     <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
                                     <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
@@ -73,16 +84,20 @@
                                         <i class="fas fa-print"></i>
                                     </button>
 
-                                    <a th:href="@{/ventas/pdf/{id}(id=${v.id})}"
-                                       class="btn btn-info btn-sm"
-                                       title="Descargar PDF"
-                                       target="_blank">
+                                    <button class="btn btn-info btn-sm"
+                                            th:onclick="'abrirPdfFactura(' + ${v.id} + ')'"
+                                            title="Ver PDF Comprobante">
                                         <i class="fas fa-file-pdf"></i>
-                                    </a>
+                                    </button>
 
-                                    <form th:if="${v.estado == 'EMITIDO'}" th:action="@{/ventas/anular/{id}(id=${v.id})}" method="post" style="display:inline;" onsubmit="return confirm('¿Anular esta venta? Esta acción devolverá el stock.');">
-                                        <button type="submit" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-ban"></i></button>
-                                    </form>
+                                    <button th:if="${v.estado == 'EMITIDO'}"
+                                            type="button" class="btn btn-danger btn-sm btn-anular"
+                                            th:data-id="${v.id}"
+                                            th:data-serie="${v.serie}"
+                                            th:data-numero="${v.numero}"
+                                            title="Anular">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -137,6 +152,31 @@
             var id = $(this).data("id");
             $("#modalBodyContent").load("/ventas/detalle/" + id);
             $("#modalDetalle").modal("show");
+        });
+
+        // U-1: reemplazar confirm() nativo con SweetAlert2 para anulación de venta
+        $(document).on('click', '.btn-anular', function() {
+            var id = $(this).data('id');
+            var serie = $(this).data('serie');
+            var numero = $(this).data('numero');
+            Swal.fire({
+                title: '¿Anular Venta?',
+                html: 'Se anulará <strong>' + serie + '-' + numero + '</strong>.<br>Esta acción devolverá el stock.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, anular',
+                cancelButtonText: 'Cancelar'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/ventas/anular/' + id;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
         });
     });
 
@@ -225,9 +265,21 @@
         });
     });
 
-    // --- FUNCIÓN IMPRIMIR PDF ---
+    // --- FUNCIÓN IMPRIMIR HTML (ticket/impresión directa) ---
     function abrirPdfVenta(id) {
         window.open('/ventas/imprimir/' + id, '_blank', 'width=900,height=700');
+    }
+
+    // --- FUNCIÓN VER PDF COMPROBANTE (popup inline) ---
+    function abrirPdfFactura(id) {
+        var width = 900, height = 700;
+        var left = Math.max(0, Math.round((screen.width - width) / 2));
+        var top  = Math.max(0, Math.round((screen.height - height) / 2));
+        window.open(
+            '/ventas/pdf/' + id,
+            'PdfComprobante_' + id,
+            'width=' + width + ',height=' + height + ',top=' + top + ',left=' + left + ',scrollbars=yes,resizable=yes'
+        );
     }
 
     // --- FUNCIÓN ENVIAR WHATSAPP ---

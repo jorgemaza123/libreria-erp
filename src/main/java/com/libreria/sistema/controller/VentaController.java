@@ -87,9 +87,15 @@ public class VentaController {
             ventas = ventaRepository.findAll(pageable);
         }
 
+        java.util.List<Long> ventaIds = ventas.getContent().stream()
+                .map(Venta::getId).collect(java.util.stream.Collectors.toList());
+        java.util.Map<Long, java.math.BigDecimal> totalesDevueltos =
+                devolucionService.obtenerMapaTotalesDevueltos(ventaIds);
+
         model.addAttribute("ventas", ventas);
         model.addAttribute("buscar", buscar);
         model.addAttribute("currentPage", page);
+        model.addAttribute("totalesDevueltos", totalesDevueltos);
         return "ventas/lista";
     }
 
@@ -502,7 +508,7 @@ public class VentaController {
             String nombreArchivo = venta.getSerie() + "-" + venta.getNumero() + ".pdf";
 
             response.setContentType("application/pdf");
-            response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
+            response.setHeader("Content-Disposition", "inline; filename=\"" + nombreArchivo + "\"");
 
             java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
             java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
@@ -646,7 +652,25 @@ public class VentaController {
         if (venta != null) {
             model.addAttribute("cantidadesDevueltas", devolucionService.obtenerCantidadesDevueltasPorVenta(id));
             model.addAttribute("totalDevuelto", devolucionService.obtenerTotalDevueltoPorVenta(id));
+
+            // Total de unidades vendidas por productoId en esta venta (para comparar correctamente
+            // cuando hay varias líneas con el mismo producto, ej: cuadernos por curso)
+            java.util.Map<Long, java.math.BigDecimal> cantidadesTotalPorProducto = new java.util.HashMap<>();
+            if (venta.getItems() != null) {
+                for (DetalleVenta item : venta.getItems()) {
+                    if (item.getProducto() != null) {
+                        cantidadesTotalPorProducto.merge(
+                            item.getProducto().getId(),
+                            item.getCantidad(),
+                            java.math.BigDecimal::add
+                        );
+                    }
+                }
+            }
+            model.addAttribute("cantidadesTotalPorProducto", cantidadesTotalPorProducto);
         }
+        // C-1: exponer config para que el modal use datos reales de la empresa
+        model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "ventas/modal_detalle :: contenido";
     }
 }

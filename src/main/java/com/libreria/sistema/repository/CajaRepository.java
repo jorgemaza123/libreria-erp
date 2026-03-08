@@ -141,4 +141,12 @@ public interface CajaRepository extends JpaRepository<MovimientoCaja, Long> {
            "GROUP BY FUNCTION('TO_CHAR', m.fecha, 'YYYY-MM') " +
            "ORDER BY FUNCTION('TO_CHAR', m.fecha, 'YYYY-MM')")
     List<Object[]> egresosMensualesAgrupados(@Param("inicio") LocalDateTime inicio);
+
+    // FIX ERROR-12: query directa por categoría para GastoController (evita findAll + filter en Java)
+    @Query("SELECT m FROM MovimientoCaja m WHERE m.categoriaMovimiento = :categoria ORDER BY m.fecha DESC")
+    List<MovimientoCaja> findByCategoriaMovimiento(@Param("categoria") String categoria);
+
+    // U-2: query por categoría + rango de fechas para filtrado en GastoController
+    @Query("SELECT m FROM MovimientoCaja m WHERE m.categoriaMovimiento = :categoria AND CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC")
+    List<MovimientoCaja> findByCategoriaMovimientoAndFechas(@Param("categoria") String categoria, @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 }

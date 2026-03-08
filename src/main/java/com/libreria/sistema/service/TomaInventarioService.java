@@ -287,13 +287,13 @@ public class TomaInventarioService {
             kardex.setStockActual(stockNuevo);
             kardex.setCantidad(Math.abs(diferencia));
 
+            // FIX ERROR-4: tipo unificado a "AJUSTE"; el detalle queda en el motivo
+            kardex.setTipo("AJUSTE");
             if (diferencia > 0) {
-                kardex.setTipo("ENTRADA (AJUSTE)");
                 kardex.setMotivo(motivoBase + " - SOBRANTE");
                 resultado.sobrantes++;
                 resultado.totalSobrante += diferencia;
             } else {
-                kardex.setTipo("SALIDA (AJUSTE)");
                 kardex.setMotivo(motivoBase + " - FALTANTE");
                 resultado.faltantes++;
                 resultado.totalFaltante += Math.abs(diferencia);

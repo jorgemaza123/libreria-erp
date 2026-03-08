@@ -38,7 +38,9 @@
                                 </div>
                             </div>
                             <div class="card-footer text-right">
-                                <button type="submit" class="btn btn-danger btn-block font-weight-bold">
+                                <!-- M-4: deshabilitar botón al submit para evitar doble registro -->
+                                <button type="submit" class="btn btn-danger btn-block font-weight-bold"
+                                        onclick="this.disabled=true; this.form.submit();">
                                     <i class="fas fa-save"></i> REGISTRAR GASTO
                                 </button>
                             </div>
@@ -47,6 +49,17 @@
                 </div>
 
                 <div class="col-md-8">
+                    <!-- U-2: filtro de fechas para limitar la consulta -->
+                    <form action="/gastos" method="get" class="mb-3">
+                        <div class="input-group input-group-sm">
+                            <input type="date" name="fechaInicio" class="form-control" th:value="${fechaInicio}">
+                            <div class="input-group-prepend input-group-append"><span class="input-group-text">al</span></div>
+                            <input type="date" name="fechaFin" class="form-control" th:value="${fechaFin}">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filtrar</button>
+                            </div>
+                        </div>
+                    </form>
                     <div class="card card-outline card-danger">
                         <div class="card-header">
                             <h3 class="card-title">Historial de Gastos</h3>
@@ -66,7 +79,7 @@
                                         <td th:text="${#temporals.format(g.fecha, 'dd/MM/yyyy HH:mm')}"></td>
                                         <td th:text="${g.concepto}"></td>
                                         <td th:text="${g.usuario != null ? g.usuario.username : '-'}"></td>
-                                        <td class="text-right text-danger font-weight-bold" th:text="'- S/ ' + ${g.monto}"></td>
+                                        <td class="text-right text-danger font-weight-bold" th:text="'- S/ ' + ${#numbers.formatDecimal(g.monto, 1, 'COMMA', 2, 'POINT')}"></td>
                                     </tr>
                                     <tr th:if="${#lists.isEmpty(gastos)}">
                                         <td colspan="4" class="text-center text-muted">No hay gastos registrados recientemente.</td>

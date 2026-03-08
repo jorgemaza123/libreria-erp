@@ -6,13 +6,13 @@
     <style>
         body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px; }
 
-        .header { width: 100%; overflow: hidden; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .company-info { float: left; width: 60%; }
+        .header { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .company-info { flex: 0 0 60%; }
         .logo-img { max-height: 80px; max-width: 250px; margin-bottom: 10px; display: block; object-fit: contain; }
         .company-info h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
         .company-info p { margin: 2px 0; }
 
-        .invoice-box { float: right; width: 35%; border: 2px solid #007bff; padding: 10px; text-align: center; border-radius: 8px; }
+        .invoice-box { flex: 0 0 35%; border: 2px solid #007bff; padding: 10px; text-align: center; border-radius: 8px; }
         .invoice-box h3 { margin: 0; font-size: 16px; }
         .invoice-box h2 { margin: 8px 0; font-size: 20px; color: #007bff; }
         .invoice-box p { margin: 0; font-weight: bold; }
@@ -136,7 +136,7 @@
                     <td class="value" th:text="'S/ ' + ${cotizacion.subtotal != null ? #numbers.formatDecimal(cotizacion.subtotal, 1, 'COMMA', 2, 'POINT') : '0.00'}"></td>
                 </tr>
                 <tr>
-                    <td class="label">IGV (18%):</td>
+                    <td class="label">I.G.V.:</td>
                     <td class="value" th:text="'S/ ' + ${cotizacion.igv != null ? #numbers.formatDecimal(cotizacion.igv, 1, 'COMMA', 2, 'POINT') : '0.00'}"></td>
                 </tr>
                 <tr th:if="${cotizacion.descuento != null && cotizacion.descuento > 0}">

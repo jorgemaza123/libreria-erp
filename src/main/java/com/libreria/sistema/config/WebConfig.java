@@ -3,6 +3,7 @@ package com.libreria.sistema.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -21,11 +22,15 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * Bean de RestTemplate para realizar llamadas HTTP
-     * Utilizado por FacturacionElectronicaService para comunicarse con APISUNAT
+     * Bean de RestTemplate para realizar llamadas HTTP.
+     * Utilizado por FacturacionElectronicaService para comunicarse con APISUNAT.
+     * Timeouts configurados para evitar bloqueos indefinidos en llamadas externas.
      */
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);  // 5 segundos para establecer conexión
+        factory.setReadTimeout(15_000);    // 15 segundos para leer respuesta
+        return new RestTemplate(factory);
     }
 }

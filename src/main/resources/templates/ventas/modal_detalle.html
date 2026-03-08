@@ -6,8 +6,8 @@
             <div class="col-sm-4 invoice-col">
                 De:
                 <address>
-                    <strong>LIBRERÍA ERP</strong><br>
-                    Av. Principal 123, Lima
+                    <strong th:text="${config != null ? config.nombreEmpresa : 'Empresa'}"></strong><br>
+                    <span th:text="${config != null ? config.direccion : ''}"></span>
                 </address>
             </div>
             <div class="col-sm-4 invoice-col">
@@ -42,9 +42,17 @@
                         <tr th:each="item : ${venta.items}">
                             <td>
                                 <span th:text="${item.cantidad}"></span>
-                                <span th:if="${item.producto != null and cantidadesDevueltas != null and cantidadesDevueltas[item.producto.id] != null}"
+                                <!-- El badge de devuelto se muestra solo cuando el total devuelto
+                                     del producto es menor que el total vendido (devolucion parcial del conjunto).
+                                     Se muestra el devuelto total del producto una sola vez por línea
+                                     para que el usuario sepa que parte ya fue regresada. -->
+                                <span th:if="${item.producto != null
+                                              and cantidadesDevueltas != null
+                                              and cantidadesDevueltas[item.producto.id] != null
+                                              and cantidadesTotalPorProducto != null
+                                              and cantidadesDevueltas[item.producto.id].compareTo(cantidadesTotalPorProducto[item.producto.id]) < 0}"
                                       class="badge badge-warning ml-1" style="font-size:0.7em;"
-                                      th:text="'(-' + ${cantidadesDevueltas[item.producto.id]} + ')'"></span>
+                                      th:text="'(-' + ${cantidadesDevueltas[item.producto.id]} + ' en total)'"></span>
                             </td>
                             <td th:text="${item.descripcion}"></td>
                             <td class="text-right" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
@@ -52,18 +60,19 @@
                             <td th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL'}">
                                 <th:block th:if="${item.producto != null}"
                                           th:with="yaDevuelto=${cantidadesDevueltas != null ? cantidadesDevueltas[item.producto.id] : null},
-                                                   restante=${yaDevuelto != null ? item.cantidad.subtract(yaDevuelto) : item.cantidad}">
-                                    <button th:if="${yaDevuelto == null or item.cantidad.compareTo(yaDevuelto) > 0}"
+                                                   totalVendidoProducto=${cantidadesTotalPorProducto != null ? cantidadesTotalPorProducto[item.producto.id] : item.cantidad},
+                                                   todosDevueltos=${yaDevuelto != null and yaDevuelto.compareTo(totalVendidoProducto) >= 0}">
+                                    <button th:if="${!todosDevueltos}"
                                             type="button" class="btn btn-warning btn-xs btn-devolver"
                                             th:data-venta-id="${venta.id}"
                                             th:data-producto-id="${item.producto.id}"
                                             th:data-descripcion="${item.descripcion}"
-                                            th:data-cantidad="${restante}"
+                                            th:data-cantidad="${item.cantidad}"
                                             th:data-precio="${item.precioUnitario}"
                                             title="Devolver este producto">
                                         <i class="fas fa-undo-alt"></i> Devolver
                                     </button>
-                                    <span th:if="${yaDevuelto != null and item.cantidad.compareTo(yaDevuelto) <= 0}"
+                                    <span th:if="${todosDevueltos}"
                                           class="badge badge-secondary">Devuelto</span>
                                 </th:block>
                             </td>
@@ -83,7 +92,7 @@
                             <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalGravada, 1, 'COMMA', 2, 'POINT')}"></td>
                         </tr>
                         <tr>
-                            <th>IGV (18%):</th>
+                            <th>I.G.V.:</th>
                             <td th:text="'S/ ' + ${#numbers.formatDecimal(venta.totalIgv, 1, 'COMMA', 2, 'POINT')}"></td>
                         </tr>
                         <tr th:if="${totalDevuelto != null and totalDevuelto.signum() > 0}">

@@ -53,4 +53,14 @@ public interface DevolucionVentaRepository extends JpaRepository<DevolucionVenta
            "AND d.fechaEmision BETWEEN :inicio AND :fin")
     long countDevolucionesEfectivoPorPeriodo(
            @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Suma el total devuelto agrupado por ventaId para una lista de ventas (una sola query).
+     * Retorna pares [ventaId, totalDevuelto].
+     */
+    @Query("SELECT d.ventaOriginal.id, COALESCE(SUM(d.totalDevuelto), 0) " +
+           "FROM DevolucionVenta d " +
+           "WHERE d.ventaOriginal.id IN :ventaIds AND d.estado != 'ANULADA' " +
+           "GROUP BY d.ventaOriginal.id")
+    List<Object[]> sumTotalesDevueltosPorVentas(@Param("ventaIds") List<Long> ventaIds);
 }

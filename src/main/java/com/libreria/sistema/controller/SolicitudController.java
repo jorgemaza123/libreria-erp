@@ -18,13 +18,10 @@ public class SolicitudController {
         this.solicitudRepository = solicitudRepository;
     }
 
-    // LISTAR PEDIDOS PENDIENTES (Ordenados por mayor demanda)
+    // LISTAR PEDIDOS PENDIENTES — redirige a la vista unificada
     @GetMapping("/lista")
-    public String listaSolicitudes(Model model) {
-        // Asumimos que tienes un método findByEstadoOrderByContadorDesc o usamos findAll y filtramos
-        // Para asegurar compatibilidad con JPA estándar, usaremos findByEstado
-        model.addAttribute("solicitudes", solicitudRepository.findByEstadoOrderByContadorDesc("PENDIENTE")); 
-        return "solicitudes/lista";
+    public String listaSolicitudes() {
+        return "redirect:/faltantes?tab=solicitudes";
     }
 
     // MARCAR COMO ATENDIDO (Cuando ya compraste el producto)
@@ -32,17 +29,17 @@ public class SolicitudController {
     @PreAuthorize("hasPermission(null, 'SOLICITUDES_EDITAR')")
     public String atenderSolicitud(@PathVariable Long id) {
         solicitudRepository.findById(id).ifPresent(solicitud -> {
-            solicitud.setEstado("ATENDIDO"); // O "COMPRADO"
+            solicitud.setEstado("ATENDIDO");
             solicitudRepository.save(solicitud);
         });
-        return "redirect:/solicitudes/lista";
+        return "redirect:/faltantes?tab=solicitudes";
     }
-    
+
     // ELIMINAR SOLICITUD (Si fue un error)
     @GetMapping("/eliminar/{id}")
     @PreAuthorize("hasPermission(null, 'SOLICITUDES_ELIMINAR')")
     public String eliminarSolicitud(@PathVariable Long id) {
         solicitudRepository.deleteById(id);
-        return "redirect:/solicitudes/lista";
+        return "redirect:/faltantes?tab=solicitudes";
     }
 }

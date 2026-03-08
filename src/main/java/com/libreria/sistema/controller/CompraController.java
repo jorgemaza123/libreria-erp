@@ -3,7 +3,6 @@ package com.libreria.sistema.controller;
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.CompraDTO;
 import com.libreria.sistema.repository.*;
-import com.libreria.sistema.service.CajaService; // IMPORTANTE: Usar el servicio
 import com.libreria.sistema.service.CompraService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 @Controller
@@ -25,20 +23,13 @@ public class CompraController {
     private final CompraRepository compraRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductoRepository productoRepository;
-    private final KardexRepository kardexRepository;
-
-    // CORRECCIÓN: Usamos el servicio de caja, no el repositorio directo
-    private final CajaService cajaService;
     private final CompraService compraService;
 
     public CompraController(CompraRepository compraRepository, ProveedorRepository proveedorRepository,
-                            ProductoRepository productoRepository, KardexRepository kardexRepository,
-                            CajaService cajaService, CompraService compraService) {
+                            ProductoRepository productoRepository, CompraService compraService) {
         this.compraRepository = compraRepository;
         this.proveedorRepository = proveedorRepository;
         this.productoRepository = productoRepository;
-        this.kardexRepository = kardexRepository;
-        this.cajaService = cajaService;
         this.compraService = compraService;
     }
 
@@ -57,85 +48,16 @@ public class CompraController {
         return "compras/formulario";
     }
 
+    // FIX ERROR-2: toda la lógica de negocio está en CompraService.guardarCompra() con @Transactional.
     @PostMapping("/api/guardar")
     @PreAuthorize("hasPermission(null, 'COMPRAS_CREAR')")
     public ResponseEntity<?> guardarCompra(@RequestBody CompraDTO dto) {
         try {
-            Proveedor prov = proveedorRepository.findById(dto.getProveedorId())
-                    .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
-
-            Compra compra = new Compra();
-            compra.setProveedor(prov);
-            compra.setTipoComprobante(dto.getTipoComprobante());
-            compra.setNumeroComprobante(dto.getNumeroComprobante());
-            compra.setObservaciones(dto.getObservaciones());
-            
-            BigDecimal totalCompra = BigDecimal.ZERO;
-
-            for (CompraDTO.DetalleDTO item : dto.getItems()) {
-                Producto prod = productoRepository.findById(item.getProductoId())
-                        .orElseThrow(() -> new RuntimeException("Producto no encontrado ID: " + item.getProductoId()));
-
-                // 1. Crear Detalle
-                DetalleCompra det = new DetalleCompra();
-                det.setCompra(compra);
-                det.setProducto(prod);
-                det.setCantidad(item.getCantidad());
-                det.setPrecioUnitario(item.getCosto());
-                
-                BigDecimal subtotal = item.getCosto().multiply(new BigDecimal(item.getCantidad()));
-                det.setSubtotal(subtotal);
-                
-                compra.getDetalles().add(det);
-                totalCompra = totalCompra.add(subtotal);
-
-                // 2. KARDEX (Registrar Movimiento)
-                Kardex kardex = new Kardex();
-                kardex.setProducto(prod);
-                kardex.setTipo("ENTRADA");
-                kardex.setMotivo("COMPRA " + compra.getTipoComprobante() + " " + compra.getNumeroComprobante());
-                kardex.setCantidad(item.getCantidad());
-                kardex.setStockAnterior(prod.getStockActual());
-                kardex.setStockActual(prod.getStockActual() + item.getCantidad());
-                kardexRepository.save(kardex);
-
-                // 3. ACTUALIZAR PRODUCTO (Costo Promedio Ponderado + Subir Stock)
-                // IMPORTANTE: Calcular promedio ANTES de sumar stock
-                BigDecimal costoActual = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
-                int stockAntes = prod.getStockActual() != null ? prod.getStockActual() : 0;
-                int cantidadNueva = item.getCantidad();
-                BigDecimal costoNuevo = item.getCosto();
-
-                if (stockAntes + cantidadNueva > 0) {
-                    BigDecimal valorInventarioActual = costoActual.multiply(BigDecimal.valueOf(stockAntes));
-                    BigDecimal valorCompra = costoNuevo.multiply(BigDecimal.valueOf(cantidadNueva));
-                    BigDecimal costoPromedio = valorInventarioActual.add(valorCompra)
-                        .divide(BigDecimal.valueOf(stockAntes + cantidadNueva), 2, java.math.RoundingMode.HALF_UP);
-                    prod.setPrecioCompra(costoPromedio);
-                } else {
-                    prod.setPrecioCompra(costoNuevo);
-                }
-
-                prod.setStockActual(stockAntes + cantidadNueva);
-                productoRepository.save(prod);
-            }
-
-            compra.setTotal(totalCompra);
-            Compra guardada = compraRepository.save(compra);
-
-            // 4. CAJA - OBLIGATORIO: Si falla, debe abortar la transacción
-            cajaService.registrarMovimiento(
-                "EGRESO",
-                "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(),
-                totalCompra,
-                com.libreria.sistema.model.CategoriaMovimiento.COMPRA_MERCADERIA
-            );
-
+            compraService.guardarCompra(dto);
             return ResponseEntity.ok(Map.of("message", "Compra registrada exitosamente"));
-
         } catch (Exception e) {
             log.error("Error al guardar compra", e);
-            return ResponseEntity.badRequest().body("Error al procesar la compra. Por favor intente nuevamente.");
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

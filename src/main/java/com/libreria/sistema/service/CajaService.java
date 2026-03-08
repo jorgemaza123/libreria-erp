@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.libreria.sistema.model.Venta;
 import com.libreria.sistema.repository.VentaRepository;
 
 import java.math.BigDecimal;
@@ -97,6 +96,7 @@ public class CajaService {
         registrarMovimiento(tipo, concepto, monto, categoria);
     }
 
+    @Transactional(readOnly = true)
     public List<MovimientoCaja> listarMovimientosSesion() {
         return obtenerSesionActiva()
                 .map(movimientoRepo::findBySesionOrderByFechaDesc)
@@ -111,11 +111,12 @@ public class CajaService {
         BigDecimal ingresos = movimientoRepo.sumarPorSesionYTipo(sesion, "INGRESO");
         BigDecimal egresos = movimientoRepo.sumarPorSesionYTipo(sesion, "EGRESO");
         
-        // Protección extra por si acaso
         if (ingresos == null) ingresos = BigDecimal.ZERO;
         if (egresos == null) egresos = BigDecimal.ZERO;
 
-        BigDecimal saldo = sesion.getMontoInicial().add(ingresos).subtract(egresos);
+        // FIX ERROR-1: el movimiento "APERTURA DE CAJA" ya está incluido en `ingresos`,
+        // por lo que sesion.montoInicial NO debe sumarse o el saldo queda duplicado.
+        BigDecimal saldo = ingresos.subtract(egresos);
 
         return Map.of(
             "inicial", sesion.getMontoInicial(),
@@ -183,19 +184,12 @@ public class CajaService {
         try {
             LocalDate hoy = LocalDate.now();
 
-            // Buscar ventas del día que sean CREDITO con saldo > 0 y no anuladas
-            List<Venta> creditosPendientes = ventaRepo.findAll().stream()
-                    .filter(v -> v.getFechaEmision() != null && v.getFechaEmision().equals(hoy))
-                    .filter(v -> "CREDITO".equals(v.getFormaPago()))
-                    .filter(v -> v.getSaldoPendiente() != null && v.getSaldoPendiente().compareTo(BigDecimal.ZERO) > 0)
-                    .filter(v -> !"ANULADO".equals(v.getEstado()))
-                    .toList();
+            // FIX ERROR-11: en lugar de findAll() + filter en Java, usamos queries directas en BD.
+            long cantidad = ventaRepo.countCreditosPendientesPorFecha(hoy);
+            BigDecimal montoTotal = ventaRepo.sumSaldoPendienteCreditosPorFecha(hoy);
+            if (montoTotal == null) montoTotal = BigDecimal.ZERO;
 
-            BigDecimal montoTotal = creditosPendientes.stream()
-                    .map(Venta::getSaldoPendiente)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            resultado.put("cantidad", creditosPendientes.size());
+            resultado.put("cantidad", cantidad);
             resultado.put("montoTotal", montoTotal);
             resultado.put("success", true);
 

@@ -15,8 +15,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/cobranzas")
@@ -41,12 +43,20 @@ public class CobranzaController {
         return "cobranzas/index";
     }
 
+    // U-5: acepta nombre O documento; M-1: incluye historial de amortizaciones por deuda
     @GetMapping("/buscar")
     @PreAuthorize("hasPermission(null, 'COBRANZAS_VER')")
-    public String buscarDeudas(@RequestParam String dni, Model model) {
-        List<Venta> deudas = ventaRepository.findDeudasPorDni(dni);
+    public String buscarDeudas(@RequestParam String termino, Model model) {
+        List<Venta> deudas = ventaRepository.findDeudasPorTermino(termino.trim());
+        // M-1: construir mapa ventaId -> lista de pagos anteriores
+        Map<Long, List<Amortizacion>> amortizacionesPorVenta = deudas.stream()
+                .collect(Collectors.toMap(
+                        Venta::getId,
+                        v -> amortizacionRepository.findByVenta(v)
+                ));
         model.addAttribute("deudas", deudas);
-        model.addAttribute("dniBusqueda", dni);
+        model.addAttribute("terminoBusqueda", termino);
+        model.addAttribute("amortizacionesPorVenta", amortizacionesPorVenta);
         return "cobranzas/index";
     }
 

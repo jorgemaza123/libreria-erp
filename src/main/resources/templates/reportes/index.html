@@ -25,6 +25,7 @@
                                 <div class="form-group">
                                     <label>Tipo de Reporte</label>
                                     <select name="tipo" id="tipoReporte" class="form-control" onchange="toggleFechas()">
+                                        <option value="RESUMEN_FINANCIERO">Balance Mensual / Resumen Financiero</option>
                                         <option value="VENTAS">Reporte de Ventas</option>
                                         <option value="CAJA">Movimientos de Caja (Dinero)</option>
                                         <option value="INVENTARIO">Inventario General / Valorizado</option>
@@ -73,25 +74,34 @@
         }
 
         function procesarReporte(formato) {
-            // 1. Obtener valores
             const tipo = document.getElementById("tipoReporte").value;
             const inicio = document.getElementById("fechaInicio").value;
             const fin = document.getElementById("fechaFin").value;
 
-            // 2. Construir URL base
             let url = `/reportes/exportar/${formato}?tipo=${tipo}`;
-
-            // Agregar fechas si corresponde
             if (tipo !== 'INVENTARIO' && tipo !== 'USUARIOS') {
                 url += `&inicio=${inicio}&fin=${fin}`;
             }
 
-            // 3. Decidir cómo abrir
+            // Deshabilitar botones y mostrar spinner en el botón activo
+            const btnExcel = document.querySelector('button[onclick*="excel"]');
+            const btnPdf = document.querySelector('button[onclick*="pdf"]');
+            const btnActivo = formato === 'excel' ? btnExcel : btnPdf;
+            const iconoOriginal = btnActivo.innerHTML;
+
+            btnExcel.disabled = true;
+            btnPdf.disabled = true;
+            btnActivo.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+
+            setTimeout(function() {
+                btnExcel.disabled = false;
+                btnPdf.disabled = false;
+                btnActivo.innerHTML = iconoOriginal;
+            }, 5000);
+
             if (formato === 'pdf') {
-                // PDF: Abrir en POPUP (Ventana flotante)
                 abrirPopup(url);
             } else {
-                // EXCEL: Descargar directo (navegación simple)
                 window.location.href = url;
             }
         }

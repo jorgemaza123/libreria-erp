@@ -77,7 +77,7 @@ public class LicenseFilter implements Filter {
                         licenseInfo.getEstado(), path);
 
                 // Redirigir a página de licencia
-                httpResponse.sendRedirect("/licencia");
+                httpResponse.sendRedirect(httpRequest.getContextPath() + "/licencia");
                 return;
             }
 

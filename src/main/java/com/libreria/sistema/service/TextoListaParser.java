@@ -24,6 +24,18 @@ public class TextoListaParser {
         Pattern.CASE_INSENSITIVE
     );
 
+    // Umbral: números mayores a este valor son casi siempre especificación del producto,
+    // no unidades a comprar (ej: "100 hojas", "24 colores", "50 páginas").
+    private static final int UMBRAL_MAX_CANTIDAD = 5;
+
+    // Palabras que indican que el número es una especificación del producto, no cantidad de compra.
+    // Ejemplo: "24 colores" → colores es spec word → cantidadSolicitada=1, búsqueda="24 colores"
+    private static final java.util.Set<String> SPEC_WORDS = java.util.Set.of(
+        "hojas", "paginas", "colores", "cm", "mm", "ml", "gr", "grs",
+        "gramos", "metros", "litros", "piezas", "plumones", "marcadores",
+        "lineas", "cuadros", "unidades"
+    );
+
     // Patrones para detectar cantidades con palabras
     private static final Pattern PATRON_CANTIDAD_PALABRA = Pattern.compile(
         "^\\s*(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|" +
@@ -52,6 +64,14 @@ public class TextoListaParser {
         private int cantidad;
         private int lineaNumero;
         private double confianza; // 0.0 - 1.0
+
+        // true → el número al inicio era especificación del producto (ej: "100 hojas"),
+        //        cantidadSolicitada fue forzada a 1 y el número quedó en textoNormalizado.
+        private boolean esEspecificacion = false;
+
+        // true → caso ambiguo: número ≤ UMBRAL pero primera palabra es spec word
+        //        (ej: "3 colores"). El sistema eligió cantidad=1, pero puede ser incorrecto.
+        private boolean alertaCantidad = false;
 
         public ItemParseado(String textoOriginal, String textoNormalizado, int cantidad, int lineaNumero) {
             this.textoOriginal = textoOriginal;
@@ -133,23 +153,68 @@ public class TextoListaParser {
     }
 
     /**
+     * Determina si el número al inicio de línea es una especificación del producto
+     * (no una cantidad de compra).
+     *
+     * Regla 1: número > UMBRAL_MAX_CANTIDAD (5) → casi siempre es spec
+     *          ("100 hojas", "24 colores", "50 páginas")
+     * Regla 2: primera palabra de la descripción es una spec word
+     *          ("3 colores", "2 hojas", "1 cm")
+     *
+     * Cuando devuelve true: cantidadSolicitada=1, el número queda en el texto de búsqueda.
+     * Principio: equivocarse con cantidad=1 es corregible; cantidad=100 genera daño financiero.
+     */
+    private boolean esCantidadEspecificacion(int numero, String descripcion) {
+        if (numero > UMBRAL_MAX_CANTIDAD) {
+            return true;
+        }
+        if (descripcion != null && !descripcion.isBlank()) {
+            String primeraPalabra = descripcion.trim().toLowerCase().split("\\s+")[0];
+            primeraPalabra = Normalizer.normalize(primeraPalabra, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replaceAll("[^a-z]", "");
+            if (SPEC_WORDS.contains(primeraPalabra)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Extrae un item con su cantidad de una línea.
+     * Aplica lógica conservadora: ante ambigüedad, cantidadSolicitada = 1.
      */
     private ItemParseado extraerItem(String lineaOriginal, String lineaLimpia, int numeroLinea) {
         int cantidad = 1;
         String descripcion = lineaLimpia;
+        boolean esEspecificacion = false;
+        boolean alertaCantidad = false;
 
         // Intentar extraer cantidad numérica al inicio
         Matcher matcherNumero = PATRON_CANTIDAD_INICIO.matcher(lineaLimpia);
         if (matcherNumero.matches()) {
             try {
-                cantidad = Integer.parseInt(matcherNumero.group(1));
-                descripcion = matcherNumero.group(2).trim();
+                int numeroParsed = Integer.parseInt(matcherNumero.group(1));
+                String descripcionExtraida = matcherNumero.group(2).trim();
+
+                if (esCantidadEspecificacion(numeroParsed, descripcionExtraida)) {
+                    // El número es especificación del producto.
+                    // cantidad=1, incluir el número en el texto para búsqueda más precisa.
+                    cantidad = 1;
+                    descripcion = lineaLimpia; // línea completa con el número
+                    esEspecificacion = true;
+                    // Marcar alerta solo cuando el número es pequeño (ambigüedad real)
+                    alertaCantidad = (numeroParsed <= UMBRAL_MAX_CANTIDAD);
+                } else {
+                    // Número inequívocamente es cantidad de compra
+                    cantidad = numeroParsed;
+                    descripcion = descripcionExtraida;
+                }
             } catch (NumberFormatException e) {
-                // Mantener cantidad = 1
+                // Mantener cantidad = 1 y descripcion = lineaLimpia
             }
         } else {
-            // Intentar con palabras (uno, dos, etc.)
+            // Intentar con palabras (uno, dos, etc.) — estos son siempre cantidad de compra
             Matcher matcherPalabra = PATRON_CANTIDAD_PALABRA.matcher(lineaLimpia);
             if (matcherPalabra.matches()) {
                 cantidad = palabraACantidad(matcherPalabra.group(1));
@@ -165,7 +230,10 @@ public class TextoListaParser {
         // Normalizar la descripción para búsqueda
         String descripcionNormalizada = normalizarParaBusqueda(descripcion);
 
-        return new ItemParseado(lineaOriginal.trim(), descripcionNormalizada, cantidad, numeroLinea);
+        ItemParseado item = new ItemParseado(lineaOriginal.trim(), descripcionNormalizada, cantidad, numeroLinea);
+        item.setEsEspecificacion(esEspecificacion);
+        item.setAlertaCantidad(alertaCantidad);
+        return item;
     }
 
     /**

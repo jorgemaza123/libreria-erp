@@ -75,9 +75,9 @@ public class BillingScheduler {
             var billing = billingService.obtenerOCrearRegistroMes(mesAnteriorStr);
 
             // Si el registro tiene 0 comprobantes pero hay ventas en ese mes, actualizar
-            if (billing.getCantidadComprobantes() == 0 ||
+            if (billing != null && (billing.getCantidadComprobantes() == 0 ||
                 billing.getFechaActualizacion() == null ||
-                billing.getFechaActualizacion().toLocalDate().isBefore(hoy.minusDays(1))) {
+                billing.getFechaActualizacion().toLocalDate().isBefore(hoy.minusDays(1)))) {
 
                 billingService.actualizarContadoresMes(billing);
                 log.info("Mes {} verificado y actualizado. Comprobantes: {}, Monto: {}",

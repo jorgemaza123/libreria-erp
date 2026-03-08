@@ -129,7 +129,7 @@ public class CajaController {
         List<Map<String, Object>> movimientosJson = movimientos.stream()
             .map(m -> {
                 Map<String, Object> mov = new HashMap<>();
-                mov.put("hora", m.getFecha().format(formatter));
+                mov.put("hora", m.getFecha() != null ? m.getFecha().format(formatter) : "--:--");
                 mov.put("concepto", m.getConcepto());
                 mov.put("tipo", m.getTipo());
                 mov.put("monto", m.getMonto());

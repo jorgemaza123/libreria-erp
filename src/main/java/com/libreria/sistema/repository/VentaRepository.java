@@ -152,6 +152,12 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<Venta> findDeudasPorDni(@Param("dni") String dni);
 
     /**
+     * U-5: Buscar deudas por documento O nombre del cliente (búsqueda flexible)
+     */
+    @Query("SELECT v FROM Venta v WHERE (v.clienteNumeroDocumento LIKE %:termino% OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%'))) AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    List<Venta> findDeudasPorTermino(@Param("termino") String termino);
+
+    /**
      * Buscar ventas para devolución por serie-número, cliente o documento
      */
     @Transactional
@@ -200,6 +206,15 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     @Query("SELECT v FROM Venta v WHERE v.formaPago = 'CREDITO' AND v.saldoPendiente > 0 AND v.estado != 'ANULADO' " +
            "ORDER BY v.fechaVencimiento ASC")
     List<Venta> findVentasCreditoPendientes();
+
+    // FIX ERROR-11: reemplaza el findAll().stream().filter() en CajaService.contarCreditosPendientesHoy()
+    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaEmision = :fecha " +
+           "AND v.formaPago = 'CREDITO' AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    long countCreditosPendientesPorFecha(@Param("fecha") LocalDate fecha);
+
+    @Query("SELECT COALESCE(SUM(v.saldoPendiente), 0) FROM Venta v WHERE v.fechaEmision = :fecha " +
+           "AND v.formaPago = 'CREDITO' AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    BigDecimal sumSaldoPendienteCreditosPorFecha(@Param("fecha") LocalDate fecha);
 
     /**
      * Ventas a crédito vencidas
@@ -325,12 +340,11 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
            "AND v.estado != 'ANULADO'")
     long countComprobantesElectronicosByPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
-    /**
-     * Cuenta comprobantes por tipo en un periodo.
-     */
+    
     @Query("SELECT v.tipoComprobante, COUNT(v) FROM Venta v " +
            "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
            "AND v.estado != 'ANULADO' " +
+           "AND v.sunatEstado IS NOT NULL " +
            "GROUP BY v.tipoComprobante")
     List<Object[]> countByTipoComprobanteAndPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 }

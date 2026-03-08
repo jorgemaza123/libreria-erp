@@ -40,12 +40,11 @@
                             <div class="col-md-3 text-center">
                                 <label>Imagen del Producto</label>
                                 <div class="mt-2 mb-3 border rounded p-2 bg-light">
-                                    <img th:if="${producto.imagen != null}" th:src="@{'/uploads/' + ${producto.imagen}}"
-                                         class="img-fluid" style="max-height: 180px; object-fit: contain;">
-
-                                    <img th:unless="${producto.imagen != null}"
-                                         src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pjwvc3ZnPg=="
-                                         class="img-fluid" style="max-height: 180px; opacity: 0.5;">
+                                    <!-- C-2: un único elemento <img> con src condicional (evita ID duplicado) -->
+                                    <img id="previewImagen"
+                                         th:src="${producto.imagen != null} ? @{'/uploads/' + ${producto.imagen}} : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TElCPC90ZXh0Pjwvc3ZnPg=='"
+                                         th:style="${producto.imagen == null} ? 'max-height:180px; opacity:0.5; object-fit:contain;' : 'max-height:180px; object-fit:contain;'"
+                                         class="img-fluid">
                                 </div>
                                 <div class="custom-file text-left">
                                     <input type="file" name="file" class="custom-file-input" id="customFile" accept="image/*">
@@ -137,10 +136,12 @@
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label>Tipo</label>
+                                    <!-- C-4: agregada opción SERVICIO para que DevolucionService y VentaService detecten correctamente servicios -->
                                     <select class="form-control" th:field="*{tipo}">
                                         <option value="ESTANDAR">Estándar</option>
                                         <option value="PREMIUM">Premium</option>
                                         <option value="ECONOMICO">Económico</option>
+                                        <option value="SERVICIO">Servicio</option>
                                     </select>
                                 </div>
                             </div>
@@ -191,7 +192,13 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Stock Actual</label>
-                                    <input type="number" class="form-control" th:field="*{stockActual}" required>
+                                    <!-- C-3: en modo edición el stock es readonly para proteger integridad del Kardex -->
+                                    <input type="number" class="form-control" th:field="*{stockActual}" required
+                                           th:readonly="${producto.id != null}"
+                                           th:classappend="${producto.id != null} ? 'bg-light text-muted' : ''">
+                                    <small th:if="${producto.id != null}" class="form-text text-muted">
+                                        <i class="fas fa-lock"></i> Para ajustar el stock use <a th:href="@{/inventario/ajustar}">Ajuste de Inventario</a>.
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -318,6 +325,21 @@
 
         $(document).ready(function () {
             bsCustomFileInput.init();
+
+            // Preview de imagen al seleccionar archivo
+            document.getElementById('customFile').addEventListener('change', function () {
+                const file = this.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById('previewImagen');
+                    img.src = e.target.result;
+                    img.style.opacity = '1';
+                    img.style.maxHeight = '180px';
+                    img.style.objectFit = 'contain';
+                };
+                reader.readAsDataURL(file);
+            });
         });
 
         /**

@@ -29,7 +29,7 @@
                         <span class="info-box-icon bg-info"><i class="fas fa-money-bill-wave"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text">Saldo Inicial</span>
-                            <span class="info-box-number" id="balanceInicial" th:text="'S/ ' + ${balance.inicial}"></span>
+                            <span class="info-box-number" id="balanceInicial" th:text="'S/ ' + ${#numbers.formatDecimal(balance.inicial, 1, 'COMMA', 2, 'POINT')}"></span>
                         </div>
                     </div>
                 </div>
@@ -38,7 +38,7 @@
                         <span class="info-box-icon bg-success"><i class="fas fa-arrow-up"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text">Ventas/Ingresos</span>
-                            <span class="info-box-number" id="balanceIngresos" th:text="'S/ ' + ${balance.ingresos}"></span>
+                            <span class="info-box-number" id="balanceIngresos" th:text="'S/ ' + ${#numbers.formatDecimal(balance.ingresos, 1, 'COMMA', 2, 'POINT')}"></span>
                         </div>
                     </div>
                 </div>
@@ -47,7 +47,7 @@
                         <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text">Gastos/Salidas</span>
-                            <span class="info-box-number" id="balanceEgresos" th:text="'S/ ' + ${balance.egresos}"></span>
+                            <span class="info-box-number" id="balanceEgresos" th:text="'S/ ' + ${#numbers.formatDecimal(balance.egresos, 1, 'COMMA', 2, 'POINT')}"></span>
                         </div>
                     </div>
                 </div>
@@ -56,7 +56,7 @@
                         <span class="info-box-icon"><i class="fas fa-wallet"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text">SALDO ACTUAL</span>
-                            <span class="info-box-number" id="balanceSaldo" style="font-size: 1.5em;" th:text="'S/ ' + ${balance.saldo}"></span>
+                            <span class="info-box-number" id="balanceSaldo" style="font-size: 1.5em;" th:text="'S/ ' + ${#numbers.formatDecimal(balance.saldo, 1, 'COMMA', 2, 'POINT')}"></span>
                         </div>
                     </div>
                 </div>
@@ -183,10 +183,10 @@
                                 <input type="hidden" name="tipo" value="EGRESO">
                                 <div class="form-group">
                                     <label>Categoria</label>
+                                    <!-- M-5: COMPRA_MERCADERIA eliminada del egreso manual (las compras se registran en /compras) -->
                                     <select name="categoria" class="form-control form-control-sm">
                                         <option value="GASTO_OPERATIVO">Gasto Operativo (luz, agua, almuerzo...)</option>
-                                        <option value="COMPRA_MERCADERIA">Compra de Mercaderia</option>
-                                        <option value="RETIRO_DUENO">Retiro del Dueno</option>
+                                        <option value="RETIRO_DUENO">Retiro del Dueño</option>
                                         <option value="OTRO_EGRESO">Otro Egreso</option>
                                     </select>
                                 </div>
@@ -247,7 +247,7 @@
                                 </thead>
                                 <tbody id="tbodyMovimientos">
                                     <tr th:each="m : ${movimientos}">
-                                        <td th:text="${#temporals.format(m.fecha, 'HH:mm')}"></td>
+                                        <td th:text="${m.fecha != null ? #temporals.format(m.fecha, 'HH:mm') : '--:--'}"></td>
                                         <td th:text="${m.concepto}"></td>
                                         <td>
                                             <span class="badge"
@@ -258,7 +258,7 @@
                                             <span th:if="${m.tipo == 'INGRESO'}" class="badge badge-success">INGRESO</span>
                                             <span th:if="${m.tipo == 'EGRESO'}" class="badge badge-danger">EGRESO</span>
                                         </td>
-                                        <td class="text-right font-weight-bold" th:text="'S/ ' + ${m.monto}"></td>
+                                        <td class="text-right font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(m.monto, 1, 'COMMA', 2, 'POINT')}"></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -286,18 +286,14 @@
             if (cajaPollingTimer) clearInterval(cajaPollingTimer);
 
             cajaPollingTimer = setInterval(function() {
-                console.log('[Caja] Actualizando datos...');
                 actualizarCaja();
             }, CAJA_POLLING_INTERVAL);
-
-            console.log('[Caja] Polling iniciado - refresco cada ' + (CAJA_POLLING_INTERVAL/1000) + ' segundos');
         }
 
         function detenerPollingCaja() {
             if (cajaPollingTimer) {
                 clearInterval(cajaPollingTimer);
                 cajaPollingTimer = null;
-                console.log('[Caja] Polling detenido');
             }
         }
 
@@ -331,10 +327,9 @@
                         actualizarTablaMovimientos(data.movimientos);
                     }
 
-                    console.log('[Caja] Actualizado a las ' + (data.ultimaActualizacion || new Date().toLocaleTimeString()));
                 },
-                error: function(xhr) {
-                    console.log('[Caja] Error al actualizar:', xhr.statusText);
+                error: function() {
+                    // silencioso en producción
                 }
             });
         }

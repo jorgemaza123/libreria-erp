@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Configuration
+@Slf4j
 public class DataInitializer {
 
     @PersistenceContext
@@ -48,18 +50,18 @@ public class DataInitializer {
             // Usamos TransactionTemplate para mantener la sesión de BD abierta
             new TransactionTemplate(transactionManager).execute(status -> {
                 
-                System.out.println(">>> Inicializando sistema...");
+                log.info(">>> Inicializando sistema...");
 
                 // =================================================================================
                 // 0.1 SANITIZACIÓN DE DATOS (CRÍTICO PARA @Version)
                 // =================================================================================
-                
+
                 // Arreglar productos con version NULL
                 int productosActualizados = entityManager
                     .createNativeQuery("UPDATE productos SET version = 0 WHERE version IS NULL")
                     .executeUpdate();
                 if (productosActualizados > 0) {
-                    System.out.println(">>> SANITIZACIÓN: " + productosActualizados + " productos con version NULL corregidos.");
+                    log.info(">>> SANITIZACIÓN: {} productos con version NULL corregidos.", productosActualizados);
                 }
 
                 // NUEVO: Arreglar correlativos con version NULL (SOLUCIÓN A TU ERROR)
@@ -67,7 +69,7 @@ public class DataInitializer {
                     .createNativeQuery("UPDATE correlativos SET version = 0 WHERE version IS NULL")
                     .executeUpdate();
                 if (correlativosActualizados > 0) {
-                    System.out.println(">>> SANITIZACIÓN: " + correlativosActualizados + " correlativos con version NULL corregidos.");
+                    log.info(">>> SANITIZACIÓN: {} correlativos con version NULL corregidos.", correlativosActualizados);
                 }
                 // =================================================================================
 
@@ -89,7 +91,7 @@ public class DataInitializer {
                     admin.setActivo(true);
                     admin.setPasswordChanged(true); // Forzar cambio en primer login
                     usuarioRepo.save(admin);
-                    System.out.println(">>> USUARIO ADMIN CREADO POR DEFECTO (sin bloqueo)");
+                    log.info(">>> USUARIO ADMIN CREADO POR DEFECTO (sin bloqueo)");
                 }
 
                 if (usuarioRepo.findByUsername("vendedor").isEmpty()) {
@@ -101,7 +103,7 @@ public class DataInitializer {
                     vend.setActivo(true);
                     vend.setPasswordChanged(false); // Forzar cambio en primer login
                     usuarioRepo.save(vend);
-                    System.out.println(">>> USUARIO VENDEDOR CREADO (debe cambiar contraseña)");
+                    log.info(">>> USUARIO VENDEDOR CREADO (debe cambiar contraseña)");
                 }
 
                 // 3. Correlativos - Inicialización segura respectando tu lógica Dual
@@ -158,7 +160,7 @@ public class DataInitializer {
                 }
 
                 // 4.1 SERVICIOS POS Y PRODUCTOS RÁPIDOS
-                System.out.println(">>> Inicializando Servicios Rápidos del POS...");
+                log.info(">>> Inicializando Servicios Rápidos del POS...");
                 
                 // Servicios Intangibles (Sin control de stock)
                 crearProductoSiNoExiste(productoRepo, "FOTOCOPIA_BN", "Fotocopia B/N", new BigDecimal("0.10"), "SERVICIO");
@@ -176,11 +178,11 @@ public class DataInitializer {
                     .createNativeQuery("UPDATE clientes SET tipo = 'CLIENTE' WHERE tipo IS NULL")
                     .executeUpdate();
                 if (clientesMigrados > 0) {
-                    System.out.println(">>> CRM: " + clientesMigrados + " clientes migrados con tipo=CLIENTE");
+                    log.info(">>> CRM: {} clientes migrados con tipo=CLIENTE", clientesMigrados);
                 }
 
                 // 4.3 Categorías de Servicio (para cotizaciones)
-                System.out.println(">>> Inicializando Categorías de Servicio...");
+                log.info(">>> Inicializando Categorías de Servicio...");
                 crearCategoriaSiNoExiste(servicioCategoriaRepo, "SUBLIMACION", "Sublimación", "Sublimación en tazas, polos, etc.", "fas fa-tshirt", 1);
                 crearCategoriaSiNoExiste(servicioCategoriaRepo, "COPIAS", "Copias", "Fotocopias B/N y color", "fas fa-copy", 2);
                 crearCategoriaSiNoExiste(servicioCategoriaRepo, "IMPRESION", "Impresión", "Impresiones A4, A3, fotos", "fas fa-print", 3);
@@ -194,9 +196,9 @@ public class DataInitializer {
                 crearCategoriaSiNoExiste(servicioCategoriaRepo, "OTRO", "Otro", "Servicios varios", "fas fa-ellipsis-h", 99);
 
                 // 5. Migración de Roles
-                System.out.println(">>> Verificando migración de roles...");
+                log.info(">>> Verificando migración de roles...");
                 List<Usuario> todosUsuarios = usuarioRepo.findAll();
-                
+
                 for (Usuario usuario : todosUsuarios) {
                     if (usuario.getRole() == null) {
                         boolean esAdmin = usuario.getRoles().stream()
@@ -206,15 +208,15 @@ public class DataInitializer {
 
                         if (esAdmin) {
                             roleRepo.findByNombre("ADMIN").ifPresent(usuario::setRole);
-                            System.out.println("  - Usuario '" + usuario.getUsername() + "' migrado a rol ADMIN");
+                            log.info("  - Usuario '{}' migrado a rol ADMIN", usuario.getUsername());
                         } else if (esVendedor) {
                             roleRepo.findByNombre("VENDEDOR").ifPresent(usuario::setRole);
-                            System.out.println("  - Usuario '" + usuario.getUsername() + "' migrado a rol VENDEDOR");
+                            log.info("  - Usuario '{}' migrado a rol VENDEDOR", usuario.getUsername());
                         }
                         usuarioRepo.save(usuario);
                     }
                 }
-                System.out.println(">>> Inicialización completada con éxito.");
+                log.info(">>> Inicialización completada con éxito.");
                 
                 return null;
             });
@@ -231,7 +233,7 @@ public class DataInitializer {
             cat.setOrden(orden);
             cat.setActiva(true);
             repo.save(cat);
-            System.out.println(" > Categoría servicio creada: " + nombre);
+            log.info(" > Categoría servicio creada: {}", nombre);
         }
     }
 
@@ -255,13 +257,13 @@ public class DataInitializer {
             p.setStockMinimo(5);
 
             repo.save(p);
-            System.out.println(" > Creado item POS: " + nombre + " [" + tipo + "]");
+            log.info(" > Creado item POS: {} [{}]", nombre, tipo);
         } else {
             Producto p = existente.get();
             if (p.getTipo() == null || !p.getTipo().equals(tipo)) {
                 p.setTipo(tipo);
                 repo.save(p);
-                System.out.println(" > Actualizado tipo de item: " + nombre + " a " + tipo);
+                log.info(" > Actualizado tipo de item: {} a {}", nombre, tipo);
             }
         }
     }

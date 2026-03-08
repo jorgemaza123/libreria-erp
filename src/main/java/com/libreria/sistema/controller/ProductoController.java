@@ -170,9 +170,14 @@ public class ProductoController {
             if(producto.getMarca() != null) producto.setMarca(producto.getMarca().toUpperCase());
 
             // 3. GUARDAR
+            boolean esNuevo = producto.getId() == null;
             productoService.guardar(producto);
-            
-            attributes.addFlashAttribute("success", "Producto guardado correctamente");
+
+            String accion = esNuevo ? "agregado" : "actualizado";
+            attributes.addFlashAttribute("success",
+                "Producto " + accion + " correctamente: " + producto.getNombre()
+                + " | Stock: " + producto.getStockActual() + " unidades"
+                + " | Precio venta: S/ " + producto.getPrecioVenta());
             return "redirect:/productos";
 
         } catch (IllegalArgumentException e) {

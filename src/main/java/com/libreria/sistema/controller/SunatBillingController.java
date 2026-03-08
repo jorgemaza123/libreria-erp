@@ -1,6 +1,7 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.MonthlyBilling;
+import com.libreria.sistema.repository.ConfiguracionSunatRepository;
 import com.libreria.sistema.service.SunatBillingService;
 import com.libreria.sistema.service.SunatBillingService.BillingSummary;
 import com.libreria.sistema.service.SystemConfigurationService;
@@ -26,11 +27,14 @@ public class SunatBillingController {
 
     private final SunatBillingService billingService;
     private final SystemConfigurationService configService;
+    private final ConfiguracionSunatRepository configuracionSunatRepo;
 
     public SunatBillingController(SunatBillingService billingService,
-                                  SystemConfigurationService configService) {
+                                  SystemConfigurationService configService,
+                                  ConfiguracionSunatRepository configuracionSunatRepo) {
         this.billingService = billingService;
         this.configService = configService;
+        this.configuracionSunatRepo = configuracionSunatRepo;
     }
 
     /**
@@ -125,7 +129,8 @@ public class SunatBillingController {
     }
 
     /**
-     * API: Activar/Desactivar SUNAT
+     * API: Activar/Desactivar SUNAT.
+     * Sincroniza SUNAT_MODO y ConfiguracionSunat.facturaElectronicaActiva en una sola operación.
      */
     @PostMapping("/api/toggle-sunat")
     @ResponseBody
@@ -134,7 +139,15 @@ public class SunatBillingController {
 
         try {
             String nuevoModo = activar ? "ACTIVO" : "OFFLINE";
+
+            // 1. Actualizar SUNAT_MODO (fuente de verdad para billing)
             configService.setSunatModo(nuevoModo);
+
+            // 2. Sincronizar con ConfiguracionSunat.facturaElectronicaActiva
+            configuracionSunatRepo.findFirstByOrderByIdDesc().ifPresent(config -> {
+                config.setFacturaElectronicaActiva(activar);
+                configuracionSunatRepo.save(config);
+            });
 
             response.put("success", true);
             response.put("sunatActivo", activar);

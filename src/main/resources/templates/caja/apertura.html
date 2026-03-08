@@ -69,7 +69,32 @@
     </section>
 </div>
 
-<th:block layout:fragment="scripts"></th:block>
+<th:block layout:fragment="scripts">
+    <script>
+        // U-4: confirmar apertura de caja con SweetAlert antes de enviar el formulario
+        document.querySelector('form[action="/caja/abrir"]').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var monto = document.querySelector('input[name="montoInicial"]').value;
+            if (!monto || parseFloat(monto) < 0) {
+                Swal.fire('Monto inválido', 'Ingrese un monto inicial válido.', 'warning');
+                return;
+            }
+            var form = this;
+            Swal.fire({
+                title: '¿Abrir Caja?',
+                html: 'Se iniciará el turno con <strong>S/ ' + parseFloat(monto).toFixed(2) + '</strong> de saldo inicial.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, abrir turno',
+                cancelButtonText: 'Cancelar'
+            }).then(function(result) {
+                if (result.isConfirmed) form.submit();
+            });
+        });
+    </script>
+</th:block>
 
 </body>
 </html>

@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Data
 public class ItemSeleccionadoDTO {
 
-    @NotNull(message = "El ID del detalle es obligatorio")
+    // Nullable for additional products not in the lista (esAdicional = true)
     private Long detalleListaId;
 
     @NotNull(message = "El ID del producto es obligatorio")

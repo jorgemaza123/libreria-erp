@@ -92,6 +92,7 @@
                                 <th>Motivo</th>
                                 <th class="text-right">Monto</th>
                                 <th>Método</th>
+                                <th>Usuario</th>
                                 <th>Estado</th>
                                 <th>SUNAT</th>
                                 <th>Acciones</th>
@@ -99,7 +100,7 @@
                         </thead>
                         <tbody id="tbodyDevoluciones">
                             <tr>
-                                <td colspan="10" class="text-center text-muted">Cargando...</td>
+                                <td colspan="11" class="text-center text-muted">Cargando...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -214,7 +215,7 @@
                 },
                 error: function() {
                     if(typeof toastr !== 'undefined') toastr.error('Error al cargar devoluciones');
-                    $('#tbodyDevoluciones').html('<tr><td colspan="10" class="text-center text-danger">Error al cargar datos</td></tr>');
+                    $('#tbodyDevoluciones').html('<tr><td colspan="11" class="text-center text-danger">Error al cargar datos</td></tr>');
                 }
             });
         }
@@ -224,7 +225,7 @@
             tbody.empty();
 
             if (!devoluciones || devoluciones.length === 0) {
-                tbody.html('<tr><td colspan="10" class="text-center text-muted">No hay devoluciones registradas</td></tr>');
+                tbody.html('<tr><td colspan="11" class="text-center text-muted">No hay devoluciones registradas</td></tr>');
                 return;
             }
 
@@ -266,6 +267,7 @@
                         <td><small>${dev.motivoDevolucion || '-'}</small></td>
                         <td class="text-right text-danger font-weight-bold">S/ ${formatearNumero(dev.totalDevuelto)}</td>
                         <td><small>${dev.metodoReembolso || '-'}</small></td>
+                        <td><small>${dev.usuario ? dev.usuario.username : '-'}</small></td>
                         <td>${badgeEstado}</td>
                         <td>${badgeSunat}</td>
                         <td class="text-center">${acciones}</td>
@@ -442,32 +444,51 @@
 
         // Acciones extra
         function reenviarSunat(id) {
-            if (!confirm('¿Desea reenviar esta nota de crédito a SUNAT?')) return;
-            $.ajax({
-                url: '/devoluciones/api/reenviar-sunat/' + id,
-                method: 'POST',
-                success: (response) => {
-                    if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
-                    buscarDevoluciones(paginaActual);
-                },
-                error: (xhr) => {
-                    if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
-                }
+            Swal.fire({
+                title: '¿Reenviar a SUNAT?',
+                text: 'Se intentará reenviar esta nota de crédito a SUNAT.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, reenviar',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                $.ajax({
+                    url: '/devoluciones/api/reenviar-sunat/' + id,
+                    method: 'POST',
+                    success: (response) => {
+                        if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
+                        buscarDevoluciones(paginaActual);
+                    },
+                    error: (xhr) => {
+                        if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
+                    }
+                });
             });
         }
 
         function confirmarAnular(id) {
-            if (!confirm('¿Está seguro de ANULAR esta devolución?')) return;
-            $.ajax({
-                url: '/devoluciones/api/anular/' + id,
-                method: 'POST',
-                success: (response) => {
-                    if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
-                    buscarDevoluciones(paginaActual);
-                },
-                error: (xhr) => {
-                    if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
-                }
+            Swal.fire({
+                title: '¿Anular Devolución?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Sí, ANULAR',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                $.ajax({
+                    url: '/devoluciones/api/anular/' + id,
+                    method: 'POST',
+                    success: (response) => {
+                        if(typeof toastr !== 'undefined') toastr.success(response.mensaje);
+                        buscarDevoluciones(paginaActual);
+                    },
+                    error: (xhr) => {
+                        if(typeof toastr !== 'undefined') toastr.error(xhr.responseJSON ? xhr.responseJSON.error : 'Error desconocido');
+                    }
+                });
             });
         }
 

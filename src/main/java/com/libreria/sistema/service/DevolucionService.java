@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -49,6 +51,15 @@ public class DevolucionService {
 
     @Autowired
     private FacturacionElectronicaService facturacionService;
+
+    @Autowired
+    private VentaListaEscolarRepository ventaListaRepository;
+
+    @Autowired
+    private DetalleListaEscolarRepository detalleListaRepository;
+
+    @Autowired
+    private ListaEscolarRepository listaEscolarRepository;
 
     private static final int DIAS_MAXIMO_DEVOLUCION = 30;
 
@@ -106,6 +117,9 @@ public class DevolucionService {
         // 8. Actualizar estado de venta original
         actualizarEstadoVenta(ventaOriginal, totalDevuelto);
 
+        // 8b. Si la venta provino de una lista escolar, revertir los items devueltos
+        revertirItemsListaEscolar(ventaOriginal, dto.getItems(), totalDevuelto);
+
         // 9. Registrar egreso en caja (si reembolso es efectivo)
         if ("EFECTIVO".equals(dto.getMetodoReembolso())) {
             registrarEgresoCaja(devolucionGuardada);
@@ -155,13 +169,14 @@ public class DevolucionService {
 
             totalDevuelto = totalDevuelto.add(detalle.getSubtotal());
 
-            // Regresar stock al inventario
-            int cantidadDevuelta = item.getCantidadDevuelta().intValue();
-            producto.setStockActual(producto.getStockActual() + cantidadDevuelta);
-            productoRepository.save(producto);
-
-            // Registrar en Kardex
-            registrarKardex(producto, cantidadDevuelta, devolucion, ventaOriginal);
+            // FIX ERROR-5: no restaurar stock si el producto es un servicio
+            boolean esServicio = producto.getTipo() != null && "SERVICIO".equalsIgnoreCase(producto.getTipo());
+            if (!esServicio) {
+                int cantidadDevuelta = item.getCantidadDevuelta().intValue();
+                producto.setStockActual(producto.getStockActual() + cantidadDevuelta);
+                productoRepository.save(producto);
+                registrarKardex(producto, cantidadDevuelta, devolucion, ventaOriginal);
+            }
         }
 
         return totalDevuelto;
@@ -336,6 +351,21 @@ public class DevolucionService {
     }
 
     /**
+     * Obtiene en una sola query el total devuelto agrupado por ventaId
+     * para una lista de IDs. Usado en el listado de ventas para no hacer N+1.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> obtenerMapaTotalesDevueltos(List<Long> ventaIds) {
+        if (ventaIds == null || ventaIds.isEmpty()) return new HashMap<>();
+        List<Object[]> rows = devolucionRepository.sumTotalesDevueltosPorVentas(ventaIds);
+        Map<Long, BigDecimal> mapa = new HashMap<>();
+        for (Object[] row : rows) {
+            mapa.put((Long) row[0], (BigDecimal) row[1]);
+        }
+        return mapa;
+    }
+
+    /**
      * Suma el totalDevuelto de todas las devoluciones activas de una venta.
      * Usado para calcular el monto neto restante en el modal y en la impresión.
      */
@@ -393,12 +423,29 @@ public class DevolucionService {
             kardexRepository.save(kardex);
         }
 
-        // Revertir estado de venta original
+        // FIX ERROR-9: restaurar el saldoPendiente de la venta original cuando la devolución
+        // era de una venta a crédito. El monto devuelto había reducido el saldo; al anular
+        // la devolución ese monto debe volver a ser adeudado.
         Venta ventaOriginal = devolucion.getVentaOriginal();
+        BigDecimal saldoParaEstado = ventaOriginal.getSaldoPendiente() != null
+                ? ventaOriginal.getSaldoPendiente() : BigDecimal.ZERO;
+
+        if ("CREDITO".equals(ventaOriginal.getFormaPago())
+                && devolucion.getTotalDevuelto() != null
+                && devolucion.getTotalDevuelto().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal saldoRestaurado = saldoParaEstado.add(devolucion.getTotalDevuelto());
+            // No puede superar el total original de la venta
+            if (saldoRestaurado.compareTo(ventaOriginal.getTotal()) > 0) {
+                saldoRestaurado = ventaOriginal.getTotal();
+            }
+            ventaRepository.actualizarSaldoPendiente(ventaOriginal.getId(), saldoRestaurado);
+            // Usar el saldo ya restaurado para determinar el estado correcto
+            saldoParaEstado = saldoRestaurado;
+        }
+
+        // Revertir estado de venta original usando el saldo calculado (no el valor en caché)
         if ("DEVUELTO_TOTAL".equals(ventaOriginal.getEstado()) || "DEVUELTO_PARCIAL".equals(ventaOriginal.getEstado())) {
-            // Determinar el estado correcto
-            if (ventaOriginal.getSaldoPendiente() != null &&
-                ventaOriginal.getSaldoPendiente().compareTo(BigDecimal.ZERO) == 0) {
+            if (saldoParaEstado.compareTo(BigDecimal.ZERO) == 0) {
                 ventaOriginal.setEstado("PAGADO_TOTAL");
             } else {
                 ventaOriginal.setEstado("EMITIDO");
@@ -418,5 +465,81 @@ public class DevolucionService {
         }
 
         devolucionRepository.save(devolucion);
+    }
+
+    /**
+     * Revierte los items de lista escolar que fueron devueltos.
+     * Solo actúa si la venta original provino de una lista escolar.
+     *
+     * - Los items devueltos vuelven a estado COTIZADO (disponibles para reventa desde la lista).
+     * - El montoVendido de la lista se reduce en el monto devuelto.
+     * - Se recalculan itemsPendientes e itemsVendidos.
+     * - Si la lista estaba COMPLETADA, vuelve a EN_PROCESO.
+     */
+    private void revertirItemsListaEscolar(Venta ventaOriginal,
+                                            List<DevolucionDTO.ItemDevolucion> itemsDevueltos,
+                                            BigDecimal totalDevuelto) {
+        // 1. Verificar si la venta provino de una lista escolar
+        ventaListaRepository.findByVentaId(ventaOriginal.getId()).ifPresent(ventaLista -> {
+
+            Long listaId = ventaLista.getListaEscolar().getId();
+
+            // 2. Cargar la lista con sus detalles frescos desde DB
+            ListaEscolar lista = listaEscolarRepository.findByIdConDetalles(listaId).orElse(null);
+            if (lista == null) {
+                log.warn("Lista escolar {} no encontrada al revertir devolución", listaId);
+                return;
+            }
+
+            // 3. Obtener los detalles de lista que fueron vendidos en esta venta
+            List<DetalleListaEscolar> detallesVendidos = detalleListaRepository.findByVentaId(ventaOriginal.getId());
+
+            // 4. Set de IDs de productos devueltos para matching rápido
+            Set<Long> productosDevueltos = itemsDevueltos.stream()
+                    .map(DevolucionDTO.ItemDevolucion::getProductoId)
+                    .collect(Collectors.toSet());
+
+            // 5. Revertir los items cuyo producto fue devuelto
+            for (DetalleListaEscolar detalle : detallesVendidos) {
+                Producto productoFinal = detalle.getProductoFinal();
+                if (productoFinal != null && productosDevueltos.contains(productoFinal.getId())) {
+                    detalle.setEstado("COTIZADO");
+                    detalle.setVenta(null);
+                    detalle.setDetalleVentaId(null);
+                    detalleListaRepository.save(detalle);
+                    log.info("Item lista {} revertido a COTIZADO por devolución de venta {}",
+                            detalle.getId(), ventaOriginal.getId());
+                }
+            }
+
+            // 6. Recalcular montoVendido de la lista
+            BigDecimal nuevoMonto = lista.getMontoVendido().subtract(totalDevuelto);
+            lista.setMontoVendido(nuevoMonto.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : nuevoMonto);
+
+            // 7. Recalcular contadores (recalcularPendientes necesita detalles actualizados en memoria)
+            // Actualizamos el estado en la colección en memoria para que el cálculo sea correcto
+            for (DetalleListaEscolar detalleLista : lista.getDetalles()) {
+                detallesVendidos.stream()
+                        .filter(d -> d.getId().equals(detalleLista.getId()))
+                        .filter(d -> "COTIZADO".equals(d.getEstado()))
+                        .findFirst()
+                        .ifPresent(d -> detalleLista.setEstado("COTIZADO"));
+            }
+            lista.recalcularPendientes();
+
+            // 8. Ajustar estado de la lista
+            if ("COMPLETADA".equals(lista.getEstado()) && lista.getItemsPendientes() > 0) {
+                lista.setEstado("EN_PROCESO");
+            }
+            listaEscolarRepository.save(lista);
+
+            // 9. Reducir el montoVendido del registro VentaListaEscolar
+            BigDecimal nuevoMontoVenta = ventaLista.getMontoVendido().subtract(totalDevuelto);
+            ventaLista.setMontoVendido(nuevoMontoVenta.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : nuevoMontoVenta);
+            ventaListaRepository.save(ventaLista);
+
+            log.info("Lista escolar {} actualizada tras devolución: monto={}, pendientes={}",
+                    lista.getCodigoCompleto(), lista.getMontoVendido(), lista.getItemsPendientes());
+        });
     }
 }

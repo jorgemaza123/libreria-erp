@@ -124,7 +124,9 @@ public class GlobalExceptionHandler {
     // =====================================================
 
     /**
-     * Maneja errores de acceso denegado.
+     * Maneja errores de acceso denegado lanzados por @PreAuthorize en métodos de servicio.
+     * Nota: Los 403 del filtro HTTP son interceptados por apiAccessDeniedHandler en SecurityConfig
+     * antes de llegar aquí. Este handler actúa como fallback para excepciones en la capa de servicio.
      */
     @ExceptionHandler(AccessDeniedException.class)
     public Object handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {

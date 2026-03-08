@@ -63,7 +63,7 @@
 
                                     <dt class="col-5">Teléfono:</dt>
                                     <dd class="col-7">
-                                        <a th:href="'https://wa.me/51' + ${lista.contactoTelefono}"
+                                        <a th:href="'https://wa.me/51' + ${#strings.replace(#strings.replace(#strings.replace(lista.contactoTelefono ?: '', ' ', ''), '-', ''), '+51', '')}"
                                            target="_blank" class="text-success">
                                             <i class="fab fa-whatsapp"></i>
                                             <span th:text="${lista.contactoTelefono}">999999999</span>
@@ -251,7 +251,7 @@
                                 </a>
                                 <div class="btn-group-vertical w-100">
                                     <button type="button" class="btn btn-success btn-lg"
-                                            th:if="${lista.permiteVentas() and cajaAbierta}"
+                                            th:if="${(lista.permiteVentas() or !#lists.isEmpty(historialVentas)) and cajaAbierta}"
                                             onclick="abrirPOSModal()">
                                         <i class="fas fa-cash-register"></i> Abrir POS
                                     </button>
@@ -264,6 +264,16 @@
                                        th:if="${lista.permiteVentas()}">
                                         <i class="fas fa-edit"></i> Editar Cotizacion
                                     </a>
+                                    <button type="button" class="btn btn-primary"
+                                            th:if="${lista.estado != 'CANCELADA' and lista.estado != 'ELIMINADA'}"
+                                            data-toggle="modal" data-target="#modalAgregarItems">
+                                        <i class="fas fa-plus-circle"></i> Agregar Items (Texto)
+                                    </button>
+                                    <button type="button" class="btn btn-warning"
+                                            th:if="${lista.estado != 'CANCELADA' and lista.estado != 'ELIMINADA'}"
+                                            data-toggle="modal" data-target="#modalAgregarProducto">
+                                        <i class="fas fa-search-plus"></i> Agregar Producto Directo
+                                    </button>
                                     <button type="button" class="btn btn-info" onclick="generarCotizaciones()">
                                         <i class="fas fa-sync"></i> Regenerar Cotizaciones
                                     </button>
@@ -272,8 +282,14 @@
                                     </button>
                                     <hr class="my-2">
                                     <button type="button" class="btn btn-danger" onclick="abrirModalPDF()">
-                                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                                        <i class="fas fa-file-pdf"></i> Exportar PDF Cotización
                                     </button>
+                                    <a th:href="@{/listas-escolares/{id}/pdf-venta(id=${lista.id})}"
+                                       target="_blank"
+                                       th:if="${!#lists.isEmpty(historialVentas)}"
+                                       class="btn btn-outline-danger">
+                                        <i class="fas fa-receipt"></i> PDF Comprobante Unificado
+                                    </a>
                                     <button type="button" class="btn btn-success" onclick="abrirModalWhatsApp()">
                                         <i class="fab fa-whatsapp"></i> Enviar WhatsApp
                                     </button>
@@ -345,10 +361,21 @@
                                             th:data-loc-economico="${d.productoEconomico != null ? (d.productoEconomico.ubicacionEstante ?: '') + '|' + (d.productoEconomico.ubicacionFila ?: '') + '|' + (d.productoEconomico.ubicacionColumna ?: '') : ''}"
                                             th:data-loc-medio="${d.productoMedio != null ? (d.productoMedio.ubicacionEstante ?: '') + '|' + (d.productoMedio.ubicacionFila ?: '') + '|' + (d.productoMedio.ubicacionColumna ?: '') : ''}"
                                             th:data-loc-premium="${d.productoPremium != null ? (d.productoPremium.ubicacionEstante ?: '') + '|' + (d.productoPremium.ubicacionFila ?: '') + '|' + (d.productoPremium.ubicacionColumna ?: '') : ''}"
-                                            th:data-tiene-proveedor="${d.tieneCotizacionProveedor()}">
+                                            th:data-tiene-proveedor="${d.tieneCotizacionProveedor()}"
+                                            th:data-producto-final-id="${d.productoFinal != null ? d.productoFinal.id : ''}"
+                                            th:data-precio-final="${d.precioFinal != null ? d.precioFinal : 0}"
+                                            th:data-producto-final-nombre="${d.productoFinal != null ? d.productoFinal.nombre : ''}"
+                                            th:data-loc-final="${d.productoFinal != null ? ((d.productoFinal.ubicacionEstante ?: '') + '|' + (d.productoFinal.ubicacionFila ?: '') + '|' + (d.productoFinal.ubicacionColumna ?: '')) : ''}">
                                             <td th:text="${d.orden}">1</td>
                                             <td><small th:text="${d.textoOriginal}">2 cuadernos</small></td>
-                                            <td class="text-center" th:text="${d.cantidadSolicitada}">2</td>
+                                            <td class="text-center">
+                                                <input type="number"
+                                                       class="form-control form-control-sm input-cant-detalle text-center"
+                                                       th:value="${d.cantidadSolicitada}"
+                                                       min="1" max="999"
+                                                       style="width:60px; margin:auto;"
+                                                       th:data-id="${d.id}">
+                                            </td>
                                             <td class="col-producto-display">
                                                 <span th:if="${d.productoFinal != null}" th:text="${d.productoFinal.nombre}">Producto</span>
                                                 <span th:if="${d.productoFinal == null and d.tieneCotizacionProveedor()}" class="text-info">
@@ -449,6 +476,12 @@
                         <div class="card" th:if="${!#lists.isEmpty(historialVentas)}">
                             <div class="card-header">
                                 <h3 class="card-title"><i class="fas fa-history"></i> Historial de Ventas</h3>
+                                <div class="card-tools">
+                                    <a th:href="@{/listas-escolares/{id}/pdf-venta(id=${lista.id})}"
+                                       target="_blank" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-receipt"></i> PDF Unificado
+                                    </a>
+                                </div>
                             </div>
                             <div class="card-body p-0">
                                 <table class="table table-sm mb-0">
@@ -530,44 +563,94 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="row no-gutters">
-                        <!-- Columna Izquierda: Items -->
-                        <div class="col-lg-7 border-right">
-                            <div class="p-3">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="mb-0"><i class="fas fa-list"></i> Items para Vender</h6>
-                                    <div>
-                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="seleccionarTodos()">
-                                            <i class="fas fa-check-double"></i> Todos
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deseleccionarTodos()">
-                                            <i class="fas fa-times"></i> Ninguno
-                                        </button>
+                        <!-- Columna Izquierda: Tabs Vender / Devolver -->
+                        <div class="col-lg-7 border-right d-flex flex-column">
+                            <!-- Tabs navigation -->
+                            <ul class="nav nav-tabs px-3 pt-2 border-bottom" id="posTabsNav">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#tabVender" data-toggle="tab">
+                                        <i class="fas fa-cart-plus text-success"></i> <strong>Vender</strong>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#tabDevolver" data-toggle="tab" id="tabDevolverLink"
+                                       onclick="cargarItemsVendidosPOS()">
+                                        <i class="fas fa-undo text-warning"></i> <strong>Devolver</strong>
+                                        <span id="badgeItemsVendidos" class="badge badge-secondary ml-1" style="display:none;">0</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-content flex-grow-1">
+                                <!-- TAB: VENDER -->
+                                <div class="tab-pane active show" id="tabVender">
+                                    <div class="p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0"><i class="fas fa-list"></i> Items para Vender</h6>
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-outline-success" onclick="seleccionarTodos()">
+                                                    <i class="fas fa-check-double"></i> Todos
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deseleccionarTodos()">
+                                                    <i class="fas fa-times"></i> Ninguno
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                            <table class="table table-sm table-hover" id="tablaItemsPOS">
+                                                <thead class="thead-light sticky-top">
+                                                    <tr>
+                                                        <th style="width: 30px;"><input type="checkbox" id="checkAll"></th>
+                                                        <th>Item</th>
+                                                        <th class="text-center">Cant</th>
+                                                        <th>Producto</th>
+                                                        <th class="text-right">Precio</th>
+                                                        <th class="text-right">Subtotal</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="itemsPOSBody">
+                                                    <!-- Se llena dinámicamente -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <!-- Buscador de productos adicionales -->
+                                        <div class="mt-3">
+                                            <label><i class="fas fa-search"></i> Agregar producto adicional:</label>
+                                            <select id="buscarProductoAdicional" class="form-control select2" style="width: 100%;">
+                                                <option value="">Buscar producto...</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                    <table class="table table-sm table-hover" id="tablaItemsPOS">
-                                        <thead class="thead-light sticky-top">
-                                            <tr>
-                                                <th style="width: 30px;"><input type="checkbox" id="checkAll"></th>
-                                                <th>Item</th>
-                                                <th class="text-center">Cant</th>
-                                                <th>Producto</th>
-                                                <th class="text-right">Precio</th>
-                                                <th class="text-right">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="itemsPOSBody">
-                                            <!-- Se llena dinámicamente -->
-                                        </tbody>
-                                    </table>
-                                </div>
 
-                                <!-- Buscador de productos adicionales -->
-                                <div class="mt-3">
-                                    <label><i class="fas fa-search"></i> Agregar producto adicional:</label>
-                                    <select id="buscarProductoAdicional" class="form-control select2" style="width: 100%;">
-                                        <option value="">Buscar producto...</option>
-                                    </select>
+                                <!-- TAB: DEVOLVER -->
+                                <div class="tab-pane" id="tabDevolver">
+                                    <div class="p-3">
+                                        <div id="devolucionLoading" class="text-center py-4 text-muted">
+                                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                            <p class="mt-2">Cargando items vendidos...</p>
+                                        </div>
+                                        <div id="devolucionTabla" style="display:none; max-height:380px; overflow-y:auto;">
+                                            <!-- Dinámico -->
+                                        </div>
+                                        <div id="devolucionAcciones" style="display:none;" class="mt-2 border-top pt-2">
+                                            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                                <div class="mb-1">
+                                                    <small class="text-muted">Total a devolver:</small>
+                                                    <strong class="text-warning ml-1" id="devTotalDisplay">S/ 0.00</strong>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <select id="devMetodoReembolso" class="form-control form-control-sm mr-2" style="width:auto;">
+                                                        <option value="EFECTIVO">Efectivo</option>
+                                                        <option value="OTRO">Sin reembolso</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-warning btn-sm" id="btnProcesarDevolucion" onclick="procesarDevolucionLista()">
+                                                        <i class="fas fa-undo"></i> Procesar Devolución
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -698,6 +781,125 @@
         </div>
     </div>
 
+    <!-- Modal Agregar Items -->
+    <div class="modal fade" id="modalAgregarItems" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Agregar Ítems a la Lista</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="callout callout-info py-2 mb-3">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            Los ítems que ingreses se <strong>agregarán</strong> al final de la lista existente,
+                            sin afectar los items ya cotizados o vendidos.
+                        </small>
+                    </div>
+                    <!-- Toggle modo -->
+                    <div class="btn-group btn-group-sm mb-3" role="group">
+                        <button type="button" class="btn btn-primary active" id="btnAgregarModoOCR"
+                                onclick="setModoAgregar('OCR')">
+                            <i class="fas fa-paste"></i> Pegar Texto
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="btnAgregarModoManual"
+                                onclick="setModoAgregar('MANUAL')">
+                            <i class="fas fa-list-ol"></i> Fila a Fila
+                        </button>
+                    </div>
+
+                    <!-- OCR mode -->
+                    <div id="agregarModoOCR">
+                        <div class="form-group mb-0">
+                            <label>Texto con los nuevos ítems</label>
+                            <textarea class="form-control" id="textoAgregar" rows="8"
+                                      placeholder="Pegue o escriba los nuevos ítems:
+2 cuadernos cuadriculados A4
+1 tijera punta roma
+..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Manual mode -->
+                    <div id="agregarModoManual" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-1">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width:60px;" class="text-center">Cant.</th>
+                                        <th>Descripción</th>
+                                        <th style="width:36px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAgregarManual"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarFilaModal">
+                            <i class="fas fa-plus"></i> Agregar fila
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAgregarItems">
+                        <i class="fas fa-save"></i> Agregar a la Lista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Producto Directo -->
+    <div class="modal fade" id="modalAgregarProducto" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-search-plus mr-2"></i>Agregar Producto Directo</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="callout callout-warning py-2 mb-3">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            El producto se agrega directamente como <strong>COTIZADO</strong>, listo para vender en el POS.
+                            Si la lista estaba completada, se reactiva automáticamente.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-box"></i> Buscar Producto</label>
+                        <select id="selectProductoAdicionalLista" class="form-control" style="width:100%;"></select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label><i class="fas fa-hashtag"></i> Cantidad</label>
+                            <input type="number" class="form-control" id="cantidadProductoAdicional"
+                                   value="1" min="1" max="9999">
+                        </div>
+                        <div class="form-group col-6">
+                            <label><i class="fas fa-tag"></i> Precio Unitario (S/)</label>
+                            <input type="number" class="form-control" id="precioProductoAdicional"
+                                   placeholder="Auto desde producto" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div id="infoProductoAdicional" class="alert alert-info py-2 mb-0" style="display:none;">
+                        <small>
+                            <i class="fas fa-cube"></i>
+                            Stock disponible: <strong id="stockProductoAdicional">-</strong> |
+                            Precio referencia: <strong>S/ <span id="precioRefProductoAdicional">-</span></strong>
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="btnConfirmarProductoAdicional">
+                        <i class="fas fa-plus-circle"></i> Agregar a la Lista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal WhatsApp -->
     <div class="modal fade" id="modalWhatsApp" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -767,12 +969,13 @@ $(document).ready(function() {
         }
     });
 
-    // Inicializar Select2 para buscar productos
+    // Inicializar Select2 para buscar productos adicionales en el POS modal
     $('#buscarProductoAdicional').select2({
         theme: 'bootstrap4',
         placeholder: 'Buscar producto...',
         allowClear: true,
         minimumInputLength: 2,
+        dropdownParent: $('#modalPOS'),  // Necesario para que el dropdown aparezca sobre el modal
         ajax: {
             url: '/listas-escolares/api/buscar-productos',
             dataType: 'json',
@@ -781,9 +984,66 @@ $(document).ready(function() {
             processResults: data => ({
                 results: data.map(p => ({
                     id: p.id,
-                    text: `${p.nombre} - S/ ${p.precio} (Stock: ${p.stock})`
+                    text: `${p.nombre} - S/ ${parseFloat(p.precio || 0).toFixed(2)} (Stock: ${p.stock || 0})`,
+                    nombre: p.nombre,
+                    precio: parseFloat(p.precio || 0),
+                    stock: p.stock || 0,
+                    ubicacion: p.ubicacion || ''
                 }))
             })
+        }
+    });
+
+    // Evento: cuando se selecciona un producto adicional, añadirlo al POS
+    $('#buscarProductoAdicional').on('select2:select', function(e) {
+        const data = e.params.data;
+        if (!data || !data.id) return;
+
+        if (data.stock <= 0) {
+            Swal.fire('Sin stock', `"${data.nombre}" no tiene stock disponible.`, 'warning');
+            $(this).val(null).trigger('change');
+            return;
+        }
+
+        // Guardar estado del usuario (checkboxes y cantidades) antes de re-renderizar
+        sincronizarEstadoPOS();
+
+        // Verificar si ya está agregado como adicional para aumentar cantidad
+        const existente = itemsPOS.find(i => i.esAdicional && i.productoId === parseInt(data.id));
+        if (existente) {
+            existente.cantidad += 1;
+            existente.subtotal = existente.precioFinal * existente.cantidad;
+            renderizarItemsPOS();
+            $(this).val(null).trigger('change');
+            return;
+        }
+
+        itemsPOS.push({
+            id: null,                           // no pertenece a un DetalleListaEscolar
+            textoOriginal: data.nombre,
+            cantidad: 1,
+            nivelSeleccionado: 'MEDIO',
+            precioFinal: data.precio,
+            subtotal: data.precio,
+            productoId: parseInt(data.id),
+            productoNombre: data.nombre,
+            ubicacionRaw: data.ubicacion || '',
+            tieneStock: true,
+            estado: 'COTIZADO',
+            esAdicional: true,
+            checked: true  // nuevos adicionales siempre marcados por defecto
+        });
+
+        renderizarItemsPOS();
+        // Limpiar el select para permitir buscar otro producto
+        $(this).val(null).trigger('change');
+    });
+
+    // Cuando el dropdown de Select2 está abierto dentro del modal POS,
+    // Escape cierra solo el dropdown sin propagar el evento a Bootstrap (que cerraría el modal).
+    $('#modalPOS').on('keydown', '.select2-search__field', function(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            e.stopPropagation();
         }
     });
 
@@ -856,6 +1116,21 @@ function actualizarFilaNivel(select) {
     row.find('.col-subtotal-display').html('S/ ' + (precio * cantidad).toFixed(2));
 }
 
+// Actualiza data-cantidad y el subtotal visible cuando el usuario edita la cantidad
+$(document).on('change input', '.input-cant-detalle', function() {
+    const cant = Math.max(1, parseInt($(this).val()) || 1);
+    $(this).val(cant);
+    const row = $(this).closest('tr');
+    row.data('cantidad', cant);
+    // Recalcular subtotal visible
+    const nivel = row.find('.nivel-selector').val() || 'MEDIO';
+    let precio = 0;
+    if (nivel === 'ECONOMICO') precio = parseFloat(row.data('precio-economico')) || 0;
+    else if (nivel === 'MEDIO') precio = parseFloat(row.data('precio-medio')) || 0;
+    else if (nivel === 'PREMIUM') precio = parseFloat(row.data('precio-premium')) || 0;
+    row.find('.col-subtotal-display').html('S/ ' + (precio * cant).toFixed(2));
+});
+
 // Aplica el nivel seleccionado a todos los items de la tabla
 function aplicarNivelGlobal(nivel) {
     $('.item-pendiente-row').each(function() {
@@ -869,6 +1144,16 @@ function aplicarNivelGlobal(nivel) {
 }
 
 function abrirPOSModal() {
+    // Resetear estado del tab de devolución para recargarlo fresco
+    devolucionCargada = false;
+    itemsVendidosPOS = [];
+    $('#devolucionLoading').html('<i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Cargando items vendidos...</p>').show();
+    $('#devolucionTabla').hide();
+    $('#devolucionAcciones').hide();
+    $('#devTotalDisplay').text('S/ 0.00');
+    // Asegurarse de estar en el tab de venta al abrir
+    $('#posTabsNav a[href="#tabVender"]').tab('show');
+
     // Construir los items directamente desde el DOM de la tabla de pendientes.
     // Esto garantiza que el nivel y producto sean exactamente los que el usuario
     // eligió en los selectores, sin depender de merges con datos del servidor.
@@ -899,6 +1184,15 @@ function abrirPOSModal() {
             precio         = parseFloat(row.data('precio-premium')) || 0;
         }
 
+        // Fallback para items REEMPLAZADO: el producto final no está en los slots de nivel,
+        // sino en productoReemplazo → expuesto como data-producto-final-*
+        if (!productoId) {
+            const finalId = row.data('producto-final-id');
+            productoId = finalId ? parseInt(finalId) : null;
+            if (!productoNombre) productoNombre = row.data('producto-final-nombre') || '';
+            precio = parseFloat(row.data('precio-final')) || precio;
+        }
+
         const textoOriginal = row.find('td:nth-child(2) small').text().trim();
         const tieneProveedor = row.data('tiene-proveedor') === true || row.data('tiene-proveedor') === 'true';
 
@@ -906,6 +1200,7 @@ function abrirPOSModal() {
         if (nivel === 'ECONOMICO') ubicacionRaw = row.data('loc-economico') || '';
         else if (nivel === 'MEDIO') ubicacionRaw = row.data('loc-medio') || '';
         else if (nivel === 'PREMIUM') ubicacionRaw = row.data('loc-premium') || '';
+        if (!ubicacionRaw) ubicacionRaw = row.data('loc-final') || '';
 
         itemsPOS.push({
             id:               id,
@@ -944,15 +1239,38 @@ function formatUbicacion(raw) {
     return out.join(' · ');
 }
 
+/**
+ * Guarda el estado actual del DOM (checkboxes + cantidades) de vuelta a itemsPOS
+ * antes de cualquier re-render, para no perder lo que el usuario modificó.
+ */
+function sincronizarEstadoPOS() {
+    $('.item-check').each(function() {
+        const index = parseInt($(this).data('index'));
+        if (index >= 0 && index < itemsPOS.length) {
+            itemsPOS[index].checked = $(this).is(':checked');
+        }
+    });
+    $('.item-cantidad').each(function() {
+        const index = parseInt($(this).data('index'));
+        if (index >= 0 && index < itemsPOS.length) {
+            const val = parseInt($(this).val());
+            if (val > 0) itemsPOS[index].cantidad = val;
+        }
+    });
+}
+
 function renderizarItemsPOS() {
     const tbody = $('#itemsPOSBody');
     tbody.empty();
 
     itemsPOS.forEach((item, index) => {
         const tieneProducto = !!item.productoId;
-        const tieneStock = tieneProducto && item.tieneStock !== false;
+        // tieneStock es true si hay producto real O si hay cotización de proveedor (no requiere producto en inventario)
+        const tieneStock = item.tieneStock !== false;
         const vendible = tieneStock && item.estado !== 'NO_COTIZADO';
-        const checked = vendible ? 'checked' : '';
+        // Respetar el estado que el usuario estableció; si es la primera vez (checked===undefined) usar vendible
+        const isChecked = (item.checked !== undefined) ? item.checked : vendible;
+        const checked = isChecked ? 'checked' : '';
         const disabled = !vendible ? 'disabled' : '';
 
         let motivo = '';
@@ -1001,8 +1319,9 @@ function renderizarItemsPOS() {
         `);
     });
 
-    // Eventos
-    $('.item-check, .item-cantidad').on('change', calcularTotalPOS);
+    // Eventos — 'input' actualiza en tiempo real al escribir, 'change' al salir del campo
+    $('.item-check').on('change', calcularTotalPOS);
+    $('.item-cantidad').on('input change', calcularTotalPOS);
     calcularTotalPOS();
 }
 
@@ -1010,14 +1329,23 @@ function calcularTotalPOS() {
     let total = 0;
     let count = 0;
 
-    $('.item-check:checked').each(function() {
-        const index = $(this).data('index');
+    // Actualizar subtotal de TODOS los items (marcados o no) para que la columna sea siempre correcta
+    $('.item-cantidad').each(function() {
+        const index = parseInt($(this).data('index'));
         const item = itemsPOS[index];
-        const cantidad = parseInt($(`.item-cantidad[data-index="${index}"]`).val()) || item.cantidad;
+        if (!item) return;
+        const cantidad = parseInt($(this).val()) || item.cantidad;
         const subtotal = cantidad * parseFloat(item.precioFinal || 0);
-
         $(`.item-subtotal[data-index="${index}"]`).text('S/ ' + subtotal.toFixed(2));
-        total += subtotal;
+    });
+
+    // Sumar solo los marcados
+    $('.item-check:checked').each(function() {
+        const index = parseInt($(this).data('index'));
+        const item = itemsPOS[index];
+        if (!item) return;
+        const cantidad = parseInt($(`.item-cantidad[data-index="${index}"]`).val()) || item.cantidad;
+        total += cantidad * parseFloat(item.precioFinal || 0);
         count++;
     });
 
@@ -1144,6 +1472,183 @@ function procesarVenta() {
     });
 }
 
+// ============================================================
+//  DEVOLUCION DESDE LISTA - TAB "DEVOLVER" EN POS MODAL
+// ============================================================
+
+let itemsVendidosPOS = [];
+let devolucionCargada = false;
+
+// Cargar items vendidos al abrir el tab (una sola vez por apertura de modal)
+function cargarItemsVendidosPOS() {
+    if (devolucionCargada) return;
+    devolucionCargada = true;
+
+    $('#devolucionLoading').show();
+    $('#devolucionTabla').hide();
+    $('#devolucionAcciones').hide();
+
+    $.ajax({
+        url: `/listas-escolares/api/${listaId}/items-vendidos`,
+        method: 'GET',
+        success: function(resp) {
+            itemsVendidosPOS = [];
+            renderizarItemsVendidosPOS(resp.transacciones || []);
+        },
+        error: function() {
+            $('#devolucionLoading').html(
+                '<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error al cargar items vendidos</span>'
+            );
+        }
+    });
+}
+
+function renderizarItemsVendidosPOS(transacciones) {
+    $('#devolucionLoading').hide();
+
+    if (!transacciones || transacciones.length === 0) {
+        $('#devolucionTabla').html(
+            '<div class="text-muted text-center py-4"><i class="fas fa-inbox fa-2x"></i><p class="mt-2">No hay items vendidos en esta lista</p></div>'
+        ).show();
+        return;
+    }
+
+    let html = '';
+    let totalItemsCount = 0;
+
+    transacciones.forEach((tr, tIdx) => {
+        const etiqueta = tIdx === 0 ? 'Venta' : 'Adición';
+        const fecha = tr.fecha ? ' del ' + formatFechaDev(tr.fecha) : '';
+        const estado = tr.estado === 'DEVUELTO_TOTAL' ? ' <span class="badge badge-secondary">Devuelto total</span>' : '';
+        html += `<div class="mb-3">
+            <p class="mb-1"><strong class="text-primary"><i class="fas fa-receipt"></i> ${etiqueta}${fecha} — ${tr.comprobante}</strong>${estado}</p>
+            <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="thead-light"><tr>
+                    <th>Descripción</th>
+                    <th class="text-center" style="width:55px;">Vendido</th>
+                    <th class="text-center" style="width:70px;">Devolver</th>
+                    <th class="text-right" style="width:75px;">P.Unit.</th>
+                </tr></thead>
+                <tbody>`;
+        (tr.items || []).forEach((item, iIdx) => {
+            const uid = `dev_${tIdx}_${iIdx}`;
+            itemsVendidosPOS.push({
+                ventaId: tr.ventaId,
+                productoId: item.productoId,
+                descripcion: item.descripcion,
+                cantidadVendida: item.cantidad,
+                precioUnitario: parseFloat(item.precioUnitario || 0),
+                uid: uid
+            });
+            totalItemsCount++;
+            const disabled = tr.estado === 'DEVUELTO_TOTAL' ? 'disabled' : '';
+            html += `<tr>
+                <td><small>${item.descripcion}</small></td>
+                <td class="text-center">${item.cantidad}</td>
+                <td class="text-center">
+                    <input type="number" class="form-control form-control-sm text-center dev-cant-input"
+                           id="${uid}" min="0" max="${item.cantidad}" value="0"
+                           style="width:55px;margin:auto;" ${disabled}
+                           oninput="calcularTotalDevolucionPOS()">
+                </td>
+                <td class="text-right">S/ ${parseFloat(item.precioUnitario||0).toFixed(2)}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div></div>`;
+    });
+
+    $('#devolucionTabla').html(html).show();
+    if (totalItemsCount > 0) {
+        $('#devolucionAcciones').show();
+        $('#badgeItemsVendidos').text(totalItemsCount).show();
+    }
+}
+
+function formatFechaDev(fechaStr) {
+    if (!fechaStr) return '';
+    const parts = fechaStr.split('-');
+    if (parts.length >= 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return fechaStr;
+}
+
+function calcularTotalDevolucionPOS() {
+    let total = 0;
+    itemsVendidosPOS.forEach(item => {
+        const val = parseFloat($('#' + item.uid).val()) || 0;
+        total += val * item.precioUnitario;
+    });
+    $('#devTotalDisplay').text('S/ ' + total.toFixed(2));
+}
+
+function procesarDevolucionLista() {
+    const items = [];
+    itemsVendidosPOS.forEach(item => {
+        const cant = parseInt($('#' + item.uid).val()) || 0;
+        if (cant > 0) {
+            items.push({
+                ventaId: item.ventaId,
+                productoId: item.productoId,
+                cantidadDevuelta: cant,
+                precioUnitario: item.precioUnitario,
+                descripcion: item.descripcion
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        Swal.fire('Atención', 'Ingrese al menos una cantidad a devolver', 'warning');
+        return;
+    }
+
+    const metodo = $('#devMetodoReembolso').val();
+    const totalDev = items.reduce((s, i) => s + i.cantidadDevuelta * i.precioUnitario, 0);
+
+    Swal.fire({
+        title: '¿Procesar devolución?',
+        html: `<b>${items.length} producto(s)</b> — Total: <b>S/ ${totalDev.toFixed(2)}</b><br>Reembolso: <b>${metodo === 'EFECTIVO' ? 'Efectivo (egreso de caja)' : 'Sin reembolso'}</b>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-undo"></i> Sí, devolver',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f59e0b'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+
+        $('#btnProcesarDevolucion').prop('disabled', true)
+            .html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+
+        $.ajax({
+            url: `/listas-escolares/api/${listaId}/devolver-items`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ items: items, metodoReembolso: metodo }),
+            success: function(resp) {
+                if (resp.success) {
+                    $('#modalPOS').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Devolución procesada',
+                        html: resp.mensaje + '<br><small class="text-muted">La página se actualizará para reflejar los cambios</small>',
+                        confirmButtonText: 'Continuar'
+                    }).then(() => window.location.reload());
+                } else {
+                    Swal.fire('Error', resp.error || 'Error al procesar devolución', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.fire('Error', xhr.responseJSON?.error || 'Error al procesar devolución', 'error');
+            },
+            complete: function() {
+                $('#btnProcesarDevolucion').prop('disabled', false)
+                    .html('<i class="fas fa-undo"></i> Procesar Devolución');
+            }
+        });
+    });
+}
+
+// ============================================================
+
 function generarCotizaciones() {
     Swal.fire({
         title: '¿Regenerar cotizaciones?',
@@ -1185,13 +1690,38 @@ function descargarPDF() {
         return;
     }
 
-    // Construir URL con parámetros
+    // Recolectar cantidades editadas y guardarlas antes de generar el PDF
+    const cantidades = [];
+    $('.input-cant-detalle').each(function() {
+        const id = $(this).data('id');
+        const cant = parseInt($(this).val()) || 1;
+        cantidades.push({ id: id, cantidad: Math.max(1, cant) });
+    });
+
     const nivelesParam = niveles.join(',');
     const url = `/listas-escolares/${listaId}/pdf?niveles=${nivelesParam}`;
 
-    // Abrir en nueva pestaña
-    window.open(url, '_blank');
-    $('#modalPDF').modal('hide');
+    if (cantidades.length === 0) {
+        window.open(url, '_blank');
+        $('#modalPDF').modal('hide');
+        return;
+    }
+
+    $.ajax({
+        url: `/listas-escolares/api/${listaId}/cantidades`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify(cantidades),
+        success: function() {
+            window.open(url, '_blank');
+            $('#modalPDF').modal('hide');
+        },
+        error: function() {
+            // Generar PDF igual si falla el guardado
+            window.open(url, '_blank');
+            $('#modalPDF').modal('hide');
+        }
+    });
 }
 
 // ========== FUNCIONES MODAL WHATSAPP ==========
@@ -1200,11 +1730,12 @@ function abrirModalWhatsApp() {
 }
 
 function enviarWhatsApp() {
-    const numero = $('#whatsappNumero').val().trim();
+    // Sanitizar: eliminar espacios, guiones, paréntesis y prefijo +51/51 si existe
+    let numero = $('#whatsappNumero').val().replace(/[\s\-\(\)\+]/g, '').replace(/^51/, '').trim();
     const nivel = $('#whatsappNivel').val();
 
-    if (!numero || numero.length < 9) {
-        Swal.fire('Atención', 'Ingrese un número de WhatsApp válido', 'warning');
+    if (!numero || !/^\d{9}$/.test(numero)) {
+        Swal.fire('Número Inválido', 'Ingrese un número peruano de 9 dígitos (ej: 987654321).', 'warning');
         return;
     }
 
@@ -1420,6 +1951,218 @@ function construirFilaNuevoItem(item) {
         <td class="text-right subtotal-display">S/ ${subtotalFinal}</td>
     </tr>`;
 }
+
+// =====================================================================
+//  MODAL AGREGAR ITEMS
+// =====================================================================
+let modoAgregarActual = 'OCR';
+
+function setModoAgregar(modo) {
+    modoAgregarActual = modo;
+    if (modo === 'OCR') {
+        $('#agregarModoOCR').show();
+        $('#agregarModoManual').hide();
+        $('#btnAgregarModoOCR').addClass('active btn-primary').removeClass('btn-outline-primary');
+        $('#btnAgregarModoManual').removeClass('active btn-primary').addClass('btn-outline-primary');
+    } else {
+        $('#agregarModoOCR').hide();
+        $('#agregarModoManual').show();
+        $('#btnAgregarModoOCR').removeClass('active btn-primary').addClass('btn-outline-primary');
+        $('#btnAgregarModoManual').addClass('active btn-primary').removeClass('btn-outline-primary');
+        if ($('#tbodyAgregarManual tr').length === 0) {
+            agregarFilaModalManual();
+            agregarFilaModalManual();
+        }
+    }
+}
+
+function agregarFilaModalManual(cant, desc) {
+    const fila = `<tr>
+        <td>
+            <input type="number" class="form-control form-control-sm text-center input-cant-agregar"
+                   value="${cant || 1}" min="1" max="999" style="width:55px; margin:auto;">
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm input-desc-agregar"
+                   placeholder="Ej: cuadernos cuadriculados A4" value="${desc || ''}" maxlength="200">
+        </td>
+        <td class="text-center align-middle">
+            <button type="button" class="btn btn-xs btn-outline-danger btn-elim-agregar" title="Eliminar">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    </tr>`;
+    $('#tbodyAgregarManual').append(fila);
+    $('#tbodyAgregarManual').off('click', '.btn-elim-agregar').on('click', '.btn-elim-agregar', function() {
+        $(this).closest('tr').remove();
+    });
+}
+
+$('#btnAgregarFilaModal').on('click', function() {
+    agregarFilaModalManual();
+    $('#tbodyAgregarManual tr:last .input-desc-agregar').focus();
+});
+
+$('#modalAgregarItems').on('hidden.bs.modal', function() {
+    $('#textoAgregar').val('');
+    $('#tbodyAgregarManual').empty();
+    setModoAgregar('OCR');
+});
+
+$('#btnConfirmarAgregarItems').on('click', function() {
+    let texto = '';
+    if (modoAgregarActual === 'OCR') {
+        texto = $('#textoAgregar').val().trim();
+        if (!texto) {
+            Swal.fire('Atención', 'Debe ingresar el texto de los nuevos items', 'warning');
+            return;
+        }
+    } else {
+        const lineas = [];
+        $('#tbodyAgregarManual tr').each(function() {
+            const cant = parseInt($(this).find('.input-cant-agregar').val()) || 1;
+            const desc = $(this).find('.input-desc-agregar').val().trim();
+            if (desc) lineas.push(cant + ' ' + desc);
+        });
+        if (lineas.length === 0) {
+            Swal.fire('Atención', 'Debe ingresar al menos un item', 'warning');
+            return;
+        }
+        texto = lineas.join('\n');
+    }
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+    $.ajax({
+        url: '/listas-escolares/api/' + listaId + '/agregar-items',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ texto: texto }),
+        success: function(resp) {
+            $('#modalAgregarItems').modal('hide');
+            Swal.fire({
+                icon: 'success',
+                title: 'Items Agregados',
+                text: resp.mensaje || (resp.agregados + ' item(s) agregado(s) correctamente'),
+                timer: 2000,
+                showConfirmButton: false
+            }).then(function() {
+                window.location.reload();
+            });
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al agregar los items', 'error');
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i class="fas fa-save"></i> Agregar a la Lista');
+        }
+    });
+});
+
+// =========================================================
+// MODAL: AGREGAR PRODUCTO DIRECTO
+// =========================================================
+
+// Inicializar Select2 del modal agregar producto
+// Escape en Select2 dentro de este modal solo cierra el dropdown, no el modal
+$('#modalAgregarProducto').on('keydown', '.select2-search__field', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        e.stopPropagation();
+    }
+});
+
+$('#modalAgregarProducto').on('shown.bs.modal', function() {
+    if (!$('#selectProductoAdicionalLista').hasClass('select2-hidden-accessible')) {
+        $('#selectProductoAdicionalLista').select2({
+            dropdownParent: $('#modalAgregarProducto'),
+            placeholder: 'Buscar producto por nombre o código...',
+            minimumInputLength: 2,
+            language: { inputTooShort: () => 'Escriba al menos 2 caracteres' },
+            ajax: {
+                url: '/listas-escolares/api/buscar-productos',
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ termino: params.term }),
+                processResults: function(data) {
+                    return {
+                        results: data.map(p => ({
+                            id: p.id,
+                            text: p.nombre + (p.codigoBarra ? ' [' + p.codigoBarra + ']' : ''),
+                            precio: p.precio,
+                            stock: p.stock,
+                            nombre: p.nombre
+                        }))
+                    };
+                }
+            }
+        });
+    }
+    // Limpiar al abrir
+    $('#selectProductoAdicionalLista').val(null).trigger('change');
+    $('#cantidadProductoAdicional').val(1);
+    $('#precioProductoAdicional').val('');
+    $('#infoProductoAdicional').hide();
+});
+
+$('#selectProductoAdicionalLista').on('select2:select', function(e) {
+    const data = e.params.data;
+    $('#precioProductoAdicional').val(data.precio > 0 ? data.precio : '');
+    $('#stockProductoAdicional').text(data.stock != null ? data.stock : '?');
+    $('#precioRefProductoAdicional').text(data.precio != null ? parseFloat(data.precio).toFixed(2) : '?');
+    $('#infoProductoAdicional').show();
+});
+
+$('#btnConfirmarProductoAdicional').on('click', function() {
+    const productoId = $('#selectProductoAdicionalLista').val();
+    const cantidad = parseInt($('#cantidadProductoAdicional').val()) || 1;
+    const precioVal = $('#precioProductoAdicional').val().trim();
+
+    if (!productoId) {
+        Swal.fire('Atención', 'Debe seleccionar un producto', 'warning');
+        return;
+    }
+    if (cantidad < 1) {
+        Swal.fire('Atención', 'La cantidad debe ser al menos 1', 'warning');
+        return;
+    }
+
+    const payload = { productoId: parseInt(productoId), cantidad: cantidad };
+    if (precioVal) payload.precio = parseFloat(precioVal);
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Agregando...');
+
+    $.ajax({
+        url: '/listas-escolares/api/' + listaId + '/agregar-producto',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(resp) {
+            $('#modalAgregarProducto').modal('hide');
+            Swal.fire({
+                icon: 'success',
+                title: 'Producto Agregado',
+                text: resp.mensaje || 'Producto agregado correctamente a la lista',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => window.location.reload());
+        },
+        error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.error || 'Error al agregar el producto', 'error');
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i class="fas fa-plus-circle"></i> Agregar a la Lista');
+        }
+    });
+});
+
+$('#modalAgregarProducto').on('hidden.bs.modal', function() {
+    $('#selectProductoAdicionalLista').val(null).trigger('change');
+    $('#cantidadProductoAdicional').val(1);
+    $('#precioProductoAdicional').val('');
+    $('#infoProductoAdicional').hide();
+});
 
 /**
  * Muestra una notificación temporal en la parte superior.

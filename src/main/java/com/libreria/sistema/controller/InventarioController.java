@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -94,7 +95,10 @@ public class InventarioController {
         return "inventario/ajuste";
     }
 
+    // FIX ERROR-6: @Transactional garantiza que kardex y producto se confirmen juntos.
+    // FIX ERROR-4: tipo de kardex corregido a "AJUSTE" (era "ENTRADA (AJUSTE)" / "SALIDA (AJUSTE)").
     @PostMapping("/ajustar")
+    @Transactional
     public String procesarAjuste(@RequestParam Long productoId,
                                  @RequestParam Integer stockReal,
                                  @RequestParam String motivo,
@@ -111,24 +115,22 @@ public class InventarioController {
                 return "redirect:/inventario/ajuste";
             }
 
-            // Registrar en KARDEX
+            // FIX ERROR-4: tipo unificado a "AJUSTE"; el detalle (sobrante/faltante) queda en motivo
             Kardex k = new Kardex();
             k.setProducto(prod);
             k.setStockAnterior(stockSistema);
             k.setStockActual(stockReal);
-            k.setCantidad(Math.abs(diferencia)); // Cantidad movida (valor absoluto)
-            
+            k.setCantidad(Math.abs(diferencia));
+            k.setTipo("AJUSTE");
+
             if (diferencia > 0) {
-                k.setTipo("ENTRADA (AJUSTE)");
                 k.setMotivo("SOBRANTE INVENTARIO: " + motivo);
             } else {
-                k.setTipo("SALIDA (AJUSTE)");
                 k.setMotivo("MERMA/FALTANTE: " + motivo);
             }
-            
+
             kardexRepository.save(k);
 
-            // Actualizar Producto
             prod.setStockActual(stockReal);
             productoRepository.save(prod);
 

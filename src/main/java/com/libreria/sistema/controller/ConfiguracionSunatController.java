@@ -5,6 +5,8 @@ import com.libreria.sistema.model.ConfiguracionSunat;
 import com.libreria.sistema.repository.ConfiguracionSunatRepository;
 import com.libreria.sistema.service.ConfiguracionService; // IMPORTANTE: Para el layout
 import com.libreria.sistema.service.FacturacionElectronicaService;
+import com.libreria.sistema.service.SystemConfigurationService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -12,19 +14,23 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/configuracion/sunat")
+@Slf4j
 public class ConfiguracionSunatController {
 
     private final ConfiguracionSunatRepository configuracionRepo;
     private final FacturacionElectronicaService facturacionService;
-    private final ConfiguracionService generalConfigService; // Servicio General
+    private final ConfiguracionService generalConfigService;
+    private final SystemConfigurationService systemConfigService;
 
     public ConfiguracionSunatController(
             ConfiguracionSunatRepository configuracionRepo,
             FacturacionElectronicaService facturacionService,
-            ConfiguracionService generalConfigService) {
+            ConfiguracionService generalConfigService,
+            SystemConfigurationService systemConfigService) {
         this.configuracionRepo = configuracionRepo;
         this.facturacionService = facturacionService;
         this.generalConfigService = generalConfigService;
+        this.systemConfigService = systemConfigService;
     }
 
     /**
@@ -99,18 +105,43 @@ public class ConfiguracionSunatController {
     @ResponseBody
     @Auditable(modulo = "CONFIGURACION", accion = "MODIFICAR", descripcion = "Toggle facturación electrónica")
     public String toggleFacturacionElectronica(@RequestParam Boolean activo) {
-        try {
-            ConfiguracionSunat config = configuracionRepo.findFirstByOrderByIdDesc()
-                    .orElseThrow(() -> new RuntimeException("Debe configurar SUNAT antes de activar facturación electrónica"));
+        ConfiguracionSunat config = configuracionRepo.findFirstByOrderByIdDesc()
+                .orElseThrow(() -> new RuntimeException("Debe configurar SUNAT antes de activar facturación electrónica"));
 
-            config.setFacturaElectronicaActiva(activo);
-            configuracionRepo.save(config);
+        // Validar que la configuración esté completa antes de activar
+        if (Boolean.TRUE.equals(activo)) {
+            boolean configCompleta = config.getRucEmisor() != null && !config.getRucEmisor().isBlank()
+                    && config.getRazonSocialEmisor() != null && !config.getRazonSocialEmisor().isBlank()
+                    && config.getDireccionFiscal() != null && !config.getDireccionFiscal().isBlank()
+                    && config.getTokenApiSunat() != null && !config.getTokenApiSunat().isBlank()
+                    && config.getUrlApiSunat() != null && !config.getUrlApiSunat().isBlank();
 
-            return activo ? "ACTIVADO" : "DESACTIVADO";
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error: " + e.getMessage());
+            if (!configCompleta) {
+                throw new RuntimeException("Complete la configuración SUNAT (RUC, Razón Social, Dirección, Token y URL) antes de activar.");
+            }
         }
+
+        // Guardar el estado del toggle
+        config.setFacturaElectronicaActiva(activo);
+        configuracionRepo.save(config);
+
+        // Sincronizar el modo SUNAT en SystemConfiguration (fuente de verdad para billing)
+        systemConfigService.setSunatModo(Boolean.TRUE.equals(activo) ? "ACTIVO" : "OFFLINE");
+
+        // Al activar: sincronizar correlativos con SUNAT para evitar duplicados
+        if (Boolean.TRUE.equals(activo)) {
+            try {
+                String resultadoSync = facturacionService.sincronizarConSunat();
+                log.info("Sincronización SUNAT al activar toggle: {}", resultadoSync);
+            } catch (Exception e) {
+                // La sincronización es opcional (puede fallar si SUNAT no responde)
+                // No bloqueamos la activación, pero notificamos
+                log.warn("No se pudo sincronizar con SUNAT al activar (correlativos iniciados en 0): {}", e.getMessage());
+                return "ACTIVADO_SIN_SYNC";
+            }
+        }
+
+        return activo ? "ACTIVADO" : "DESACTIVADO";
     }
 
     @PostMapping("/sincronizar")

@@ -39,34 +39,31 @@ public class GlobalControllerAdvice {
 
     @ModelAttribute("serverUrl")
     public String agregarServerUrl() {
-        if (conexionMovilService != null) {
-            return conexionMovilService.generarServerUrl();
-        }
-        String protocol = sslEnabled ? "https" : "http";
-        return String.format("%s://localhost:%d", protocol, serverPort);
+        return resolveServerUrl();
     }
 
     @ModelAttribute("serverIp")
     public String agregarServerIp() {
-        if (conexionMovilService != null) {
-            return conexionMovilService.obtenerIpConfigurada();
-        }
-        return "localhost";
+        return resolveServerIp();
     }
 
     @ModelAttribute("networkInfo")
     public Map<String, Object> agregarNetworkInfo() {
         Map<String, Object> info = new HashMap<>();
-        String ip = conexionMovilService != null ? conexionMovilService.obtenerIpConfigurada() : "localhost";
-        String url = conexionMovilService != null ? conexionMovilService.generarServerUrl()
-                : String.format("%s://localhost:%d", sslEnabled ? "https" : "http", serverPort);
-
-        info.put("ip", ip);
+        info.put("ip", resolveServerIp());
         info.put("port", serverPort);
-        info.put("url", url);
+        info.put("url", resolveServerUrl());
         info.put("sslEnabled", sslEnabled);
         info.put("protocol", sslEnabled ? "https" : "http");
-
         return info;
+    }
+
+    private String resolveServerIp() {
+        return conexionMovilService != null ? conexionMovilService.obtenerIpConfigurada() : "localhost";
+    }
+
+    private String resolveServerUrl() {
+        if (conexionMovilService != null) return conexionMovilService.generarServerUrl();
+        return String.format("%s://localhost:%d", sslEnabled ? "https" : "http", serverPort);
     }
 }
