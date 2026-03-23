@@ -1,32 +1,32 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
       th:with="active='analisis_ventas'">
 <head>
-    <title th:text="${titulo}">Análisis de Ventas</title>
+    <title th:text="${titulo}">Analisis de Ventas</title>
     <style>
-        .small-box h3 { font-size: 2.2rem; font-weight: bold; }
-        .table-sm td, .table-sm th { padding: .3rem; font-size: 0.9rem; }
+        .sales-note { color: #6b7280; font-size: .92rem; }
+        .sales-chip { border-radius: 1rem; border: 1px solid #e5e7eb; background: #fff; box-shadow: 0 6px 18px rgba(15,23,42,.05); }
+        .sales-chip .label { color: #6b7280; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+        .sales-chip .value { font-size: 1.15rem; font-weight: 700; color: #111827; }
+        .table-sm td, .table-sm th { padding: .35rem; font-size: .9rem; }
     </style>
 </head>
 <body>
-
 <div layout:fragment="content">
-    
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1>
-                        <i class="fas fa-chart-pie text-primary"></i> Análisis de Ventas
-                        <small class="text-muted ml-2">Estadísticas y tendencias</small>
-                    </h1>
+                    <h1><i class="fas fa-chart-pie text-primary"></i> Analisis de Ventas</h1>
+                    <div class="sales-note">Sirve para ver cuanto se vendio, quien vendio mas y que productos se mueven menos.</div>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-                        <li class="breadcrumb-item active">Análisis Financiero</li>
+                        <li class="breadcrumb-item active">Reportes Financieros</li>
+                        <li class="breadcrumb-item active">Analisis de Ventas</li>
                     </ol>
                 </div>
             </div>
@@ -35,38 +35,66 @@
 
     <section class="content">
         <div class="container-fluid">
-            
             <div class="card card-primary card-outline">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Período</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                    </div>
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Periodo de Consulta</h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Fecha Inicio</label>
                                 <input type="date" id="fi" class="form-control">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Fecha Fin</label>
                                 <input type="date" id="ff" class="form-control">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>&nbsp;</label>
-                                <button class="btn btn-primary btn-block" onclick="generar()">
-                                    <i class="fas fa-search"></i> Generar Reporte
-                                </button>
+                                <button class="btn btn-primary btn-block" onclick="generar()"><i class="fas fa-search"></i> Ver Analisis</button>
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <div class="btn-group btn-block">
+                                    <button type="button" class="btn btn-success" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                                    <button type="button" class="btn btn-danger" onclick="exportarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 sales-chip h-100">
+                        <div class="label">Ventas Netas</div>
+                        <div class="value" id="kpiTotalVentas">0</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 sales-chip h-100">
+                        <div class="label">Monto Total</div>
+                        <div class="value" id="kpiMontoTotal">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 sales-chip h-100">
+                        <div class="label">Ticket Promedio</div>
+                        <div class="value" id="kpiTicketPromedio">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 sales-chip h-100">
+                        <div class="label">Dias con Venta</div>
+                        <div class="value" id="kpiDiasConVentas">0</div>
                     </div>
                 </div>
             </div>
@@ -75,34 +103,29 @@
                 <div class="col-md-8">
                     <div class="card card-info card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Evolución de Ventas por Día</h3>
-                            <div class="card-tools">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                            </div>
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Evolucion de Ventas Netas por Dia</h3>
                         </div>
                         <div class="card-body">
-                            <div class="chart">
-                                <canvas id="chartDias" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
-                            </div>
+                            <canvas id="chartDias" style="min-height: 260px; height: 320px; max-height: 320px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
                     <div class="card card-warning card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Top 10 Productos</h3>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-striped table-valign-middle">
+                            <table class="table table-striped table-valign-middle mb-0">
                                 <thead>
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th class="text-right">Cant.</th>
-                                    </tr>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-right">Cant.</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
                                 </thead>
                                 <tbody id="tbodyTop">
-                                    <tr><td colspan="2" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -114,47 +137,45 @@
                 <div class="col-md-6">
                     <div class="card card-success card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-user-tag"></i> Desempeño de Vendedores</h3>
+                            <h3 class="card-title"><i class="fas fa-user-tag"></i> Desempeno de Vendedores</h3>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-striped">
+                            <table class="table table-striped mb-0">
                                 <thead>
-                                    <tr>
-                                        <th>Vendedor</th>
-                                        <th class="text-center">N° Ventas</th>
-                                        <th class="text-right">Total (S/)</th>
-                                    </tr>
+                                <tr>
+                                    <th>Vendedor</th>
+                                    <th class="text-center">Ventas</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
                                 </thead>
                                 <tbody id="tbodyVend">
-                                    <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6">
                     <div class="card card-danger card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Productos Sin Rotación (Estancados)</h3>
+                            <h3 class="card-title"><i class="fas fa-exclamation-circle"></i> Productos Sin Rotacion</h3>
                         </div>
-                        <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                            <table class="table table-striped table-hover table-sm">
+                        <div class="card-body p-0" style="max-height: 320px; overflow-y: auto;">
+                            <table class="table table-striped table-hover table-sm mb-0">
                                 <thead>
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th class="text-center">Stock Actual</th>
-                                    </tr>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-center">Stock Actual</th>
+                                </tr>
                                 </thead>
                                 <tbody id="tbodySin">
-                                    <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+                                <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
@@ -164,69 +185,64 @@
         let chartDias;
 
         $(document).ready(function() {
-            // Inicializar fechas (Últimos 30 días)
             const hoy = new Date();
             const hace30 = new Date();
             hace30.setDate(hoy.getDate() - 30);
-
             $('#ff').val(hoy.toISOString().split('T')[0]);
             $('#fi').val(hace30.toISOString().split('T')[0]);
-
-            // Cargar datos iniciales
             generar();
         });
 
         function generar() {
             const fi = $('#fi').val();
             const ff = $('#ff').val();
-            
             if (!fi || !ff) {
-                if(typeof Swal !== 'undefined') Swal.fire('Atención', 'Seleccione ambas fechas', 'warning');
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione ambas fechas');
                 return;
             }
-
-            // Mostrar loading en tablas
-            $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
-
+            $('#tbodyTop').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
+            $('#tbodyVend').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
+            $('#tbodySin').html('<tr><td colspan="2" class="text-center"><i class="fas fa-spinner fa-spin"></i> Procesando...</td></tr>');
             $.ajax({
                 url: '/reportes/financieros/api/analisis-ventas',
-                data: {fechaInicio: fi, fechaFin: ff},
+                data: { fechaInicio: fi, fechaFin: ff },
                 success: function(data) {
-                    renderChart(data.ventasPorDia);
-                    renderTop(data.topProductos);
-                    renderVend(data.ventasPorVendedor);
-                    renderSin(data.productosSinRotacion);
+                    actualizarResumen(data);
+                    renderChart(data.ventasPorDia || []);
+                    renderTop(data.topProductos || []);
+                    renderVend(data.ventasPorVendedor || []);
+                    renderSin(data.productosSinRotacion || []);
                 },
                 error: function() {
-                    if(typeof toastr !== 'undefined') toastr.error('Error al cargar los datos del análisis');
-                    $('#tbodyTop, #tbodyVend, #tbodySin').html('<tr><td colspan="3" class="text-center text-danger">Error al cargar</td></tr>');
+                    if (typeof toastr !== 'undefined') toastr.error('Error al cargar el analisis de ventas');
                 }
             });
         }
 
+        function actualizarResumen(data) {
+            $('#kpiTotalVentas').text(data.totalVentas || 0);
+            $('#kpiMontoTotal').text(APP_CONFIG.formatoMoneda + ' ' + formatear(data.montoTotalVentas));
+            $('#kpiTicketPromedio').text(APP_CONFIG.formatoMoneda + ' ' + formatear(data.ticketPromedio));
+            $('#kpiDiasConVentas').text(data.diasConVentas || 0);
+        }
+
         function renderChart(datos) {
             const labels = datos.map(d => d.fecha);
-            const values = datos.map(d => parseFloat(d.total));
-
+            const values = datos.map(d => parseFloat(d.total || 0));
             const ctx = document.getElementById('chartDias').getContext('2d');
-            
             if (chartDias) chartDias.destroy();
-
             chartDias = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Ventas Totales',
+                        label: 'Ventas netas',
                         data: values,
                         borderColor: APP_CONFIG.colorInfo,
                         backgroundColor: APP_CONFIG.colorInfo + '1A',
-                        pointBackgroundColor: APP_CONFIG.colorInfo,
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: APP_CONFIG.colorInfo,
                         tension: 0.3,
-                        fill: true
+                        fill: true,
+                        pointBackgroundColor: APP_CONFIG.colorInfo
                     }]
                 },
                 options: {
@@ -236,22 +252,14 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
-                                    return APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2);
-                                }
+                                label: context => APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2)
                             }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: 'rgba(0,0,0,0.05)' },
-                            ticks: {
-                                callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; }
-                            }
-                        },
-                        x: {
-                            grid: { display: false }
+                            ticks: { callback: value => APP_CONFIG.formatoMoneda + ' ' + value }
                         }
                     }
                 }
@@ -261,27 +269,23 @@
         function renderTop(productos) {
             const tbody = $('#tbodyTop');
             tbody.empty();
-            
-            if (!productos || productos.length === 0) {
-                tbody.html('<tr><td colspan="2" class="text-center text-muted">No hay ventas registradas</td></tr>');
+            if (!productos || !productos.length) {
+                tbody.html('<tr><td colspan="3" class="text-center text-muted">No hay ventas registradas</td></tr>');
                 return;
             }
-
-            productos.slice(0, 10).forEach((p, i) => {
-                let rank = `<span class="badge badge-secondary">${i+1}</span>`;
-                if (i === 0) rank = `<i class="fas fa-medal text-warning fa-lg"></i>`;
-                if (i === 1) rank = `<i class="fas fa-medal text-secondary fa-lg"></i>`;
-                if (i === 2) rank = `<i class="fas fa-medal text-brown fa-lg" style="color: ` + APP_CONFIG.colorBronce + `;"></i>`;
-
+            productos.forEach((p, i) => {
+                const rank = i === 0
+                    ? '<i class="fas fa-medal text-warning fa-lg"></i>'
+                    : i === 1
+                        ? '<i class="fas fa-medal text-secondary fa-lg"></i>'
+                        : i === 2
+                            ? '<i class="fas fa-medal fa-lg" style="color:' + APP_CONFIG.colorBronce + '"></i>'
+                            : '<span class="badge badge-secondary">' + (i + 1) + '</span>';
                 tbody.append(`
                     <tr>
-                        <td>
-                            ${rank} &nbsp; 
-                            <span class="font-weight-bold text-dark">${p.productoNombre}</span>
-                        </td>
-                        <td class="text-right">
-                            <span class="badge badge-success" style="font-size: 0.9em;">${p.cantidadVendida}</span>
-                        </td>
+                        <td>${rank} <span class="font-weight-bold text-dark ml-1">${p.productoNombre || '-'}</span></td>
+                        <td class="text-right"><span class="badge badge-success">${formatearCantidad(p.cantidadVendida)}</span></td>
+                        <td class="text-right font-weight-bold">${APP_CONFIG.formatoMoneda} ${formatear(p.totalVendido)}</td>
                     </tr>
                 `);
             });
@@ -290,18 +294,16 @@
         function renderVend(vendedores) {
             const tbody = $('#tbodyVend');
             tbody.empty();
-
-            if (!vendedores || vendedores.length === 0) {
+            if (!vendedores || !vendedores.length) {
                 tbody.html('<tr><td colspan="3" class="text-center text-muted">No hay datos de vendedores</td></tr>');
                 return;
             }
-
             vendedores.forEach(v => {
                 tbody.append(`
                     <tr>
-                        <td><i class="fas fa-user-circle text-gray"></i> ${v.vendedor}</td>
-                        <td class="text-center"><span class="badge badge-info">${v.cantidad}</span></td>
-                        <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${parseFloat(v.total).toFixed(2)}</td>
+                        <td><i class="fas fa-user-circle text-muted"></i> ${v.vendedor || '-'}</td>
+                        <td class="text-center"><span class="badge badge-info">${v.cantidad || 0}</span></td>
+                        <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(v.total)}</td>
                     </tr>
                 `);
             });
@@ -310,28 +312,51 @@
         function renderSin(productos) {
             const tbody = $('#tbodySin');
             tbody.empty();
-
-            if (!productos || productos.length === 0) {
-                tbody.html('<tr><td colspan="2" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tienen rotación reciente</td></tr>');
+            if (!productos || !productos.length) {
+                tbody.html('<tr><td colspan="2" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tuvieron rotacion reciente</td></tr>');
                 return;
             }
-
             productos.slice(0, 20).forEach(p => {
                 tbody.append(`
                     <tr>
-                        <td>
-                            <i class="fas fa-box-open text-muted"></i> 
-                            ${p.productoNombre}
-                        </td>
-                        <td class="text-center">
-                            <span class="badge badge-danger">${p.stockActual} unid.</span>
-                        </td>
+                        <td><i class="fas fa-box-open text-muted"></i> ${p.productoNombre || '-'}</td>
+                        <td class="text-center"><span class="badge badge-danger">${p.stockActual || 0}</span></td>
                     </tr>
                 `);
             });
         }
+
+        function exportarExcel() {
+            const fi = $('#fi').val();
+            const ff = $('#ff').val();
+            if (!fi || !ff) {
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+            window.location.href = `/reportes/financieros/api/analisis-ventas/excel?fechaInicio=${fi}&fechaFin=${ff}`;
+        }
+
+        function exportarPDF() {
+            const fi = $('#fi').val();
+            const ff = $('#ff').val();
+            if (!fi || !ff) {
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+            window.location.href = `/reportes/financieros/api/analisis-ventas/pdf?fechaInicio=${fi}&fechaFin=${ff}`;
+        }
+
+        function formatear(num) {
+            if (num == null || isNaN(num)) return '0.00';
+            return parseFloat(num).toFixed(2);
+        }
+
+        function formatearCantidad(num) {
+            if (num == null || isNaN(num)) return '0';
+            const value = parseFloat(num);
+            return Number.isInteger(value) ? String(value) : value.toFixed(2);
+        }
     </script>
 </th:block>
-
 </body>
 </html>

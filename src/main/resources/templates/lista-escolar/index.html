@@ -90,6 +90,10 @@
                             <i class="fas fa-filter"></i> Filtros
                         </h3>
                         <div class="card-tools">
+                            <button type="button" class="btn btn-secondary btn-sm mr-1"
+                                    onclick="$('#modalSimulador').modal('show')">
+                                <i class="fas fa-flask"></i> Simulador
+                            </button>
                             <a th:href="@{/listas-escolares/nueva}" class="btn btn-success btn-sm">
                                 <i class="fas fa-plus"></i> Nueva Lista
                             </a>
@@ -319,6 +323,97 @@
         </div>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- Modal Simulador PDF                                          -->
+    <!-- ============================================================ -->
+    <div class="modal fade" id="modalSimulador" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-flask"></i> Simulador de Lista Escolar
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Genera un PDF de lista escolar sin guardar nada en el sistema.
+                        Sube un Excel con columnas: <strong>Descripción · Cant. · P.Unit. · Subtotal</strong>
+                        (Subtotal es opcional, se calcula automáticamente).
+                    </p>
+                    <form id="formSimulador" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Alumno</label>
+                                    <input type="text" class="form-control form-control-sm" id="simAlumno" name="alumno"
+                                           placeholder="Nombre del alumno">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Grado</label>
+                                    <input type="text" class="form-control form-control-sm" id="simGrado" name="grado"
+                                           placeholder="Ej: 2° Secundaria">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Sección</label>
+                                    <input type="text" class="form-control form-control-sm" id="simSeccion" name="seccion"
+                                           placeholder="Ej: A">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Colegio</label>
+                                    <input type="text" class="form-control form-control-sm" id="simColegio" name="colegio"
+                                           placeholder="Nombre del colegio">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Contacto (padre/madre)</label>
+                                    <input type="text" class="form-control form-control-sm" id="simContacto" name="contacto"
+                                           placeholder="Nombre del contacto">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Teléfono</label>
+                                    <input type="text" class="form-control form-control-sm" id="simTelefono" name="telefono"
+                                           placeholder="Ej: 970724536">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Archivo Excel <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm">
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="simExcel" name="excel"
+                                           accept=".xlsx,.xls" required>
+                                    <label class="custom-file-label" for="simExcel">Seleccionar archivo...</label>
+                                </div>
+                            </div>
+                            <small class="text-muted">Columnas esperadas: Descripción | Cant. | P.Unit. | Subtotal (opcional)</small>
+                        </div>
+                    </form>
+                    <div id="simError" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGenerarSimulador">
+                        <i class="fas fa-file-pdf"></i> Generar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer th:replace="~{fragments/layout :: footer}"></footer>
 </div>
 
@@ -326,6 +421,48 @@
 <script>
 $(function() {
     $('[data-toggle="tooltip"]').tooltip();
+
+    // Mostrar nombre del archivo seleccionado
+    $('#simExcel').on('change', function() {
+        var name = this.files[0] ? this.files[0].name : 'Seleccionar archivo...';
+        $(this).next('.custom-file-label').text(name);
+    });
+
+    // Generar PDF del simulador
+    $('#btnGenerarSimulador').on('click', function() {
+        var $btn = $(this);
+        var file = $('#simExcel')[0].files[0];
+        if (!file) {
+            $('#simError').text('Debes seleccionar un archivo Excel.').removeClass('d-none');
+            return;
+        }
+        $('#simError').addClass('d-none');
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Generando...');
+
+        var formData = new FormData($('#formSimulador')[0]);
+
+        fetch('/listas-escolares/simulador/pdf', {
+            method: 'POST',
+            body: formData
+        }).then(function(res) {
+            if (!res.ok) {
+                return res.text().then(function(t) { throw new Error(t || 'Error al generar PDF'); });
+            }
+            return res.blob();
+        }).then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        }).catch(function(err) {
+            $('#simError').text(err.message).removeClass('d-none');
+        }).finally(function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-file-pdf"></i> Generar PDF');
+        });
+    });
+
+    // Limpiar error al cerrar modal
+    $('#modalSimulador').on('hidden.bs.modal', function() {
+        $('#simError').addClass('d-none');
+    });
 });
 
 // =====================================================================

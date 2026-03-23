@@ -33,6 +33,14 @@
                     <input type="hidden" th:field="*{id}">
 
                     <div class="card-body">
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${error}"></span>
+                        </div>
+                        <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -54,6 +62,9 @@
                                     <label>Contraseña</label>
                                     <input type="password" class="form-control" th:field="*{password}" placeholder="Dejar vacío para no cambiar" autocomplete="new-password">
                                     <small class="form-text text-muted" th:if="${usuario.id != null}">Solo llene si desea cambiar la clave actual.</small>
+                                    <small class="form-text text-muted" th:if="${usuario.id == null}">
+                                        Mínimo 8 caracteres, con mayúscula, minúscula, número y carácter especial.
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -75,7 +86,7 @@
                                     <div class="icheck-primary d-inline">
                                         <input type="checkbox" name="rolesIds" th:value="${rol.id}"
                                                th:id="${'rol-' + rol.id}"
-                                               th:checked="${#lists.contains(usuario.roles, rol)}">
+                                               th:checked="${#lists.contains(rolesIdsSeleccionados, rol.id)}">
                                         <label th:for="${'rol-' + rol.id}" th:text="${rol.nombre}">Rol</label>
                                     </div>
                                 </div>

@@ -90,6 +90,11 @@ public class Venta {
     // Estados: EMITIDO, PAGADO_TOTAL, ANULADO, DEVUELTO_PARCIAL, DEVUELTO_TOTAL
     private String estado;
 
+    @Column(name = "entrega_pendiente")
+    private Boolean entregaPendiente = false;
+
+    private LocalDateTime fechaEntregaReal;
+
     // Referencia a devolución si aplica
     @Column(name = "devolucion_id")
     private Long devolucionId;
@@ -134,5 +139,6 @@ public class Venta {
         if(this.saldoPendiente == null) this.saldoPendiente = BigDecimal.ZERO;
         if(this.metodoPago == null) this.metodoPago = "EFECTIVO";
         if(this.canalVenta == null) this.canalVenta = "LOCAL";
+        if(this.entregaPendiente == null) this.entregaPendiente = false;
     }
 }

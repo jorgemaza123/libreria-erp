@@ -10,24 +10,79 @@
 
 <div layout:fragment="content">
     <section class="content-header">
-        <div class="container-fluid"><h1><i class="fas fa-hand-holding-usd"></i> Cuentas por Cobrar</h1></div>
+        <div class="container-fluid">
+            <h1><i class="fas fa-hand-holding-usd"></i> Cuentas por Cobrar</h1>
+        </div>
     </section>
 
     <section class="content">
         <div class="container-fluid">
 
-            <div class="card card-primary card-outline">
-                <div class="card-body">
-                    <!-- U-5: búsqueda por DNI, RUC o nombre del cliente -->
-                    <form action="/cobranzas/buscar" method="get" class="form-inline justify-content-center">
-                        <label class="mr-2">Buscar Cliente:</label>
-                        <div class="input-group">
-                            <input type="text" name="termino" class="form-control form-control-lg" placeholder="DNI, RUC o nombre del cliente" th:value="${terminoBusqueda}" required>
-                            <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> BUSCAR DEUDAS</button>
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="card card-primary card-outline">
+                        <div class="card-body">
+                            <form action="/cobranzas/buscar" method="get" class="form-inline justify-content-center">
+                                <label class="mr-2">Buscar Cliente:</label>
+                                <div class="input-group flex-grow-1">
+                                    <input type="text"
+                                           name="termino"
+                                           class="form-control form-control-lg"
+                                           placeholder="DNI, RUC o nombre del cliente"
+                                           th:value="${terminoBusqueda}"
+                                           required>
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-search"></i> BUSCAR DEUDAS
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card card-danger card-outline">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-file-pdf text-danger"></i> Reporte de Pagos</h5>
+                                    <small class="text-muted"
+                                           th:if="${reporteClienteDisponible}"
+                                           th:text="|Reporte del cliente: ${clienteReporteNombre}|">Reporte del cliente</small>
+                                    <small class="d-block text-muted"
+                                           th:if="${reporteClienteDisponible and clienteReporteDocumento != null}"
+                                           th:text="|Documento: ${clienteReporteDocumento}|">Documento</small>
+                                    <small class="text-muted"
+                                           th:if="${!reporteClienteDisponible}">Busca o refina el cliente hasta dejar una sola cuenta para generar su historial de pagos.</small>
+                                </div>
+                                <span class="badge badge-light border px-3 py-2 mt-2 mt-sm-0"
+                                      th:text="|Formato predeterminado: ${formatoImpresion}|">Formato predeterminado: TICKET</span>
+                            </div>
+                            <form th:if="${reporteClienteDisponible}" th:action="@{/cobranzas/pdf-pagos}" method="get" target="_blank">
+                                <input type="hidden" name="termino" th:value="${clienteReporteNombre}">
+                                <input type="hidden" name="clienteDocumento" th:value="${clienteReporteDocumento}">
+                                <div class="form-row">
+                                    <div class="col-md-4">
+                                        <label>Desde</label>
+                                        <input type="date" name="fechaInicio" class="form-control" th:value="${fechaInicioReporte}" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Hasta</label>
+                                        <input type="date" name="fechaFin" class="form-control" th:value="${fechaFinReporte}" required>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-danger btn-block">
+                                            <i class="fas fa-download"></i> Generar PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div th:if="${!reporteClienteDisponible}" class="alert alert-light border mb-0">
+                                <i class="fas fa-info-circle text-info"></i> El PDF se habilita solo cuando la pantalla corresponde a un solo cliente identificado.
                             </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
 
@@ -42,7 +97,7 @@
                             <div class="row no-gutters align-items-center">
                                 <div class="col mr-2">
                                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1"
-                                         th:text="${v.tipoComprobante} + ' ' + ${v.serie} + '-' + ${v.numero}">
+                                         th:text="|${v.tipoComprobante} ${v.serie}-${v.numero}|">
                                     </div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                         <ul class="mb-0 pl-3">
@@ -56,37 +111,40 @@
                                 </div>
                                 <div class="col-auto text-right">
                                     <small>Deuda Total:</small>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="'S/ ' + ${#numbers.formatDecimal(v.total, 1, 'COMMA', 2, 'POINT')}"></div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"
+                                         th:text="|${simboloMoneda} ${#numbers.formatDecimal(v.total, 1, 'COMMA', 2, 'POINT')}|"></div>
 
                                     <div class="mt-2 p-2 bg-warning rounded text-center">
                                         <small class="text-white font-weight-bold">PENDIENTE</small>
-                                        <div class="h4 font-weight-bold text-danger mb-0" th:text="'S/ ' + ${#numbers.formatDecimal(v.saldoPendiente, 1, 'COMMA', 2, 'POINT')}"></div>
+                                        <div class="h4 font-weight-bold text-danger mb-0"
+                                             th:text="|${simboloMoneda} ${#numbers.formatDecimal(v.saldoPendiente, 1, 'COMMA', 2, 'POINT')}|"></div>
                                     </div>
                                 </div>
                             </div>
                             <hr>
 
-                            <!-- M-1: historial de pagos anteriores (amortizaciones) -->
                             <div th:if="${amortizacionesPorVenta != null and !#lists.isEmpty(amortizacionesPorVenta[v.id])}" class="mb-3">
-                                <button type="button" class="btn btn-sm btn-outline-info mb-2"
-                                        data-toggle="collapse" th:data-target="'#historial_' + ${v.id}">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-info mb-2"
+                                        data-toggle="collapse"
+                                        th:data-target="|#historial_${v.id}|">
                                     <i class="fas fa-history"></i> Ver historial de pagos
                                     (<span th:text="${#lists.size(amortizacionesPorVenta[v.id])}"></span>)
                                 </button>
-                                <div th:id="'historial_' + ${v.id}" class="collapse">
+                                <div th:id="|historial_${v.id}|" class="collapse">
                                     <table class="table table-sm table-bordered mb-0">
                                         <thead class="bg-light">
                                             <tr>
                                                 <th>Fecha</th>
                                                 <th class="text-right">Monto</th>
-                                                <th>Método</th>
+                                                <th>Metodo</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr th:each="a : ${amortizacionesPorVenta[v.id]}">
                                                 <td th:text="${a.fechaPago != null ? #temporals.format(a.fechaPago, 'dd/MM/yyyy HH:mm') : '-'}"></td>
                                                 <td class="text-right text-success font-weight-bold"
-                                                    th:text="'S/ ' + ${#numbers.formatDecimal(a.monto, 1, 'COMMA', 2, 'POINT')}"></td>
+                                                    th:text="|${simboloMoneda} ${#numbers.formatDecimal(a.monto, 1, 'COMMA', 2, 'POINT')}|"></td>
                                                 <td th:text="${a.metodoPago}"></td>
                                             </tr>
                                         </tbody>
@@ -97,11 +155,51 @@
                             <form onsubmit="realizarPago(this); return false;" class="row align-items-end">
                                 <input type="hidden" name="ventaId" th:value="${v.id}">
 
-                                <div class="col-md-7"></div>
+                                <div class="col-md-7">
+                                    <label class="d-block">Acciones de la Venta</label>
+                                    <div class="btn-group flex-wrap" role="group">
+                                        <button type="button"
+                                                class="btn btn-primary btn-sm btn-detalle-cobranza"
+                                                th:data-id="${v.id}"
+                                                title="Ver detalle de la venta">
+                                            <i class="fas fa-eye"></i> Detalle
+                                        </button>
+
+                                        <button th:if="${v.estado != 'ANULADO' and v.estado != 'DEVUELTO_TOTAL' and v.entregaPendiente != true}"
+                                                type="button"
+                                                class="btn btn-warning btn-sm btn-devolver-venta"
+                                                th:data-id="${v.id}"
+                                                title="Devolucion parcial o total">
+                                            <i class="fas fa-undo-alt"></i> Devolver
+                                        </button>
+
+                                        <button th:if="${v.estado == 'LISTO_ENTREGA' and v.entregaPendiente}"
+                                                type="button"
+                                                class="btn btn-info btn-sm btn-entregar-apartado"
+                                                th:data-id="${v.id}"
+                                                th:data-serie="${v.serie}"
+                                                th:data-numero="${v.numero}"
+                                                title="Registrar entrega final">
+                                            <i class="fas fa-box-open"></i> Entregar
+                                        </button>
+
+                                        <button th:if="${v.estado == 'EMITIDO' or v.estado == 'APARTADO' or v.estado == 'LISTO_ENTREGA'}"
+                                                type="button"
+                                                class="btn btn-danger btn-sm btn-anular-cobranza"
+                                                th:data-id="${v.id}"
+                                                th:data-serie="${v.serie}"
+                                                th:data-numero="${v.numero}"
+                                                title="Cancelar credito o anular venta">
+                                            <i class="fas fa-ban"></i> Anular
+                                        </button>
+                                    </div>
+                                </div>
                                 <div class="col-md-3">
                                     <label>Abonar / Pagar:</label>
                                     <div class="input-group">
-                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" th:text="${simboloMoneda}">S/</span>
+                                        </div>
                                         <input type="number" step="0.10" name="montoPago" class="form-control font-weight-bold" placeholder="0.00" required>
                                     </div>
                                 </div>
@@ -120,64 +218,190 @@
     </section>
 </div>
 
-<th:block layout:fragment="scripts">
-    <script>
-        function realizarPago(form) {
-            let formData = new FormData(form);
+<div class="modal fade" id="modalDetalleCobranza">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-navy">
+                <h4 class="modal-title">Detalle de Venta</h4>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBodyCobranza">
+                <div class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p>Cargando...</p>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-            // Confirmación simple antes de enviar
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        const formatoImpresionDefecto = (/*[[${formatoImpresion}]]*/ 'TICKET' || 'TICKET').toUpperCase();
+        const simboloMoneda = /*[[${simboloMoneda}]]*/ 'S/';
+
+        $(function () {
+            $(document).on('click', '.btn-detalle-cobranza', function() {
+                const id = $(this).data('id');
+                $('#modalBodyCobranza').load('/ventas/detalle/' + id);
+                $('#modalDetalleCobranza').modal('show');
+            });
+
+            $(document).on('click', '.btn-devolver-venta', function() {
+                const id = $(this).data('id');
+                if (!id) {
+                    Swal.fire('Error', 'No se pudo identificar la venta a devolver.', 'error');
+                    return;
+                }
+                window.location.href = '/devoluciones/nueva/' + id;
+            });
+
+            $(document).on('click', '.btn-anular-cobranza', function() {
+                const id = $(this).data('id');
+                const serie = $(this).data('serie');
+                const numero = $(this).data('numero');
+                Swal.fire({
+                    title: 'Anular venta a credito',
+                    html: 'Se anulara <strong>' + serie + '-' + numero + '</strong>.<br>Si ya hubo abonos, el sistema registrara el egreso correspondiente y devolvera el stock.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Si, anular',
+                    cancelButtonText: 'Cancelar'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/ventas/anular/' + id;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+
+            $(document).on('click', '.btn-entregar-apartado', function() {
+                const id = $(this).data('id');
+                const serie = $(this).data('serie');
+                const numero = $(this).data('numero');
+                Swal.fire({
+                    title: 'Registrar entrega final',
+                    html: 'Se marcara <strong>' + serie + '-' + numero + '</strong> como entregado y pasara a venta final.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#007bff',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Si, entregar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/ventas/entregar/' + id;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        function realizarPago(form) {
+            const formData = new FormData(form);
+
             Swal.fire({
-                title: '¿Confirmar Pago?',
-                text: "Se registrará el ingreso en caja y se imprimirá el ticket.",
+                title: 'Confirmar pago',
+                text: 'Se registrara el ingreso en caja para esta cuenta por cobrar.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, Pagar'
+                confirmButtonText: 'Si, pagar',
+                cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    // Enviar AJAX
-                    $.ajax({
-                        url: '/cobranzas/pagar',
-                        type: 'POST',
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function(resp) {
-                            // 1. Abrir Ticket
-                            imprimirPopup('/cobranzas/ticket/' + resp.id);
-
-                            // 2. Mensaje Exito
-                            Swal.fire({
-                                title: 'Pago Exitoso',
-                                text: 'Saldo restante: S/ ' + resp.saldoRestante,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                // 3. Recargar para ver el nuevo saldo
-                                location.reload();
-                            });
-                        },
-                        error: function(xhr) {
-                            // Detectar error de caja cerrada
-                            if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
-                                return;
-                            }
-                            // Otros errores
-                            let mensaje = 'Ocurrió un error al procesar el pago';
-                            try {
-                                let resp = JSON.parse(xhr.responseText);
-                                mensaje = resp.error || resp.message || xhr.responseText;
-                            } catch(e) {
-                                mensaje = xhr.responseText || mensaje;
-                            }
-                            Swal.fire('Error', mensaje, 'error');
-                        }
-                    });
+                if (!result.isConfirmed) {
+                    return;
                 }
+
+                $.ajax({
+                    url: '/cobranzas/pagar',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(resp) {
+                        ofrecerComprobantePago(resp);
+                    },
+                    error: function(xhr) {
+                        if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+                            return;
+                        }
+                        let mensaje = 'Ocurrio un error al procesar el pago';
+                        try {
+                            const resp = JSON.parse(xhr.responseText);
+                            mensaje = resp.error || resp.message || xhr.responseText;
+                        } catch (e) {
+                            mensaje = xhr.responseText || mensaje;
+                        }
+                        Swal.fire('Error', mensaje, 'error');
+                    }
+                });
             });
         }
 
-        // FUNCIÓN POPUP (Reutilizada del POS)
+        function ofrecerComprobantePago(resp) {
+            const formatoBase = ((resp.formatoImpresion || formatoImpresionDefecto) + '').toUpperCase() === 'A4' ? 'A4' : 'TICKET';
+            const formatoAlterno = formatoBase === 'A4' ? 'TICKET' : 'A4';
+
+            Swal.fire({
+                title: 'Pago registrado',
+                html: 'Saldo restante: <strong>' + formatearMonto(resp.saldoRestante) + '</strong><br><br>Desea generar comprobante de pago?',
+                icon: 'success',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Imprimir ' + etiquetaFormato(formatoBase) + ' (Predeterminado)',
+                denyButtonText: 'Imprimir ' + etiquetaFormato(formatoAlterno),
+                cancelButtonText: 'No imprimir',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    imprimirPopup(rutaComprobante(resp.id, formatoBase));
+                    recargarLuego();
+                    return;
+                }
+
+                if (result.isDenied) {
+                    imprimirPopup(rutaComprobante(resp.id, formatoAlterno));
+                }
+
+                recargarLuego();
+            });
+        }
+
+        function rutaComprobante(idPago, formato) {
+            return formato === 'A4'
+                ? '/cobranzas/impresion-a4/' + idPago
+                : '/cobranzas/ticket/' + idPago;
+        }
+
+        function etiquetaFormato(formato) {
+            return formato === 'A4' ? 'A4' : 'Ticket';
+        }
+
+        function formatearMonto(monto) {
+            const valor = Number(monto);
+            if (Number.isNaN(valor)) {
+                return simboloMoneda + ' ' + monto;
+            }
+            return simboloMoneda + ' ' + valor.toFixed(2);
+        }
+
+        function recargarLuego() {
+            setTimeout(function() {
+                location.reload();
+            }, 350);
+        }
+
         function imprimirPopup(url) {
             const width = 800;
             const height = 600;
@@ -185,6 +409,95 @@
             const top = (screen.height - height) / 2;
             window.open(url, 'TicketPago', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
         }
+
+        $(document).on('click', '.btn-devolver-item', function() {
+            const btn = $(this);
+            const ventaId = btn.data('venta-id');
+            const productoId = btn.data('producto-id');
+            const descripcion = btn.data('descripcion') || 'Producto';
+            const cantidadMax = parseFloat(btn.data('cantidad'));
+            const precio = parseFloat(btn.data('precio'));
+
+            if (!ventaId || !productoId || isNaN(cantidadMax) || cantidadMax <= 0 || isNaN(precio) || precio <= 0) {
+                Swal.fire('Error', 'No se pudo identificar el producto a devolver. Recargue el detalle e intente nuevamente.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Devolucion de Producto',
+                icon: 'question',
+                html: '<p class="text-left mb-2"><strong>' + descripcion + '</strong></p>' +
+                      '<div class="form-group text-left mb-2">' +
+                      '<label>Cantidad a devolver (max: ' + cantidadMax + '):</label>' +
+                      '<input type="number" id="dev-cant" class="form-control" min="0.01" max="' + cantidadMax + '" step="0.01" value="' + cantidadMax + '">' +
+                      '</div>' +
+                      '<div class="form-group text-left mb-2">' +
+                      '<label>Motivo:</label>' +
+                      '<select id="dev-motivo" class="form-control">' +
+                      '<option value="DEFECTO_PRODUCTO">Defecto del producto</option>' +
+                      '<option value="PRODUCTO_INCORRECTO">Producto incorrecto</option>' +
+                      '<option value="CAMBIO_OPINION">Cambio de opinion del cliente</option>' +
+                      '<option value="EXCESO_PEDIDO">Exceso en el pedido</option>' +
+                      '<option value="OTRO">Otro</option>' +
+                      '</select></div>' +
+                      '<div class="form-group text-left">' +
+                      '<label>Metodo de reembolso:</label>' +
+                      '<select id="dev-metodo" class="form-control">' +
+                      '<option value="EFECTIVO">Efectivo</option>' +
+                      '<option value="TRANSFERENCIA">Transferencia</option>' +
+                      '<option value="CREDITO_TIENDA">Credito en tienda</option>' +
+                      '</select></div>',
+                showCancelButton: true,
+                confirmButtonText: 'Procesar Devolucion',
+                confirmButtonColor: '#f39c12',
+                cancelButtonText: 'Cancelar',
+                focusConfirm: false,
+                preConfirm: function() {
+                    const cant = parseFloat(document.getElementById('dev-cant').value);
+                    if (!cant || cant <= 0 || cant > cantidadMax) {
+                        Swal.showValidationMessage('Cantidad invalida (max: ' + cantidadMax + ')');
+                        return false;
+                    }
+                    return {
+                        cantidad: cant,
+                        motivo: document.getElementById('dev-motivo').value,
+                        metodo: document.getElementById('dev-metodo').value
+                    };
+                }
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    const d = result.value;
+                    $.ajax({
+                        url: '/devoluciones/api/procesar',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            ventaOriginalId: parseInt(ventaId),
+                            motivoDevolucion: d.motivo,
+                            metodoReembolso: d.metodo,
+                            items: [{
+                                productoId: parseInt(productoId),
+                                cantidadDevuelta: d.cantidad,
+                                precioUnitario: precio,
+                                descripcion: descripcion
+                            }]
+                        }),
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Devolucion procesada',
+                                html: 'Nota de credito <strong>' + res.serie + '-' + String(res.numero).padStart(8, '0') + '</strong> generada.',
+                                confirmButtonText: 'Aceptar'
+                            }).then(function() { location.reload(); });
+                        },
+                        error: function(xhr) {
+                            const msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Error al procesar la devolucion';
+                            Swal.fire('Error', msg, 'error');
+                        }
+                    });
+                }
+            });
+        });
     </script>
 </th:block>
 

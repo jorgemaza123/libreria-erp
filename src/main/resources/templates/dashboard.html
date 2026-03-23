@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<div layout:fragment="content">
+<div layout:fragment="content" class="dashboard-view">
     <div class="content-header">
         <div class="container-fluid">
             <div class="d-flex justify-content-between align-items-center">
@@ -20,6 +20,358 @@
 
     <section class="content">
         <div class="container-fluid">
+
+            <style>
+                .dashboard-view .small-box,
+                .dashboard-view .info-box,
+                .dashboard-view .card {
+                    border-radius: 18px;
+                    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+                    border: 1px solid rgba(148, 163, 184, 0.16);
+                }
+
+                .dashboard-view .small-box .icon,
+                .dashboard-view .info-box-icon {
+                    opacity: 0.18;
+                }
+
+                .dashboard-section-heading {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                    gap: 16px;
+                    margin: 4px 0 18px;
+                }
+
+                .dashboard-section-heading + .row {
+                    margin-top: 0;
+                }
+
+                .dashboard-section-kicker {
+                    display: inline-block;
+                    margin-bottom: 6px;
+                    font-size: 0.72rem;
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    font-weight: 800;
+                    color: #0f766e;
+                }
+
+                .dashboard-section-heading h2 {
+                    margin: 0;
+                    font-size: 1.4rem;
+                    font-weight: 800;
+                    color: #0f172a;
+                }
+
+                .dashboard-section-heading p {
+                    margin: 4px 0 0;
+                    color: #64748b;
+                    font-size: 0.92rem;
+                }
+
+                .dashboard-section-note {
+                    color: #64748b;
+                    font-size: 0.84rem;
+                    text-align: right;
+                }
+
+                .dashboard-hero-card {
+                    overflow: hidden;
+                    border: none;
+                    background:
+                        radial-gradient(circle at top right, rgba(45, 212, 191, 0.34), transparent 32%),
+                        linear-gradient(135deg, #0f172a 0%, #0f766e 54%, #14b8a6 100%);
+                    color: #f8fafc;
+                }
+
+                .dashboard-hero-card .card-body {
+                    padding: 28px;
+                }
+
+                .dashboard-hero-header {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 18px;
+                    align-items: flex-start;
+                }
+
+                .dashboard-hero-label {
+                    font-size: 0.82rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0.14em;
+                    color: rgba(248, 250, 252, 0.82);
+                    margin-bottom: 8px;
+                }
+
+                .dashboard-hero-amount {
+                    font-size: 3rem;
+                    line-height: 1;
+                    font-weight: 900;
+                    letter-spacing: -0.04em;
+                    margin-bottom: 12px;
+                }
+
+                .dashboard-hero-submeta {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 14px;
+                    color: rgba(248, 250, 252, 0.84);
+                    font-size: 0.92rem;
+                }
+
+                .dashboard-hero-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    border-radius: 999px;
+                    padding: 10px 14px;
+                    font-size: 0.88rem;
+                    font-weight: 700;
+                    background: rgba(255, 255, 255, 0.16);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    color: #ffffff;
+                    white-space: nowrap;
+                }
+
+                .dashboard-hero-pill.is-up {
+                    background: rgba(34, 197, 94, 0.16);
+                    border-color: rgba(187, 247, 208, 0.28);
+                }
+
+                .dashboard-hero-pill.is-down {
+                    background: rgba(239, 68, 68, 0.16);
+                    border-color: rgba(254, 202, 202, 0.28);
+                }
+
+                .dashboard-hero-count {
+                    margin-top: 12px;
+                    text-align: right;
+                    font-size: 0.98rem;
+                    font-weight: 700;
+                    color: rgba(248, 250, 252, 0.92);
+                }
+
+                .dashboard-hero-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 14px;
+                    margin-top: 22px;
+                }
+
+                .dashboard-hero-stat {
+                    border-radius: 16px;
+                    padding: 15px 16px;
+                    background: rgba(255, 255, 255, 0.12);
+                    border: 1px solid rgba(255, 255, 255, 0.16);
+                }
+
+                .dashboard-hero-stat span,
+                .dashboard-mini-label {
+                    display: block;
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    color: #64748b;
+                    margin-bottom: 8px;
+                }
+
+                .dashboard-hero-stat span {
+                    color: rgba(248, 250, 252, 0.74);
+                }
+
+                .dashboard-hero-stat strong {
+                    display: block;
+                    font-size: 1.28rem;
+                    font-weight: 800;
+                    color: #ffffff;
+                }
+
+                .dashboard-hero-stat small {
+                    display: block;
+                    margin-top: 6px;
+                    font-size: 0.83rem;
+                    color: rgba(248, 250, 252, 0.72);
+                }
+
+                .dashboard-mini-card {
+                    height: calc(50% - 8px);
+                    min-height: 150px;
+                }
+
+                .dashboard-mini-card .card-body {
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    height: 100%;
+                }
+
+                .dashboard-mini-card h3 {
+                    margin: 0 0 8px;
+                    font-size: 1.95rem;
+                    font-weight: 900;
+                    color: #0f172a;
+                    letter-spacing: -0.03em;
+                }
+
+                .dashboard-mini-card small {
+                    font-size: 0.9rem;
+                    color: #64748b;
+                }
+
+                .dashboard-mini-card + .dashboard-mini-card {
+                    margin-top: 16px;
+                }
+
+                .dashboard-view .text-comparison {
+                    font-size: 0.88rem;
+                    font-weight: 700;
+                }
+
+                .dashboard-subgrid {
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                @media (max-width: 991.98px) {
+                    .dashboard-hero-header {
+                        flex-direction: column;
+                    }
+
+                    .dashboard-hero-count {
+                        text-align: left;
+                    }
+
+                    .dashboard-hero-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .dashboard-mini-card {
+                        height: auto;
+                        min-height: 132px;
+                    }
+                }
+
+                @media (max-width: 767.98px) {
+                    .dashboard-section-heading {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .dashboard-section-note {
+                        text-align: left;
+                    }
+
+                    .dashboard-hero-card .card-body {
+                        padding: 22px 18px;
+                    }
+
+                    .dashboard-hero-amount {
+                        font-size: 2.4rem;
+                    }
+                }
+            </style>
+
+            <div class="dashboard-section-heading">
+                <div>
+                    <span class="dashboard-section-kicker">Hoy</span>
+                    <h2>Resumen Operativo Del Día</h2>
+                    <p>Lectura intradía hasta la hora actual, sin depender de reinicios ni del cierre de caja.</p>
+                </div>
+                <div class="dashboard-section-note">
+                    Corte diario automático a las 00:00.<br>
+                    Comparación contra ayer al mismo horario.
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="card dashboard-hero-card">
+                        <div class="card-body">
+                            <div class="dashboard-hero-header">
+                                <div>
+                                    <div class="dashboard-hero-label">Acumulado de hoy</div>
+                                    <div class="dashboard-hero-amount" id="ventasHoy"
+                                         th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasHoy, 1, 2)}">S/ 0.00</div>
+                                    <div class="dashboard-hero-submeta">
+                                        <span id="rangoOperativoHoy" th:text="${rangoOperativoHoy}">00:00 - 00:00</span>
+                                        <span>Primera venta: <strong id="horaPrimeraVentaHoy" th:text="${horaPrimeraVentaHoy}">Sin ventas</strong></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div id="variacionDiariaText"
+                                         class="dashboard-hero-pill"
+                                         th:classappend="${variacionDiaria >= 0} ? ' is-up' : ' is-down'">
+                                        <i class="fas"
+                                           th:classappend="${variacionDiaria >= 0} ? ' fa-arrow-up' : ' fa-arrow-down'"></i>
+                                        <span th:text="${#numbers.formatDecimal(variacionDiaria < 0 ? variacionDiaria * -1 : variacionDiaria, 1, 1)} + '% vs ayer a esta hora'"></span>
+                                    </div>
+                                    <div class="dashboard-hero-count" id="cantVentasHoy"
+                                         th:text="${cantidadVentasHoy} + ' ventas hoy'">0 ventas hoy</div>
+                                </div>
+                            </div>
+
+                            <div class="dashboard-hero-grid">
+                                <div class="dashboard-hero-stat">
+                                    <span>Ayer a esta hora</span>
+                                    <strong id="ventasAyerMismoHorario"
+                                            th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasAyerMismoHorario, 1, 2)}">S/ 0.00</strong>
+                                    <small id="cantVentasAyerMismoHorario"
+                                           th:text="${cantidadVentasAyerMismoHorario} + ' ventas comparables'">0 ventas comparables</small>
+                                </div>
+                                <div class="dashboard-hero-stat">
+                                    <span>Ticket promedio hoy</span>
+                                    <strong id="ticketPromedioHoy"
+                                            th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ticketPromedioHoy, 1, 2)}">S/ 0.00</strong>
+                                    <small>Promedio por operación registrada</small>
+                                </div>
+                                <div class="dashboard-hero-stat">
+                                    <span>Compras hoy</span>
+                                    <strong id="comprasHoyHero"
+                                            th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(comprasHoy, 1, 2)}">S/ 0.00</strong>
+                                    <small>Mercadería ingresada hoy</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5 dashboard-subgrid">
+                    <div class="card dashboard-mini-card">
+                        <div class="card-body">
+                            <span class="dashboard-mini-label">Ventas Ayer</span>
+                            <h3 id="ventasAyer"
+                                th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasAyer, 1, 2)}">S/ 0.00</h3>
+                            <small id="cantVentasAyer" th:text="${cantidadVentasAyer} + ' ventas en el día completo'">0 ventas</small>
+                        </div>
+                    </div>
+
+                    <div class="card dashboard-mini-card">
+                        <div class="card-body">
+                            <span class="dashboard-mini-label">Pedidos Del Mes</span>
+                            <h3 id="cantidadVentasMes" th:text="${cantidadVentasMes}">0</h3>
+                            <small id="variacionPedidosText" class="text-comparison">
+                                <span th:classappend="${variacionPedidos >= 0} ? 'text-success' : 'text-danger'">
+                                    <i th:classappend="${variacionPedidos >= 0} ? 'fa-arrow-up' : 'fa-arrow-down'" class="fas"></i>
+                                    <span th:text="${#numbers.formatDecimal(variacionPedidos < 0 ? variacionPedidos * -1 : variacionPedidos, 1, 1)} + '% vs mes anterior'"></span>
+                                </span>
+                                <span class="text-muted ml-1" id="cantMesPasado" th:text="'(' + ${cantidadVentasMesPasado} + ' ant.)'"></span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-section-heading mt-4">
+                <div>
+                    <span class="dashboard-section-kicker">Mes en curso</span>
+                    <h2>Panorama Financiero</h2>
+                    <p>Indicadores consolidados para seguimiento comercial, cartera e inventario.</p>
+                </div>
+            </div>
 
             <!-- ========== FILA 1: KPIs PRINCIPALES ========== -->
             <div class="row">
@@ -114,6 +466,62 @@
                 </div>
             </div>
 
+            <!-- ========== FILA 1.7: FLUJO DE INVERSIÓN ========== -->
+            <div class="row">
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-gradient-maroon"><i class="fas fa-arrow-circle-down"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Invertido este mes</span>
+                            <span class="info-box-number" id="comprasMes"
+                                  th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(comprasMes, 1, 2)}">S/ 0.00</span>
+                            <span class="info-box-text text-muted" style="font-size:0.75rem;">Compras de mercadería</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-gradient-teal"><i class="fas fa-arrow-circle-up"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Recuperado este mes</span>
+                            <span class="info-box-number" id="ventasMesFluj"
+                                  th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(kpiVentasMes, 1, 2)}">S/ 0.00</span>
+                            <span class="info-box-text text-muted" style="font-size:0.75rem;">Ventas del período</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box"
+                         th:classappend="${flujoNetoMes >= 0} ? 'border-left border-success' : 'border-left border-danger'">
+                        <span class="info-box-icon"
+                              th:classappend="${flujoNetoMes >= 0} ? 'bg-gradient-green' : 'bg-gradient-red'">
+                            <i class="fas" th:classappend="${flujoNetoMes >= 0} ? 'fa-plus-circle' : 'fa-minus-circle'"></i>
+                        </span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Flujo neto del mes</span>
+                            <span class="info-box-number" id="flujoNetoMes"
+                                  th:classappend="${flujoNetoMes >= 0} ? 'text-success' : 'text-danger'"
+                                  th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(flujoNetoMes, 1, 2)}">S/ 0.00</span>
+                            <span class="info-box-text text-muted" style="font-size:0.75rem;">Ventas − Compras</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="info-box">
+                        <span class="info-box-icon"
+                              th:classappend="${roiMes >= 20} ? 'bg-gradient-green' : (${roiMes >= 0} ? 'bg-gradient-yellow' : 'bg-gradient-red')">
+                            <i class="fas fa-percentage"></i>
+                        </span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">ROI del mes</span>
+                            <span class="info-box-number" id="roiMes"
+                                  th:text="${#numbers.formatDecimal(roiMes, 1, 1)} + '%'">0%</span>
+                            <span class="info-box-text text-muted" style="font-size:0.75rem;">Retorno sobre inversión</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ========== ALERTA MARGEN BAJO (condicional) ========== -->
             <div class="row" th:if="${cantidadMargenBajo != null and cantidadMargenBajo > 0}" id="alertaMargenBajoRow">
                 <div class="col-12">
@@ -166,61 +574,6 @@
                 </div>
             </div>
 
-            <!-- ========== FILA 2: KPIs OPERATIVOS (ventas hoy, ayer, pedidos mes) ========== -->
-            <div class="row">
-                <div class="col-lg-4 col-6">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-success"><i class="fas fa-shopping-cart"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Ventas Hoy</span>
-                            <span class="info-box-number" id="ventasHoy" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasHoy, 1, 2)}"></span>
-                            <div class="progress progress-sm">
-                                <div class="progress-bar bg-success" style="width: 100%"></div>
-                            </div>
-                            <span class="progress-description" id="variacionDiariaText">
-                                <span th:classappend="${variacionDiaria >= 0} ? 'text-success' : 'text-danger'">
-                                    <i th:classappend="${variacionDiaria >= 0} ? 'fa-arrow-up' : 'fa-arrow-down'" class="fas"></i>
-                                    <span th:text="${#numbers.formatDecimal(variacionDiaria < 0 ? variacionDiaria * -1 : variacionDiaria, 1, 1)} + '% vs ayer'"></span>
-                                </span>
-                                <span class="text-muted ml-1" id="cantVentasHoy" th:text="'(' + ${cantidadVentasHoy} + ' ventas)'"></span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-6">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-info"><i class="fas fa-history"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Ventas Ayer</span>
-                            <span class="info-box-number" id="ventasAyer" th:text="${config.formatoMoneda} + ' ' + ${#numbers.formatDecimal(ventasAyer, 1, 2)}"></span>
-                            <div class="progress progress-sm">
-                                <div class="progress-bar bg-info" style="width: 100%"></div>
-                            </div>
-                            <span class="progress-description text-muted" id="cantVentasAyer" th:text="${cantidadVentasAyer} + ' ventas realizadas'"></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-6">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-purple"><i class="fas fa-clipboard-list"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Pedidos del Mes</span>
-                            <span class="info-box-number" id="cantidadVentasMes" th:text="${cantidadVentasMes}"></span>
-                            <div class="progress progress-sm">
-                                <div class="progress-bar bg-purple" style="width: 100%"></div>
-                            </div>
-                            <span class="progress-description" id="variacionPedidosText">
-                                <span th:classappend="${variacionPedidos >= 0} ? 'text-success' : 'text-danger'">
-                                    <i th:classappend="${variacionPedidos >= 0} ? 'fa-arrow-up' : 'fa-arrow-down'" class="fas"></i>
-                                    <span th:text="${#numbers.formatDecimal(variacionPedidos < 0 ? variacionPedidos * -1 : variacionPedidos, 1, 1)} + '% vs mes anterior'"></span>
-                                </span>
-                                <span class="text-muted ml-1" id="cantMesPasado" th:text="'(' + ${cantidadVentasMesPasado} + ' ant.)'"></span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- ========== FILA 2.5: KPIs COTIZACIONES ========== -->
             <div class="row">
                 <div class="col-lg-3 col-6">
@@ -258,6 +611,14 @@
                             <span class="info-box-number"><span th:text="${tasaConversionCoti}">0</span>%</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="dashboard-section-heading mt-4">
+                <div>
+                    <span class="dashboard-section-kicker">Analítica</span>
+                    <h2>Comportamiento Comercial</h2>
+                    <p>Gráficos y distribución de ventas para lectura rápida del negocio.</p>
                 </div>
             </div>
 
@@ -355,6 +716,14 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="dashboard-section-heading mt-4">
+                <div>
+                    <span class="dashboard-section-kicker">Control</span>
+                    <h2>Alertas y Estado Operativo</h2>
+                    <p>Licencia, stock crítico y señales que requieren acción.</p>
                 </div>
             </div>
 
@@ -614,20 +983,25 @@
                     $('#kpiInventario').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiInventario || 0).toFixed(2));
                     $('#kpiGastos').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiGastos || 0).toFixed(2));
 
-                    // KPIs operativos
+                    // Resumen del día
                     $('#ventasHoy').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ventasHoy || 0).toFixed(2));
+                    $('#ventasAyerMismoHorario').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ventasAyerMismoHorario || 0).toFixed(2));
+                    $('#ticketPromedioHoy').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ticketPromedioHoy || 0).toFixed(2));
+                    $('#comprasHoyHero').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.comprasHoy || 0).toFixed(2));
+                    $('#horaPrimeraVentaHoy').text(data.horaPrimeraVentaHoy || 'Sin ventas');
+                    $('#rangoOperativoHoy').text(data.rangoOperativoHoy || '00:00 - 00:00');
+                    $('#cantVentasHoy').text((data.cantidadVentasHoy || 0) + ' ventas hoy');
+                    $('#cantVentasAyerMismoHorario').text((data.cantidadVentasAyerMismoHorario || 0) + ' ventas comparables');
+                    actualizarHeroVariacion('#variacionDiariaText', data.variacionDiaria, 'vs ayer a esta hora');
+
+                    // KPIs operativos secundarios
                     $('#ventasAyer').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.ventasAyer || 0).toFixed(2));
                     $('#cantidadVentasMes').text(data.cantidadVentasMes || 0);
-                    $('#cantVentasHoy').text('(' + (data.cantidadVentasHoy || 0) + ' ventas)');
-                    $('#cantVentasAyer').text((data.cantidadVentasAyer || 0) + ' ventas realizadas');
+                    $('#cantVentasAyer').text((data.cantidadVentasAyer || 0) + ' ventas en el día completo');
                     $('#cantMesPasado').text('(' + (data.cantidadVentasMesPasado || 0) + ' ant.)');
 
                     // Variacion mensual badge
                     actualizarBadgeVariacion('#badgeVariacionMensual', data.variacionMensual, ' vs mes anterior');
-
-                    // Variacion diaria
-                    actualizarVariacionInline('#variacionDiariaText', data.variacionDiaria, 'vs ayer',
-                        '(' + (data.cantidadVentasHoy || 0) + ' ventas)');
 
                     // Variacion pedidos
                     actualizarVariacionInline('#variacionPedidosText', data.variacionPedidos, 'vs mes anterior',
@@ -638,6 +1012,12 @@
                     $('#utilidadMes').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.utilidadMes || 0).toFixed(2));
                     $('#margenPromedioMes').text(parseFloat(data.margenPromedioMes || 0).toFixed(1) + '%');
                     actualizarVariacionInline('#variacionUtilidadText', data.variacionUtilidadMensual, 'vs mes anterior', '');
+
+                    // Flujo de inversión
+                    $('#comprasMes').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.comprasMes || 0).toFixed(2));
+                    $('#ventasMesFluj').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.kpiVentasMes || 0).toFixed(2));
+                    $('#flujoNetoMes').text(APP_CONFIG.formatoMoneda + ' ' + parseFloat(data.flujoNetoMes || 0).toFixed(2));
+                    $('#roiMes').text(parseFloat(data.roiMes || 0).toFixed(1) + '%');
 
                     // Alerta margen bajo
                     if (data.cantidadMargenBajo > 0) {
@@ -670,6 +1050,19 @@
             badge.removeClass('badge-success badge-danger');
             badge.addClass(v >= 0 ? 'badge-success' : 'badge-danger');
             badge.text((v >= 0 ? '+' : '') + v.toFixed(1) + '%');
+        }
+
+        function actualizarHeroVariacion(selector, valor, textoComparacion) {
+            var v = parseFloat(valor || 0);
+            var absV = Math.abs(v).toFixed(1);
+            var esPositivo = v >= 0;
+            var badge = $(selector);
+            badge.removeClass('is-up is-down');
+            badge.addClass(esPositivo ? 'is-up' : 'is-down');
+            badge.html(
+                '<i class="fas ' + (esPositivo ? 'fa-arrow-up' : 'fa-arrow-down') + '"></i>' +
+                '<span>' + absV + '% ' + textoComparacion + '</span>'
+            );
         }
 
         function actualizarVariacionInline(selector, valor, textoComparacion, textoExtra) {

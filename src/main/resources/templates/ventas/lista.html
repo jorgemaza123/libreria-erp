@@ -62,6 +62,8 @@
                                 </td>
                                 <td>
                                     <span th:if="${v.estado == 'EMITIDO'}" class="badge badge-success">EMITIDO</span>
+                                    <span th:if="${v.estado == 'APARTADO'}" class="badge badge-warning">APARTADO</span>
+                                    <span th:if="${v.estado == 'LISTO_ENTREGA'}" class="badge badge-primary">LISTO ENTREGA</span>
                                     <span th:if="${v.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
                                     <span th:if="${v.estado == 'DEVUELTO_PARCIAL'}" class="badge badge-warning">DEV. PARCIAL</span>
                                     <span th:if="${v.estado == 'DEVUELTO_TOTAL'}" class="badge badge-secondary">DEVUELTO</span>
@@ -90,7 +92,23 @@
                                         <i class="fas fa-file-pdf"></i>
                                     </button>
 
-                                    <button th:if="${v.estado == 'EMITIDO'}"
+                                    <button th:if="${v.estado != 'ANULADO' and v.estado != 'DEVUELTO_TOTAL' and v.entregaPendiente != true}"
+                                            type="button" class="btn btn-warning btn-sm btn-devolver-venta"
+                                            th:data-id="${v.id}"
+                                            title="Ir a devolución">
+                                        <i class="fas fa-undo-alt"></i>
+                                    </button>
+
+                                    <button th:if="${v.estado == 'LISTO_ENTREGA' and v.entregaPendiente}"
+                                            type="button" class="btn btn-primary btn-sm btn-entregar-apartado"
+                                            th:data-id="${v.id}"
+                                            th:data-serie="${v.serie}"
+                                            th:data-numero="${v.numero}"
+                                            title="Registrar entrega final">
+                                        <i class="fas fa-box-open"></i>
+                                    </button>
+
+                                    <button th:if="${v.estado == 'EMITIDO' or v.estado == 'APARTADO' or v.estado == 'LISTO_ENTREGA'}"
                                             type="button" class="btn btn-danger btn-sm btn-anular"
                                             th:data-id="${v.id}"
                                             th:data-serie="${v.serie}"
@@ -154,6 +172,15 @@
             $("#modalDetalle").modal("show");
         });
 
+        $(document).on('click', '.btn-devolver-venta', function() {
+            var id = $(this).data('id');
+            if (!id) {
+                Swal.fire('Error', 'No se pudo identificar la venta a devolver.', 'error');
+                return;
+            }
+            window.location.href = '/devoluciones/nueva/' + id;
+        });
+
         // U-1: reemplazar confirm() nativo con SweetAlert2 para anulación de venta
         $(document).on('click', '.btn-anular', function() {
             var id = $(this).data('id');
@@ -178,16 +205,45 @@
                 }
             });
         });
+
+        $(document).on('click', '.btn-entregar-apartado', function() {
+            var id = $(this).data('id');
+            var serie = $(this).data('serie');
+            var numero = $(this).data('numero');
+            Swal.fire({
+                title: 'Registrar entrega final',
+                html: 'Se marcarÃ¡ <strong>' + serie + '-' + numero + '</strong> como entregado y pasarÃ¡ a venta final.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#007bff',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'SÃ­, entregar',
+                cancelButtonText: 'Cancelar'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/ventas/entregar/' + id;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
     });
 
     // --- HANDLER DEVOLUCIÓN DE PRODUCTO DESDE MODAL ---
-    $(document).on('click', '.btn-devolver', function() {
+    $(document).on('click', '.btn-devolver-item', function() {
         var btn = $(this);
         var ventaId    = btn.data('venta-id');
         var productoId = btn.data('producto-id');
-        var descripcion  = btn.data('descripcion');
+        var descripcion  = btn.data('descripcion') || 'Producto';
         var cantidadMax  = parseFloat(btn.data('cantidad'));
         var precio       = parseFloat(btn.data('precio'));
+
+        if (!ventaId || !productoId || isNaN(cantidadMax) || cantidadMax <= 0 || isNaN(precio) || precio <= 0) {
+            Swal.fire('Error', 'No se pudo identificar el producto a devolver. Recargue el detalle e intente nuevamente.', 'error');
+            return;
+        }
 
         Swal.fire({
             title: 'Devolución de Producto',

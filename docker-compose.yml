@@ -17,6 +17,7 @@ services:
       - SERVER_PORT=${SERVER_PORT:-8443}
       - SERVER_SSL_ENABLED=${SERVER_SSL_ENABLED:-true}
       - AUTO_UPDATE_ENABLED=${AUTO_UPDATE_ENABLED:-true}
+      - TZ=${TZ:-America/Lima}
 
       # Para override manual de IP (descomentar y poner la IP del host si la detección automática falla):
       # - HOST_IP=192.168.1.100

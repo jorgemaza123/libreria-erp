@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="|Comprobante de Pago ${pago.id}|">Comprobante de Pago</title>
+    <style>
+        body {
+            margin: 0;
+            background: #eef1f5;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #1f2937;
+        }
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 16mm 14mm;
+            box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+        .company h1 {
+            margin: 0 0 8px;
+            font-size: 24px;
+        }
+        .company p {
+            margin: 2px 0;
+            font-size: 13px;
+        }
+        .doc-box {
+            min-width: 290px;
+            border: 2px solid #1d4ed8;
+            padding: 14px;
+            text-align: center;
+        }
+        .doc-box .ruc {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .doc-box .title {
+            margin: 8px 0;
+            padding: 8px 0;
+            background: #eff6ff;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1d4ed8;
+        }
+        .doc-box .number {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .panel {
+            border: 1px solid #d7dee7;
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .panel h3 {
+            margin: 0 0 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #334155;
+        }
+        .panel p {
+            margin: 6px 0;
+            font-size: 13px;
+        }
+        .amount-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .amount-card {
+            border: 1px solid #dbe3ec;
+            border-radius: 12px;
+            padding: 14px;
+            background: #f8fafc;
+        }
+        .amount-card .label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #64748b;
+        }
+        .amount-card .value {
+            display: block;
+            margin-top: 6px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .status {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #eff6ff;
+            border-left: 5px solid #2563eb;
+            font-size: 13px;
+        }
+        .status strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .notes {
+            border-top: 1px dashed #cbd5e1;
+            margin-top: 24px;
+            padding-top: 16px;
+            text-align: center;
+            color: #475569;
+            font-size: 12px;
+        }
+        @media print {
+            body {
+                background: #ffffff;
+            }
+            .page {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                box-shadow: none;
+                padding: 10mm 8mm;
+            }
+        }
+    </style>
+</head>
+<body onload="setTimeout(function(){ window.print(); }, 500)">
+<div class="page">
+    <div class="header">
+        <div class="company">
+            <h1 th:text="${config.nombreEmpresa}">NOMBRE EMPRESA</h1>
+            <p th:text="${(config.direccionTicket != null and !config.direccionTicket.isEmpty()) ? config.direccionTicket : config.direccion}">
+                Direccion empresa
+            </p>
+            <p th:text="|Telefono: ${(config.telefonoTicket != null and !config.telefonoTicket.isEmpty()) ? config.telefonoTicket : config.telefono}|">
+                Telefono
+            </p>
+            <p th:text="|Email: ${config.email}|">Email</p>
+        </div>
+        <div class="doc-box">
+            <div class="ruc" th:text="|RUC ${config.ruc}|">RUC 00000000000</div>
+            <div class="title">COMPROBANTE DE PAGO</div>
+            <div class="number" th:text="|Operacion #${pago.id}|">Operacion #1</div>
+            <div th:text="|${tipoCobranza} / ${pago.metodoPago}|">CREDITO / EFECTIVO</div>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="panel">
+            <h3>Datos del Cliente</h3>
+            <p><strong>Cliente:</strong> <span th:text="${venta.clienteDenominacion}">Cliente</span></p>
+            <p><strong>Documento:</strong> <span th:text="${venta.clienteNumeroDocumento}">00000000</span></p>
+            <p><strong>Referencia Venta:</strong> <span th:text="|${venta.tipoComprobante} ${venta.serie}-${venta.numero}|">NOTA_VENTA NV01-1</span></p>
+            <p><strong>Condicion:</strong> <span th:text="${venta.formaPago}">CREDITO</span></p>
+        </div>
+        <div class="panel">
+            <h3>Datos del Pago</h3>
+            <p><strong>Fecha y Hora:</strong> <span th:text="${#temporals.format(pago.fechaPago, 'dd/MM/yyyy HH:mm')}">23/03/2026 10:00</span></p>
+            <p><strong>Metodo:</strong> <span th:text="${pago.metodoPago}">EFECTIVO</span></p>
+            <p><strong>Concepto:</strong> <span th:text="${pago.observacion != null and !pago.observacion.isEmpty() ? pago.observacion : 'PAGO DE CUOTA'}">PAGO DE CUOTA</span></p>
+            <p><strong>Estado actual:</strong>
+                <span th:text="${venta.saldoPendiente != null and venta.saldoPendiente.signum() == 0 ? (venta.entregaPendiente ? 'LISTO PARA ENTREGA' : 'PAGADO TOTAL') : 'PAGO PARCIAL'}">
+                    PAGO PARCIAL
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="amount-grid">
+        <div class="amount-card">
+            <span class="label">Monto Pagado Ahora</span>
+            <span class="value" th:text="${(config.formatoMoneda != null and !config.formatoMoneda.isEmpty() ? config.formatoMoneda : 'S/') + ' ' + #numbers.formatDecimal(pago.monto, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
+        </div>
+        <div class="amount-card">
+            <span class="label">Total Acumulado</span>
+            <span class="value" th:text="${(config.formatoMoneda != null and !config.formatoMoneda.isEmpty() ? config.formatoMoneda : 'S/') + ' ' + #numbers.formatDecimal(venta.montoPagado, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
+        </div>
+        <div class="amount-card">
+            <span class="label">Saldo Pendiente</span>
+            <span class="value" th:text="${(config.formatoMoneda != null and !config.formatoMoneda.isEmpty() ? config.formatoMoneda : 'S/') + ' ' + #numbers.formatDecimal(venta.saldoPendiente, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
+        </div>
+    </div>
+
+    <div class="status">
+        <strong th:text="${venta.saldoPendiente != null and venta.saldoPendiente.signum() == 0 ? 'Pago completado' : 'Pago registrado correctamente'}">Pago registrado correctamente</strong>
+        <span th:if="${venta.saldoPendiente != null and venta.saldoPendiente.signum() == 0 and venta.entregaPendiente}">
+            El apartado quedo pagado por completo y ya puede pasar a entrega final.
+        </span>
+        <span th:if="${venta.saldoPendiente != null and venta.saldoPendiente.signum() == 0 and !venta.entregaPendiente}">
+            La deuda quedo cancelada en su totalidad.
+        </span>
+        <span th:if="${venta.saldoPendiente == null or venta.saldoPendiente.signum() > 0}">
+            Aun queda saldo pendiente por cobrar en esta operacion.
+        </span>
+    </div>
+
+    <div class="notes">
+        <div th:if="${config.mensajePieTicket != null and !config.mensajePieTicket.isEmpty()}" th:text="${config.mensajePieTicket}">
+            Gracias por su pago.
+        </div>
+        <div th:if="${config.mensajePieTicket == null or config.mensajePieTicket.isEmpty()}">Conserve este comprobante como constancia del abono realizado.</div>
+    </div>
+</div>
+</body>
+</html>

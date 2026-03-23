@@ -55,6 +55,15 @@ public interface DevolucionVentaRepository extends JpaRepository<DevolucionVenta
            @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
+     * Suma el total devuelto (cualquier método de reembolso) en un periodo.
+     * Se usa para reportes financieros netos.
+     */
+    @Query("SELECT COALESCE(SUM(d.totalDevuelto), 0) FROM DevolucionVenta d " +
+           "WHERE d.estado = 'PROCESADA' AND d.fechaEmision BETWEEN :inicio AND :fin")
+    java.math.BigDecimal sumTotalDevueltoPorPeriodo(
+           @Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
      * Suma el total devuelto agrupado por ventaId para una lista de ventas (una sola query).
      * Retorna pares [ventaId, totalDevuelto].
      */

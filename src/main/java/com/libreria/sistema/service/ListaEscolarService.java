@@ -49,7 +49,7 @@ public class ListaEscolarService {
     private static final int DIAS_VENCIMIENTO = 15;
 
     // =========================================================
-    //  FASE 1: CREACIÓN DE LISTA
+    // FASE 1: CREACIÓN DE LISTA
     // =========================================================
 
     /**
@@ -60,11 +60,18 @@ public class ListaEscolarService {
     public ListaEscolar crearLista(ListaEscolarDTO dto) {
         log.info("Creando nueva lista escolar para alumno: {}", dto.getNombreAlumno());
 
-        // FIX ERROR-7: usar correlativo con lock pesimista para evitar duplicados en concurrencia.
-        // El código "LISTA_ESCOLAR" con serie "LE001" se crea automáticamente si no existe.
+        // FIX ERROR-7: usar correlativo con lock pesimista para evitar duplicados en
+        // concurrencia.
+        // El código "LISTA_ESCOLAR" con serie "LE001" se crea automáticamente si no
+        // existe.
         Correlativo correlativoLista = correlativoRepository.findByCodigoAndSerieWithLock("LISTA_ESCOLAR", SERIE_LISTA)
                 .orElseGet(() -> correlativoRepository.save(new Correlativo("LISTA_ESCOLAR", SERIE_LISTA, 0)));
-        int nuevoNumero = (correlativoLista.getUltimoNumero() != null ? correlativoLista.getUltimoNumero() : 0) + 1;
+
+        int ultimoCorrelativo = correlativoLista.getUltimoNumero() != null ? correlativoLista.getUltimoNumero() : 0;
+        int maxEnDb = listaRepository.findMaxNumeroBySerie(SERIE_LISTA);
+
+        int nuevoNumero = Math.max(ultimoCorrelativo, maxEnDb) + 1;
+
         correlativoLista.setUltimoNumero(nuevoNumero);
         correlativoRepository.save(correlativoLista);
 
@@ -76,8 +83,7 @@ public class ListaEscolarService {
         lista.setGrado(dto.getGrado());
         lista.setSeccion(dto.getSeccion());
         lista.setColegio(dto.getColegio());
-        lista.setAnioEscolar(dto.getAnioEscolar() != null ?
-            dto.getAnioEscolar() : LocalDate.now().getYear());
+        lista.setAnioEscolar(dto.getAnioEscolar() != null ? dto.getAnioEscolar() : LocalDate.now().getYear());
         lista.setContactoNombre(dto.getContactoNombre());
         lista.setContactoTelefono(dto.getContactoTelefono());
         lista.setContactoEmail(dto.getContactoEmail());
@@ -89,7 +95,7 @@ public class ListaEscolarService {
         // Obtener cliente si existe
         if (dto.getClienteId() != null) {
             clienteRepository.findById(dto.getClienteId())
-                .ifPresent(lista::setCliente);
+                    .ifPresent(lista::setCliente);
         }
 
         // Usuario actual
@@ -112,11 +118,13 @@ public class ListaEscolarService {
             String textoItem = item.getTextoOriginal();
             if (dto.getTextosEditados() != null && dto.getTextosEditados().containsKey(i)) {
                 String editado = dto.getTextosEditados().get(i);
-                if (editado != null && !editado.isBlank()) textoItem = editado.trim();
+                if (editado != null && !editado.isBlank())
+                    textoItem = editado.trim();
             }
             detalle.setTextoOriginal(textoItem);
 
-            // Usar cantidad validada por el usuario (preview) si existe, si no la del parser
+            // Usar cantidad validada por el usuario (preview) si existe, si no la del
+            // parser
             int cantidad = item.getCantidad();
             if (dto.getCantidadesValidadas() != null &&
                     dto.getCantidadesValidadas().containsKey(i)) {
@@ -137,7 +145,7 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  FASE 2: GENERACIÓN DE COTIZACIONES
+    // FASE 2: GENERACIÓN DE COTIZACIONES
     // =========================================================
 
     /**
@@ -147,7 +155,7 @@ public class ListaEscolarService {
     @Transactional
     public ListaEscolar generarCotizaciones(Long listaId) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         log.info("Generando cotizaciones para lista {}", lista.getCodigoCompleto());
 
@@ -160,8 +168,8 @@ public class ListaEscolarService {
                 continue;
             }
             // Buscar match para este item
-            MatcherProductosService.ResultadoMatch match =
-                matcherService.buscarMatch(detalle.getTextoOriginal(), detalle.getCantidadSolicitada());
+            MatcherProductosService.ResultadoMatch match = matcherService.buscarMatch(detalle.getTextoOriginal(),
+                    detalle.getCantidadSolicitada());
 
             if (match.isTieneMatch()) {
                 // Asignar producto principal
@@ -233,7 +241,7 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  FASE 3: EDICIÓN DE COTIZACIÓN
+    // FASE 3: EDICIÓN DE COTIZACIÓN
     // =========================================================
 
     /**
@@ -242,7 +250,7 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar actualizarDetalle(Long detalleId, DetalleListaEscolarDTO dto) {
         final DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         // Validar que no esté vendido
         if ("VENDIDO".equals(detalle.getEstado())) {
@@ -350,7 +358,7 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  FASE 4: VENTA PARCIAL/TOTAL
+    // FASE 4: VENTA PARCIAL/TOTAL
     // =========================================================
 
     /**
@@ -363,11 +371,11 @@ public class ListaEscolarService {
 
         // 1. Validar caja abierta
         SesionCaja sesion = cajaService.obtenerSesionActiva()
-            .orElseThrow(() -> new RuntimeException("CAJA CERRADA: Debe abrir caja antes de registrar ventas"));
+                .orElseThrow(() -> new RuntimeException("CAJA CERRADA: Debe abrir caja antes de registrar ventas"));
 
         // 2. Obtener lista con lock
         ListaEscolar lista = listaRepository.findByIdWithLock(dto.getListaEscolarId())
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
 
         // 3. Validar estado de lista
         if (!lista.permiteVentas()) {
@@ -384,7 +392,7 @@ public class ListaEscolarService {
             if (item.getDetalleListaId() != null) {
                 // Item de la lista escolar
                 detalle = detalleRepository.findById(item.getDetalleListaId())
-                    .orElseThrow(() -> new RuntimeException("Item no encontrado: " + item.getDetalleListaId()));
+                        .orElseThrow(() -> new RuntimeException("Item no encontrado: " + item.getDetalleListaId()));
 
                 // Validar que pertenece a la lista
                 if (!detalle.getListaEscolar().getId().equals(lista.getId())) {
@@ -405,7 +413,7 @@ public class ListaEscolarService {
 
             // Validar producto asignado
             Producto producto = productoRepository.findByIdWithLock(item.getProductoId())
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + item.getProductoId()));
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + item.getProductoId()));
 
             // Validar stock (si no es servicio)
             if (!"SERVICIO".equalsIgnoreCase(producto.getTipo())) {
@@ -454,7 +462,7 @@ public class ListaEscolarService {
             detalleVenta.setCostoUnitario(costoUnit);
             detalleVenta.setUtilidadUnitaria(itemDTO.getPrecioUnitario().subtract(costoUnit));
             detalleVenta.setUtilidadTotal(itemDTO.getPrecioUnitario().subtract(costoUnit)
-                .multiply(BigDecimal.valueOf(itemDTO.getCantidad())));
+                    .multiply(BigDecimal.valueOf(itemDTO.getCantidad())));
 
             // Cálculos IGV
             BigDecimal valorUnitario = itemDTO.getPrecioUnitario().divide(igvFactor, 6, RoundingMode.HALF_UP);
@@ -469,8 +477,8 @@ public class ListaEscolarService {
             if (producto.getTipoAfectacionIgv() != null) {
                 codigoAfectacion = switch (producto.getTipoAfectacionIgv().toUpperCase()) {
                     case "EXONERADO" -> com.libreria.sistema.util.Constants.AFECTACION_EXONERADO;
-                    case "INAFECTO"  -> com.libreria.sistema.util.Constants.AFECTACION_INAFECTO;
-                    default          -> com.libreria.sistema.util.Constants.AFECTACION_GRAVADO;
+                    case "INAFECTO" -> com.libreria.sistema.util.Constants.AFECTACION_INAFECTO;
+                    default -> com.libreria.sistema.util.Constants.AFECTACION_GRAVADO;
                 };
             }
             detalleVenta.setCodigoTipoAfectacionIgv(codigoAfectacion);
@@ -526,8 +534,9 @@ public class ListaEscolarService {
         }
 
         // 10. Registrar pago y caja
-        BigDecimal montoAbonado = "CREDITO".equals(dto.getFormaPago()) ?
-            (dto.getMontoInicial() != null ? dto.getMontoInicial() : BigDecimal.ZERO) : totalVenta;
+        BigDecimal montoAbonado = "CREDITO".equals(dto.getFormaPago())
+                ? (dto.getMontoInicial() != null ? dto.getMontoInicial() : BigDecimal.ZERO)
+                : totalVenta;
 
         if (montoAbonado.compareTo(BigDecimal.ZERO) > 0) {
             registrarPagoYCaja(venta, montoAbonado, dto.getMetodoPago());
@@ -541,8 +550,7 @@ public class ListaEscolarService {
         ventaLista.setMontoVendido(totalVenta);
         ventaLista.setEsVentaParcial(lista.getItemsPendientes() > itemsAVender.size());
         usuarioRepository.findByUsername(
-            SecurityContextHolder.getContext().getAuthentication().getName()
-        ).ifPresent(ventaLista::setUsuario);
+                SecurityContextHolder.getContext().getAuthentication().getName()).ifPresent(ventaLista::setUsuario);
         ventaListaRepository.save(ventaLista);
 
         // 12. Actualizar lista
@@ -558,19 +566,18 @@ public class ListaEscolarService {
         listaRepository.save(lista);
 
         log.info("Venta {} procesada: {} items, total S/ {}",
-            venta.getSerie() + "-" + venta.getNumero(),
-            itemsAVender.size(), totalVenta);
+                venta.getSerie() + "-" + venta.getNumero(),
+                itemsAVender.size(), totalVenta);
 
         return Map.of(
-            "success", true,
-            "ventaId", venta.getId(),
-            "serie", venta.getSerie(),
-            "numero", venta.getNumero(),
-            "total", totalVenta,
-            "itemsVendidos", itemsAVender.size(),
-            "itemsPendientes", lista.getItemsPendientes(),
-            "estadoLista", lista.getEstado()
-        );
+                "success", true,
+                "ventaId", venta.getId(),
+                "serie", venta.getSerie(),
+                "numero", venta.getNumero(),
+                "total", totalVenta,
+                "itemsVendidos", itemsAVender.size(),
+                "itemsPendientes", lista.getItemsPendientes(),
+                "estadoLista", lista.getEstado());
     }
 
     /**
@@ -583,7 +590,7 @@ public class ListaEscolarService {
 
         // Correlativo con lock
         Correlativo correlativo = correlativoRepository.findByCodigoAndSerieWithLock(tipo, serie)
-            .orElseGet(() -> correlativoRepository.save(new Correlativo(tipo, serie, 0)));
+                .orElseGet(() -> correlativoRepository.save(new Correlativo(tipo, serie, 0)));
 
         int nuevoNumero = (correlativo.getUltimoNumero() != null ? correlativo.getUltimoNumero() : 0) + 1;
         correlativo.setUltimoNumero(nuevoNumero);
@@ -598,8 +605,8 @@ public class ListaEscolarService {
         venta.setMetodoPago(dto.getMetodoPago() != null ? dto.getMetodoPago() : "EFECTIVO");
 
         // Datos cliente
-        venta.setClienteDenominacion(dto.getClienteNombre() != null ?
-            dto.getClienteNombre() : lista.getContactoNombre());
+        venta.setClienteDenominacion(
+                dto.getClienteNombre() != null ? dto.getClienteNombre() : lista.getContactoNombre());
         venta.setClienteNumeroDocumento(dto.getClienteDocumento());
         venta.setClienteDireccion(dto.getClienteDireccion());
 
@@ -650,12 +657,12 @@ public class ListaEscolarService {
         amortizacionRepository.save(amo);
 
         cajaService.registrarMovimiento("INGRESO",
-            "VENTA LISTA ESC. " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")",
-            monto, CategoriaMovimiento.VENTA);
+                "VENTA LISTA ESC. " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")",
+                monto, CategoriaMovimiento.VENTA);
     }
 
     // =========================================================
-    //  CONSULTAS Y LISTADOS
+    // CONSULTAS Y LISTADOS
     // =========================================================
 
     /**
@@ -665,7 +672,7 @@ public class ListaEscolarService {
      */
     @Transactional(readOnly = true)
     public Page<ListaEscolar> buscar(String estado, String busqueda,
-                                      Integer anio, Pageable pageable) {
+            Integer anio, Pageable pageable) {
         // Normalizar: remover tildes/acentos para búsqueda flexible
         String busquedaNormalizada = normalizarBusqueda(busqueda);
         String estadoLimpio = (estado != null && estado.trim().isEmpty()) ? null : estado;
@@ -676,7 +683,8 @@ public class ListaEscolarService {
      * Normaliza texto de búsqueda: remueve acentos/tildes y caracteres especiales.
      */
     private String normalizarBusqueda(String texto) {
-        if (texto == null || texto.trim().isEmpty()) return null;
+        if (texto == null || texto.trim().isEmpty())
+            return null;
         String normalizado = java.text.Normalizer.normalize(texto.trim(), java.text.Normalizer.Form.NFD);
         normalizado = normalizado.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
         return normalizado;
@@ -689,7 +697,7 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar omitirPorNivel(Long detalleId, String nivel, boolean omitir) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if ("VENDIDO".equals(detalle.getEstado())) {
             throw new RuntimeException("No se puede omitir un item ya vendido");
@@ -715,7 +723,8 @@ public class ListaEscolarService {
         for (Map<String, Object> entry : cantidades) {
             Long detalleId = Long.valueOf(entry.get("id").toString());
             int cantidad = Integer.parseInt(entry.get("cantidad").toString());
-            if (cantidad < 1) cantidad = 1;
+            if (cantidad < 1)
+                cantidad = 1;
             final int cantidadFinal = cantidad;
             detalleRepository.findById(detalleId).ifPresent(detalle -> {
                 if (detalle.getListaEscolar() != null
@@ -768,8 +777,10 @@ public class ListaEscolarService {
     }
 
     /**
-     * Obtiene todas las transacciones de venta de una lista con sus detalles completos.
-     * Carga los DetalleVenta de cada Venta dentro de la transacción para evitar LazyInit.
+     * Obtiene todas las transacciones de venta de una lista con sus detalles
+     * completos.
+     * Carga los DetalleVenta de cada Venta dentro de la transacción para evitar
+     * LazyInit.
      * Usado para el PDF combinado y el POS modal de devoluciones.
      */
     @Transactional(readOnly = true)
@@ -778,7 +789,8 @@ public class ListaEscolarService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (VentaListaEscolar vl : ventasLista) {
             Venta venta = vl.getVenta();
-            if (venta == null || "ANULADO".equals(venta.getEstado())) continue;
+            if (venta == null || "ANULADO".equals(venta.getEstado()))
+                continue;
             // Acceder a items (LAZY) dentro de la transacción activa
             List<com.libreria.sistema.model.DetalleVenta> detalles = venta.getItems();
             Map<String, Object> ventaMap = new LinkedHashMap<>();
@@ -792,10 +804,12 @@ public class ListaEscolarService {
             List<Map<String, Object>> items = new ArrayList<>();
             if (detalles != null) {
                 for (com.libreria.sistema.model.DetalleVenta d : detalles) {
-                    if (d.getProducto() == null) continue;
+                    if (d.getProducto() == null)
+                        continue;
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("productoId", d.getProducto().getId());
-                    item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion() : d.getProducto().getNombre());
+                    item.put("descripcion",
+                            d.getDescripcion() != null ? d.getDescripcion() : d.getProducto().getNombre());
                     item.put("cantidad", d.getCantidad() != null ? d.getCantidad().intValue() : 0);
                     item.put("precioUnitario", d.getPrecioUnitario());
                     item.put("subtotal", d.getSubtotal());
@@ -823,7 +837,7 @@ public class ListaEscolarService {
     @Transactional
     public void cancelarLista(Long listaId) {
         ListaEscolar lista = listaRepository.findById(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada"));
 
         if (lista.getItemsVendidos() > 0) {
             throw new RuntimeException("No se puede cancelar una lista con ventas realizadas");
@@ -839,7 +853,8 @@ public class ListaEscolarService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> obtenerEstadisticas(Integer anio) {
-        if (anio == null) anio = LocalDate.now().getYear();
+        if (anio == null)
+            anio = LocalDate.now().getYear();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalListas", listaRepository.countByAnioEscolar(anio));
@@ -853,7 +868,7 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  EDICIÓN POR NIVELES
+    // EDICIÓN POR NIVELES
     // =========================================================
 
     /**
@@ -862,7 +877,7 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar actualizarProductoPorNivel(Long detalleId, String nivel, Long productoId) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if ("VENDIDO".equals(detalle.getEstado())) {
             throw new RuntimeException("No se puede modificar un item ya vendido");
@@ -873,7 +888,7 @@ public class ListaEscolarService {
 
         if (productoId != null) {
             producto = productoRepository.findById(productoId)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
             precio = producto.getPrecioVenta();
         }
 
@@ -893,11 +908,14 @@ public class ListaEscolarService {
             default -> throw new RuntimeException("Nivel inválido: " + nivel);
         }
 
-        // FIX: Si nivelSeleccionado es null (item venía de NO_COTIZADO sin match automático),
+        // FIX: Si nivelSeleccionado es null (item venía de NO_COTIZADO sin match
+        // automático),
         // establecerlo al nivel asignado manualmente.
-        // Sin esto, getProductoFinal() retorna el campo genérico 'producto' (que también es null)
+        // Sin esto, getProductoFinal() retorna el campo genérico 'producto' (que
+        // también es null)
         // ignorando productoMedio/productoEconomico/productoPremium recién asignados,
-        // y el POS muestra el item como "Sin asignar" aunque el producto sí esté persistido.
+        // y el POS muestra el item como "Sin asignar" aunque el producto sí esté
+        // persistido.
         if (detalle.getNivelSeleccionado() == null) {
             detalle.setNivelSeleccionado(nivel.toUpperCase());
             detalle.setPrecioFinal(precio);
@@ -927,13 +945,13 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar agregarRegalo(Long listaId, String texto, String nivel) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         // Determinar el orden
         int maxOrden = lista.getDetalles().stream()
-            .mapToInt(DetalleListaEscolar::getOrden)
-            .max()
-            .orElse(0);
+                .mapToInt(DetalleListaEscolar::getOrden)
+                .max()
+                .orElse(0);
 
         DetalleListaEscolar regalo = DetalleListaEscolar.crearRegalo(lista, texto, nivel, maxOrden + 1);
         regalo = detalleRepository.save(regalo);
@@ -953,7 +971,7 @@ public class ListaEscolarService {
     @Transactional
     public void eliminarRegalo(Long detalleId) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if (!detalle.esItemRegalo()) {
             throw new RuntimeException("Solo se pueden eliminar items de tipo regalo");
@@ -975,7 +993,7 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  SERVICIOS ADICIONALES
+    // SERVICIOS ADICIONALES
     // =========================================================
 
     /**
@@ -985,7 +1003,7 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar agregarServicio(Long listaId, String texto, BigDecimal precio, String nivel) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("El precio del servicio debe ser mayor a cero");
@@ -993,9 +1011,9 @@ public class ListaEscolarService {
 
         // Determinar el orden
         int maxOrden = lista.getDetalles().stream()
-            .mapToInt(DetalleListaEscolar::getOrden)
-            .max()
-            .orElse(0);
+                .mapToInt(DetalleListaEscolar::getOrden)
+                .max()
+                .orElse(0);
 
         DetalleListaEscolar servicio = DetalleListaEscolar.crearServicio(lista, texto, nivel, precio, maxOrden + 1);
         servicio = detalleRepository.save(servicio);
@@ -1006,7 +1024,8 @@ public class ListaEscolarService {
         recalcularTotales(lista);
         listaRepository.save(lista);
 
-        log.info("Servicio '{}' (S/ {}) agregado a lista {} para nivel {}", texto, precio, lista.getCodigoCompleto(), nivel);
+        log.info("Servicio '{}' (S/ {}) agregado a lista {} para nivel {}", texto, precio, lista.getCodigoCompleto(),
+                nivel);
         return servicio;
     }
 
@@ -1016,7 +1035,7 @@ public class ListaEscolarService {
     @Transactional
     public void eliminarServicio(Long detalleId) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if (!detalle.esItemServicio()) {
             throw new RuntimeException("Solo se pueden eliminar items de tipo servicio");
@@ -1044,7 +1063,7 @@ public class ListaEscolarService {
     @Transactional
     public void copiarNivel(Long listaId, String nivelOrigen, String nivelDestino) {
         if (!List.of("ECONOMICO", "MEDIO", "PREMIUM").contains(nivelOrigen.toUpperCase()) ||
-            !List.of("ECONOMICO", "MEDIO", "PREMIUM").contains(nivelDestino.toUpperCase())) {
+                !List.of("ECONOMICO", "MEDIO", "PREMIUM").contains(nivelDestino.toUpperCase())) {
             throw new RuntimeException("Niveles inválidos");
         }
 
@@ -1053,7 +1072,7 @@ public class ListaEscolarService {
         }
 
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         int copiados = 0;
         for (DetalleListaEscolar detalle : lista.getDetalles()) {
@@ -1076,7 +1095,8 @@ public class ListaEscolarService {
                 default -> BigDecimal.ZERO;
             };
 
-            // Si el origen no tiene nada que copiar, saltar (no sobreescribir destino con null)
+            // Si el origen no tiene nada que copiar, saltar (no sobreescribir destino con
+            // null)
             if (productoOrigen == null && (precioOrigen == null || precioOrigen.compareTo(BigDecimal.ZERO) == 0)) {
                 continue;
             }
@@ -1108,18 +1128,19 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  COTIZACIÓN MANUAL (PROVEEDOR EXTERNO)
+    // COTIZACIÓN MANUAL (PROVEEDOR EXTERNO)
     // =========================================================
 
     /**
-     * Establece una cotización manual de proveedor para un item sin producto en inventario.
+     * Establece una cotización manual de proveedor para un item sin producto en
+     * inventario.
      * Permite cotizar productos que no tenemos pero podemos conseguir.
      */
     @Transactional
     public DetalleListaEscolar setCotizacionProveedor(Long detalleId, String nivel, BigDecimal precio,
-                                                       String descripcion, String proveedor) {
+            String descripcion, String proveedor) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if ("VENDIDO".equals(detalle.getEstado())) {
             throw new RuntimeException("No se puede modificar un item ya vendido");
@@ -1139,26 +1160,27 @@ public class ListaEscolarService {
         listaRepository.save(detalle.getListaEscolar());
 
         log.info("Cotización proveedor establecida: detalle={}, nivel={}, precio={}, proveedor={}",
-            detalleId, nivel, precio, proveedor);
+                detalleId, nivel, precio, proveedor);
 
         return detalle;
     }
 
     /**
-     * Vincula un producto real del inventario a un item que tenía cotización manual.
+     * Vincula un producto real del inventario a un item que tenía cotización
+     * manual.
      * Se usa cuando ya compramos el producto y lo ingresamos al sistema.
      */
     @Transactional
     public DetalleListaEscolar vincularProductoAManual(Long detalleId, String nivel, Long productoId) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         if ("VENDIDO".equals(detalle.getEstado())) {
             throw new RuntimeException("No se puede modificar un item ya vendido");
         }
 
         Producto producto = productoRepository.findById(productoId)
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
 
         // Vincular producto
         detalle.vincularProducto(nivel.toUpperCase(), producto);
@@ -1173,11 +1195,12 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  REPORTE DE PRODUCTOS FALTANTES
+    // REPORTE DE PRODUCTOS FALTANTES
     // =========================================================
 
     /**
-     * Obtiene el reporte de productos faltantes (sin producto ni cotización manual).
+     * Obtiene el reporte de productos faltantes (sin producto ni cotización
+     * manual).
      * Agrupa por texto similar para identificar demanda.
      */
     @Transactional(readOnly = true)
@@ -1188,7 +1211,8 @@ public class ListaEscolarService {
 
         for (Object[] row : faltantesAgrupados) {
             String textoOriginal = (String) row[0];
-            if (textoOriginal == null || textoOriginal.isBlank()) continue;
+            if (textoOriginal == null || textoOriginal.isBlank())
+                continue;
 
             Long veces = (Long) row[1];
             Long cantidad = (Long) row[2];
@@ -1206,7 +1230,8 @@ public class ListaEscolarService {
     }
 
     /**
-     * Obtiene los detalles de un producto faltante específico (todas las listas que lo piden).
+     * Obtiene los detalles de un producto faltante específico (todas las listas que
+     * lo piden).
      */
     @Transactional(readOnly = true)
     public List<ProductoFaltanteDTO.DetalleFaltante> obtenerDetallesFaltante(String textoNormalizado) {
@@ -1214,18 +1239,23 @@ public class ListaEscolarService {
             return new ArrayList<>();
         }
 
-        // Buscar solo los items que coinciden con el texto (query optimizada, no findAll)
+        // Buscar solo los items que coinciden con el texto (query optimizada, no
+        // findAll)
         List<DetalleListaEscolar> items = detalleRepository.findFaltantesPorTexto(textoNormalizado);
         List<ProductoFaltanteDTO.DetalleFaltante> detalles = new ArrayList<>();
 
         for (DetalleListaEscolar item : items) {
             ListaEscolar lista = item.getListaEscolar();
-            if (lista == null) continue;
+            if (lista == null)
+                continue;
 
             // Verificar niveles faltantes
-            boolean faltaEconomico = item.getProductoEconomico() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorEconomico());
-            boolean faltaMedio = item.getProductoMedio() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorMedio());
-            boolean faltaPremium = item.getProductoPremium() == null && !Boolean.TRUE.equals(item.getCotizadoProveedorPremium());
+            boolean faltaEconomico = item.getProductoEconomico() == null
+                    && !Boolean.TRUE.equals(item.getCotizadoProveedorEconomico());
+            boolean faltaMedio = item.getProductoMedio() == null
+                    && !Boolean.TRUE.equals(item.getCotizadoProveedorMedio());
+            boolean faltaPremium = item.getProductoPremium() == null
+                    && !Boolean.TRUE.equals(item.getCotizadoProveedorPremium());
 
             if (faltaEconomico || faltaMedio || faltaPremium) {
                 ProductoFaltanteDTO.DetalleFaltante detalle = new ProductoFaltanteDTO.DetalleFaltante();
@@ -1239,9 +1269,12 @@ public class ListaEscolarService {
                 detalle.setFechaSolicitud(lista.getFechaCreacion());
 
                 StringBuilder niveles = new StringBuilder();
-                if (faltaEconomico) niveles.append("E");
-                if (faltaMedio) niveles.append("M");
-                if (faltaPremium) niveles.append("P");
+                if (faltaEconomico)
+                    niveles.append("E");
+                if (faltaMedio)
+                    niveles.append("M");
+                if (faltaPremium)
+                    niveles.append("P");
                 detalle.setNivel(niveles.toString());
 
                 detalles.add(detalle);
@@ -1265,19 +1298,20 @@ public class ListaEscolarService {
     @Transactional
     public DetalleListaEscolar marcarProductoComprado(Long detalleId) {
         DetalleListaEscolar detalle = detalleRepository.findById(detalleId)
-            .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
+                .orElseThrow(() -> new RuntimeException("Detalle no encontrado: " + detalleId));
 
         detalle.setProductoComprado(true);
         return detalleRepository.save(detalle);
     }
 
     /**
-     * Asigna un producto a múltiples items (cuando se compra producto para varias listas).
+     * Asigna un producto a múltiples items (cuando se compra producto para varias
+     * listas).
      */
     @Transactional
     public int asignarProductoMasivo(String textoNormalizado, String nivel, Long productoId) {
         Producto producto = productoRepository.findById(productoId)
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
 
         List<ProductoFaltanteDTO.DetalleFaltante> detalles = obtenerDetallesFaltante(textoNormalizado);
 
@@ -1294,7 +1328,7 @@ public class ListaEscolarService {
         }
 
         log.info("Producto {} asignado masivamente a {} items para texto '{}'",
-            productoId, actualizados, textoNormalizado);
+                productoId, actualizados, textoNormalizado);
 
         return actualizados;
     }
@@ -1342,15 +1376,14 @@ public class ListaEscolarService {
         int totalCotizadosProveedor = cotizadosProveedor.size();
 
         return Map.of(
-            "totalItemsFaltantes", totalItemsFaltantes,
-            "totalProductosDiferentes", totalProductosDiferentes,
-            "totalCotizadosProveedor", totalCotizadosProveedor,
-            "topFaltantes", faltantes.stream().limit(10).toList()
-        );
+                "totalItemsFaltantes", totalItemsFaltantes,
+                "totalProductosDiferentes", totalProductosDiferentes,
+                "totalCotizadosProveedor", totalCotizadosProveedor,
+                "topFaltantes", faltantes.stream().limit(10).toList());
     }
 
     // =========================================================
-    //  RESUMEN FINANCIERO - Cálculo en memoria sin queries
+    // RESUMEN FINANCIERO - Cálculo en memoria sin queries
     // =========================================================
 
     /**
@@ -1368,8 +1401,10 @@ public class ListaEscolarService {
         Set<Long> productosSinCosto = new HashSet<>();
 
         for (DetalleListaEscolar detalle : lista.getDetalles()) {
-            if (Boolean.TRUE.equals(detalle.getEsRegalo())) continue;
-            if (Boolean.TRUE.equals(detalle.getEsServicio())) continue;
+            if (Boolean.TRUE.equals(detalle.getEsRegalo()))
+                continue;
+            if (Boolean.TRUE.equals(detalle.getEsServicio()))
+                continue;
 
             int cantidad = detalle.getCantidadSolicitada() != null ? detalle.getCantidadSolicitada() : 1;
             resumen.setItemsTotal(resumen.getItemsTotal() + 1);
@@ -1397,22 +1432,25 @@ public class ListaEscolarService {
     }
 
     // =========================================================
-    //  EDITAR TEXTO ORIGINAL Y REPROCESAR
+    // EDITAR TEXTO ORIGINAL Y REPROCESAR
     // =========================================================
 
     /**
      * Actualiza el texto original de la lista y sincroniza los detalles:
-     * - Líneas que permanecen en el texto → se mantienen sin cambios (respeta ediciones manuales)
+     * - Líneas que permanecen en el texto → se mantienen sin cambios (respeta
+     * ediciones manuales)
      * - Líneas eliminadas del texto → se borran si no están VENDIDO
      * - Líneas nuevas en el texto → se crean y se cotizan automáticamente
-     * Los ítems con estado VENDIDO nunca son afectados (validación dentro de la transacción).
+     * Los ítems con estado VENDIDO nunca son afectados (validación dentro de la
+     * transacción).
      *
-     * @return Map con: success, mensaje, itemsTotal, totales y listas de cambios para UI dinámica
+     * @return Map con: success, mensaje, itemsTotal, totales y listas de cambios
+     *         para UI dinámica
      */
     @Transactional
     public Map<String, Object> actualizarTextoYReprocesar(Long listaId, String nuevoTexto) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         // Validar estado (no modificar listas cerradas)
         if ("COMPLETADA".equals(lista.getEstado()) || "CANCELADA".equals(lista.getEstado())
@@ -1428,20 +1466,21 @@ public class ListaEscolarService {
 
         // Set de textos normalizados del nuevo texto (para comparar)
         Set<String> nuevosTextosNorm = nuevosItemsParseados.stream()
-            .map(i -> normalizarParaComparar(i.getTextoOriginal()))
-            .collect(Collectors.toSet());
+                .map(i -> normalizarParaComparar(i.getTextoOriginal()))
+                .collect(Collectors.toSet());
 
         // Separar detalles vendidos (intocables) y no-vendidos
         // IMPORTANTE: Se re-lee el estado de cada detalle desde la colección ya cargada
-        // (dentro de la transacción, refleja el estado actual en BD gracias al SELECT FOR UPDATE implícito)
+        // (dentro de la transacción, refleja el estado actual en BD gracias al SELECT
+        // FOR UPDATE implícito)
         List<DetalleListaEscolar> detallesNoVendidos = lista.getDetalles().stream()
-            .filter(d -> !"VENDIDO".equals(d.getEstado()))
-            .collect(Collectors.toList());
+                .filter(d -> !"VENDIDO".equals(d.getEstado()))
+                .collect(Collectors.toList());
 
         // Set de textos normalizados de los existentes no-vendidos
         Set<String> existentesTextosNorm = detallesNoVendidos.stream()
-            .map(d -> normalizarParaComparar(d.getTextoOriginal()))
-            .collect(Collectors.toSet());
+                .map(d -> normalizarParaComparar(d.getTextoOriginal()))
+                .collect(Collectors.toSet());
 
         // 1. Identificar detalles a eliminar (están en BD pero ya no en el nuevo texto)
         List<Long> idsEliminados = new ArrayList<>();
@@ -1449,7 +1488,8 @@ public class ListaEscolarService {
         while (iter.hasNext()) {
             DetalleListaEscolar d = iter.next();
             // Nunca eliminar vendidos
-            if ("VENDIDO".equals(d.getEstado())) continue;
+            if ("VENDIDO".equals(d.getEstado()))
+                continue;
             // Si ya no está en el nuevo texto, eliminar
             if (!nuevosTextosNorm.contains(normalizarParaComparar(d.getTextoOriginal()))) {
                 idsEliminados.add(d.getId());
@@ -1457,14 +1497,15 @@ public class ListaEscolarService {
             }
         }
 
-        // 2. Identificar e insertar ítems nuevos (están en el nuevo texto pero no en BD)
+        // 2. Identificar e insertar ítems nuevos (están en el nuevo texto pero no en
+        // BD)
         List<TextoListaParser.ItemParseado> itemsNuevos = nuevosItemsParseados.stream()
-            .filter(i -> !existentesTextosNorm.contains(normalizarParaComparar(i.getTextoOriginal())))
-            .collect(Collectors.toList());
+                .filter(i -> !existentesTextosNorm.contains(normalizarParaComparar(i.getTextoOriginal())))
+                .collect(Collectors.toList());
 
         int maxOrden = lista.getDetalles().stream()
-            .mapToInt(DetalleListaEscolar::getOrden)
-            .max().orElse(0);
+                .mapToInt(DetalleListaEscolar::getOrden)
+                .max().orElse(0);
 
         List<DetalleListaEscolar> nuevosDetalles = new ArrayList<>();
 
@@ -1477,8 +1518,8 @@ public class ListaEscolarService {
             detalle.setOrden(++maxOrden);
 
             // Buscar match automático para el nuevo ítem
-            MatcherProductosService.ResultadoMatch match =
-                matcherService.buscarMatch(item.getTextoOriginal(), item.getCantidad());
+            MatcherProductosService.ResultadoMatch match = matcherService.buscarMatch(item.getTextoOriginal(),
+                    item.getCantidad());
 
             if (match.isTieneMatch()) {
                 detalle.setProducto(match.getProductoPrincipal());
@@ -1511,7 +1552,8 @@ public class ListaEscolarService {
         lista.recalcularPendientes();
         recalcularTotales(lista);
 
-        // Guardar: cascade persiste nuevos detalles y orphanRemoval borra los eliminados
+        // Guardar: cascade persiste nuevos detalles y orphanRemoval borra los
+        // eliminados
         lista = listaRepository.save(lista);
 
         // Construir datos de nuevos ítems para actualización dinámica del frontend
@@ -1527,25 +1569,28 @@ public class ListaEscolarService {
             info.put("precioEconomico", det.getPrecioEconomico());
             info.put("precioMedio", det.getPrecioMedio());
             info.put("precioPremium", det.getPrecioPremium());
-            info.put("productoEconomicoId", det.getProductoEconomico() != null ? det.getProductoEconomico().getId() : null);
-            info.put("productoEconomicoNombre", det.getProductoEconomico() != null ? det.getProductoEconomico().getNombre() : null);
+            info.put("productoEconomicoId",
+                    det.getProductoEconomico() != null ? det.getProductoEconomico().getId() : null);
+            info.put("productoEconomicoNombre",
+                    det.getProductoEconomico() != null ? det.getProductoEconomico().getNombre() : null);
             info.put("productoMedioId", det.getProductoMedio() != null ? det.getProductoMedio().getId() : null);
             info.put("productoMedioNombre", det.getProductoMedio() != null ? det.getProductoMedio().getNombre() : null);
             info.put("productoPremiumId", det.getProductoPremium() != null ? det.getProductoPremium().getId() : null);
-            info.put("productoPremiumNombre", det.getProductoPremium() != null ? det.getProductoPremium().getNombre() : null);
+            info.put("productoPremiumNombre",
+                    det.getProductoPremium() != null ? det.getProductoPremium().getNombre() : null);
             info.put("productoNombre", det.getProductoFinal() != null ? det.getProductoFinal().getNombre() : null);
             info.put("tieneMatch", !"NO_COTIZADO".equals(det.getEstado()));
             nuevosItemsInfo.add(info);
         }
 
         log.info("Lista {} actualizada: {} items eliminados, {} items nuevos agregados y cotizados",
-            lista.getCodigoCompleto(), idsEliminados.size(), nuevosDetalles.size());
+                lista.getCodigoCompleto(), idsEliminados.size(), nuevosDetalles.size());
 
         Map<String, Object> resultado = new HashMap<>();
         resultado.put("success", true);
         resultado.put("mensaje", String.format(
-            "Lista actualizada. %d item(s) eliminado(s), %d item(s) nuevo(s) agregado(s).",
-            idsEliminados.size(), nuevosDetalles.size()));
+                "Lista actualizada. %d item(s) eliminado(s), %d item(s) nuevo(s) agregado(s).",
+                idsEliminados.size(), nuevosDetalles.size()));
         resultado.put("itemsTotal", lista.getItemsTotal());
         resultado.put("totalEconomico", lista.getTotalEconomico());
         resultado.put("totalMedio", lista.getTotalMedio());
@@ -1557,12 +1602,13 @@ public class ListaEscolarService {
 
     /**
      * Agrega nuevos ítems a una lista existente sin eliminar los ya existentes.
-     * Parsea el texto, crea detalles nuevos con orden continuado y cotiza automáticamente.
+     * Parsea el texto, crea detalles nuevos con orden continuado y cotiza
+     * automáticamente.
      */
     @Transactional
     public Map<String, Object> agregarItemsTexto(Long listaId, String texto) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         if ("CANCELADA".equals(lista.getEstado()) || "ELIMINADA".equals(lista.getEstado())) {
             throw new RuntimeException("No se puede modificar una lista en estado " + lista.getEstado());
@@ -1577,8 +1623,8 @@ public class ListaEscolarService {
         }
 
         int maxOrden = lista.getDetalles().stream()
-            .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
-            .max().orElse(0);
+                .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
+                .max().orElse(0);
 
         List<DetalleListaEscolar> nuevosDetalles = new ArrayList<>();
         for (TextoListaParser.ItemParseado item : nuevosParseados) {
@@ -1589,8 +1635,8 @@ public class ListaEscolarService {
             detalle.setEstado("NO_COTIZADO");
             detalle.setOrden(++maxOrden);
 
-            MatcherProductosService.ResultadoMatch match =
-                matcherService.buscarMatch(item.getTextoOriginal(), item.getCantidad());
+            MatcherProductosService.ResultadoMatch match = matcherService.buscarMatch(item.getTextoOriginal(),
+                    item.getCantidad());
 
             if (match.isTieneMatch()) {
                 detalle.setProducto(match.getProductoPrincipal());
@@ -1638,30 +1684,33 @@ public class ListaEscolarService {
     }
 
     /**
-     * Agrega un producto específico directamente a la lista como ítem COTIZADO listo para vender.
-     * Útil cuando el cliente quiere agregar más unidades o productos nuevos sin pasar por el parser OCR.
+     * Agrega un producto específico directamente a la lista como ítem COTIZADO
+     * listo para vender.
+     * Útil cuando el cliente quiere agregar más unidades o productos nuevos sin
+     * pasar por el parser OCR.
      * Si la lista estaba COMPLETADA la reactiva a EN_PROCESO.
      */
     @Transactional
     public DetalleListaEscolar agregarProductoDirecto(Long listaId, Long productoId, int cantidad, BigDecimal precio) {
         ListaEscolar lista = listaRepository.findByIdConDetalles(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         if ("CANCELADA".equals(lista.getEstado()) || "ELIMINADA".equals(lista.getEstado())) {
             throw new RuntimeException("No se puede agregar items a una lista en estado " + lista.getEstado());
         }
 
         Producto producto = productoRepository.findById(productoId)
-            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productoId));
 
-        if (cantidad < 1) cantidad = 1;
+        if (cantidad < 1)
+            cantidad = 1;
         if (precio == null || precio.compareTo(BigDecimal.ZERO) <= 0) {
             precio = producto.getPrecioVenta() != null ? producto.getPrecioVenta() : BigDecimal.ZERO;
         }
 
         int maxOrden = lista.getDetalles().stream()
-            .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
-            .max().orElse(0);
+                .mapToInt(d -> d.getOrden() != null ? d.getOrden() : 0)
+                .max().orElse(0);
 
         DetalleListaEscolar detalle = new DetalleListaEscolar();
         detalle.setListaEscolar(lista);
@@ -1690,7 +1739,8 @@ public class ListaEscolarService {
         lista.recalcularPendientes();
         recalcularTotales(lista);
 
-        // Si estaba COMPLETADA, reactivar para que el POS permita vender los nuevos items
+        // Si estaba COMPLETADA, reactivar para que el POS permita vender los nuevos
+        // items
         if ("COMPLETADA".equals(lista.getEstado())) {
             lista.setEstado("EN_PROCESO");
             log.info("Lista {} reactivada a EN_PROCESO por nuevo producto adicional", lista.getCodigoCompleto());
@@ -1704,15 +1754,17 @@ public class ListaEscolarService {
     }
 
     /**
-     * Normaliza texto para comparación de ítems (trim + minúsculas + espacios normalizados).
+     * Normaliza texto para comparación de ítems (trim + minúsculas + espacios
+     * normalizados).
      */
     private String normalizarParaComparar(String texto) {
-        if (texto == null) return "";
+        if (texto == null)
+            return "";
         return texto.toLowerCase().trim().replaceAll("\\s+", " ");
     }
 
     // =========================================================
-    //  ELIMINACIÓN LÓGICA DE LISTA
+    // ELIMINACIÓN LÓGICA DE LISTA
     // =========================================================
 
     /**
@@ -1723,13 +1775,13 @@ public class ListaEscolarService {
     @Transactional
     public void eliminarLista(Long listaId) {
         ListaEscolar lista = listaRepository.findById(listaId)
-            .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
+                .orElseThrow(() -> new RuntimeException("Lista no encontrada: " + listaId));
 
         if (lista.getItemsVendidos() > 0) {
             throw new RuntimeException(
-                "No se puede eliminar una lista con ventas realizadas. " +
-                "La lista tiene " + lista.getItemsVendidos() + " item(s) vendido(s). " +
-                "Use 'Cancelar' en su lugar.");
+                    "No se puede eliminar una lista con ventas realizadas. " +
+                            "La lista tiene " + lista.getItemsVendidos() + " item(s) vendido(s). " +
+                            "Use 'Cancelar' en su lugar.");
         }
 
         lista.setEstado("ELIMINADA");
@@ -1741,8 +1793,8 @@ public class ListaEscolarService {
      * Acumula venta y costo de un detalle para un nivel específico.
      */
     private void acumularNivel(ResumenFinancieroDTO.NivelFinanciero nivel,
-                               Producto producto, BigDecimal precioVenta,
-                               int cantidad, Set<Long> productosSinCosto) {
+            Producto producto, BigDecimal precioVenta,
+            int cantidad, Set<Long> productosSinCosto) {
         if (producto == null || precioVenta == null || precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
             return; // Item no cotizado en este nivel
         }

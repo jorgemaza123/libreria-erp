@@ -37,10 +37,20 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -2563,103 +2573,64 @@ public class ListaEscolarController {
             alumnoT.addCell(pdfVValCell(contacto));
             document.add(alumnoT);
 
-            // ── TRANSACCIONES ───────────────────────────────────────────────
+            // ── ITEMS UNIFICADOS ─────────────────────────────────────────────
+            // Todos los items de todas las transacciones en una sola tabla,
+            // en orden cronológico (venta original primero, adiciones al final).
             BigDecimal grandTotal = BigDecimal.ZERO;
 
-            for (int t = 0; t < transacciones.size(); t++) {
-                Map<String, Object> tr = transacciones.get(t);
-                String etiqueta = (t == 0) ? "Venta" : "Adición";
-                String fechaTr = "";
-                if (tr.get("fecha") != null && !tr.get("fecha").toString().isBlank()) {
-                    try {
-                        fechaTr = " del " + java.time.LocalDate.parse(tr.get("fecha").toString()).format(fmt);
-                    } catch (Exception ignored2) {}
-                }
-                String comp = tr.get("comprobante") != null ? " (" + tr.get("comprobante") + ")" : "";
+            PdfPTable itemsT = new PdfPTable(new float[]{7f, 1.5f, 2f, 2f});
+            itemsT.setWidthPercentage(100);
+            itemsT.setLockedWidth(false);
+            itemsT.setSpacingBefore(10f);
 
-                // Título de sección
-                Paragraph pSec = new Paragraph(etiqueta + fechaTr + comp,
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9.5f, colorPrimario));
-                pSec.setSpacingBefore(t == 0 ? 10f : 14f);
-                pSec.setSpacingAfter(3f);
-                document.add(pSec);
+            // Header de tabla
+            for (String hdr : new String[]{"Descripción", "Cant.", "P.Unit.", "Subtotal"}) {
+                PdfPCell h = new PdfPCell(new Phrase(hdr,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, Color.WHITE)));
+                h.setBackgroundColor(colorPrimario);
+                h.setBorder(Rectangle.NO_BORDER);
+                h.setPadding(4f);
+                h.setHorizontalAlignment("Descripción".equals(hdr) ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
+                itemsT.addCell(h);
+            }
 
-                // Tabla items de esta transacción
-                PdfPTable itemsT = new PdfPTable(new float[]{7f, 1.5f, 2f, 2f});
-                itemsT.setWidthPercentage(100);
-                itemsT.setLockedWidth(false);
-
-                // Header de tabla
-                for (String hdr : new String[]{"Descripción", "Cant.", "P.Unit.", "Subtotal"}) {
-                    PdfPCell h = new PdfPCell(new Phrase(hdr,
-                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, Color.WHITE)));
-                    h.setBackgroundColor(colorPrimario);
-                    h.setBorder(Rectangle.NO_BORDER);
-                    h.setPadding(4f);
-                    h.setHorizontalAlignment("Descripción".equals(hdr) ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
-                    itemsT.addCell(h);
-                }
-
+            int rowNum2 = 0;
+            for (Map<String, Object> tr : transacciones) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> items = (List<Map<String, Object>>) tr.get("items");
-                BigDecimal subtotalTr = BigDecimal.ZERO;
-                int rowNum2 = 0;
+                if (items == null) continue;
+                for (Map<String, Object> item : items) {
+                    Color rowBg = (rowNum2 % 2 == 0) ? Color.WHITE : new Color(248, 250, 252);
+                    String desc = normalizarDescripcion(item.get("descripcion") != null ? item.get("descripcion").toString() : "");
+                    int cant = item.get("cantidad") != null ? ((Number) item.get("cantidad")).intValue() : 0;
+                    BigDecimal precio = item.get("precioUnitario") != null ? new BigDecimal(item.get("precioUnitario").toString()) : BigDecimal.ZERO;
+                    BigDecimal sub = item.get("subtotal") != null ? new BigDecimal(item.get("subtotal").toString()) : BigDecimal.ZERO;
+                    grandTotal = grandTotal.add(sub);
 
-                if (items != null) {
-                    for (Map<String, Object> item : items) {
-                        Color rowBg = (rowNum2 % 2 == 0) ? Color.WHITE : new Color(248, 250, 252);
-                        String desc = normalizarDescripcion(item.get("descripcion") != null ? item.get("descripcion").toString() : "");
-                        int cant = item.get("cantidad") != null ? ((Number) item.get("cantidad")).intValue() : 0;
-                        BigDecimal precio = item.get("precioUnitario") != null ? new BigDecimal(item.get("precioUnitario").toString()) : BigDecimal.ZERO;
-                        BigDecimal sub = item.get("subtotal") != null ? new BigDecimal(item.get("subtotal").toString()) : BigDecimal.ZERO;
-                        subtotalTr = subtotalTr.add(sub);
+                    PdfPCell cd = new PdfPCell(new Phrase(desc, FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                    cd.setBackgroundColor(rowBg); cd.setBorder(Rectangle.NO_BORDER); cd.setPadding(3f);
+                    itemsT.addCell(cd);
 
-                        PdfPCell cd = new PdfPCell(new Phrase(desc, FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
-                        cd.setBackgroundColor(rowBg); cd.setBorder(Rectangle.NO_BORDER); cd.setPadding(3f);
-                        itemsT.addCell(cd);
+                    PdfPCell cc = new PdfPCell(new Phrase(String.valueOf(cant), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                    cc.setBackgroundColor(rowBg); cc.setBorder(Rectangle.NO_BORDER); cc.setPadding(3f);
+                    cc.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                    itemsT.addCell(cc);
 
-                        PdfPCell cc = new PdfPCell(new Phrase(String.valueOf(cant), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
-                        cc.setBackgroundColor(rowBg); cc.setBorder(Rectangle.NO_BORDER); cc.setPadding(3f);
-                        cc.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                        itemsT.addCell(cc);
+                    PdfPCell cp = new PdfPCell(new Phrase(moneda + String.format("%.2f", precio), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                    cp.setBackgroundColor(rowBg); cp.setBorder(Rectangle.NO_BORDER); cp.setPadding(3f);
+                    cp.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                    itemsT.addCell(cp);
 
-                        PdfPCell cp = new PdfPCell(new Phrase(moneda + String.format("%.2f", precio), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
-                        cp.setBackgroundColor(rowBg); cp.setBorder(Rectangle.NO_BORDER); cp.setPadding(3f);
-                        cp.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                        itemsT.addCell(cp);
+                    PdfPCell cs = new PdfPCell(new Phrase(moneda + String.format("%.2f", sub), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                    cs.setBackgroundColor(rowBg); cs.setBorder(Rectangle.NO_BORDER); cs.setPadding(3f);
+                    cs.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                    itemsT.addCell(cs);
 
-                        PdfPCell cs = new PdfPCell(new Phrase(moneda + String.format("%.2f", sub), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
-                        cs.setBackgroundColor(rowBg); cs.setBorder(Rectangle.NO_BORDER); cs.setPadding(3f);
-                        cs.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                        itemsT.addCell(cs);
-
-                        rowNum2++;
-                    }
+                    rowNum2++;
                 }
-
-                // Fila subtotal de la transacción
-                PdfPCell emptyC = new PdfPCell(new Phrase(""));
-                emptyC.setColspan(2); emptyC.setBorder(Rectangle.TOP);
-                emptyC.setBorderColor(new Color(200, 200, 200)); emptyC.setBorderWidth(0.5f); emptyC.setFixedHeight(3f);
-                itemsT.addCell(emptyC);
-
-                PdfPCell subLbl = new PdfPCell(new Phrase("Subtotal " + etiqueta + ":",
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f)));
-                subLbl.setBorder(Rectangle.TOP); subLbl.setBorderColor(new Color(200, 200, 200));
-                subLbl.setBorderWidth(0.5f); subLbl.setPadding(3f);
-                subLbl.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                itemsT.addCell(subLbl);
-
-                PdfPCell subVal = new PdfPCell(new Phrase(moneda + String.format("%.2f", subtotalTr),
-                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f)));
-                subVal.setBorder(Rectangle.TOP); subVal.setBorderColor(new Color(200, 200, 200));
-                subVal.setBorderWidth(0.5f); subVal.setPadding(3f);
-                subVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                itemsT.addCell(subVal);
-
-                document.add(itemsT);
-                grandTotal = grandTotal.add(subtotalTr);
             }
+
+            document.add(itemsT);
 
             // ── GRAND TOTAL ─────────────────────────────────────────────────
             PdfPTable totalT = new PdfPTable(2);
@@ -2813,8 +2784,315 @@ public class ListaEscolarController {
     }
 
     // =========================================================
+    //  SIMULADOR — PDF desde Excel sin guardar en BD
+    // =========================================================
+
+    /**
+     * Genera un PDF de cotización a partir de un Excel subido manualmente.
+     * No persiste nada en base de datos. Útil para cotizaciones rápidas fuera del local.
+     *
+     * Excel esperado (con o sin fila de encabezado):
+     *   Columna A: Descripción
+     *   Columna B: Cantidad
+     *   Columna C: Precio unitario
+     *   Columna D: Subtotal (opcional, se recalcula)
+     */
+    @PostMapping("/simulador/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'VENDEDOR')")
+    public void generarPDFSimulador(
+            @RequestParam("alumno")   String alumno,
+            @RequestParam(value = "grado",    defaultValue = "") String grado,
+            @RequestParam(value = "seccion",  defaultValue = "") String seccion,
+            @RequestParam(value = "colegio",  defaultValue = "") String colegio,
+            @RequestParam(value = "contacto", defaultValue = "") String contacto,
+            @RequestParam(value = "telefono", defaultValue = "") String telefono,
+            @RequestParam("excel") MultipartFile excel,
+            jakarta.servlet.http.HttpServletResponse response) {
+
+        try {
+            // ── Leer Excel ──────────────────────────────────────────────────
+            List<Map<String, Object>> filas = new ArrayList<>();
+            try (Workbook wb = WorkbookFactory.create(excel.getInputStream())) {
+                Sheet sheet = wb.getSheetAt(0);
+
+                // Detectar fila de encabezado y mapear columnas dinámicamente
+                int colDesc = -1, colCant = -1, colPUnit = -1, colSub = -1;
+                int dataStartRow = 0;
+
+                for (Row row : sheet) {
+                    if (row == null) continue;
+                    for (Cell cell : row) {
+                        if (cell == null || cell.getCellType() != CellType.STRING) continue;
+                        String val = cell.getStringCellValue().trim().toLowerCase()
+                                .replace("á","a").replace("é","e").replace("ó","o").replace("ú","u").replace("ñ","n");
+                        int col = cell.getColumnIndex();
+                        if (val.contains("desc") || val.contains("product") || val.contains("item") || val.contains("nombre"))
+                            colDesc = col;
+                        else if (val.startsWith("cant") || val.equals("und") || val.equals("unid") || val.equals("cantidad"))
+                            colCant = col;
+                        else if (val.contains("unit") || val.contains("p.u") || val.contains("precio") || val.contains("p/u"))
+                            colPUnit = col;
+                        else if (val.contains("sub") || val.contains("total") || val.contains("importe"))
+                            colSub = col;
+                    }
+                    if (colDesc >= 0 && (colCant >= 0 || colPUnit >= 0)) {
+                        dataStartRow = row.getRowNum() + 1;
+                        break;
+                    }
+                }
+
+                // Si no se encontró encabezado, asumir columnas A,B,C,D
+                if (colDesc < 0) { colDesc = 0; colCant = 1; colPUnit = 2; colSub = 3; dataStartRow = 0; }
+
+                for (int r = dataStartRow; r <= sheet.getLastRowNum(); r++) {
+                    Row row = sheet.getRow(r);
+                    if (row == null) continue;
+
+                    String desc = celdaTexto(row.getCell(colDesc));
+                    if (desc.isBlank()) continue;
+
+                    double cant  = colCant  >= 0 ? celdaNumero(row.getCell(colCant))  : 1;
+                    double punit = colPUnit >= 0 ? celdaNumero(row.getCell(colPUnit)) : 0;
+                    double sub   = cant * punit;
+                    if (colSub >= 0) {
+                        double subCell = celdaNumero(row.getCell(colSub));
+                        if (subCell > 0) sub = subCell;
+                    }
+
+                    Map<String, Object> fila = new LinkedHashMap<>();
+                    fila.put("descripcion", desc);
+                    fila.put("cantidad",    (int) Math.round(Math.max(1, cant)));
+                    fila.put("precioUnitario", BigDecimal.valueOf(punit).setScale(2, java.math.RoundingMode.HALF_UP));
+                    fila.put("subtotal",       BigDecimal.valueOf(sub).setScale(2, java.math.RoundingMode.HALF_UP));
+                    filas.add(fila);
+                }
+            }
+
+            if (filas.isEmpty()) {
+                response.sendError(400, "El Excel no contiene filas válidas");
+                return;
+            }
+
+            // ── Configuración visual ─────────────────────────────────────────
+            Configuracion config = configuracionService.obtenerConfiguracion();
+            String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
+            Color colorPrimario = parseColor(config.getColorPrimario(), new Color(44, 62, 80));
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            // ── Respuesta HTTP ───────────────────────────────────────────────
+            response.setContentType("application/pdf");
+            String nombreArchivo = (alumno != null && !alumno.isBlank())
+                    ? sanitizarNombreArchivo(alumno) + "_Cotizacion_Simulador.pdf"
+                    : "Cotizacion_Simulador.pdf";
+            response.setHeader("Content-Disposition", "inline; filename=\"" + nombreArchivo + "\"");
+
+            // ── Generar PDF ──────────────────────────────────────────────────
+            Document document = new Document(PageSize.A4, 30, 30, 25, 25);
+            PdfWriter.getInstance(document, response.getOutputStream());
+            document.open();
+
+            // HEADER
+            boolean hasLogo = Boolean.TRUE.equals(config.getMostrarLogoEnReportes()) && config.getLogoBase64() != null;
+            PdfPTable headerT = new PdfPTable(hasLogo ? 3 : 2);
+            headerT.setWidthPercentage(100);
+            if (hasLogo) headerT.setWidths(new float[]{0.7f, 3.3f, 3f});
+            else         headerT.setWidths(new float[]{3.3f, 3f});
+
+            if (hasLogo) {
+                try {
+                    String b64 = config.getLogoBase64();
+                    if (b64.contains(",")) b64 = b64.split(",")[1];
+                    Image logo = Image.getInstance(Base64.getDecoder().decode(b64));
+                    logo.scaleToFit(50, 35);
+                    PdfPCell logoCell = new PdfPCell(logo, true);
+                    logoCell.setBorder(Rectangle.NO_BORDER);
+                    logoCell.setPadding(2f);
+                    headerT.addCell(logoCell);
+                } catch (Exception ignored) { hasLogo = false; }
+            }
+
+            PdfPCell cEmpresa = new PdfPCell();
+            cEmpresa.setBorder(Rectangle.NO_BORDER);
+            cEmpresa.setPadding(3f);
+            String nombreEmpresa = config.getNombreEmpresa() != null ? config.getNombreEmpresa() : "Empresa";
+            cEmpresa.addElement(new Paragraph(nombreEmpresa,
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13f, colorPrimario)));
+            if (config.getDireccion() != null && !config.getDireccion().isBlank()) {
+                cEmpresa.addElement(new Paragraph(config.getDireccion(),
+                    FontFactory.getFont(FontFactory.HELVETICA, 8f, Color.GRAY)));
+            }
+            headerT.addCell(cEmpresa);
+
+            PdfPCell cTitulo = new PdfPCell();
+            cTitulo.setBorder(Rectangle.NO_BORDER);
+            cTitulo.setPadding(3f);
+            cTitulo.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            Paragraph pTit = new Paragraph("LISTA ESCOLAR",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9f, colorPrimario));
+            pTit.setAlignment(Element.ALIGN_RIGHT);
+            cTitulo.addElement(pTit);
+            Paragraph pFechaDoc = new Paragraph("Emitido: " + LocalDate.now().format(fmt),
+                FontFactory.getFont(FontFactory.HELVETICA, 8f, Color.GRAY));
+            pFechaDoc.setAlignment(Element.ALIGN_RIGHT);
+            cTitulo.addElement(pFechaDoc);
+            headerT.addCell(cTitulo);
+            document.add(headerT);
+
+            // Línea separadora
+            PdfPTable linea = new PdfPTable(1);
+            linea.setWidthPercentage(100);
+            PdfPCell lc = new PdfPCell();
+            lc.setBackgroundColor(colorPrimario);
+            lc.setFixedHeight(3f);
+            lc.setBorder(Rectangle.NO_BORDER);
+            linea.addCell(lc);
+            document.add(linea);
+
+            // DATOS ALUMNO
+            PdfPTable alumnoT = new PdfPTable(4);
+            alumnoT.setWidthPercentage(100);
+            alumnoT.setSpacingBefore(6f);
+            alumnoT.setWidths(new float[]{1f, 2.5f, 1f, 2.5f});
+
+            alumnoT.addCell(pdfVLblCell("Alumno:"));
+            alumnoT.addCell(pdfVValCell(alumno.isBlank() ? "-" : alumno));
+            alumnoT.addCell(pdfVLblCell("Grado:"));
+            String gradoSec = grado.isBlank() ? "-" : grado;
+            if (!seccion.isBlank()) gradoSec += " - " + seccion;
+            alumnoT.addCell(pdfVValCell(gradoSec));
+            alumnoT.addCell(pdfVLblCell("Colegio:"));
+            alumnoT.addCell(pdfVValCell(colegio.isBlank() ? "-" : colegio));
+            alumnoT.addCell(pdfVLblCell("Contacto:"));
+            String contactoCompleto = contacto.isBlank() ? "-" : contacto;
+            if (!telefono.isBlank()) contactoCompleto += " — " + telefono;
+            alumnoT.addCell(pdfVValCell(contactoCompleto));
+            document.add(alumnoT);
+
+            // TABLA DE ITEMS
+            PdfPTable itemsT = new PdfPTable(new float[]{7f, 1.5f, 2f, 2f});
+            itemsT.setWidthPercentage(100);
+            itemsT.setSpacingBefore(10f);
+
+            for (String hdr : new String[]{"Descripción", "Cant.", "P.Unit.", "Subtotal"}) {
+                PdfPCell h = new PdfPCell(new Phrase(hdr,
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8f, Color.WHITE)));
+                h.setBackgroundColor(colorPrimario);
+                h.setBorder(Rectangle.NO_BORDER);
+                h.setPadding(4f);
+                h.setHorizontalAlignment("Descripción".equals(hdr) ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT);
+                itemsT.addCell(h);
+            }
+
+            BigDecimal grandTotal = BigDecimal.ZERO;
+            int rowNum = 0;
+            for (Map<String, Object> fila : filas) {
+                Color rowBg = (rowNum % 2 == 0) ? Color.WHITE : new Color(248, 250, 252);
+                String desc  = fila.get("descripcion").toString();
+                int cant     = (int) fila.get("cantidad");
+                BigDecimal pu  = (BigDecimal) fila.get("precioUnitario");
+                BigDecimal sub = (BigDecimal) fila.get("subtotal");
+                grandTotal = grandTotal.add(sub);
+
+                PdfPCell cd = new PdfPCell(new Phrase(desc, FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                cd.setBackgroundColor(rowBg); cd.setBorder(Rectangle.NO_BORDER); cd.setPadding(3f);
+                itemsT.addCell(cd);
+
+                PdfPCell cc = new PdfPCell(new Phrase(String.valueOf(cant), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                cc.setBackgroundColor(rowBg); cc.setBorder(Rectangle.NO_BORDER); cc.setPadding(3f);
+                cc.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                itemsT.addCell(cc);
+
+                PdfPCell cp = new PdfPCell(new Phrase(moneda + String.format("%.2f", pu), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                cp.setBackgroundColor(rowBg); cp.setBorder(Rectangle.NO_BORDER); cp.setPadding(3f);
+                cp.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                itemsT.addCell(cp);
+
+                PdfPCell cs = new PdfPCell(new Phrase(moneda + String.format("%.2f", sub), FontFactory.getFont(FontFactory.HELVETICA, 8.5f)));
+                cs.setBackgroundColor(rowBg); cs.setBorder(Rectangle.NO_BORDER); cs.setPadding(3f);
+                cs.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                itemsT.addCell(cs);
+
+                rowNum++;
+            }
+            document.add(itemsT);
+
+            // TOTAL
+            PdfPTable totalT = new PdfPTable(2);
+            totalT.setWidthPercentage(38);
+            totalT.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.setSpacingBefore(10f);
+            totalT.setWidths(new float[]{2f, 1.8f});
+
+            PdfPCell totalLbl = new PdfPCell(new Phrase("TOTAL:",
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f, Color.WHITE)));
+            totalLbl.setBackgroundColor(colorPrimario); totalLbl.setBorder(Rectangle.NO_BORDER);
+            totalLbl.setPadding(7f); totalLbl.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.addCell(totalLbl);
+
+            PdfPCell totalVal = new PdfPCell(new Phrase(moneda + String.format("%.2f", grandTotal),
+                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11f, Color.WHITE)));
+            totalVal.setBackgroundColor(colorPrimario); totalVal.setBorder(Rectangle.NO_BORDER);
+            totalVal.setPadding(7f); totalVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            totalT.addCell(totalVal);
+            document.add(totalT);
+
+            Paragraph nota = new Paragraph(
+                "Este documento es una cotización de lista escolar. " + nombreEmpresa,
+                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 7f, Color.GRAY));
+            nota.setAlignment(Element.ALIGN_CENTER);
+            nota.setSpacingBefore(18f);
+            document.add(nota);
+
+            document.close();
+
+        } catch (Exception e) {
+            log.error("Error al generar PDF simulador: {}", e.getMessage(), e);
+            try { response.sendError(500, "Error al generar PDF: " + e.getMessage()); } catch (IOException ignored) {}
+        }
+    }
+
+    // =========================================================
     //  UTILIDADES
     // =========================================================
+
+    /** Lee el texto de una celda sin importar si es STRING, NUMERIC o FORMULA. */
+    private String celdaTexto(Cell cell) {
+        if (cell == null) return "";
+        switch (cell.getCellType()) {
+            case STRING:  return cell.getStringCellValue().trim();
+            case NUMERIC: {
+                double v = cell.getNumericCellValue();
+                return (v == Math.floor(v)) ? String.valueOf((long) v) : String.valueOf(v);
+            }
+            case FORMULA: {
+                try { return String.valueOf(cell.getNumericCellValue()); } catch (Exception e) {
+                    try { return cell.getStringCellValue().trim(); } catch (Exception e2) { return ""; }
+                }
+            }
+            default: return "";
+        }
+    }
+
+    /** Lee el valor numérico de una celda sin importar si es STRING (texto) o NUMERIC. */
+    private double celdaNumero(Cell cell) {
+        if (cell == null) return 0;
+        switch (cell.getCellType()) {
+            case NUMERIC: return cell.getNumericCellValue();
+            case FORMULA: {
+                try { return cell.getNumericCellValue(); } catch (Exception e) { return 0; }
+            }
+            case STRING: {
+                try {
+                    // Eliminar símbolos de moneda y espacios antes de parsear (ej: "S/6.60", "$12.50")
+                    String s = cell.getStringCellValue().trim()
+                            .replaceAll("[^\\d.,\\-]", "")
+                            .replace(",", ".");
+                    return s.isEmpty() ? 0 : Double.parseDouble(s);
+                } catch (NumberFormatException e) { return 0; }
+            }
+            default: return 0;
+        }
+    }
 
     private List<String> getGradosDisponibles() {
         return List.of(

@@ -49,6 +49,12 @@
                 </li>
             </ul>
 
+            <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn btn-danger" onclick="abrirRegistroSolicitud()">
+                    <i class="fas fa-plus-circle mr-1"></i> Registrar Producto Faltante
+                </button>
+            </div>
+
             <div class="tab-content" id="mainPillsContent">
 
                 <!-- ===================== TAB 1: FALTANTES LISTAS ESCOLARES ===================== -->
@@ -477,6 +483,51 @@ function inicializarSelect2(selector) {
                 }))
             })
         }
+    });
+}
+
+function abrirRegistroSolicitud() {
+    Swal.fire({
+        title: 'Registrar producto faltante',
+        input: 'text',
+        inputLabel: 'Producto solicitado',
+        inputPlaceholder: 'Ej. Cartulina fluorescente A4',
+        inputAttributes: {
+            maxlength: 150,
+            autocapitalize: 'words',
+            autocomplete: 'off'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Registrar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        inputValidator: function(value) {
+            if (!value || value.trim().length < 2) {
+                return 'Ingrese el nombre del producto';
+            }
+        }
+    }).then(function(result) {
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        var producto = result.value.trim().toUpperCase();
+
+        $.post('/ventas/api/solicitar-stock', { producto: producto })
+            .done(function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Producto registrado',
+                    text: 'Se agregó a pedidos de vendedores: ' + producto,
+                    confirmButtonText: 'Ver registro'
+                }).then(function() {
+                    window.location.href = '/faltantes?tab=solicitudes';
+                });
+            })
+            .fail(function(xhr) {
+                var mensaje = xhr.responseJSON?.error || xhr.responseText || 'No se pudo registrar el producto faltante';
+                Swal.fire('Error', mensaje, 'error');
+            });
     });
 }
 

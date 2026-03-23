@@ -46,8 +46,8 @@ public class StockService {
     }
 
     public DataTableResponse<StockDTO> buscarStock(int draw, int start, int length,
-                                                    String termino, String categoria, String estado,
-                                                    String orderColumn, String orderDir) {
+            String termino, String categoria, String estado,
+            String orderColumn, String orderDir) {
         // Map column index to field name for sorting
         String sortField = mapColumnToField(orderColumn);
         Sort sort = "asc".equalsIgnoreCase(orderDir) ? Sort.by(sortField).ascending() : Sort.by(sortField).descending();
@@ -57,7 +57,8 @@ public class StockService {
         String categoriaParam = (categoria != null && !categoria.trim().isEmpty()) ? categoria.trim() : null;
         String estadoParam = (estado != null && !estado.trim().isEmpty()) ? estado.trim() : null;
 
-        Page<Producto> page = productoRepository.buscarStockFiltrado(terminoParam, categoriaParam, estadoParam, pageable);
+        Page<Producto> page = productoRepository.buscarStockFiltrado(terminoParam, categoriaParam, estadoParam,
+                pageable);
 
         List<StockDTO> dtos = page.getContent().stream()
                 .map(this::convertToDTO)
@@ -69,7 +70,7 @@ public class StockService {
     }
 
     public StockDTO obtenerDetalleProducto(Long productoId) {
-        Producto producto = productoRepository.findById(productoId)
+        Producto producto = productoRepository.findByIdWithLock(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         return convertToDTO(producto);
     }
@@ -106,7 +107,11 @@ public class StockService {
 
     @Transactional
     public void ajustarStock(Long productoId, Integer nuevoStock, String motivo, String usuario) {
-        Producto producto = productoRepository.findByIdWithLock(productoId)
+        if (nuevoStock == null || nuevoStock < 0) {
+            throw new RuntimeException("El nuevo stock debe ser 0 o mayor.");
+        }
+
+        Producto producto = productoRepository.findById(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
         int stockAnterior = producto.getStockActual() != null ? producto.getStockActual() : 0;
@@ -124,7 +129,8 @@ public class StockService {
         kardex.setStockActual(nuevoStock);
         kardexRepository.save(kardex);
 
-        log.info("Ajuste de stock: Producto={}, {} -> {}, usuario={}", producto.getNombre(), stockAnterior, nuevoStock, usuario);
+        log.info("Ajuste de stock: Producto={}, {} -> {}, usuario={}", producto.getNombre(), stockAnterior, nuevoStock,
+                usuario);
     }
 
     public byte[] exportarExcel(String termino, String categoria, String estado) throws IOException {
@@ -134,7 +140,8 @@ public class StockService {
 
         // Get all matching results (no pagination for export)
         Pageable pageable = PageRequest.of(0, 10000, Sort.by("nombre").ascending());
-        Page<Producto> page = productoRepository.buscarStockFiltrado(terminoParam, categoriaParam, estadoParam, pageable);
+        Page<Producto> page = productoRepository.buscarStockFiltrado(terminoParam, categoriaParam, estadoParam,
+                pageable);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Stock");
@@ -149,7 +156,8 @@ public class StockService {
 
             // Headers
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"Código", "Producto", "Categoría", "Stock Actual", "Stock Mínimo", "Stock Máximo", "Estado", "P.Compra", "Valor Stock"};
+            String[] headers = { "Código", "Producto", "Categoría", "Stock Actual", "Stock Mínimo", "Stock Máximo",
+                    "Estado", "P.Compra", "Valor Stock" };
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -213,9 +221,12 @@ public class StockService {
         int stock = p.getStockActual() != null ? p.getStockActual() : 0;
         int minimo = p.getStockMinimo() != null ? p.getStockMinimo() : 0;
 
-        if (stock == 0) return "SIN_STOCK";
-        if (stock <= minimo) return "CRITICO";
-        if (stock <= (int)(minimo * 1.5)) return "BAJO";
+        if (stock == 0)
+            return "SIN_STOCK";
+        if (stock <= minimo)
+            return "CRITICO";
+        if (stock <= (int) (minimo * 1.5))
+            return "BAJO";
         return "OK";
     }
 
@@ -229,7 +240,8 @@ public class StockService {
     }
 
     private String mapColumnToField(String column) {
-        if (column == null) return "nombre";
+        if (column == null)
+            return "nombre";
         return switch (column) {
             case "0" -> "codigoInterno";
             case "1" -> "nombre";

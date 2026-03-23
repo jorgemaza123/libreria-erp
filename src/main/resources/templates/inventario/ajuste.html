@@ -34,8 +34,8 @@
                                         <option value="">Buscar por nombre o código...</option>
                                         <option th:each="p : ${productos}" 
                                                 th:value="${p.id}" 
-                                                th:data-stock="${p.stockActual}"
-                                                th:text="${p.codigoBarra + ' - ' + p.nombre}"></option>
+                                                th:data-stock="${p.stockActual != null ? p.stockActual : 0}"
+                                                th:text="${(p.codigoBarra != null ? p.codigoBarra + ' - ' : '') + p.nombre}"></option>
                                     </select>
                                 </div>
 

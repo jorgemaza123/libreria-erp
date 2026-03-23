@@ -182,10 +182,10 @@
 
 <div layout:fragment="scripts">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-<script >
+<script th:inline="javascript">
 $(document).ready(function() {
-    var productoId = /*[[${producto.id}]]*/ 0;
-var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
+    var productoId = [[${producto.id}]];
+    var puedeVerMovimientos = [[${puedeVerMovimientos}]];
 
     var chartInstance = null;
 
@@ -218,6 +218,8 @@ var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
                 }
             }
         });
+    }).fail(function() {
+        $('#chartEvolucion').replaceWith('<div class="alert alert-danger mb-0">No se pudo cargar la evolucion del stock.</div>');
     });
 
     // Load movements
@@ -232,7 +234,7 @@ var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
                 html = '<tr><td colspan="6" class="text-center text-muted py-3">No hay movimientos registrados</td></tr>';
             } else {
                 res.data.forEach(function(m) {
-                    var tipoBadge = m.tipo === 'ENTRADA' ? 'badge-success' : (m.tipo === 'SALIDA' ? 'badge-danger' : 'badge-info');
+                    var tipoBadge = m.tipo === 'INGRESO' ? 'badge-success' : (m.tipo === 'SALIDA' ? 'badge-danger' : 'badge-info');
                     html += '<tr>' +
                         '<td>' + m.fecha + '</td>' +
                         '<td><span class="badge ' + tipoBadge + '">' + m.tipo + '</span></td>' +
@@ -254,6 +256,9 @@ var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
                 }
             }
             $('#paginacionMovimientos').html(pagHtml);
+        }).fail(function() {
+            $('#movimientosBody').html('<tr><td colspan="6" class="text-center text-danger py-3">No se pudieron cargar los movimientos.</td></tr>');
+            $('#paginacionMovimientos').html('');
         });
     }
 
@@ -280,6 +285,7 @@ var puedeVerMovimientos = /*[[${puedeVerMovimientos}]]*/ false;
             },
             success: function(res) {
                 if (res.success) {
+                    $('#modalAjustarDetalle').modal('hide');
                     toastr.success(res.message);
                     setTimeout(function() { location.reload(); }, 800);
                 } else {

@@ -72,9 +72,7 @@ public class ReporteUniversalService {
     //        REPORTES DE PRODUCTOS - EXCEL
     // ==========================================
 
-    /**
-     * Genera reporte Excel de stock actual de todos los productos
-     */
+   
     public void generarExcelStockActual(OutputStream outputStream) throws Exception {
         var config = configuracionService.obtenerConfiguracion();
         Workbook workbook = new XSSFWorkbook();

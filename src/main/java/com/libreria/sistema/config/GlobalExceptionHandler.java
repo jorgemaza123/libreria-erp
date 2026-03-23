@@ -23,7 +23,8 @@ import java.util.NoSuchElementException;
 
 /**
  * Manejador global de excepciones para toda la aplicación.
- * Detecta automáticamente si es una petición AJAX o web y responde apropiadamente.
+ * Detecta automáticamente si es una petición AJAX o web y responde
+ * apropiadamente.
  * Evita la exposición de stack traces y proporciona respuestas consistentes.
  */
 @ControllerAdvice
@@ -41,15 +42,15 @@ public class GlobalExceptionHandler {
         String contentType = request.getContentType();
 
         return "XMLHttpRequest".equals(requestedWith) ||
-               (accept != null && accept.contains("application/json")) ||
-               (contentType != null && contentType.contains("application/json"));
+                (accept != null && accept.contains("application/json")) ||
+                (contentType != null && contentType.contains("application/json"));
     }
 
     /**
      * Crea un ModelAndView para la página de error.
      */
     private ModelAndView createErrorView(HttpStatus status, String titulo, String mensaje,
-                                          String detalles, HttpServletRequest request) {
+            String detalles, HttpServletRequest request) {
         ModelAndView mav = new ModelAndView("error");
         mav.addObject("status", status.value());
         mav.addObject("error", status.getReasonPhrase());
@@ -76,7 +77,7 @@ public class GlobalExceptionHandler {
     }
 
     // =====================================================
-    //  ERRORES DE RECURSOS NO ENCONTRADOS (404)
+    // ERRORES DE RECURSOS NO ENCONTRADOS (404)
     // =====================================================
 
     /**
@@ -95,8 +96,7 @@ public class GlobalExceptionHandler {
                 "Recurso no encontrado",
                 "El elemento que busca no existe o ha sido eliminado.",
                 ex.getMessage(),
-                request
-        );
+                request);
     }
 
     /**
@@ -115,18 +115,20 @@ public class GlobalExceptionHandler {
                 "Página no encontrada",
                 "La página que busca no existe. Verifique la URL e intente nuevamente.",
                 "URL: " + ex.getRequestURL(),
-                request
-        );
+                request);
     }
 
     // =====================================================
-    //  ERRORES DE ACCESO Y PERMISOS (403)
+    // ERRORES DE ACCESO Y PERMISOS (403)
     // =====================================================
 
     /**
-     * Maneja errores de acceso denegado lanzados por @PreAuthorize en métodos de servicio.
-     * Nota: Los 403 del filtro HTTP son interceptados por apiAccessDeniedHandler en SecurityConfig
-     * antes de llegar aquí. Este handler actúa como fallback para excepciones en la capa de servicio.
+     * Maneja errores de acceso denegado lanzados por @PreAuthorize en métodos de
+     * servicio.
+     * Nota: Los 403 del filtro HTTP son interceptados por apiAccessDeniedHandler en
+     * SecurityConfig
+     * antes de llegar aquí. Este handler actúa como fallback para excepciones en la
+     * capa de servicio.
      */
     @ExceptionHandler(AccessDeniedException.class)
     public Object handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
@@ -142,12 +144,11 @@ public class GlobalExceptionHandler {
                 "Acceso denegado",
                 "No tiene permisos para acceder a esta sección. Contacte al administrador si cree que es un error.",
                 null,
-                request
-        );
+                request);
     }
 
     // =====================================================
-    //  ERRORES DE VALIDACIÓN Y DATOS (400)
+    // ERRORES DE VALIDACIÓN Y DATOS (400)
     // =====================================================
 
     /**
@@ -177,8 +178,7 @@ public class GlobalExceptionHandler {
                 "Datos inválidos",
                 "Los datos ingresados contienen errores. Por favor verifique e intente nuevamente.",
                 errors.toString(),
-                request
-        );
+                request);
     }
 
     /**
@@ -197,8 +197,7 @@ public class GlobalExceptionHandler {
                 "Datos inválidos",
                 ex.getMessage(),
                 null,
-                request
-        );
+                request);
     }
 
     /**
@@ -217,12 +216,11 @@ public class GlobalExceptionHandler {
                 "Operación no permitida",
                 ex.getMessage(),
                 null,
-                request
-        );
+                request);
     }
 
     // =====================================================
-    //  ERRORES DE BASE DE DATOS
+    // ERRORES DE BASE DE DATOS
     // =====================================================
 
     /**
@@ -243,8 +241,7 @@ public class GlobalExceptionHandler {
                 "Conflicto de datos",
                 mensaje,
                 null,
-                request
-        );
+                request);
     }
 
     /**
@@ -259,7 +256,7 @@ public class GlobalExceptionHandler {
 
         if (rootCause != null) {
             if (rootCause.contains("duplicate key") || rootCause.contains("Duplicate entry") ||
-                rootCause.contains("unique constraint")) {
+                    rootCause.contains("unique constraint")) {
                 mensaje = "Ya existe un registro con estos datos. Por favor verifique e intente con datos diferentes.";
             } else if (rootCause.contains("foreign key constraint") || rootCause.contains("violates foreign key")) {
                 mensaje = "No se puede eliminar este registro porque está siendo utilizado en otras partes del sistema.";
@@ -277,12 +274,11 @@ public class GlobalExceptionHandler {
                 "Error de datos",
                 mensaje,
                 null,
-                request
-        );
+                request);
     }
 
     // =====================================================
-    //  ERRORES DE ARCHIVOS
+    // ERRORES DE ARCHIVOS
     // =====================================================
 
     /**
@@ -303,12 +299,11 @@ public class GlobalExceptionHandler {
                 "Archivo muy grande",
                 mensaje,
                 null,
-                request
-        );
+                request);
     }
 
     // =====================================================
-    //  ERRORES GENÉRICOS (500)
+    // ERRORES GENÉRICOS (500)
     // =====================================================
 
     /**
@@ -318,7 +313,25 @@ public class GlobalExceptionHandler {
     public Object handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
         log.error("Error de ejecución en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
 
-        String mensaje = "Ha ocurrido un error al procesar su solicitud. Por favor intente nuevamente.";
+        // MEDIO-7 FIX: Caja cerrada retorna 412 con mensaje amigable y acción de
+        // redirección
+        if (ex.getMessage() != null && ex.getMessage().contains("CAJA CERRADA")) {
+            String msg = "Debe abrir la caja antes de realizar esta operación.";
+            if (isAjaxRequest(request)) {
+                java.util.Map<String, Object> cajaCerradaRes = new java.util.HashMap<>();
+                cajaCerradaRes.put("success", false);
+                cajaCerradaRes.put("status", 412);
+                cajaCerradaRes.put("error", "CAJA_CERRADA");
+                cajaCerradaRes.put("message", msg);
+                cajaCerradaRes.put("accion", "/caja");
+                return ResponseEntity.status(org.springframework.http.HttpStatus.PRECONDITION_FAILED)
+                        .body(cajaCerradaRes);
+            }
+            return createErrorView(org.springframework.http.HttpStatus.PRECONDITION_FAILED, "Caja cerrada", msg,
+                    "Vaya a Módulo > Caja y abra la caja del día antes de continuar.", request);
+        }
+
+        String mensaje = ex.getMessage() != null ? ex.getMessage() : "Ha ocurrido un error al procesar su solicitud.";
 
         if (isAjaxRequest(request)) {
             return createJsonError(HttpStatus.INTERNAL_SERVER_ERROR, mensaje);
@@ -329,8 +342,7 @@ public class GlobalExceptionHandler {
                 "Error del sistema",
                 mensaje,
                 "Si el problema persiste, contacte al administrador del sistema.",
-                request
-        );
+                request);
     }
 
     /**
@@ -351,7 +363,6 @@ public class GlobalExceptionHandler {
                 "Error inesperado",
                 mensaje,
                 "Si el problema persiste, contacte al administrador del sistema.",
-                request
-        );
+                request);
     }
 }

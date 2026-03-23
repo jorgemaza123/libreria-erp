@@ -35,7 +35,7 @@
                             <th>Producto</th>
                             <th class="text-right">P. Unit</th>
                             <th class="text-right">Subtotal</th>
-                            <th th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL'}"></th>
+                            <th th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL' and venta.entregaPendiente != true}"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -57,17 +57,19 @@
                             <td th:text="${item.descripcion}"></td>
                             <td class="text-right" th:text="${#numbers.formatDecimal(item.precioUnitario, 1, 'COMMA', 2, 'POINT')}"></td>
                             <td class="text-right" th:text="${#numbers.formatDecimal(item.subtotal, 1, 'COMMA', 2, 'POINT')}"></td>
-                            <td th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL'}">
+                            <td th:if="${venta.estado != 'ANULADO' and venta.estado != 'DEVUELTO_TOTAL' and venta.entregaPendiente != true}">
                                 <th:block th:if="${item.producto != null}"
                                           th:with="yaDevuelto=${cantidadesDevueltas != null ? cantidadesDevueltas[item.producto.id] : null},
                                                    totalVendidoProducto=${cantidadesTotalPorProducto != null ? cantidadesTotalPorProducto[item.producto.id] : item.cantidad},
+                                                   disponibleProducto=${yaDevuelto != null ? totalVendidoProducto.subtract(yaDevuelto) : totalVendidoProducto},
+                                                   maxDevolver=${disponibleProducto.compareTo(item.cantidad) < 0 ? disponibleProducto : item.cantidad},
                                                    todosDevueltos=${yaDevuelto != null and yaDevuelto.compareTo(totalVendidoProducto) >= 0}">
                                     <button th:if="${!todosDevueltos}"
-                                            type="button" class="btn btn-warning btn-xs btn-devolver"
+                                            type="button" class="btn btn-warning btn-xs btn-devolver-item"
                                             th:data-venta-id="${venta.id}"
                                             th:data-producto-id="${item.producto.id}"
                                             th:data-descripcion="${item.descripcion}"
-                                            th:data-cantidad="${item.cantidad}"
+                                            th:data-cantidad="${maxDevolver}"
                                             th:data-precio="${item.precioUnitario}"
                                             title="Devolver este producto">
                                         <i class="fas fa-undo-alt"></i> Devolver

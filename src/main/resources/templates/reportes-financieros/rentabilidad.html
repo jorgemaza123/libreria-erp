@@ -1,23 +1,25 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
       th:with="active='rentabilidad'">
 <head>
     <title th:text="${titulo}">Rentabilidad</title>
+    <style>
+        .rent-note { color: #6b7280; font-size: .92rem; }
+        .summary-card { border-radius: 1rem; border: 1px solid #e5e7eb; background: #fff; box-shadow: 0 6px 18px rgba(15,23,42,.05); }
+        .summary-card .label { color: #6b7280; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+        .summary-card .value { font-size: 1.2rem; font-weight: 700; color: #111827; }
+    </style>
 </head>
 <body>
-
 <div layout:fragment="content">
-    
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1>
-                        <i class="fas fa-percentage text-primary"></i> Análisis de Rentabilidad
-                        <small class="text-muted ml-2">Margen y ganancia</small>
-                    </h1>
+                    <h1><i class="fas fa-percentage text-primary"></i> Analisis de Rentabilidad</h1>
+                    <div class="rent-note">Permite ver que producto deja mas ganancia y cuanto se vendio en total.</div>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
@@ -32,10 +34,9 @@
 
     <section class="content">
         <div class="container-fluid">
-            
             <div class="card card-primary card-outline">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+                    <h3 class="card-title"><i class="fas fa-filter"></i> Periodo del Analisis</h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -54,21 +55,15 @@
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label>&nbsp;</label>
-                                <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()">
-                                    <i class="fas fa-search"></i> Generar Reporte
-                                </button>
+                                <button type="button" class="btn btn-primary btn-block" onclick="generarReporte()"><i class="fas fa-search"></i> Ver Rentabilidad</button>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label>&nbsp;</label>
                                 <div class="btn-group btn-block">
-                                    <button type="button" class="btn btn-success" onclick="exportarExcel()">
-                                        <i class="fas fa-file-excel"></i> Excel
-                                    </button>
-                                    <button type="button" class="btn btn-danger" onclick="exportarPDF()">
-                                        <i class="fas fa-file-pdf"></i> PDF
-                                    </button>
+                                    <button type="button" class="btn btn-success" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                                    <button type="button" class="btn btn-danger" onclick="exportarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
                                 </div>
                             </div>
                         </div>
@@ -76,80 +71,58 @@
                 </div>
             </div>
 
-            <!-- RESUMEN GENERAL -->
-            <div class="row" id="resumenCards" style="display: none;">
-                <div class="col-lg-3 col-6">
-                    <div class="info-box bg-gradient-success">
-                        <span class="info-box-icon"><i class="fas fa-coins"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Ganancia Total</span>
-                            <span class="info-box-number" id="resumenGanancia">-</span>
-                        </div>
+            <div class="row mb-3" id="resumenCards" style="display:none;">
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-card h-100">
+                        <div class="label">Ganancia Total</div>
+                        <div class="value" id="resumenGanancia">S/ 0.00</div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-6">
-                    <div class="info-box bg-gradient-info">
-                        <span class="info-box-icon"><i class="fas fa-cash-register"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Ingreso Total</span>
-                            <span class="info-box-number" id="resumenIngreso">-</span>
-                        </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-card h-100">
+                        <div class="label">Total Vendido</div>
+                        <div class="value" id="resumenIngreso">S/ 0.00</div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-6">
-                    <div class="info-box" id="boxMargenGlobal">
-                        <span class="info-box-icon bg-gradient-lime"><i class="fas fa-percentage"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Margen Global</span>
-                            <span class="info-box-number" id="resumenMargen">-</span>
-                        </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-card h-100">
+                        <div class="label">Margen Global</div>
+                        <div class="value" id="resumenMargen">0.00%</div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-6">
-                    <div class="info-box bg-gradient-danger" id="boxMargenBajo" style="display: none;">
-                        <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Margen Bajo (&lt;10%)</span>
-                            <span class="info-box-number" id="resumenMargenBajo">0 productos</span>
-                        </div>
-                    </div>
-                    <div class="info-box bg-gradient-olive" id="boxTotalProductos">
-                        <span class="info-box-icon"><i class="fas fa-boxes"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">Productos Analizados</span>
-                            <span class="info-box-number" id="resumenTotalProductos">0</span>
-                        </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-card h-100">
+                        <div class="label">Productos Analizados</div>
+                        <div class="value" id="resumenTotalProductos">0</div>
                     </div>
                 </div>
             </div>
 
             <div class="card card-success card-outline">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Rentabilidad por Productos</h3>
+                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Rentabilidad por Producto</h3>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table id="tablaRentabilidad" class="table table-bordered table-hover table-striped">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Categoría</th>
-                                    <th class="text-center">Cant.</th>
-                                    <th class="text-right">P.Compra Prom.</th>
-                                    <th class="text-right">P.Venta Prom.</th>
-                                    <th class="text-right">Margen Unit.</th>
-                                    <th class="text-right">Margen %</th>
-                                    <th class="text-right">Ganancia Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody">
-                                <tr><td colspan="8" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-bordered table-hover table-striped mb-0">
+                        <thead class="bg-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoria</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-right">P. Compra</th>
+                            <th class="text-right">P. Venta</th>
+                            <th class="text-right">Margen Unit.</th>
+                            <th class="text-right">Margen %</th>
+                            <th class="text-right">Ganancia</th>
+                            <th class="text-right">Total Vendido</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbody">
+                        <tr><td colspan="9" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
@@ -157,108 +130,85 @@
 <th:block layout:fragment="scripts">
     <script>
         $(document).ready(function() {
-            // Inicializar fechas (Primer día del mes hasta hoy)
             const hoy = new Date().toISOString().split('T')[0];
             $('#fechaFin').val(hoy);
-            
             const primerDia = new Date();
             primerDia.setDate(1);
             $('#fechaInicio').val(primerDia.toISOString().split('T')[0]);
-            
-            // Cargar datos iniciales automáticamente
             generarReporte();
         });
 
         function generarReporte() {
             const fi = $('#fechaInicio').val();
             const ff = $('#fechaFin').val();
-            
             if (!fi || !ff) {
-                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                return;
+            }
+            $('#tbody').html('<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Calculando rentabilidad...</td></tr>');
+            $.ajax({
+                url: '/reportes/financieros/api/rentabilidad',
+                data: { fechaInicio: fi, fechaFin: ff },
+                success: function(response) {
+                    renderizarRentabilidad(response);
+                },
+                error: function() {
+                    if (typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');
+                    $('#tbody').html('<tr><td colspan="9" class="text-center text-danger">Error al cargar datos</td></tr>');
+                }
+            });
+        }
+
+        function renderizarRentabilidad(response) {
+            const tbody = $('#tbody');
+            tbody.empty();
+            const data = response.productos || [];
+            if (!data.length) {
+                tbody.html('<tr><td colspan="9" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
+                $('#resumenCards').hide();
                 return;
             }
 
-            // Loading state
-            $('#tbody').html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Calculando rentabilidad...</td></tr>');
+            $('#resumenCards').show();
+            $('#resumenGanancia').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalGanancia));
+            $('#resumenIngreso').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalIngreso));
+            $('#resumenMargen').text(formatear(response.margenGlobal) + '%');
+            $('#resumenTotalProductos').text(response.totalProductos || data.length);
 
-            $.ajax({
-                url: '/reportes/financieros/api/rentabilidad',
-                data: {fechaInicio: fi, fechaFin: ff},
-                success: function(response) {
-                    const tbody = $('#tbody');
-                    tbody.empty();
-
-                    const data = response.productos || response;
-
-                    if (!data || data.length === 0) {
-                        tbody.html('<tr><td colspan="8" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
-                        $('#resumenCards').hide();
-                        return;
-                    }
-
-                    // Actualizar resumen
-                    if (response.totalGanancia !== undefined) {
-                        $('#resumenCards').show();
-                        $('#resumenGanancia').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalGanancia));
-                        $('#resumenIngreso').text(APP_CONFIG.formatoMoneda + ' ' + formatear(response.totalIngreso));
-                        $('#resumenMargen').text(formatear(response.margenGlobal) + '%');
-                        $('#resumenTotalProductos').text(response.totalProductos);
-
-                        if (response.productosMargenBajo > 0) {
-                            $('#boxMargenBajo').show();
-                            $('#boxTotalProductos').hide();
-                            $('#resumenMargenBajo').text(response.productosMargenBajo + ' productos');
-                        } else {
-                            $('#boxMargenBajo').hide();
-                            $('#boxTotalProductos').show();
-                        }
-                    }
-
-                    data.forEach(item => {
-                        const margenPorc = parseFloat(item.margenPorcentaje);
-                        // Color para márgenes bajos/altos
-                        let margenClass = 'text-success';
-                        if (margenPorc < 10) margenClass = 'text-danger font-weight-bold';
-                        else if (margenPorc < 30) margenClass = 'text-warning font-weight-bold';
-
-                        tbody.append(`
-                            <tr>
-                                <td>${item.productoNombre}</td>
-                                <td>${item.productoCategoria}</td>
-                                <td class="text-center">${item.cantidadVendida}</td>
-                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioCompra)}</td>
-                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioVentaPromedio)}</td>
-                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.margenBruto)}</td>
-                                <td class="text-right ${margenClass}">${formatear(item.margenPorcentaje)}%</td>
-                                <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(item.gananciaTotal)}</td>
-                            </tr>
-                        `);
-                    });
-
-                    // Fila de totales
-                    if (response.totalGanancia !== undefined) {
-                        tbody.append(`
-                            <tr class="bg-light font-weight-bold">
-                                <td colspan="5" class="text-right">TOTALES:</td>
-                                <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia / (data.length || 1))}</td>
-                                <td class="text-right">${formatear(response.margenGlobal)}%</td>
-                                <td class="text-right text-success">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia)}</td>
-                            </tr>
-                        `);
-                    }
-                },
-                error: () => {
-                    if(typeof toastr !== 'undefined') toastr.error('Error al generar el reporte');
-                    $('#tbody').html('<tr><td colspan="8" class="text-center text-danger">Error al cargar datos</td></tr>');
-                }
+            data.forEach(item => {
+                const margen = parseFloat(item.margenPorcentaje || 0);
+                let margenClass = 'text-success';
+                if (margen < 10) margenClass = 'text-danger font-weight-bold';
+                else if (margen < 30) margenClass = 'text-warning font-weight-bold';
+                tbody.append(`
+                    <tr>
+                        <td>${item.productoNombre || '-'}</td>
+                        <td>${item.productoCategoria || '-'}</td>
+                        <td class="text-center">${formatearCantidad(item.cantidadVendida)}</td>
+                        <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioCompra)}</td>
+                        <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioVentaPromedio)}</td>
+                        <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.margenBruto)}</td>
+                        <td class="text-right ${margenClass}">${formatear(item.margenPorcentaje)}%</td>
+                        <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(item.gananciaTotal)}</td>
+                        <td class="text-right font-weight-bold">${APP_CONFIG.formatoMoneda} ${formatear(item.totalVendido)}</td>
+                    </tr>
+                `);
             });
+
+            tbody.append(`
+                <tr class="bg-light font-weight-bold">
+                    <td colspan="7" class="text-right">TOTAL FINAL</td>
+                    <td class="text-right text-success">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia)}</td>
+                    <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(response.totalIngreso)}</td>
+                </tr>
+            `);
         }
 
         function exportarExcel() {
             const fi = $('#fechaInicio').val();
             const ff = $('#fechaFin').val();
             if (!fi || !ff) {
-                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
                 return;
             }
             window.location.href = `/reportes/financieros/api/rentabilidad/excel?fechaInicio=${fi}&fechaFin=${ff}`;
@@ -268,17 +218,23 @@
             const fi = $('#fechaInicio').val();
             const ff = $('#fechaFin').val();
             if (!fi || !ff) {
-                if(typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
+                if (typeof toastr !== 'undefined') toastr.warning('Seleccione fechas');
                 return;
             }
             window.location.href = `/reportes/financieros/api/rentabilidad/pdf?fechaInicio=${fi}&fechaFin=${ff}`;
         }
 
         function formatear(num) {
-            return num == null ? '0.00' : parseFloat(num).toFixed(2);
+            if (num == null || isNaN(num)) return '0.00';
+            return parseFloat(num).toFixed(2);
+        }
+
+        function formatearCantidad(num) {
+            if (num == null || isNaN(num)) return '0';
+            const value = parseFloat(num);
+            return Number.isInteger(value) ? String(value) : value.toFixed(2);
         }
     </script>
 </th:block>
-
 </body>
 </html>

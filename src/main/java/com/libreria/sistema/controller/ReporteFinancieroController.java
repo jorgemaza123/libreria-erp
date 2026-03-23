@@ -240,4 +240,38 @@ public class ReporteFinancieroController {
             log.error("Error exportando rentabilidad a PDF: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Exportar analisis de ventas a Excel
+     */
+    @GetMapping("/api/analisis-ventas/excel")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
+    public void exportarAnalisisVentasExcel(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            HttpServletResponse response
+    ) {
+        try {
+            reporteService.exportarAnalisisVentasExcel(fechaInicio, fechaFin, response);
+        } catch (IOException e) {
+            log.error("Error exportando analisis de ventas a Excel: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Exportar analisis de ventas a PDF
+     */
+    @GetMapping("/api/analisis-ventas/pdf")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_EXPORTAR')")
+    public void exportarAnalisisVentasPDF(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            HttpServletResponse response
+    ) {
+        try {
+            reporteService.exportarAnalisisVentasPDF(fechaInicio, fechaFin, response);
+        } catch (IOException e) {
+            log.error("Error exportando analisis de ventas a PDF: {}", e.getMessage(), e);
+        }
+    }
 }

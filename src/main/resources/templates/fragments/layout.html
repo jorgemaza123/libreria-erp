@@ -345,12 +345,17 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' or active == 'mi_negocio' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' or active == 'mi_negocio' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-chart-pie"></i>
                                 <p>Finanzas <i class="right fas fa-angle-left"></i></p>
                             </a>
                             <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/mi-negocio" class="nav-link text-warning font-weight-bold" th:classappend="${active == 'mi_negocio' ? 'active' : ''}">
+                                        <i class="fas fa-store nav-icon text-warning"></i><p>Mi Negocio</p>
+                                    </a>
+                                </li>
                                 <li class="nav-item">
                                     <a href="/caja" class="nav-link" th:classappend="${active == 'caja' ? 'active' : ''}">
                                         <i class="fas fa-wallet nav-icon"></i><p>Caja Chica</p>
@@ -504,6 +509,7 @@
             </div>
 
             <section layout:fragment="content"></section>
+            <div th:replace="~{fragments/layout :: servicioRapidoWidget}"></div>
         </div>
 
         <footer th:fragment="footer" class="main-footer">
@@ -514,6 +520,467 @@
         </footer>
 
     </div>
+    <div th:fragment="servicioRapidoWidget" sec:authorize="hasPermission(null, 'VENTAS_CREAR')">
+        <style>
+            body.servicio-rapido-open {
+                overflow: hidden;
+            }
+
+            .sr-widget-btn {
+                position: fixed;
+                right: 20px;
+                bottom: 22px;
+                z-index: 2040;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 16px;
+                border: none;
+                border-radius: 999px;
+                background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
+                color: #fff;
+                box-shadow: 0 12px 28px rgba(15, 118, 110, 0.28);
+                font-weight: 700;
+                font-size: 0.95rem;
+            }
+
+            .sr-widget-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 14px 30px rgba(15, 118, 110, 0.34);
+            }
+
+            .sr-widget-btn:focus {
+                outline: none;
+                box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.2), 0 12px 28px rgba(15, 118, 110, 0.28);
+            }
+
+            .sr-widget-kbd {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 34px;
+                height: 26px;
+                padding: 0 8px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.18);
+                border: 1px solid rgba(255, 255, 255, 0.28);
+                font-family: "Consolas", "Courier New", monospace;
+                font-size: 0.75rem;
+                letter-spacing: 0.5px;
+            }
+
+            .sr-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 2050;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 18px;
+                background: rgba(15, 23, 42, 0.56);
+                backdrop-filter: blur(2px);
+            }
+
+            .sr-overlay.is-open {
+                display: flex;
+            }
+
+            .sr-dialog {
+                width: min(100%, 420px);
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+                padding: 22px 22px 18px;
+                position: relative;
+            }
+
+            .sr-close {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                border: none;
+                background: transparent;
+                color: #64748b;
+                font-size: 1.6rem;
+                line-height: 1;
+                padding: 0 6px;
+            }
+
+            .sr-close:hover {
+                color: #0f172a;
+            }
+
+            .sr-label {
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 1.1px;
+                font-weight: 700;
+                color: #0f766e;
+                margin-bottom: 6px;
+            }
+
+            .sr-title {
+                margin: 0 28px 18px 0;
+                font-size: 1.35rem;
+                font-weight: 800;
+                color: #0f172a;
+            }
+
+            .sr-field {
+                margin-bottom: 14px;
+            }
+
+            .sr-field label {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: #475569;
+            }
+
+            .sr-input {
+                width: 100%;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+                padding: 11px 13px;
+                font-size: 0.98rem;
+                color: #0f172a;
+                background: #f8fafc;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+            }
+
+            .sr-input:focus {
+                outline: none;
+                border-color: #0ea5a4;
+                background: #ffffff;
+                box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
+            }
+
+            .sr-input.is-invalid {
+                border-color: #dc2626;
+                background: #fef2f2;
+            }
+
+            .sr-hint {
+                display: block;
+                min-height: 18px;
+                margin-top: 6px;
+                font-size: 0.78rem;
+                color: #64748b;
+            }
+
+            .sr-hint.is-error {
+                color: #dc2626;
+            }
+
+            .sr-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 8px;
+            }
+
+            @media (max-width: 768px) {
+                .sr-widget-btn {
+                    right: 14px;
+                    bottom: 14px;
+                    padding: 11px 14px;
+                    font-size: 0.88rem;
+                }
+
+                .sr-dialog {
+                    padding: 20px 18px 16px;
+                }
+            }
+        </style>
+
+        <button type="button" id="btnServicioRapidoGlobal" class="sr-widget-btn" title="Servicio rapido (F9)">
+            <i class="fas fa-magic"></i>
+            <span>Servicio rapido</span>
+            <span class="sr-widget-kbd">F9</span>
+        </button>
+
+        <div id="servicioRapidoOverlay" class="sr-overlay" aria-hidden="true">
+            <div class="sr-dialog" role="dialog" aria-modal="true" aria-labelledby="servicioRapidoTitulo">
+                <button type="button" id="cerrarServicioRapido" class="sr-close" aria-label="Cerrar">&times;</button>
+                <div class="sr-label">Cobro rapido</div>
+                <h4 id="servicioRapidoTitulo" class="sr-title">Servicio personalizado</h4>
+
+                <div class="sr-field">
+                    <label for="servicioRapidoDescripcion">Servicio</label>
+                    <input type="text" id="servicioRapidoDescripcion" class="sr-input" maxlength="200"
+                           value="Servicio personalizado" autocomplete="off">
+                </div>
+
+                <div class="sr-field">
+                    <label for="servicioRapidoMonto">Monto a cobrar</label>
+                    <input type="text" id="servicioRapidoMonto" class="sr-input" inputmode="decimal"
+                           placeholder="0.00" autocomplete="off">
+                    <small id="servicioRapidoHint" class="sr-hint">Enter para registrar</small>
+                </div>
+
+                <div class="sr-actions">
+                    <button type="button" id="cancelarServicioRapido" class="btn btn-light">Cancelar</button>
+                    <button type="button" id="guardarServicioRapido" class="btn btn-success">Registrar</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                if (window.servicioRapidoWidgetInit) {
+                    return;
+                }
+                window.servicioRapidoWidgetInit = true;
+
+                function initServicioRapidoWidget() {
+                    var overlay = document.getElementById('servicioRapidoOverlay');
+                    var openBtn = document.getElementById('btnServicioRapidoGlobal');
+                    var closeBtn = document.getElementById('cerrarServicioRapido');
+                    var cancelBtn = document.getElementById('cancelarServicioRapido');
+                    var saveBtn = document.getElementById('guardarServicioRapido');
+                    var descInput = document.getElementById('servicioRapidoDescripcion');
+                    var amountInput = document.getElementById('servicioRapidoMonto');
+                    var hint = document.getElementById('servicioRapidoHint');
+
+                    if (!overlay || !openBtn || !saveBtn || !descInput || !amountInput || !hint) {
+                        return;
+                    }
+
+                    var descripcionDefault = 'Servicio personalizado';
+                    var guardando = false;
+                    var ultimoFoco = null;
+
+                    function modalAbierto() {
+                        return overlay.classList.contains('is-open');
+                    }
+
+                    function limpiarEstadoMonto() {
+                        amountInput.classList.remove('is-invalid');
+                        hint.textContent = 'Enter para registrar';
+                        hint.classList.remove('is-error');
+                    }
+
+                    function mostrarErrorMonto(mensaje) {
+                        amountInput.classList.add('is-invalid');
+                        hint.textContent = mensaje;
+                        hint.classList.add('is-error');
+                        amountInput.focus();
+                        amountInput.select();
+                    }
+
+                    function normalizarMonto(valor) {
+                        if (!valor) {
+                            return NaN;
+                        }
+                        var limpio = valor.toString().trim().replace(/\s+/g, '').replace(',', '.');
+                        if (!limpio) {
+                            return NaN;
+                        }
+                        return parseFloat(limpio);
+                    }
+
+                    function mensajeCajaCerrada(mensaje) {
+                        if (window.esCajaCerrada && window.esCajaCerrada(mensaje)) {
+                            return true;
+                        }
+                        var texto = (mensaje || '').toString().toUpperCase();
+                        return texto.indexOf('CAJA CERRADA') >= 0
+                            || texto.indexOf('ABRIR CAJA') >= 0
+                            || texto.indexOf('DEBE ABRIR CAJA') >= 0;
+                    }
+
+                    function setEstadoGuardado(activo) {
+                        guardando = activo;
+                        saveBtn.disabled = activo;
+                        cancelBtn.disabled = activo;
+                        closeBtn.disabled = activo;
+                        descInput.disabled = activo;
+                        amountInput.disabled = activo;
+                        saveBtn.innerHTML = activo
+                            ? '<i class="fas fa-spinner fa-spin mr-1"></i> Registrando'
+                            : 'Registrar';
+                    }
+
+                    function resetFormulario() {
+                        descInput.value = descripcionDefault;
+                        amountInput.value = '';
+                        limpiarEstadoMonto();
+                    }
+
+                    function abrirModalServicioRapido() {
+                        if (modalAbierto() || guardando) {
+                            return;
+                        }
+                        ultimoFoco = document.activeElement;
+                        resetFormulario();
+                        overlay.classList.add('is-open');
+                        overlay.setAttribute('aria-hidden', 'false');
+                        document.body.classList.add('servicio-rapido-open');
+
+                        window.setTimeout(function () {
+                            amountInput.focus();
+                            amountInput.select();
+                        }, 40);
+                    }
+
+                    function cerrarModalServicioRapido() {
+                        if (!modalAbierto() || guardando) {
+                            return;
+                        }
+                        overlay.classList.remove('is-open');
+                        overlay.setAttribute('aria-hidden', 'true');
+                        document.body.classList.remove('servicio-rapido-open');
+
+                        if (ultimoFoco && typeof ultimoFoco.focus === 'function') {
+                            window.setTimeout(function () { ultimoFoco.focus(); }, 10);
+                        }
+                    }
+
+                    function notificar(tipo, titulo, texto) {
+                        if (window.Swal) {
+                            var icono = tipo === 'success' ? 'success' : (tipo === 'warning' ? 'warning' : 'error');
+                            window.Swal.fire({
+                                toast: tipo === 'success',
+                                position: tipo === 'success' ? 'top-end' : 'center',
+                                icon: icono,
+                                title: titulo,
+                                text: texto,
+                                showConfirmButton: tipo !== 'success',
+                                timer: tipo === 'success' ? 2200 : undefined
+                            });
+                            return;
+                        }
+                        if (window.toastr && window.toastr[tipo]) {
+                            window.toastr[tipo](texto || titulo, titulo);
+                            return;
+                        }
+                        window.alert((titulo || 'Aviso') + (texto ? ': ' + texto : ''));
+                    }
+
+                    async function registrarServicioRapido() {
+                        if (guardando) {
+                            return;
+                        }
+
+                        limpiarEstadoMonto();
+
+                        var monto = normalizarMonto(amountInput.value);
+                        if (!Number.isFinite(monto) || monto <= 0) {
+                            mostrarErrorMonto('Ingrese un monto valido mayor a cero');
+                            return;
+                        }
+
+                        var descripcion = (descInput.value || '').trim() || descripcionDefault;
+                        setEstadoGuardado(true);
+
+                        try {
+                            var response = await fetch('/ventas/api/servicio-rapido', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    descripcion: descripcion,
+                                    monto: monto.toFixed(2)
+                                })
+                            });
+
+                            var data = {};
+                            try {
+                                data = await response.json();
+                            } catch (e) {
+                                data = {};
+                            }
+
+                            if (!response.ok) {
+                                throw {
+                                    status: response.status,
+                                    message: data.error || data.message || 'No se pudo registrar el servicio rapido'
+                                };
+                            }
+
+                            setEstadoGuardado(false);
+                            resetFormulario();
+                            cerrarModalServicioRapido();
+                            notificar(
+                                'success',
+                                'Servicio registrado',
+                                (data.serie || '') + '-' + (data.numero || '') + ' por S/ ' + monto.toFixed(2)
+                            );
+                        } catch (error) {
+                            var mensaje = error && error.message ? error.message : 'No se pudo registrar el servicio rapido';
+
+                            if (mensajeCajaCerrada(mensaje) && window.mostrarAlertaCajaCerrada) {
+                                window.mostrarAlertaCajaCerrada();
+                            } else {
+                                notificar('error', 'Error', mensaje);
+                            }
+                        } finally {
+                            setEstadoGuardado(false);
+                        }
+                    }
+
+                    openBtn.addEventListener('click', abrirModalServicioRapido);
+                    saveBtn.addEventListener('click', registrarServicioRapido);
+                    closeBtn.addEventListener('click', cerrarModalServicioRapido);
+                    cancelBtn.addEventListener('click', cerrarModalServicioRapido);
+
+                    overlay.addEventListener('mousedown', function (event) {
+                        if (event.target === overlay) {
+                            cerrarModalServicioRapido();
+                        }
+                    });
+
+                    amountInput.addEventListener('input', limpiarEstadoMonto);
+
+                    document.addEventListener('keydown', function (event) {
+                        if (modalAbierto()) {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                registrarServicioRapido();
+                                return;
+                            }
+
+                            if (event.key === 'Escape') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                cerrarModalServicioRapido();
+                                return;
+                            }
+
+                            if (event.key && event.key.charAt(0) === 'F') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                            return;
+                        }
+
+                        if (event.key === 'F9') {
+                            if (document.querySelector('.swal2-container')) {
+                                return;
+                            }
+                            event.preventDefault();
+                            event.stopPropagation();
+                            abrirModalServicioRapido();
+                        }
+                    }, true);
+
+                    window.abrirModalServicioRapido = abrirModalServicioRapido;
+                    window.cerrarModalServicioRapido = cerrarModalServicioRapido;
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initServicioRapidoWidget, { once: true });
+                } else {
+                    initServicioRapidoWidget();
+                }
+            })();
+        </script>
+    </div>
+
     <div th:fragment="scripts">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script th:src="@{/js/csrf-ajax-setup.js}"></script>

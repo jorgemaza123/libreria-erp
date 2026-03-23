@@ -43,9 +43,14 @@ public class UsuarioController {
     @GetMapping("/nuevo")
     @PreAuthorize("hasPermission(null, 'USUARIOS_CREAR')")
     public String nuevo(Model model) {
-        Usuario usuario = new Usuario();
-        usuario.setActivo(true);
-        model.addAttribute("usuario", usuario);
+        if (!model.containsAttribute("usuario")) {
+            Usuario usuario = new Usuario();
+            usuario.setActivo(true);
+            model.addAttribute("usuario", usuario);
+        }
+        if (!model.containsAttribute("rolesIdsSeleccionados")) {
+            model.addAttribute("rolesIdsSeleccionados", List.of());
+        }
         model.addAttribute("rolesDisponibles", rolRepository.findAll());
         model.addAttribute("titulo", "Nuevo Usuario");
         return "usuarios/formulario";
@@ -55,7 +60,13 @@ public class UsuarioController {
     @PreAuthorize("hasPermission(null, 'USUARIOS_EDITAR')")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes attr) {
         return usuarioRepository.findById(id).map(u -> {
-            model.addAttribute("usuario", u);
+            if (!model.containsAttribute("usuario")) {
+                model.addAttribute("usuario", u);
+            }
+            if (!model.containsAttribute("rolesIdsSeleccionados")) {
+                model.addAttribute("rolesIdsSeleccionados",
+                        u.getRoles().stream().map(Rol::getId).toList());
+            }
             model.addAttribute("rolesDisponibles", rolRepository.findAll());
             model.addAttribute("titulo", "Editar Usuario");
             return "usuarios/formulario";
@@ -69,49 +80,74 @@ public class UsuarioController {
     @PreAuthorize("hasPermission(null, 'USUARIOS_CREAR') or hasPermission(null, 'USUARIOS_EDITAR')")
     public String guardar(@ModelAttribute Usuario usuario,
                           @RequestParam(required = false) List<Long> rolesIds,
+                          Model model,
                           RedirectAttributes attr) {
         try {
             // 1. Manejo de Roles
-            if (rolesIds != null) {
-                List<Rol> rolesSeleccionados = rolRepository.findAllById(rolesIds);
-                usuario.setRoles(new HashSet<>(rolesSeleccionados));
+            List<Long> rolesSeleccionadosIds = rolesIds != null ? rolesIds : List.of();
+            List<Rol> rolesSeleccionados = rolRepository.findAllById(rolesSeleccionadosIds);
+            usuario.setRoles(new HashSet<>(rolesSeleccionados));
+
+            boolean esNuevo = usuario.getId() == null;
+            String passwordPlano = usuario.getPassword();
+
+            if (usuario.getUsername() == null || usuario.getUsername().isBlank()) {
+                return volverAlFormulario(model, usuario, rolesSeleccionadosIds,
+                        "El username es obligatorio.");
+            }
+
+            if (existeOtroUsuarioConUsername(usuario.getUsername(), usuario.getId())) {
+                return volverAlFormulario(model, usuario, rolesSeleccionadosIds,
+                        "Ya existe un usuario con ese username.");
             }
 
             // 2. Manejo de Contraseña
-            if (usuario.getId() != null) {
+            if (!esNuevo) {
                 // Edición: Si la contraseña viene vacía, mantenemos la anterior
                 Usuario actual = usuarioRepository.findById(usuario.getId()).orElse(null);
-                if (actual != null) {
-                    if (usuario.getPassword() == null || usuario.getPassword().isEmpty()) {
-                        usuario.setPassword(actual.getPassword());
-                    } else {
-                        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+                if (actual == null) {
+                    attr.addFlashAttribute("error", "Usuario no encontrado");
+                    return "redirect:/usuarios";
+                }
+
+                usuario.setRole(actual.getRole());
+                usuario.setIntentosFallidos(actual.getIntentosFallidos());
+                usuario.setFechaBloqueo(actual.getFechaBloqueo());
+                usuario.setCuentaBloqueada(actual.getCuentaBloqueada());
+                usuario.setUltimoIntentoLogin(actual.getUltimoIntentoLogin());
+                usuario.setUltimoLoginExitoso(actual.getUltimoLoginExitoso());
+                usuario.setPasswordChanged(actual.getPasswordChanged());
+                usuario.setEmail(actual.getEmail());
+                usuario.setTokenRecuperacion(actual.getTokenRecuperacion());
+                usuario.setTokenExpiracion(actual.getTokenExpiracion());
+                usuario.setPreguntaSeguridad(actual.getPreguntaSeguridad());
+                usuario.setRespuestaSeguridad(actual.getRespuestaSeguridad());
+
+                if (passwordPlano == null || passwordPlano.isEmpty()) {
+                    usuario.setPassword(actual.getPassword());
+                } else {
+                    String validationError = PasswordValidator.validateAndGetMessage(passwordPlano);
+                    if (validationError != null) {
+                        usuario.setPassword("");
+                        return volverAlFormulario(model, usuario, rolesSeleccionadosIds, validationError);
                     }
+                    usuario.setPassword(passwordEncoder.encode(passwordPlano));
                 }
             } else {
                 // Creación: Contraseña obligatoria y fuerte
-                if (usuario.getPassword() == null || usuario.getPassword().isEmpty()) {
-                    attr.addFlashAttribute("error", "La contraseña es obligatoria para nuevos usuarios");
-                    return "redirect:/usuarios/nuevo";
+                if (passwordPlano == null || passwordPlano.isEmpty()) {
+                    return volverAlFormulario(model, usuario, rolesSeleccionadosIds,
+                            "La contraseña es obligatoria para nuevos usuarios.");
                 }
 
                 // Validar fortaleza de contraseña
-                String validationError = PasswordValidator.validateAndGetMessage(usuario.getPassword());
+                String validationError = PasswordValidator.validateAndGetMessage(passwordPlano);
                 if (validationError != null) {
-                    attr.addFlashAttribute("error", validationError);
-                    return "redirect:/usuarios/nuevo";
+                    usuario.setPassword("");
+                    return volverAlFormulario(model, usuario, rolesSeleccionadosIds, validationError);
                 }
 
-                usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-            }
-
-            // Si se está cambiando la contraseña en una edición, también validar
-            if (usuario.getId() != null && usuario.getPassword() != null && !usuario.getPassword().isEmpty()) {
-                String validationError = PasswordValidator.validateAndGetMessage(usuario.getPassword());
-                if (validationError != null) {
-                    attr.addFlashAttribute("error", validationError);
-                    return "redirect:/usuarios/editar/" + usuario.getId();
-                }
+                usuario.setPassword(passwordEncoder.encode(passwordPlano));
             }
 
             usuarioRepository.save(usuario);
@@ -119,9 +155,27 @@ public class UsuarioController {
             return "redirect:/usuarios";
 
         } catch (Exception e) {
-            attr.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
-            return "redirect:/usuarios";
+            log.error("Error al guardar usuario {}", usuario.getUsername(), e);
+            usuario.setPassword("");
+            return volverAlFormulario(model, usuario, rolesIds != null ? rolesIds : List.of(),
+                    "Error al guardar: " + e.getMessage());
         }
+    }
+
+    private boolean existeOtroUsuarioConUsername(String username, Long usuarioId) {
+        return usuarioRepository.findByUsernameIgnoreCase(username.trim())
+                .filter(u -> usuarioId == null || !u.getId().equals(usuarioId))
+                .isPresent();
+    }
+
+    private String volverAlFormulario(Model model, Usuario usuario, List<Long> rolesIds, String error) {
+        usuario.setPassword("");
+        model.addAttribute("usuario", usuario);
+        model.addAttribute("rolesIdsSeleccionados", rolesIds != null ? rolesIds : List.of());
+        model.addAttribute("rolesDisponibles", rolRepository.findAll());
+        model.addAttribute("titulo", usuario.getId() == null ? "Nuevo Usuario" : "Editar Usuario");
+        model.addAttribute("error", error);
+        return "usuarios/formulario";
     }
 
     @GetMapping("/eliminar/{id}")

@@ -2,6 +2,7 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.aspect.RequerirCajaAbierta;
 import com.libreria.sistema.model.*;
+import com.libreria.sistema.model.dto.ServicioRapidoDTO;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.service.ConfiguracionService;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,13 +55,13 @@ public class VentaController {
     private DevolucionService devolucionService;
 
     public VentaController(ProductoRepository productoRepository,
-                           VentaRepository ventaRepository,
-                           ClienteRepository clienteRepository,
-                           ConfiguracionService configuracionService,
-                           VentaService ventaService,
-                           ReporteService reporteService,
-                           ConsultaDocumentoService consultaDocumentoService,
-                           ProductoBusquedaService productoBusquedaService) {
+            VentaRepository ventaRepository,
+            ClienteRepository clienteRepository,
+            ConfiguracionService configuracionService,
+            VentaService ventaService,
+            ReporteService reporteService,
+            ConsultaDocumentoService consultaDocumentoService,
+            ProductoBusquedaService productoBusquedaService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.clienteRepository = clienteRepository;
@@ -70,14 +72,19 @@ public class VentaController {
         this.productoBusquedaService = productoBusquedaService;
     }
 
+    /** Redirige /ventas → /ventas/lista para evitar Error 500 en URL raíz. */
+    @GetMapping
+    public String indice() {
+        return "redirect:/ventas/lista";
+    }
+
     @GetMapping("/lista")
     @PreAuthorize("hasPermission(null, 'VENTAS_VER')")
     public String listaVentas(@RequestParam(defaultValue = "") String buscar,
-                              @RequestParam(defaultValue = "0") int page,
-                              @RequestParam(defaultValue = "20") int size,
-                              Model model) {
-        org.springframework.data.domain.Pageable pageable =
-            org.springframework.data.domain.PageRequest.of(page, size,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Model model) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by("fechaCreacion").descending());
 
         org.springframework.data.domain.Page<Venta> ventas;
@@ -89,8 +96,8 @@ public class VentaController {
 
         java.util.List<Long> ventaIds = ventas.getContent().stream()
                 .map(Venta::getId).collect(java.util.stream.Collectors.toList());
-        java.util.Map<Long, java.math.BigDecimal> totalesDevueltos =
-                devolucionService.obtenerMapaTotalesDevueltos(ventaIds);
+        java.util.Map<Long, java.math.BigDecimal> totalesDevueltos = devolucionService
+                .obtenerMapaTotalesDevueltos(ventaIds);
 
         model.addAttribute("ventas", ventas);
         model.addAttribute("buscar", buscar);
@@ -132,7 +139,8 @@ public class VentaController {
     @ResponseBody
     public List<Map<String, Object>> buscarProductos(@RequestParam String term) {
         BigDecimal margenMinimoAlerta = configuracionService.obtenerConfiguracion().getMargenMinimoAlerta();
-        if (margenMinimoAlerta == null) margenMinimoAlerta = new BigDecimal("15.00");
+        if (margenMinimoAlerta == null)
+            margenMinimoAlerta = new BigDecimal("15.00");
         final BigDecimal margenMinConfig = margenMinimoAlerta;
 
         return productoBusquedaService.buscar(term, 20).stream().map(p -> {
@@ -190,7 +198,8 @@ public class VentaController {
                         .setScale(1, RoundingMode.HALF_UP);
                 map.put("margenActual", margenActual);
                 // Precio mínimo = costoCompra / (1 - margenMinimo/100)
-                BigDecimal divisor = BigDecimal.ONE.subtract(margenMinConfig.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                BigDecimal divisor = BigDecimal.ONE
+                        .subtract(margenMinConfig.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
                 if (divisor.compareTo(BigDecimal.ZERO) > 0) {
                     map.put("precioMinimoRecomendado", precioCompra.divide(divisor, 2, RoundingMode.HALF_UP));
                 }
@@ -231,17 +240,16 @@ public class VentaController {
                     producto.getId(),
                     producto.getCategoria(),
                     producto.getTags(),
-                    6
-            ).stream().map(p -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", p.getId());
-                map.put("nombre", p.getNombre());
-                map.put("precio", p.getPrecioVenta());
-                map.put("stock", p.getStockActual());
-                map.put("imagen", p.getImagen());
-                map.put("marca", p.getMarca());
-                return map;
-            }).collect(Collectors.toList());
+                    6).stream().map(p -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", p.getId());
+                        map.put("nombre", p.getNombre());
+                        map.put("precio", p.getPrecioVenta());
+                        map.put("stock", p.getStockActual());
+                        map.put("imagen", p.getImagen());
+                        map.put("marca", p.getMarca());
+                        return map;
+                    }).collect(Collectors.toList());
         }).orElse(List.of());
     }
 
@@ -302,7 +310,8 @@ public class VentaController {
     /**
      * Guarda una nueva venta usando VentaService (con soporte DUAL-MODE)
      * - Si facturaElectronicaActiva = false: usa series internas (I001/IF001)
-     * - Si facturaElectronicaActiva = true: usa series oficiales (B001/F001) y envía a SUNAT
+     * - Si facturaElectronicaActiva = true: usa series oficiales (B001/F001) y
+     * envía a SUNAT
      */
     @PostMapping("/api/guardar")
     @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
@@ -313,9 +322,9 @@ public class VentaController {
         // Validar errores de binding
         if (bindingResult.hasErrors()) {
             String errores = bindingResult.getAllErrors().stream()
-                .map(error -> error.getDefaultMessage())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("Datos inválidos");
+                    .map(error -> error.getDefaultMessage())
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("Datos inválidos");
             log.warn("Validación fallida en guardar venta: {}", errores);
             errorResponse.put("error", errores);
             errorResponse.put("code", "VALIDATION_ERROR");
@@ -333,17 +342,17 @@ public class VentaController {
         for (int i = 0; i < dto.getItems().size(); i++) {
             VentaDTO.DetalleDTO item = dto.getItems().get(i);
             if (item.getProductoId() == null) {
-                errorResponse.put("error", "El producto #" + (i+1) + " no tiene ID válido.");
+                errorResponse.put("error", "El producto #" + (i + 1) + " no tiene ID válido.");
                 errorResponse.put("code", "INVALID_PRODUCT");
                 return ResponseEntity.badRequest().body(errorResponse);
             }
             if (item.getCantidad() == null || item.getCantidad().compareTo(BigDecimal.ZERO) <= 0) {
-                errorResponse.put("error", "El producto #" + (i+1) + " tiene cantidad inválida.");
+                errorResponse.put("error", "El producto #" + (i + 1) + " tiene cantidad inválida.");
                 errorResponse.put("code", "INVALID_QUANTITY");
                 return ResponseEntity.badRequest().body(errorResponse);
             }
             if (item.getPrecioVenta() == null || item.getPrecioVenta().compareTo(BigDecimal.ZERO) <= 0) {
-                errorResponse.put("error", "El producto #" + (i+1) + " tiene precio inválido.");
+                errorResponse.put("error", "El producto #" + (i + 1) + " tiene precio inválido.");
                 errorResponse.put("code", "INVALID_PRICE");
                 return ResponseEntity.badRequest().body(errorResponse);
             }
@@ -380,7 +389,8 @@ public class VentaController {
             if (totalVenta.compareTo(limiteIdentificacion) > 0) {
                 String doc = dto.getClienteDocumento();
                 if (doc == null || doc.length() != 8 || doc.equals("00000000")) {
-                    errorResponse.put("error", "Para Boletas mayores a S/ 700.00 es obligatorio el DNI del cliente (8 dígitos).");
+                    errorResponse.put("error",
+                            "Para Boletas mayores a S/ 700.00 es obligatorio el DNI del cliente (8 dígitos).");
                     errorResponse.put("code", "DNI_REQUIRED_OVER_700");
                     return ResponseEntity.badRequest().body(errorResponse);
                 }
@@ -397,6 +407,19 @@ public class VentaController {
             }
         }
 
+        if (dto.isEntregaAlFinal()) {
+            if (!"CREDITO".equalsIgnoreCase(dto.getFormaPago())) {
+                errorResponse.put("error", "El apartado debe registrarse como crédito para permitir pagos parciales.");
+                errorResponse.put("code", "INVALID_LAYAWAY_MODE");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            if (!"NOTA_VENTA".equalsIgnoreCase(tipoComprobante)) {
+                errorResponse.put("error", "Los apartados deben registrarse como Nota de Venta hasta la entrega final.");
+                errorResponse.put("code", "LAYAWAY_REQUIRES_NOTA");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+        }
+
         try {
             // Delegar toda la lógica al VentaService
             Map<String, Object> resultado = ventaService.crearVenta(dto);
@@ -404,7 +427,8 @@ public class VentaController {
 
         } catch (OptimisticLockingFailureException e) {
             log.warn("Conflicto de concurrencia en stock al procesar venta", e);
-            errorResponse.put("error", "Otro vendedor actualizó el stock mientras procesaba la venta. Actualice la página e intente nuevamente.");
+            errorResponse.put("error",
+                    "Otro vendedor actualizó el stock mientras procesaba la venta. Actualice la página e intente nuevamente.");
             errorResponse.put("code", "STOCK_CONFLICT");
             return ResponseEntity.status(409).body(errorResponse);
 
@@ -417,6 +441,100 @@ public class VentaController {
         } catch (Exception e) {
             log.error("Error inesperado al procesar venta", e);
             errorResponse.put("error", "Error interno al procesar la venta. Por favor contacte al administrador.");
+            errorResponse.put("code", "INTERNAL_ERROR");
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/anular/{id}")
+    @PreAuthorize("hasPermission(null, 'VENTAS_ELIMINAR')")
+    public String anularVenta(@PathVariable Long id,
+                              @RequestParam(defaultValue = "Anulación desde historial de ventas") String motivo,
+                              RedirectAttributes redirectAttributes) {
+        try {
+            Map<String, Object> resultado = ventaService.anularVenta(id, motivo);
+            String mensaje = resultado.get("advertencia") != null
+                    ? resultado.get("advertencia").toString()
+                    : "Venta anulada correctamente.";
+            redirectAttributes.addFlashAttribute("success", mensaje);
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            log.error("Error inesperado al anular venta {}", id, e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo anular la venta.");
+        }
+        return "redirect:/ventas/lista";
+    }
+
+    @PostMapping("/entregar/{id}")
+    @PreAuthorize("hasPermission(null, 'VENTAS_EDITAR')")
+    public String entregarApartado(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            ventaService.entregarApartado(id);
+            redirectAttributes.addFlashAttribute("success", "Apartado entregado y cerrado correctamente.");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            log.error("Error inesperado al entregar apartado {}", id, e);
+            redirectAttributes.addFlashAttribute("error", "No se pudo completar la entrega del apartado.");
+        }
+        return "redirect:/ventas/lista";
+    }
+
+    @PostMapping("/api/servicio-rapido")
+    @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
+    @RequerirCajaAbierta(mensaje = "CAJA CERRADA: Debe abrir caja antes de registrar ventas.")
+    @ResponseBody
+    public ResponseEntity<?> registrarServicioRapido(@Valid @RequestBody ServicioRapidoDTO dto,
+                                                     BindingResult bindingResult) {
+        Map<String, Object> errorResponse = new HashMap<>();
+
+        if (bindingResult.hasErrors()) {
+            String errores = bindingResult.getAllErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("Datos inválidos");
+            errorResponse.put("error", errores);
+            errorResponse.put("code", "VALIDATION_ERROR");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        Producto servicioGeneral = productoRepository.findByCodigoInterno("SERV-001")
+                .orElseThrow(() -> new RuntimeException("No se encontró el servicio base SERV-001"));
+
+        String descripcion = dto.getDescripcion() != null && !dto.getDescripcion().isBlank()
+                ? dto.getDescripcion().trim()
+                : "Servicio personalizado";
+
+        VentaDTO ventaRapida = new VentaDTO();
+        ventaRapida.setClienteNombre("PUBLICO GENERAL");
+        ventaRapida.setClienteDocumento("00000000");
+        ventaRapida.setClienteDireccion("");
+        ventaRapida.setClienteTelefono("");
+        ventaRapida.setTipoComprobante("NOTA_VENTA");
+        ventaRapida.setFormaPago("CONTADO");
+        ventaRapida.setMetodoPago("EFECTIVO");
+
+        VentaDTO.DetalleDTO detalle = new VentaDTO.DetalleDTO();
+        detalle.setProductoId(servicioGeneral.getId());
+        detalle.setCantidad(BigDecimal.ONE);
+        detalle.setPrecioVenta(dto.getMonto());
+        detalle.setDescripcion(descripcion);
+        ventaRapida.setItems(List.of(detalle));
+
+        try {
+            Map<String, Object> resultado = new HashMap<>(ventaService.crearVenta(ventaRapida));
+            resultado.put("descripcion", descripcion);
+            resultado.put("monto", dto.getMonto());
+            return ResponseEntity.ok(resultado);
+        } catch (RuntimeException e) {
+            log.error("Error de negocio al registrar servicio rápido: {}", e.getMessage());
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("code", "BUSINESS_ERROR");
+            return ResponseEntity.badRequest().body(errorResponse);
+        } catch (Exception e) {
+            log.error("Error inesperado al registrar servicio rápido", e);
+            errorResponse.put("error", "Error interno al registrar el servicio rápido.");
             errorResponse.put("code", "INTERNAL_ERROR");
             return ResponseEntity.status(500).body(errorResponse);
         }
@@ -435,7 +553,8 @@ public class VentaController {
             data.put("precioMinimo", p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA));
             data.put("stock", p.getStockActual());
             data.put("imagen", p.getImagen());
-            data.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-" + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
+            data.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-"
+                    + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
             return ResponseEntity.ok(data);
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -447,7 +566,8 @@ public class VentaController {
     @GetMapping("/imprimir/{id}")
     public String imprimir(@PathVariable Long id, Model model) {
         Venta venta = ventaRepository.findById(id).orElse(null);
-        if (venta == null) return "redirect:/ventas/lista";
+        if (venta == null)
+            return "redirect:/ventas/lista";
 
         Configuracion config = configuracionService.obtenerConfiguracion();
         model.addAttribute("venta", venta);
@@ -470,7 +590,8 @@ public class VentaController {
     @GetMapping("/ticket/{id}")
     public String ticket(@PathVariable Long id, Model model) {
         Venta venta = ventaRepository.findById(id).orElse(null);
-        if (venta == null) return "redirect:/ventas/lista";
+        if (venta == null)
+            return "redirect:/ventas/lista";
         model.addAttribute("venta", venta);
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "ventas/ticket";
@@ -483,7 +604,8 @@ public class VentaController {
     @GetMapping("/impresion-a4/{id}")
     public String impresionA4(@PathVariable Long id, Model model) {
         Venta venta = ventaRepository.findById(id).orElse(null);
-        if (venta == null) return "redirect:/ventas/lista";
+        if (venta == null)
+            return "redirect:/ventas/lista";
         model.addAttribute("venta", venta);
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "ventas/impresion";
@@ -510,7 +632,8 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "inline; filename=\"" + nombreArchivo + "\"");
 
-            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService
+                    .obtenerCantidadesDevueltasPorVenta(id);
             java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
             // SISTEMA HÍBRIDO: Rutar según formato configurado
             if ("TICKET".equalsIgnoreCase(formato)) {
@@ -547,7 +670,8 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
 
-            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService
+                    .obtenerCantidadesDevueltasPorVenta(id);
             java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
             reporteService.generarPdfTicketVenta(venta, config, response.getOutputStream(), cantDev, totalDev);
         } catch (Exception e) {
@@ -579,7 +703,8 @@ public class VentaController {
             response.setContentType("application/pdf");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + nombreArchivo + "\"");
 
-            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService.obtenerCantidadesDevueltasPorVenta(id);
+            java.util.Map<Long, java.math.BigDecimal> cantDev = devolucionService
+                    .obtenerCantidadesDevueltasPorVenta(id);
             java.math.BigDecimal totalDev = devolucionService.obtenerTotalDevueltoPorVenta(id);
             reporteService.generarPdfA4Venta(venta, config, response.getOutputStream(), cantDev, totalDev);
         } catch (Exception e) {
@@ -642,7 +767,8 @@ public class VentaController {
 
     /**
      * Muestra el detalle de venta en el modal.
-     * IMPORTANTE: Usa ":: contenido" para devolver solo el fragmento HTML sin el layout.
+     * IMPORTANTE: Usa ":: contenido" para devolver solo el fragmento HTML sin el
+     * layout.
      */
     @GetMapping("/detalle/{id}")
     @PreAuthorize("hasPermission(null, 'VENTAS_VER')")
@@ -653,17 +779,17 @@ public class VentaController {
             model.addAttribute("cantidadesDevueltas", devolucionService.obtenerCantidadesDevueltasPorVenta(id));
             model.addAttribute("totalDevuelto", devolucionService.obtenerTotalDevueltoPorVenta(id));
 
-            // Total de unidades vendidas por productoId en esta venta (para comparar correctamente
+            // Total de unidades vendidas por productoId en esta venta (para comparar
+            // correctamente
             // cuando hay varias líneas con el mismo producto, ej: cuadernos por curso)
             java.util.Map<Long, java.math.BigDecimal> cantidadesTotalPorProducto = new java.util.HashMap<>();
             if (venta.getItems() != null) {
                 for (DetalleVenta item : venta.getItems()) {
                     if (item.getProducto() != null) {
                         cantidadesTotalPorProducto.merge(
-                            item.getProducto().getId(),
-                            item.getCantidad(),
-                            java.math.BigDecimal::add
-                        );
+                                item.getProducto().getId(),
+                                item.getCantidad(),
+                                java.math.BigDecimal::add);
                     }
                 }
             }

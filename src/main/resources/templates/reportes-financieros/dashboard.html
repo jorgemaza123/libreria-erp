@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
@@ -6,22 +6,22 @@
 <head>
     <title th:text="${titulo}">Dashboard Financiero</title>
     <style>
-        .small-box h3 { font-size: 2.2rem; font-weight: bold; }
-        .small-box p { font-size: 1rem; }
+        .fin-card .small-box { border-radius: 1rem; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
+        .fin-card .small-box h3 { font-size: 2rem; font-weight: 700; }
+        .summary-chip { border-radius: 1rem; border: 1px solid #e5e7eb; background: #fff; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05); }
+        .summary-chip .label { color: #6b7280; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+        .summary-chip .value { font-size: 1.2rem; font-weight: 700; color: #111827; }
+        .section-note { color: #6b7280; font-size: .92rem; }
     </style>
 </head>
 <body>
-
 <div layout:fragment="content">
-    
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1>
-                        <i class="fas fa-chart-line text-primary"></i> Dashboard Financiero
-                        <small class="text-muted ml-2">Análisis general del negocio</small>
-                    </h1>
+                    <h1><i class="fas fa-chart-line text-primary"></i> Dashboard Financiero</h1>
+                    <div class="section-note">Resumen rapido para ver cuanto se genero, cuanto salio y que lo explica.</div>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
@@ -36,53 +36,68 @@
 
     <section class="content">
         <div class="container-fluid">
-            
-            <div class="row">
+            <div class="row fin-card">
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-info">
                         <div class="inner">
                             <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardVentasMes">0.00</span></h3>
-                            <p>Ventas del Mes</p>
+                            <p>Ventas Netas del Mes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-shopping-cart"></i>
-                        </div>
+                        <div class="icon"><i class="fas fa-cash-register"></i></div>
                     </div>
                 </div>
-
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-warning">
                         <div class="inner">
-                            <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardGastosMes">0.00</span></h3>
-                            <p>Gastos del Mes</p>
+                            <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardSalidasMes">0.00</span></h3>
+                            <p>Salidas del Mes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                        </div>
+                        <div class="icon"><i class="fas fa-arrow-circle-down"></i></div>
                     </div>
                 </div>
-
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-success">
                         <div class="inner">
-                            <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardGanancia">0.00</span></h3>
-                            <p>Ganancia Neta</p>
+                            <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardResultadoMes">0.00</span></h3>
+                            <p>Resultado del Mes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-money-bill-wave"></i>
-                        </div>
+                        <div class="icon"><i class="fas fa-chart-pie"></i></div>
                     </div>
                 </div>
-
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-secondary" id="cardVariacion">
                         <div class="inner">
-                            <h3><span id="variacionPorcentaje">0%</span></h3>
-                            <p>vs. Mismo Mes Año Anterior</p>
+                            <h3 id="variacionPorcentaje">0%</h3>
+                            <p>vs. mes anterior</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-chart-bar"></i>
-                        </div>
+                        <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-chip h-100">
+                        <div class="label">Ticket Promedio</div>
+                        <div class="value" id="chipTicketPromedio">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-chip h-100">
+                        <div class="label">Compras del Mes</div>
+                        <div class="value" id="chipComprasMes">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-chip h-100">
+                        <div class="label">Cobros de Credito</div>
+                        <div class="value" id="chipCobrosCredito">S/ 0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="p-3 summary-chip h-100">
+                        <div class="label">Devoluciones del Mes</div>
+                        <div class="value" id="chipDevoluciones">S/ 0.00</div>
                     </div>
                 </div>
             </div>
@@ -91,33 +106,20 @@
                 <div class="col-md-8">
                     <div class="card card-primary card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-chart-area"></i> Ventas vs Gastos - Últimos 12 Meses</h3>
-                            <div class="card-tools">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                            </div>
+                            <h3 class="card-title"><i class="fas fa-chart-area"></i> Ventas vs Salidas - Ultimos 12 Meses</h3>
                         </div>
                         <div class="card-body">
-                            <div class="chart">
-                                <canvas id="chartVentasGastos" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
-                            </div>
+                            <canvas id="chartVentasGastos" style="min-height: 280px; height: 320px; max-height: 320px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
                     <div class="card card-success card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-user-tag"></i> Ventas por Vendedor</h3>
-                            <div class="card-tools">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                            </div>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartVendedores" style="min-height: 250px; height: 300px; max-height: 300px; max-width: 100%;"></canvas>
+                            <canvas id="chartVendedores" style="min-height: 280px; height: 320px; max-height: 320px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
@@ -127,31 +129,30 @@
                 <div class="col-md-6">
                     <div class="card card-warning card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Top 5 Productos del Mes</h3>
+                            <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Productos con Mayor Venta</h3>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartTopProductos" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                            <canvas id="chartTopProductos" style="min-height: 260px; height: 260px; max-height: 260px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6">
                     <div class="card card-info card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-users text-info"></i> Top 5 Clientes del Mes</h3>
+                            <h3 class="card-title"><i class="fas fa-users text-info"></i> Clientes que Mas Compran</h3>
                         </div>
                         <div class="card-body p-0">
-                            <table class="table table-striped table-valign-middle">
+                            <table class="table table-striped table-valign-middle mb-0">
                                 <thead>
-                                    <tr>
-                                        <th style="width: 10px">#</th>
-                                        <th>Cliente</th>
-                                        <th class="text-center">Compras</th>
-                                        <th class="text-right">Total</th>
-                                    </tr>
+                                <tr>
+                                    <th style="width: 10px">#</th>
+                                    <th>Cliente</th>
+                                    <th class="text-center">Compras</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
                                 </thead>
                                 <tbody id="tbodyTopClientes">
-                                    <tr><td colspan="4" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -159,35 +160,24 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card card-secondary">
-                        <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-link"></i> Accesos Directos a Reportes Detallados</h3>
+            <div class="card card-secondary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-link"></i> Reportes Detallados</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <a href="/reportes/financieros/flujo-caja" class="btn btn-primary btn-block btn-lg"><i class="fas fa-exchange-alt mr-2"></i> Flujo de Caja</a>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4 mb-2">
-                                    <a href="/reportes/financieros/flujo-caja" class="btn btn-primary btn-block btn-lg">
-                                        <i class="fas fa-exchange-alt mr-2"></i> Flujo de Caja
-                                    </a>
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <a href="/reportes/financieros/rentabilidad" class="btn btn-success btn-block btn-lg">
-                                        <i class="fas fa-percentage mr-2"></i> Rentabilidad
-                                    </a>
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <a href="/reportes/financieros/analisis-ventas" class="btn btn-warning btn-block btn-lg text-white">
-                                        <i class="fas fa-chart-pie mr-2"></i> Análisis de Ventas
-                                    </a>
-                                </div>
-                            </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="/reportes/financieros/rentabilidad" class="btn btn-success btn-block btn-lg"><i class="fas fa-percentage mr-2"></i> Rentabilidad</a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="/reportes/financieros/analisis-ventas" class="btn btn-warning btn-block btn-lg text-white"><i class="fas fa-chart-pie mr-2"></i> Analisis de Ventas</a>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </section>
 </div>
@@ -195,8 +185,6 @@
 <th:block layout:fragment="scripts">
     <script>
         let chartVentasGastos, chartVendedores, chartTopProductos;
-
-        // Intervalo de polling en milisegundos (30 segundos)
         const POLLING_INTERVAL = 30000;
         let pollingTimer = null;
 
@@ -205,35 +193,23 @@
             iniciarPolling();
         });
 
-        // ============================================
-        // POLLING - REFRESCO AUTOMATICO
-        // ============================================
         function iniciarPolling() {
-            // Limpiar timer previo si existe
             if (pollingTimer) clearInterval(pollingTimer);
-
-            pollingTimer = setInterval(function() {
-                console.log('[Dashboard] Actualizando datos...');
-                cargarDashboard();
-            }, POLLING_INTERVAL);
-
-            console.log('[Dashboard] Polling iniciado - refresco cada ' + (POLLING_INTERVAL/1000) + ' segundos');
+            pollingTimer = setInterval(cargarDashboard, POLLING_INTERVAL);
         }
 
         function detenerPolling() {
             if (pollingTimer) {
                 clearInterval(pollingTimer);
                 pollingTimer = null;
-                console.log('[Dashboard] Polling detenido');
             }
         }
 
-        // Detener polling cuando la pestaña no está visible (ahorro de recursos)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 detenerPolling();
             } else {
-                cargarDashboard(); // Actualizar inmediatamente al volver
+                cargarDashboard();
                 iniciarPolling();
             }
         });
@@ -244,55 +220,47 @@
                 method: 'GET',
                 success: function(data) {
                     actualizarCards(data);
-                    renderizarGraficoVentasGastos(data.ultimos12Meses);
-                    renderizarGraficoTopProductos(data.top5Productos);
-                    renderizarTopClientes(data.top5Clientes);
-                    
-                    // Si el backend envía datos de vendedores:
-                    if(data.ventasPorVendedor) {
-                        renderizarGraficoVendedores(data.ventasPorVendedor);
-                    }
+                    renderizarGraficoVentasGastos(data.ultimos12Meses || []);
+                    renderizarGraficoTopProductos(data.top5Productos || []);
+                    renderizarTopClientes(data.top5Clientes || []);
+                    renderizarGraficoVendedores(data.ventasPorVendedor || []);
                 },
                 error: function() {
-                    if(typeof toastr !== 'undefined') toastr.error('Error al cargar el dashboard');
+                    if (typeof toastr !== 'undefined') toastr.error('Error al cargar el dashboard financiero');
                 }
             });
         }
 
         function actualizarCards(data) {
             $('#cardVentasMes').text(formatearNumero(data.ventasMesActual));
-            $('#cardGastosMes').text(formatearNumero(data.gastosMesActual));
-            $('#cardGanancia').text(formatearNumero(data.gananciaNeta));
+            $('#cardSalidasMes').text(formatearNumero(data.salidasMesActual));
+            $('#cardResultadoMes').text(formatearNumero(data.resultadoPeriodo));
+            $('#chipTicketPromedio').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.ticketPromedioMesActual));
+            $('#chipComprasMes').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.comprasMesActual));
+            $('#chipCobrosCredito').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.cobrosCreditoMesActual));
+            $('#chipDevoluciones').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.devolucionesMesActual));
 
-            const variacion = parseFloat(data.variacionAnual);
-            $('#variacionPorcentaje').text(formatearNumero(variacion) + '%');
+            const variacion = parseFloat(data.variacionMensual || 0);
+            const icon = variacion > 0
+                ? '<i class="fas fa-caret-up mr-1"></i>'
+                : variacion < 0
+                    ? '<i class="fas fa-caret-down mr-1"></i>'
+                    : '<i class="fas fa-minus mr-1"></i>';
+            $('#variacionPorcentaje').html(icon + formatearNumero(variacion) + '%');
 
-            // Cambiar color del card según la variación
             const cardVariacion = $('#cardVariacion');
             cardVariacion.removeClass('bg-success bg-danger bg-secondary');
-            
-            if (variacion > 0) {
-                cardVariacion.addClass('bg-success');
-                $('#variacionPorcentaje').prepend('<i class="fas fa-caret-up mr-1"></i>');
-            } else if (variacion < 0) {
-                cardVariacion.addClass('bg-danger');
-                $('#variacionPorcentaje').prepend('<i class="fas fa-caret-down mr-1"></i>');
-            } else {
-                cardVariacion.addClass('bg-secondary');
-                $('#variacionPorcentaje').prepend('<i class="fas fa-minus mr-1"></i>');
-            }
+            if (variacion > 0) cardVariacion.addClass('bg-success');
+            else if (variacion < 0) cardVariacion.addClass('bg-danger');
+            else cardVariacion.addClass('bg-secondary');
         }
 
         function renderizarGraficoVentasGastos(datos) {
-            if (!datos) return;
             const labels = datos.map(d => d.mes);
-            const ventas = datos.map(d => parseFloat(d.ventas));
-            const gastos = datos.map(d => parseFloat(d.gastos));
-
+            const ventas = datos.map(d => parseFloat(d.ventas || 0));
+            const salidas = datos.map(d => parseFloat((d.salidas != null ? d.salidas : d.gastos) || 0));
             const ctx = document.getElementById('chartVentasGastos').getContext('2d');
-
             if (chartVentasGastos) chartVentasGastos.destroy();
-
             chartVentasGastos = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -302,15 +270,15 @@
                             label: 'Ventas',
                             data: ventas,
                             borderColor: APP_CONFIG.colorInfo,
-                            backgroundColor: APP_CONFIG.colorInfo + '1A', // Transparencia
+                            backgroundColor: APP_CONFIG.colorInfo + '1A',
                             tension: 0.3,
                             fill: true
                         },
                         {
-                            label: 'Gastos',
-                            data: gastos,
+                            label: 'Salidas',
+                            data: salidas,
                             borderColor: APP_CONFIG.colorPeligro,
-                            backgroundColor: APP_CONFIG.colorPeligro + '1A', // Transparencia
+                            backgroundColor: APP_CONFIG.colorPeligro + '1A',
                             tension: 0.3,
                             fill: true
                         }
@@ -319,10 +287,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'top' },
                         tooltip: {
@@ -336,7 +301,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; } }
+                            ticks: { callback: value => APP_CONFIG.formatoMoneda + ' ' + value }
                         }
                     }
                 }
@@ -344,31 +309,56 @@
         }
 
         function renderizarGraficoTopProductos(productos) {
-            if (!productos || productos.length === 0) return;
-
-            const labels = productos.map(p => p.nombre.substring(0, 20) + (p.nombre.length>20?'...':''));
-            const datos = productos.map(p => parseFloat(p.cantidad));
-
             const ctx = document.getElementById('chartTopProductos').getContext('2d');
-
             if (chartTopProductos) chartTopProductos.destroy();
-
+            if (!productos || productos.length === 0) return;
             chartTopProductos = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: labels,
+                    labels: productos.map(p => recortarTexto(p.nombre || p.productoNombre, 24)),
                     datasets: [{
-                        data: datos,
-                        backgroundColor: [
-                            APP_CONFIG.colorPeligro, APP_CONFIG.colorExito, APP_CONFIG.colorAdvertencia, APP_CONFIG.colorInfo, APP_CONFIG.colorPrimario
-                        ],
+                        data: productos.map(p => parseFloat(p.cantidad || p.cantidadVendida || 0)),
+                        backgroundColor: [APP_CONFIG.colorPeligro, APP_CONFIG.colorExito, APP_CONFIG.colorAdvertencia, APP_CONFIG.colorInfo, APP_CONFIG.colorPrimario]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+        }
+
+        function renderizarGraficoVendedores(vendedores) {
+            const ctx = document.getElementById('chartVendedores').getContext('2d');
+            if (chartVendedores) chartVendedores.destroy();
+            if (!vendedores || vendedores.length === 0) return;
+            chartVendedores = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: vendedores.map(v => recortarTexto(v.nombre || v.vendedor, 18)),
+                    datasets: [{
+                        label: 'Ventas',
+                        data: vendedores.map(v => parseFloat(v.total || 0)),
+                        backgroundColor: APP_CONFIG.colorExito
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right' }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => APP_CONFIG.formatoMoneda + ' ' + context.parsed.y.toFixed(2)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: value => APP_CONFIG.formatoMoneda + ' ' + value }
+                        }
                     }
                 }
             });
@@ -377,65 +367,39 @@
         function renderizarTopClientes(clientes) {
             const tbody = $('#tbodyTopClientes');
             tbody.empty();
-
             if (!clientes || clientes.length === 0) {
                 tbody.html('<tr><td colspan="4" class="text-center text-muted">No hay datos disponibles</td></tr>');
                 return;
             }
-
             clientes.forEach((cliente, index) => {
-                let badge = `<span class="badge badge-secondary">${index + 1}</span>`;
-                if(index === 0) badge = `<i class="fas fa-medal text-warning"></i>`;
-                if(index === 1) badge = `<i class="fas fa-medal text-secondary"></i>`;
-                if(index === 2) badge = `<i class="fas fa-medal" style="color: ` + APP_CONFIG.colorBronce + `;"></i>`;
-
+                const badge = index === 0
+                    ? '<i class="fas fa-medal text-warning"></i>'
+                    : index === 1
+                        ? '<i class="fas fa-medal text-secondary"></i>'
+                        : index === 2
+                            ? '<i class="fas fa-medal" style="color:' + APP_CONFIG.colorBronce + '"></i>'
+                            : '<span class="badge badge-secondary">' + (index + 1) + '</span>';
                 tbody.append(`
                     <tr>
                         <td class="text-center">${badge}</td>
-                        <td>${cliente.nombre}</td>
-                        <td class="text-center"><span class="badge badge-info">${cliente.cantidad}</span></td>
+                        <td>${cliente.nombre || '-'}</td>
+                        <td class="text-center"><span class="badge badge-info">${cliente.cantidad || 0}</span></td>
                         <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatearNumero(cliente.total)}</td>
                     </tr>
                 `);
             });
         }
 
-        // Placeholder para gráfico de vendedores si se implementa
-        function renderizarGraficoVendedores(vendedores) {
-             const ctx = document.getElementById('chartVendedores').getContext('2d');
-             if (chartVendedores) chartVendedores.destroy();
-             
-             // Lógica simple si hay datos
-             if(!vendedores) return;
-
-             chartVendedores = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: vendedores.map(v => v.nombre),
-                    datasets: [{
-                        label: 'Ventas',
-                        data: vendedores.map(v => v.total),
-                        backgroundColor: APP_CONFIG.colorExito
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            ticks: { callback: function(value) { return APP_CONFIG.formatoMoneda + ' ' + value; } }
-                        }
-                    }
-                }
-             });
+        function recortarTexto(texto, limite) {
+            if (!texto) return '-';
+            return texto.length > limite ? texto.substring(0, limite) + '...' : texto;
         }
 
         function formatearNumero(num) {
-            if (num == null) return '0.00';
+            if (num == null || isNaN(num)) return '0.00';
             return parseFloat(num).toFixed(2);
         }
     </script>
 </th:block>
-
 </body>
 </html>

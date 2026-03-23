@@ -8,16 +8,25 @@ import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.awt.Color;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -26,846 +35,965 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class ReporteFinancieroService {
 
-    @Autowired
-    private VentaRepository ventaRepository;
+    private static final String SERVICIO_RAPIDO_CODE = "SERV-001";
+    private static final String APERTURA_CAJA = "APERTURA_CAJA";
+    private static final BigDecimal CIEN = BigDecimal.valueOf(100);
+    private static final Locale LOCALE_ES_PE = new Locale("es", "PE");
+    private static final DateTimeFormatter MES_LABEL = DateTimeFormatter.ofPattern("MMM yyyy", LOCALE_ES_PE);
+    private static final DateTimeFormatter FECHA_PDF = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    @Autowired
-    private CompraRepository compraRepository;
+    @Autowired private VentaRepository ventaRepository;
+    @Autowired private MovimientoCajaRepository movimientoCajaRepository;
+    @Autowired private DetalleDevolucionRepository detalleDevolucionRepository;
+    @Autowired private ProductoRepository productoRepository;
+    @Autowired private ConfiguracionService configuracionService;
 
-    @Autowired
-    private MovimientoCajaRepository movimientoCajaRepository;
-
-    @Autowired
-    private AmortizacionRepository amortizacionRepository;
-
-    @Autowired
-    private DevolucionVentaRepository devolucionRepository;
-
-    @Autowired
-    private ProductoRepository productoRepository;
-
-    @Autowired
-    private ConfiguracionService configuracionService;
-
-    /**
-     * Generar flujo de caja con ingresos y egresos.
-     * OPTIMIZADO: Usa queries JPA con filtro en BD en lugar de findAll() + stream.
-     */
-    public Map<String, Object> generarFlujoCaja(LocalDate fechaInicio, LocalDate fechaFin) {
-        LocalDateTime inicio = fechaInicio.atStartOfDay();
-        LocalDateTime fin = fechaFin.atTime(23, 59, 59);
-
-        Map<String, Object> resultado = new HashMap<>();
-        List<Map<String, Object>> detalleIngresos = new ArrayList<>();
-        List<Map<String, Object>> detalleEgresos = new ArrayList<>();
-
-        BigDecimal totalIngresos = BigDecimal.ZERO;
-        BigDecimal totalEgresos = BigDecimal.ZERO;
-
-        // === INGRESOS ===
-
-        // 1. Ventas al contado (query en BD)
-        BigDecimal ingresoVentasContado = ventaRepository.sumTotalByFechaEmisionBetween(fechaInicio, fechaFin);
-        long cantidadVentasContado = ventaRepository.countByFechaEmisionBetween(fechaInicio, fechaFin);
-
-        detalleIngresos.add(Map.of(
-                "concepto", "Ventas (no anuladas)",
-                "cantidad", cantidadVentasContado,
-                "monto", ingresoVentasContado
-        ));
-        totalIngresos = totalIngresos.add(ingresoVentasContado);
-
-        // 2. Amortizaciones (pagos de credito) - query en BD
-        BigDecimal ingresoAmortizaciones = amortizacionRepository.sumByPeriodo(inicio, fin);
-        long cantidadAmortizaciones = amortizacionRepository.countByPeriodo(inicio, fin);
-
-        detalleIngresos.add(Map.of(
-                "concepto", "Cobros de Credito (Amortizaciones)",
-                "cantidad", cantidadAmortizaciones,
-                "monto", ingresoAmortizaciones
-        ));
-        totalIngresos = totalIngresos.add(ingresoAmortizaciones);
-
-        // 3. Otros ingresos (MovimientoCaja tipo INGRESO) - query en BD
-        BigDecimal montoOtrosIngresos = movimientoCajaRepository.sumarIngresos(inicio);
-
-        detalleIngresos.add(Map.of(
-                "concepto", "Otros Ingresos",
-                "cantidad", 0L,
-                "monto", montoOtrosIngresos
-        ));
-        totalIngresos = totalIngresos.add(montoOtrosIngresos);
-
-        // === EGRESOS ===
-
-        // 1. Compras (excluir anuladas) - query en BD
-        BigDecimal egresoCompras = compraRepository.sumTotalByPeriodo(inicio, fin);
-        long cantidadCompras = compraRepository.countByPeriodo(inicio, fin);
-
-        detalleEgresos.add(Map.of(
-                "concepto", "Compras a Proveedores",
-                "cantidad", cantidadCompras,
-                "monto", egresoCompras
-        ));
-        totalEgresos = totalEgresos.add(egresoCompras);
-
-        // 2. Devoluciones (reembolsos en efectivo) - query en BD
-        BigDecimal egresoDevoluciones = devolucionRepository.sumDevolucionesEfectivoPorPeriodo(fechaInicio, fechaFin);
-        long cantidadDevoluciones = devolucionRepository.countDevolucionesEfectivoPorPeriodo(fechaInicio, fechaFin);
-
-        detalleEgresos.add(Map.of(
-                "concepto", "Devoluciones (Reembolsos)",
-                "cantidad", cantidadDevoluciones,
-                "monto", egresoDevoluciones
-        ));
-        totalEgresos = totalEgresos.add(egresoDevoluciones);
-
-        // 3. Otros egresos (MovimientoCaja tipo EGRESO) - query en BD
-        BigDecimal montoOtrosEgresos = movimientoCajaRepository.sumarEgresos(inicio);
-
-        detalleEgresos.add(Map.of(
-                "concepto", "Gastos Administrativos",
-                "cantidad", 0L,
-                "monto", montoOtrosEgresos
-        ));
-        totalEgresos = totalEgresos.add(montoOtrosEgresos);
-
-        // === RESULTADO ===
-        BigDecimal saldo = totalIngresos.subtract(totalEgresos);
-
-        resultado.put("totalIngresos", totalIngresos);
-        resultado.put("totalEgresos", totalEgresos);
-        resultado.put("saldo", saldo);
-        resultado.put("detalleIngresos", detalleIngresos);
-        resultado.put("detalleEgresos", detalleEgresos);
-        resultado.put("fechaInicio", fechaInicio);
-        resultado.put("fechaFin", fechaFin);
-
-        return resultado;
+    private static class ResumenMovimiento {
+        long cantidad;
+        BigDecimal total = BigDecimal.ZERO;
+        void add(BigDecimal monto) {
+            cantidad++;
+            total = total.add(valorSeguro(monto));
+        }
     }
 
-    /**
-     * Generar rentabilidad por productos
-     */
+    private static class DetalleVentaNeto {
+        Long ventaId;
+        LocalDate fechaVenta;
+        String vendedor;
+        Long clienteId;
+        String clienteNombre;
+        Long productoId;
+        String nombreItem;
+        String categoria;
+        BigDecimal cantidad = BigDecimal.ZERO;
+        BigDecimal ingresoTotal = BigDecimal.ZERO;
+        BigDecimal costoTotal = BigDecimal.ZERO;
+    }
+
+    public Map<String, Object> generarFlujoCaja(LocalDate fechaInicio, LocalDate fechaFin) {
+        List<MovimientoCaja> movimientos = movimientoCajaRepository.findByFechaBetween(
+                fechaInicio.atStartOfDay(), fechaFin.atTime(23, 59, 59));
+        Map<String, ResumenMovimiento> resumenes = resumirMovimientosCaja(movimientos);
+
+        ResumenMovimiento ventas = resumenes.getOrDefault(CategoriaMovimiento.VENTA, new ResumenMovimiento());
+        ResumenMovimiento cobranzas = resumenes.getOrDefault(CategoriaMovimiento.COBRANZA, new ResumenMovimiento());
+        ResumenMovimiento apertura = resumenes.getOrDefault(APERTURA_CAJA, new ResumenMovimiento());
+        ResumenMovimiento aportes = resumenes.getOrDefault(CategoriaMovimiento.APORTE_DUENO, new ResumenMovimiento());
+        ResumenMovimiento otrosIngresos = resumenes.getOrDefault(CategoriaMovimiento.OTRO_INGRESO, new ResumenMovimiento());
+        ResumenMovimiento compras = resumenes.getOrDefault(CategoriaMovimiento.COMPRA_MERCADERIA, new ResumenMovimiento());
+        ResumenMovimiento gastos = resumenes.getOrDefault(CategoriaMovimiento.GASTO_OPERATIVO, new ResumenMovimiento());
+        ResumenMovimiento devoluciones = resumenes.getOrDefault(CategoriaMovimiento.DEVOLUCION, new ResumenMovimiento());
+        ResumenMovimiento retiros = resumenes.getOrDefault(CategoriaMovimiento.RETIRO_DUENO, new ResumenMovimiento());
+        ResumenMovimiento otrosEgresos = resumenes.getOrDefault(CategoriaMovimiento.OTRO_EGRESO, new ResumenMovimiento());
+
+        List<Map<String, Object>> detalleIngresos = new ArrayList<>();
+        detalleIngresos.add(crearFilaDetalle("Ventas cobradas", ventas));
+        detalleIngresos.add(crearFilaDetalle("Cobros de credito", cobranzas));
+        detalleIngresos.add(crearFilaDetalle("Fondo inicial / apertura", apertura));
+        detalleIngresos.add(crearFilaDetalle("Aportes del dueno", aportes));
+        detalleIngresos.add(crearFilaDetalle("Otros ingresos", otrosIngresos));
+
+        List<Map<String, Object>> detalleEgresos = new ArrayList<>();
+        detalleEgresos.add(crearFilaDetalle("Compras de mercaderia", compras));
+        detalleEgresos.add(crearFilaDetalle("Gastos operativos", gastos));
+        detalleEgresos.add(crearFilaDetalle("Devoluciones / reembolsos", devoluciones));
+        detalleEgresos.add(crearFilaDetalle("Retiros del dueno", retiros));
+        detalleEgresos.add(crearFilaDetalle("Otros egresos", otrosEgresos));
+
+        BigDecimal totalIngresos = sumarMontos(detalleIngresos);
+        BigDecimal totalEgresos = sumarMontos(detalleEgresos);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("fechaInicio", fechaInicio);
+        out.put("fechaFin", fechaFin);
+        out.put("detalleIngresos", detalleIngresos);
+        out.put("detalleEgresos", detalleEgresos);
+        out.put("totalIngresos", totalIngresos);
+        out.put("totalEgresos", totalEgresos);
+        out.put("saldo", totalIngresos.subtract(totalEgresos));
+        out.put("ventasCobradas", ventas.total);
+        out.put("cobrosCredito", cobranzas.total);
+        out.put("fondoInicial", apertura.total);
+        out.put("aportesDueno", aportes.total);
+        out.put("otrosIngresos", otrosIngresos.total);
+        out.put("comprasMercaderia", compras.total);
+        out.put("gastosOperativos", gastos.total);
+        out.put("devoluciones", devoluciones.total);
+        out.put("retirosDueno", retiros.total);
+        out.put("otrosEgresos", otrosEgresos.total);
+        out.put("movimientosProcesados", movimientos.size());
+        return out;
+    }
+
     public List<Map<String, Object>> generarRentabilidadProductos(LocalDate fechaInicio, LocalDate fechaFin) {
-        List<Map<String, Object>> rentabilidad = new ArrayList<>();
+        List<DetalleVentaNeto> netos = construirDetallesNetos(obtenerVentasReportables(fechaInicio, fechaFin));
+        Map<String, Map<String, Object>> agrupado = new LinkedHashMap<>();
 
-        // Obtener ventas del rango con EntityGraph (no anuladas, no devueltas total)
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(fechaInicio, fechaFin).stream()
-                .filter(v -> !"ANULADO".equals(v.getEstado()) && !"DEVUELTO_TOTAL".equals(v.getEstado()))
-                .collect(Collectors.toList());
-
-        // Agrupar productos vendidos
-        Map<Long, List<DetalleVenta>> productoVentas = new HashMap<>();
-        for (Venta venta : ventas) {
-            for (DetalleVenta detalle : venta.getItems()) {
-                Producto producto = detalle.getProducto();
-                if (producto != null) {
-                    productoVentas.computeIfAbsent(producto.getId(), k -> new ArrayList<>()).add(detalle);
-                }
-            }
+        for (DetalleVentaNeto detalle : netos) {
+            String key = claveProducto(detalle.productoId, detalle.nombreItem) + "|" + normalizar(detalle.categoria);
+            Map<String, Object> item = agrupado.computeIfAbsent(key, k -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("productoId", detalle.productoId);
+                data.put("productoNombre", detalle.nombreItem);
+                data.put("productoCategoria", detalle.categoria);
+                data.put("cantidadVendida", BigDecimal.ZERO);
+                data.put("costoTotal", BigDecimal.ZERO);
+                data.put("totalVendido", BigDecimal.ZERO);
+                return data;
+            });
+            item.put("cantidadVendida", valorSeguro((BigDecimal) item.get("cantidadVendida")).add(detalle.cantidad));
+            item.put("costoTotal", valorSeguro((BigDecimal) item.get("costoTotal")).add(detalle.costoTotal));
+            item.put("totalVendido", valorSeguro((BigDecimal) item.get("totalVendido")).add(detalle.ingresoTotal));
         }
 
-        // Calcular rentabilidad por producto
-        for (Map.Entry<Long, List<DetalleVenta>> entry : productoVentas.entrySet()) {
-            Long productoId = entry.getKey();
-            List<DetalleVenta> detalles = entry.getValue();
+        List<Map<String, Object>> rentabilidad = new ArrayList<>();
+        for (Map<String, Object> item : agrupado.values()) {
+            BigDecimal cantidad = valorSeguro((BigDecimal) item.remove("cantidadVendida"));
+            BigDecimal costoTotal = valorSeguro((BigDecimal) item.remove("costoTotal"));
+            BigDecimal vendido = valorSeguro((BigDecimal) item.get("totalVendido"));
+            if (cantidad.compareTo(BigDecimal.ZERO) <= 0 || vendido.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-            if (detalles.isEmpty()) continue;
+            BigDecimal ganancia = vendido.subtract(costoTotal);
+            BigDecimal pCompra = costoTotal.divide(cantidad, 2, RoundingMode.HALF_UP);
+            BigDecimal pVenta = vendido.divide(cantidad, 2, RoundingMode.HALF_UP);
+            BigDecimal margenBruto = pVenta.subtract(pCompra);
+            BigDecimal margenPorcentaje = ganancia.divide(vendido, 4, RoundingMode.HALF_UP).multiply(CIEN);
 
-            Producto producto = detalles.get(0).getProducto();
-
-            // Calcular usando costo congelado por detalle (con fallback al producto para ventas antiguas)
-            int cantidadVendida = 0;
-            BigDecimal costoTotal = BigDecimal.ZERO;
-            BigDecimal ingresoTotal = BigDecimal.ZERO;
-            BigDecimal precioCompraFallback = producto.getPrecioCompra() != null
-                    ? producto.getPrecioCompra() : BigDecimal.ZERO;
-
-            for (DetalleVenta d : detalles) {
-                int qty = d.getCantidad().intValue();
-                cantidadVendida += qty;
-                ingresoTotal = ingresoTotal.add(d.getSubtotal());
-
-                BigDecimal costo = d.getCostoUnitario() != null
-                    ? d.getCostoUnitario() : precioCompraFallback;
-                costoTotal = costoTotal.add(costo.multiply(d.getCantidad()));
-            }
-
-            BigDecimal gananciaTotal = ingresoTotal.subtract(costoTotal);
-            BigDecimal margenPorcentaje = ingresoTotal.compareTo(BigDecimal.ZERO) > 0
-                    ? gananciaTotal.divide(ingresoTotal, 4, RoundingMode.HALF_UP)
-                            .multiply(BigDecimal.valueOf(100))
-                    : BigDecimal.ZERO;
-
-            // Promedios para mostrar en reporte
-            BigDecimal precioVentaPromedio = cantidadVendida > 0
-                    ? ingresoTotal.divide(BigDecimal.valueOf(cantidadVendida), 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
-            BigDecimal precioCompra = cantidadVendida > 0
-                    ? costoTotal.divide(BigDecimal.valueOf(cantidadVendida), 2, RoundingMode.HALF_UP)
-                    : precioCompraFallback;
-            BigDecimal margenBruto = precioVentaPromedio.subtract(precioCompra);
-            BigDecimal totalVendido = ingresoTotal;
-
-            Map<String, Object> item = new HashMap<>();
-            item.put("productoId", productoId);
-            item.put("productoNombre", producto.getNombre());
-            item.put("productoCategoria", producto.getCategoria());
-            item.put("cantidadVendida", cantidadVendida);
-            item.put("precioCompra", precioCompra);
-            item.put("precioVentaPromedio", precioVentaPromedio);
+            item.put("cantidadVendida", cantidad.stripTrailingZeros());
+            item.put("precioCompra", pCompra);
+            item.put("precioVentaPromedio", pVenta);
             item.put("margenBruto", margenBruto);
             item.put("margenPorcentaje", margenPorcentaje);
-            item.put("gananciaTotal", gananciaTotal);
-            item.put("totalVendido", totalVendido);
-
+            item.put("gananciaTotal", ganancia);
             rentabilidad.add(item);
         }
 
-        // Ordenar por ganancia total descendente
-        rentabilidad.sort((a, b) ->
-                ((BigDecimal) b.get("gananciaTotal")).compareTo((BigDecimal) a.get("gananciaTotal"))
-        );
-
+        rentabilidad.sort((a, b) -> valorSeguro((BigDecimal) b.get("gananciaTotal"))
+                .compareTo(valorSeguro((BigDecimal) a.get("gananciaTotal"))));
         return rentabilidad;
     }
 
-    /**
-     * Generar analisis de ventas.
-     * OPTIMIZADO: Usa query con filtro en BD en lugar de findAll().
-     */
     public Map<String, Object> generarAnalisisVentas(LocalDate fechaInicio, LocalDate fechaFin) {
-        Map<String, Object> resultado = new HashMap<>();
+        List<Venta> ventas = obtenerVentasReportables(fechaInicio, fechaFin);
+        List<DetalleVentaNeto> netos = construirDetallesNetos(ventas);
+        Map<Long, BigDecimal> totalesVenta = calcularTotalesNetosPorVenta(netos);
 
-        // Obtener ventas del periodo (query con filtro en BD + EntityGraph para evitar N+1)
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(fechaInicio, fechaFin).stream()
-                .filter(v -> !"ANULADO".equals(v.getEstado()))
-                .collect(Collectors.toList());
+        Map<LocalDate, BigDecimal> ventasPorDia = new LinkedHashMap<>();
+        Map<String, BigDecimal> ventasUsuario = new HashMap<>();
+        Map<String, Integer> cantidadUsuario = new HashMap<>();
+        int totalVentas = 0;
+        BigDecimal montoTotal = BigDecimal.ZERO;
 
-        // 1. Ventas por día (serie temporal)
-        Map<LocalDate, BigDecimal> ventasPorDia = new TreeMap<>();
         for (Venta venta : ventas) {
-            LocalDate fecha = venta.getFechaEmision();
-            ventasPorDia.merge(fecha, venta.getTotal(), BigDecimal::add);
+            BigDecimal totalNeto = valorSeguro(totalesVenta.get(venta.getId()));
+            if (totalNeto.compareTo(BigDecimal.ZERO) <= 0) continue;
+            totalVentas++;
+            montoTotal = montoTotal.add(totalNeto);
+            ventasPorDia.merge(venta.getFechaEmision(), totalNeto, BigDecimal::add);
+            String vendedor = nombreVendedor(venta);
+            ventasUsuario.merge(vendedor, totalNeto, BigDecimal::add);
+            cantidadUsuario.merge(vendedor, 1, Integer::sum);
         }
 
-        List<Map<String, Object>> serieTemporal = new ArrayList<>();
-        for (Map.Entry<LocalDate, BigDecimal> entry : ventasPorDia.entrySet()) {
-            serieTemporal.add(Map.of(
-                    "fecha", entry.getKey(),
-                    "total", entry.getValue()
-            ));
-        }
-        resultado.put("ventasPorDia", serieTemporal);
-
-        // 2. Ventas por usuario/vendedor
-        Map<String, BigDecimal> ventasPorUsuario = new HashMap<>();
-        Map<String, Integer> cantidadPorUsuario = new HashMap<>();
-        for (Venta venta : ventas) {
-            String usuario = venta.getUsuario() != null
-                    ? venta.getUsuario().getNombreCompleto()
-                    : "Sin asignar";
-            ventasPorUsuario.merge(usuario, venta.getTotal(), BigDecimal::add);
-            cantidadPorUsuario.merge(usuario, 1, Integer::sum);
-        }
+        List<Map<String, Object>> serie = ventasPorDia.entrySet().stream().map(e -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("fecha", e.getKey());
+            item.put("total", e.getValue());
+            return item;
+        }).collect(Collectors.toList());
 
         List<Map<String, Object>> ventasPorVendedor = new ArrayList<>();
-        for (Map.Entry<String, BigDecimal> entry : ventasPorUsuario.entrySet()) {
-            ventasPorVendedor.add(Map.of(
-                    "vendedor", entry.getKey(),
-                    "total", entry.getValue(),
-                    "cantidad", cantidadPorUsuario.get(entry.getKey())
-            ));
+        for (Map.Entry<String, BigDecimal> entry : ventasUsuario.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("vendedor", entry.getKey());
+            item.put("nombre", entry.getKey());
+            item.put("total", entry.getValue());
+            item.put("cantidad", cantidadUsuario.getOrDefault(entry.getKey(), 0));
+            ventasPorVendedor.add(item);
         }
-        ventasPorVendedor.sort((a, b) ->
-                ((BigDecimal) b.get("total")).compareTo((BigDecimal) a.get("total"))
-        );
-        resultado.put("ventasPorVendedor", ventasPorVendedor);
+        ventasPorVendedor.sort((a, b) -> valorSeguro((BigDecimal) b.get("total"))
+                .compareTo(valorSeguro((BigDecimal) a.get("total"))));
 
-        // 3. Productos más vendidos (top 10)
-        Map<Long, Integer> productosVendidos = new HashMap<>();
-        Map<Long, String> nombresProductos = new HashMap<>();
-        Map<Long, BigDecimal> totalesProductos = new HashMap<>();
+        List<Map<String, Object>> topProductos = construirTopProductos(netos, 10);
+        Set<Long> conVentas = netos.stream().map(n -> n.productoId).filter(Objects::nonNull).collect(Collectors.toSet());
+        List<Map<String, Object>> sinRotacion = productoRepository.findAll().stream()
+                .filter(Producto::isActivo)
+                .filter(p -> !"SERVICIO".equalsIgnoreCase(p.getTipo()))
+                .filter(p -> !conVentas.contains(p.getId()))
+                .sorted(Comparator.comparing(Producto::getNombre, String.CASE_INSENSITIVE_ORDER))
+                .map(p -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("productoId", p.getId());
+                    item.put("productoNombre", p.getNombre());
+                    item.put("categoria", p.getCategoria() != null ? p.getCategoria() : "Sin categoria");
+                    item.put("stockActual", p.getStockActual() != null ? p.getStockActual() : 0);
+                    return item;
+                }).collect(Collectors.toList());
 
-        for (Venta venta : ventas) {
-            for (DetalleVenta detalle : venta.getItems()) {
-                Producto producto = detalle.getProducto();
-                if (producto != null) {
-                    productosVendidos.merge(producto.getId(), detalle.getCantidad().intValue(), Integer::sum);
-                    nombresProductos.put(producto.getId(), producto.getNombre());
-                    totalesProductos.merge(producto.getId(), detalle.getSubtotal(), BigDecimal::add);
-                }
-            }
-        }
-
-        List<Map<String, Object>> topProductos = new ArrayList<>();
-        for (Map.Entry<Long, Integer> entry : productosVendidos.entrySet()) {
-            topProductos.add(Map.of(
-                    "productoId", entry.getKey(),
-                    "productoNombre", nombresProductos.get(entry.getKey()),
-                    "cantidadVendida", entry.getValue(),
-                    "totalVendido", totalesProductos.get(entry.getKey())
-            ));
-        }
-        topProductos.sort((a, b) ->
-                ((Integer) b.get("cantidadVendida")).compareTo((Integer) a.get("cantidadVendida"))
-        );
-        resultado.put("topProductos", topProductos.stream().limit(10).collect(Collectors.toList()));
-
-        // 4. Productos sin rotación (no vendidos en el periodo)
-        Set<Long> productosConVentas = productosVendidos.keySet();
-        List<Producto> todosProductos = productoRepository.findAll();
-        List<Map<String, Object>> sinRotacion = todosProductos.stream()
-                .filter(p -> p.isActivo() && !productosConVentas.contains(p.getId()))
-                .map(p -> Map.of(
-                        "productoId", (Object) p.getId(),
-                        "productoNombre", (Object) p.getNombre(),
-                        "categoria", (Object) (p.getCategoria() != null ? p.getCategoria() : "Sin categoría"),
-                        "stockActual", (Object) p.getStockActual()
-                ))
-                .collect(Collectors.toList());
-        resultado.put("productosSinRotacion", sinRotacion);
-
-        // Totales generales
-        resultado.put("totalVentas", ventas.size());
-        resultado.put("montoTotalVentas", ventas.stream()
-                .map(Venta::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
-
-        return resultado;
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ventasPorDia", serie);
+        out.put("ventasPorVendedor", ventasPorVendedor);
+        out.put("topProductos", topProductos);
+        out.put("productosSinRotacion", sinRotacion);
+        out.put("totalVentas", totalVentas);
+        out.put("montoTotalVentas", montoTotal);
+        out.put("ticketPromedio", totalVentas > 0 ? montoTotal.divide(BigDecimal.valueOf(totalVentas), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        out.put("diasConVentas", ventasPorDia.size());
+        out.put("vendedoresActivos", ventasPorVendedor.size());
+        out.put("cantidadProductosSinRotacion", sinRotacion.size());
+        return out;
     }
 
-    /**
-     * Generar dashboard financiero
-     */
     public Map<String, Object> generarDashboardFinanciero() {
-        Map<String, Object> dashboard = new HashMap<>();
+        YearMonth actual = YearMonth.now();
+        LocalDate inicioMes = actual.atDay(1);
+        LocalDate finMes = actual.atEndOfMonth();
+        YearMonth anterior = actual.minusMonths(1);
 
-        // Mes actual
-        YearMonth mesActual = YearMonth.now();
-        LocalDate inicioMes = mesActual.atDay(1);
-        LocalDate finMes = mesActual.atEndOfMonth();
+        List<Venta> ventasMes = obtenerVentasReportables(inicioMes, finMes);
+        List<DetalleVentaNeto> netosMes = construirDetallesNetos(ventasMes);
+        Map<Long, BigDecimal> totalesMes = calcularTotalesNetosPorVenta(netosMes);
+        BigDecimal ventasMesTotal = totalesMes.values().stream().map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long cantidadVentasMes = totalesMes.values().stream().filter(v -> valorSeguro(v).compareTo(BigDecimal.ZERO) > 0).count();
 
-        // Mes anterior (mes pasado, NO ano pasado - BUG CORREGIDO)
-        YearMonth mesAnterior = YearMonth.now().minusMonths(1);
-        LocalDate inicioMesAnterior = mesAnterior.atDay(1);
-        LocalDate finMesAnterior = mesAnterior.atEndOfMonth();
+        BigDecimal ventasMesAnterior = construirDetallesNetos(
+                obtenerVentasReportables(anterior.atDay(1), anterior.atEndOfMonth()))
+                .stream()
+                .collect(Collectors.groupingBy(d -> d.ventaId, Collectors.reducing(BigDecimal.ZERO, d -> d.ingresoTotal, BigDecimal::add)))
+                .values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Total ventas mes actual (query optimizado en BD)
-        BigDecimal totalVentasMesActual = ventaRepository.sumTotalByFechaEmisionBetween(inicioMes, finMes);
-        long cantidadVentasMesActual = ventaRepository.countByFechaEmisionBetween(inicioMes, finMes);
+        List<MovimientoCaja> movimientosMes = movimientoCajaRepository.findByFechaBetween(inicioMes.atStartOfDay(), finMes.atTime(23, 59, 59));
+        Map<String, ResumenMovimiento> resumenMes = resumirMovimientosCaja(movimientosMes);
+        BigDecimal comprasMes = resumenMes.getOrDefault(CategoriaMovimiento.COMPRA_MERCADERIA, new ResumenMovimiento()).total;
+        BigDecimal gastosOperativos = resumenMes.getOrDefault(CategoriaMovimiento.GASTO_OPERATIVO, new ResumenMovimiento()).total;
+        BigDecimal devolucionesMes = resumenMes.getOrDefault(CategoriaMovimiento.DEVOLUCION, new ResumenMovimiento()).total;
+        BigDecimal retirosMes = resumenMes.getOrDefault(CategoriaMovimiento.RETIRO_DUENO, new ResumenMovimiento()).total;
+        BigDecimal otrosEgresos = resumenMes.getOrDefault(CategoriaMovimiento.OTRO_EGRESO, new ResumenMovimiento()).total;
+        BigDecimal cobrosCredito = resumenMes.getOrDefault(CategoriaMovimiento.COBRANZA, new ResumenMovimiento()).total;
+        BigDecimal salidasMes = comprasMes.add(gastosOperativos).add(devolucionesMes).add(retirosMes).add(otrosEgresos);
 
-        // Obtener ventas con detalles para top productos y clientes
-        List<Venta> ventasMesActual = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicioMes, finMes).stream()
-                .filter(v -> !"ANULADO".equals(v.getEstado()))
-                .collect(Collectors.toList());
-
-        dashboard.put("ventasMesActual", totalVentasMesActual);
-        dashboard.put("cantidadVentasMesActual", cantidadVentasMesActual);
-
-        // Total gastos mes actual (egresos + compras) - queries optimizados
-        LocalDateTime inicioMesDT = inicioMes.atStartOfDay();
-        LocalDateTime finMesDT = finMes.atTime(23, 59, 59);
-
-        BigDecimal gastosMes = compraRepository.sumTotalByPeriodo(inicioMesDT, finMesDT);
-        gastosMes = gastosMes.add(movimientoCajaRepository.sumarEgresos(inicioMesDT));
-
-        dashboard.put("gastosMesActual", gastosMes);
-
-        // Ganancia neta
-        BigDecimal gananciaNeta = totalVentasMesActual.subtract(gastosMes);
-        dashboard.put("gananciaNeta", gananciaNeta);
-
-        // Ventas mes anterior (query optimizado en BD)
-        BigDecimal totalVentasMesAnterior = ventaRepository.sumTotalByFechaEmisionBetween(inicioMesAnterior, finMesAnterior);
-
-        // Variación porcentual
         BigDecimal variacion = BigDecimal.ZERO;
-        if (totalVentasMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
-            variacion = totalVentasMesActual.subtract(totalVentasMesAnterior)
-                    .divide(totalVentasMesAnterior, 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-        }
-        dashboard.put("variacionAnual", variacion);
-
-        // Top 5 productos del mes
-        Map<Long, Integer> productosDelMes = new HashMap<>();
-        Map<Long, String> nombresProductos = new HashMap<>();
-        Map<Long, BigDecimal> totalesProductos = new HashMap<>();
-
-        for (Venta venta : ventasMesActual) {
-            for (DetalleVenta detalle : venta.getItems()) {
-                Producto producto = detalle.getProducto();
-                if (producto != null) {
-                    productosDelMes.merge(producto.getId(), detalle.getCantidad().intValue(), Integer::sum);
-                    nombresProductos.put(producto.getId(), producto.getNombre());
-                    totalesProductos.merge(producto.getId(), detalle.getSubtotal(), BigDecimal::add);
-                }
-            }
+        if (ventasMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
+            variacion = ventasMesTotal.subtract(ventasMesAnterior).divide(ventasMesAnterior, 4, RoundingMode.HALF_UP).multiply(CIEN);
         }
 
-        List<Map<String, Object>> top5Productos = new ArrayList<>();
-        for (Map.Entry<Long, Integer> entry : productosDelMes.entrySet()) {
-            top5Productos.add(Map.of(
-                    "nombre", nombresProductos.get(entry.getKey()),
-                    "cantidad", entry.getValue(),
-                    "total", totalesProductos.get(entry.getKey())
-            ));
-        }
-        top5Productos.sort((a, b) ->
-                ((Integer) b.get("cantidad")).compareTo((Integer) a.get("cantidad"))
-        );
-        dashboard.put("top5Productos", top5Productos.stream().limit(5).collect(Collectors.toList()));
-
-        // Top 5 clientes del mes
-        Map<Long, BigDecimal> clientesDelMes = new HashMap<>();
-        Map<Long, String> nombresClientes = new HashMap<>();
-        Map<Long, Integer> cantidadCompras = new HashMap<>();
-
-        for (Venta venta : ventasMesActual) {
-            Cliente cliente = venta.getClienteEntity();
-            if (cliente != null) {
-                clientesDelMes.merge(cliente.getId(), venta.getTotal(), BigDecimal::add);
-                nombresClientes.put(cliente.getId(), cliente.getNombreRazonSocial());
-                cantidadCompras.merge(cliente.getId(), 1, Integer::sum);
-            }
-        }
-
-        List<Map<String, Object>> top5Clientes = new ArrayList<>();
-        for (Map.Entry<Long, BigDecimal> entry : clientesDelMes.entrySet()) {
-            top5Clientes.add(Map.of(
-                    "nombre", nombresClientes.get(entry.getKey()),
-                    "total", entry.getValue(),
-                    "cantidad", cantidadCompras.get(entry.getKey())
-            ));
-        }
-        top5Clientes.sort((a, b) ->
-                ((BigDecimal) b.get("total")).compareTo((BigDecimal) a.get("total"))
-        );
-        dashboard.put("top5Clientes", top5Clientes.stream().limit(5).collect(Collectors.toList()));
-
-        // Ventas vs Gastos ultimos 12 meses (queries optimizados por mes)
-        List<Map<String, Object>> ultimos12Meses = new ArrayList<>();
+        Map<YearMonth, BigDecimal> ventasSerie = new LinkedHashMap<>();
+        Map<YearMonth, BigDecimal> salidasSerie = new LinkedHashMap<>();
         for (int i = 11; i >= 0; i--) {
-            YearMonth mes = YearMonth.now().minusMonths(i);
-            LocalDate inicioP = mes.atDay(1);
-            LocalDate finP = mes.atEndOfMonth();
-
-            BigDecimal ventasMes = ventaRepository.sumTotalByFechaEmisionBetween(inicioP, finP);
-            BigDecimal gastos = compraRepository.sumTotalByPeriodo(
-                    inicioP.atStartOfDay(), finP.atTime(23, 59, 59));
-
-            ultimos12Meses.add(Map.of(
-                    "mes", mes.getMonth().toString() + " " + mes.getYear(),
-                    "ventas", ventasMes,
-                    "gastos", gastos
-            ));
+            YearMonth mes = actual.minusMonths(i);
+            ventasSerie.put(mes, BigDecimal.ZERO);
+            salidasSerie.put(mes, movimientoCajaRepository.findByFechaBetween(mes.atDay(1).atStartOfDay(), mes.atEndOfMonth().atTime(23, 59, 59))
+                    .stream()
+                    .filter(m -> "EGRESO".equalsIgnoreCase(m.getTipo()))
+                    .map(MovimientoCaja::getMonto)
+                    .map(ReporteFinancieroService::valorSeguro)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
         }
-        dashboard.put("ultimos12Meses", ultimos12Meses);
 
-        return dashboard;
+        LocalDate inicioSerie = actual.minusMonths(11).atDay(1);
+        List<Venta> ventasSerieBase = obtenerVentasReportables(inicioSerie, finMes);
+        Map<Long, BigDecimal> totalesSerie = calcularTotalesNetosPorVenta(construirDetallesNetos(ventasSerieBase));
+        for (Venta venta : ventasSerieBase) {
+            BigDecimal totalNeto = valorSeguro(totalesSerie.get(venta.getId()));
+            if (totalNeto.compareTo(BigDecimal.ZERO) <= 0) continue;
+            ventasSerie.merge(YearMonth.from(venta.getFechaEmision()), totalNeto, BigDecimal::add);
+        }
+
+        List<Map<String, Object>> ultimos12Meses = new ArrayList<>();
+        for (Map.Entry<YearMonth, BigDecimal> entry : ventasSerie.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("mes", capitalizarMes(entry.getKey().format(MES_LABEL)));
+            item.put("ventas", entry.getValue());
+            item.put("salidas", salidasSerie.getOrDefault(entry.getKey(), BigDecimal.ZERO));
+            item.put("gastos", salidasSerie.getOrDefault(entry.getKey(), BigDecimal.ZERO));
+            ultimos12Meses.add(item);
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ventasMesActual", ventasMesTotal);
+        out.put("cantidadVentasMesActual", cantidadVentasMes);
+        out.put("ticketPromedioMesActual", cantidadVentasMes > 0 ? ventasMesTotal.divide(BigDecimal.valueOf(cantidadVentasMes), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        out.put("comprasMesActual", comprasMes);
+        out.put("cobrosCreditoMesActual", cobrosCredito);
+        out.put("devolucionesMesActual", devolucionesMes);
+        out.put("salidasMesActual", salidasMes);
+        out.put("gastosMesActual", salidasMes);
+        out.put("resultadoPeriodo", ventasMesTotal.subtract(salidasMes));
+        out.put("gananciaNeta", ventasMesTotal.subtract(salidasMes));
+        out.put("variacionMensual", variacion);
+        out.put("variacionAnual", variacion);
+        out.put("top5Productos", construirTopProductos(netosMes, 5));
+        out.put("top5Clientes", construirTopClientes(ventasMes, totalesMes, 5));
+        out.put("ventasPorVendedor", construirTopVendedores(ventasMes, totalesMes));
+        out.put("ultimos12Meses", ultimos12Meses);
+        return out;
     }
 
-    /**
-     * Exportar flujo de caja a Excel
-     */
     public void exportarFlujoCajaExcel(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
         Map<String, Object> datos = generarFlujoCaja(fechaInicio, fechaFin);
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Flujo de Caja");
+            CellStyle title = estiloTitulo(workbook), header = estiloCabecera(workbook, IndexedColors.BLUE_GREY),
+                    section = estiloSeccion(workbook), money = estiloMoneda(workbook), plain = estiloPlano(workbook),
+                    num = estiloNumero(workbook);
+            int rowNum = 0;
+            fila(sheet, rowNum++, 0, "FLUJO DE CAJA", title);
+            fila(sheet, rowNum++, 0, "Periodo analizado: " + fechaInicio + " al " + fechaFin, plain);
+            fila(sheet, rowNum++, 0, "Resumen simple", section);
+            fila(sheet, rowNum, 0, "Dinero que entro", plain); filaMoneda(sheet, rowNum++, 1, (BigDecimal) datos.get("totalIngresos"), money);
+            fila(sheet, rowNum, 0, "Dinero que salio", plain); filaMoneda(sheet, rowNum++, 1, (BigDecimal) datos.get("totalEgresos"), money);
+            fila(sheet, rowNum, 0, "Saldo final del periodo", plain); filaMoneda(sheet, rowNum++, 1, (BigDecimal) datos.get("saldo"), money);
+            rowNum++;
 
-        Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Flujo de Caja");
+            @SuppressWarnings("unchecked") List<Map<String, Object>> ingresos = (List<Map<String, Object>>) datos.get("detalleIngresos");
+            @SuppressWarnings("unchecked") List<Map<String, Object>> egresos = (List<Map<String, Object>>) datos.get("detalleEgresos");
 
-        // Estilos
-        CellStyle headerStyle = workbook.createCellStyle();
-        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
-        headerFont.setBold(true);
-        headerStyle.setFont(headerFont);
+            rowNum = escribirDetalleExcel(sheet, rowNum, "DETALLE DE INGRESOS", ingresos, (BigDecimal) datos.get("totalIngresos"), header, section, money, num, plain);
+            rowNum++;
+            rowNum = escribirDetalleExcel(sheet, rowNum, "DETALLE DE EGRESOS", egresos, (BigDecimal) datos.get("totalEgresos"), header, section, money, num, plain);
+            rowNum++;
+            fila(sheet, rowNum, 0, "TOTAL FINAL DEL PERIODO", section);
+            filaMoneda(sheet, rowNum, 2, (BigDecimal) datos.get("saldo"), money);
+            for (int i = 0; i < 3; i++) sheet.autoSizeColumn(i);
 
-        CellStyle moneyStyle = workbook.createCellStyle();
-        moneyStyle.setDataFormat(workbook.createDataFormat().getFormat("\"S/ \"#,##0.00"));
-
-        // Título
-        Row titleRow = sheet.createRow(0);
-        Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("FLUJO DE CAJA");
-        titleCell.setCellStyle(headerStyle);
-
-        Row periodoRow = sheet.createRow(1);
-        periodoRow.createCell(0).setCellValue("Periodo: " + fechaInicio + " al " + fechaFin);
-
-        // INGRESOS
-        int rowNum = 3;
-        Row ingresoHeader = sheet.createRow(rowNum++);
-        ingresoHeader.createCell(0).setCellValue("INGRESOS");
-        ingresoHeader.getCell(0).setCellStyle(headerStyle);
-
-        Row headerRow = sheet.createRow(rowNum++);
-        headerRow.createCell(0).setCellValue("Concepto");
-        headerRow.createCell(1).setCellValue("Cantidad");
-        headerRow.createCell(2).setCellValue("Monto");
-        headerRow.getCell(0).setCellStyle(headerStyle);
-        headerRow.getCell(1).setCellStyle(headerStyle);
-        headerRow.getCell(2).setCellStyle(headerStyle);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> detalleIngresos = (List<Map<String, Object>>) datos.get("detalleIngresos");
-        for (Map<String, Object> ingreso : detalleIngresos) {
-            Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue((String) ingreso.get("concepto"));
-            row.createCell(1).setCellValue((Integer) ingreso.get("cantidad"));
-            Cell montoCell = row.createCell(2);
-            montoCell.setCellValue(((BigDecimal) ingreso.get("monto")).doubleValue());
-            montoCell.setCellStyle(moneyStyle);
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=flujo_caja_" + fechaInicio + "_" + fechaFin + ".xlsx");
+            workbook.write(response.getOutputStream());
         }
-
-        Row totalIngresoRow = sheet.createRow(rowNum++);
-        totalIngresoRow.createCell(0).setCellValue("TOTAL INGRESOS");
-        totalIngresoRow.getCell(0).setCellStyle(headerStyle);
-        Cell totalIngresoCell = totalIngresoRow.createCell(2);
-        totalIngresoCell.setCellValue(((BigDecimal) datos.get("totalIngresos")).doubleValue());
-        totalIngresoCell.setCellStyle(moneyStyle);
-
-        // EGRESOS
-        rowNum++;
-        Row egresoHeader = sheet.createRow(rowNum++);
-        egresoHeader.createCell(0).setCellValue("EGRESOS");
-        egresoHeader.getCell(0).setCellStyle(headerStyle);
-
-        Row headerRow2 = sheet.createRow(rowNum++);
-        headerRow2.createCell(0).setCellValue("Concepto");
-        headerRow2.createCell(1).setCellValue("Cantidad");
-        headerRow2.createCell(2).setCellValue("Monto");
-        headerRow2.getCell(0).setCellStyle(headerStyle);
-        headerRow2.getCell(1).setCellStyle(headerStyle);
-        headerRow2.getCell(2).setCellStyle(headerStyle);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> detalleEgresos = (List<Map<String, Object>>) datos.get("detalleEgresos");
-        for (Map<String, Object> egreso : detalleEgresos) {
-            Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue((String) egreso.get("concepto"));
-            row.createCell(1).setCellValue((Integer) egreso.get("cantidad"));
-            Cell montoCell = row.createCell(2);
-            montoCell.setCellValue(((BigDecimal) egreso.get("monto")).doubleValue());
-            montoCell.setCellStyle(moneyStyle);
-        }
-
-        Row totalEgresoRow = sheet.createRow(rowNum++);
-        totalEgresoRow.createCell(0).setCellValue("TOTAL EGRESOS");
-        totalEgresoRow.getCell(0).setCellStyle(headerStyle);
-        Cell totalEgresoCell = totalEgresoRow.createCell(2);
-        totalEgresoCell.setCellValue(((BigDecimal) datos.get("totalEgresos")).doubleValue());
-        totalEgresoCell.setCellStyle(moneyStyle);
-
-        // SALDO
-        rowNum++;
-        Row saldoRow = sheet.createRow(rowNum++);
-        saldoRow.createCell(0).setCellValue("SALDO NETO");
-        saldoRow.getCell(0).setCellStyle(headerStyle);
-        Cell saldoCell = saldoRow.createCell(2);
-        saldoCell.setCellValue(((BigDecimal) datos.get("saldo")).doubleValue());
-        saldoCell.setCellStyle(moneyStyle);
-
-        // Ajustar columnas
-        sheet.autoSizeColumn(0);
-        sheet.autoSizeColumn(1);
-        sheet.autoSizeColumn(2);
-
-        // Escribir archivo
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=flujo_caja_" +
-                fechaInicio + "_" + fechaFin + ".xlsx");
-        workbook.write(response.getOutputStream());
-        workbook.close();
     }
 
-    /**
-     * Exportar flujo de caja a PDF
-     */
     public void exportarFlujoCajaPDF(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
         Map<String, Object> datos = generarFlujoCaja(fechaInicio, fechaFin);
         Configuracion config = configuracionService.obtenerConfiguracion();
-
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=flujo_caja_" +
-                fechaInicio + "_" + fechaFin + ".pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=flujo_caja_" + fechaInicio + "_" + fechaFin + ".pdf");
 
-        Document document = new Document(PageSize.A4);
+        Document doc = new Document(PageSize.A4, 28, 28, 32, 32);
         try {
-            PdfWriter.getInstance(document, response.getOutputStream());
-            document.open();
-
-            // Título
-            Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD);
-            Paragraph title = new Paragraph(config.getNombreEmpresa(), titleFont);
-            title.setAlignment(Element.ALIGN_CENTER);
-            document.add(title);
-
-            Paragraph subtitle = new Paragraph("FLUJO DE CAJA", titleFont);
-            subtitle.setAlignment(Element.ALIGN_CENTER);
-            document.add(subtitle);
-
-            Paragraph periodo = new Paragraph("Periodo: " + fechaInicio + " al " + fechaFin,
-                    new Font(Font.HELVETICA, 10));
-            periodo.setAlignment(Element.ALIGN_CENTER);
-            document.add(periodo);
-            document.add(new Paragraph(" "));
-
-            // Tabla INGRESOS
-            Paragraph ingresoTitle = new Paragraph("INGRESOS", new Font(Font.HELVETICA, 12, Font.BOLD));
-            document.add(ingresoTitle);
-
-            PdfPTable tableIngresos = new PdfPTable(3);
-            tableIngresos.setWidthPercentage(100);
-            tableIngresos.setWidths(new int[]{3, 1, 2});
-
-            // Header
-            PdfPCell cell = new PdfPCell(new Paragraph("Concepto", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableIngresos.addCell(cell);
-
-            cell = new PdfPCell(new Paragraph("Cantidad", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableIngresos.addCell(cell);
-
-            cell = new PdfPCell(new Paragraph("Monto", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableIngresos.addCell(cell);
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> detalleIngresos = (List<Map<String, Object>>) datos.get("detalleIngresos");
-            for (Map<String, Object> ingreso : detalleIngresos) {
-                tableIngresos.addCell((String) ingreso.get("concepto"));
-                tableIngresos.addCell(ingreso.get("cantidad").toString());
-                tableIngresos.addCell("S/ " + ingreso.get("monto"));
-            }
-
-            // Total
-            cell = new PdfPCell(new Paragraph("TOTAL INGRESOS", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setColspan(2);
-            tableIngresos.addCell(cell);
-            cell = new PdfPCell(new Paragraph("S/ " + datos.get("totalIngresos"), new Font(Font.HELVETICA, 10, Font.BOLD)));
-            tableIngresos.addCell(cell);
-
-            document.add(tableIngresos);
-            document.add(new Paragraph(" "));
-
-            // Tabla EGRESOS
-            Paragraph egresoTitle = new Paragraph("EGRESOS", new Font(Font.HELVETICA, 12, Font.BOLD));
-            document.add(egresoTitle);
-
-            PdfPTable tableEgresos = new PdfPTable(3);
-            tableEgresos.setWidthPercentage(100);
-            tableEgresos.setWidths(new int[]{3, 1, 2});
-
-            // Header
-            cell = new PdfPCell(new Paragraph("Concepto", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableEgresos.addCell(cell);
-
-            cell = new PdfPCell(new Paragraph("Cantidad", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableEgresos.addCell(cell);
-
-            cell = new PdfPCell(new Paragraph("Monto", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setBackgroundColor(Color.LIGHT_GRAY);
-            tableEgresos.addCell(cell);
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> detalleEgresos = (List<Map<String, Object>>) datos.get("detalleEgresos");
-            for (Map<String, Object> egreso : detalleEgresos) {
-                tableEgresos.addCell((String) egreso.get("concepto"));
-                tableEgresos.addCell(egreso.get("cantidad").toString());
-                tableEgresos.addCell("S/ " + egreso.get("monto"));
-            }
-
-            // Total
-            cell = new PdfPCell(new Paragraph("TOTAL EGRESOS", new Font(Font.HELVETICA, 10, Font.BOLD)));
-            cell.setColspan(2);
-            tableEgresos.addCell(cell);
-            cell = new PdfPCell(new Paragraph("S/ " + datos.get("totalEgresos"), new Font(Font.HELVETICA, 10, Font.BOLD)));
-            tableEgresos.addCell(cell);
-
-            document.add(tableEgresos);
-            document.add(new Paragraph(" "));
-
-            // SALDO NETO
-            Paragraph saldo = new Paragraph("SALDO NETO: S/ " + datos.get("saldo"),
-                    new Font(Font.HELVETICA, 14, Font.BOLD));
-            saldo.setAlignment(Element.ALIGN_RIGHT);
-            document.add(saldo);
-
+            PdfWriter.getInstance(doc, response.getOutputStream());
+            doc.open();
+            Font title = new Font(Font.HELVETICA, 15, Font.BOLD), sub = new Font(Font.HELVETICA, 10),
+                    section = new Font(Font.HELVETICA, 10, Font.BOLD), body = new Font(Font.HELVETICA, 9),
+                    total = new Font(Font.HELVETICA, 10, Font.BOLD);
+            encabezadoPdf(doc, config.getNombreEmpresa(), "Reporte de Flujo de Caja", fechaInicio, fechaFin, title, sub);
+            doc.add(tablaResumenPdf(new String[]{"Ingresos del periodo", "Egresos del periodo", "Saldo final"},
+                    new String[]{moneda((BigDecimal) datos.get("totalIngresos")), moneda((BigDecimal) datos.get("totalEgresos")), moneda((BigDecimal) datos.get("saldo"))},
+                    section, total));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph("Detalle de ingresos", section));
+            doc.add(tablaDetallePdf((List<Map<String, Object>>) datos.get("detalleIngresos"), (BigDecimal) datos.get("totalIngresos"), body, total));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph("Detalle de egresos", section));
+            doc.add(tablaDetallePdf((List<Map<String, Object>>) datos.get("detalleEgresos"), (BigDecimal) datos.get("totalEgresos"), body, total));
+            doc.add(new Paragraph(" "));
+            Paragraph cierre = new Paragraph("En este periodo ingresaron " + moneda((BigDecimal) datos.get("totalIngresos"))
+                    + ", salieron " + moneda((BigDecimal) datos.get("totalEgresos"))
+                    + " y quedo un saldo final de " + moneda((BigDecimal) datos.get("saldo")) + ".", total);
+            cierre.setAlignment(Element.ALIGN_RIGHT);
+            doc.add(cierre);
         } catch (DocumentException e) {
-            log.error("Error generando PDF: {}", e.getMessage(), e);
+            log.error("Error generando PDF de flujo de caja: {}", e.getMessage(), e);
         } finally {
-            document.close();
+            doc.close();
         }
     }
 
-    /**
-     * Exportar rentabilidad a Excel
-     */
     public void exportarRentabilidadExcel(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
         List<Map<String, Object>> rentabilidad = generarRentabilidadProductos(fechaInicio, fechaFin);
-
-        Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Rentabilidad");
-
-        // Estilos
-        CellStyle headerStyle = workbook.createCellStyle();
-        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
-        headerFont.setBold(true);
-        headerStyle.setFont(headerFont);
-
-        CellStyle moneyStyle = workbook.createCellStyle();
-        moneyStyle.setDataFormat(workbook.createDataFormat().getFormat("\"S/ \"#,##0.00"));
-
-        CellStyle percentStyle = workbook.createCellStyle();
-        percentStyle.setDataFormat(workbook.createDataFormat().getFormat("0.00\"%\""));
-
-        // Título
-        Row titleRow = sheet.createRow(0);
-        Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("ANÁLISIS DE RENTABILIDAD POR PRODUCTOS");
-        titleCell.setCellStyle(headerStyle);
-
-        Row periodoRow = sheet.createRow(1);
-        periodoRow.createCell(0).setCellValue("Periodo: " + fechaInicio + " al " + fechaFin);
-
-        // Headers
-        int rowNum = 3;
-        Row headerRow = sheet.createRow(rowNum++);
-        headerRow.createCell(0).setCellValue("Producto");
-        headerRow.createCell(1).setCellValue("Categoría");
-        headerRow.createCell(2).setCellValue("Cant. Vendida");
-        headerRow.createCell(3).setCellValue("P. Compra");
-        headerRow.createCell(4).setCellValue("P. Venta Prom.");
-        headerRow.createCell(5).setCellValue("Margen Unit.");
-        headerRow.createCell(6).setCellValue("Margen %");
-        headerRow.createCell(7).setCellValue("Ganancia Total");
-        headerRow.createCell(8).setCellValue("Total Vendido");
-
-        for (int i = 0; i < 9; i++) {
-            headerRow.getCell(i).setCellStyle(headerStyle);
+        BigDecimal totalGanancia = rentabilidad.stream().map(i -> (BigDecimal) i.get("gananciaTotal")).map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalVendido = rentabilidad.stream().map(i -> (BigDecimal) i.get("totalVendido")).map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal margenGlobal = totalVendido.compareTo(BigDecimal.ZERO) > 0 ? totalGanancia.divide(totalVendido, 4, RoundingMode.HALF_UP).multiply(CIEN) : BigDecimal.ZERO;
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Rentabilidad");
+            CellStyle title = estiloTitulo(workbook), header = estiloCabecera(workbook, IndexedColors.SEA_GREEN),
+                    section = estiloSeccion(workbook), money = estiloMoneda(workbook), percent = estiloPorcentaje(workbook), plain = estiloPlano(workbook);
+            int rowNum = 0;
+            fila(sheet, rowNum++, 0, "RENTABILIDAD POR PRODUCTOS", title);
+            fila(sheet, rowNum++, 0, "Periodo analizado: " + fechaInicio + " al " + fechaFin, plain);
+            fila(sheet, rowNum++, 0, "Resumen ejecutivo", section);
+            fila(sheet, rowNum, 0, "Total vendido", plain); filaMoneda(sheet, rowNum++, 1, totalVendido, money);
+            fila(sheet, rowNum, 0, "Ganancia total", plain); filaMoneda(sheet, rowNum++, 1, totalGanancia, money);
+            fila(sheet, rowNum, 0, "Margen global", plain); filaPorcentaje(sheet, rowNum++, 1, margenGlobal, percent);
+            rowNum++;
+            Row h = sheet.createRow(rowNum++);
+            String[] headers = {"Producto", "Categoria", "Cant. vendida", "P. compra prom.", "P. venta prom.", "Margen unit.", "Margen %", "Ganancia total", "Total vendido"};
+            for (int i = 0; i < headers.length; i++) celda(h, i, headers[i], header);
+            for (Map<String, Object> item : rentabilidad) {
+                Row row = sheet.createRow(rowNum++);
+                celda(row, 0, String.valueOf(item.get("productoNombre")), plain);
+                celda(row, 1, String.valueOf(item.get("productoCategoria")), plain);
+                celdaNumeroDecimal(row, 2, (BigDecimal) item.get("cantidadVendida"), plain);
+                celdaMoneda(row, 3, (BigDecimal) item.get("precioCompra"), money);
+                celdaMoneda(row, 4, (BigDecimal) item.get("precioVentaPromedio"), money);
+                celdaMoneda(row, 5, (BigDecimal) item.get("margenBruto"), money);
+                celdaPorcentaje(row, 6, (BigDecimal) item.get("margenPorcentaje"), percent);
+                celdaMoneda(row, 7, (BigDecimal) item.get("gananciaTotal"), money);
+                celdaMoneda(row, 8, (BigDecimal) item.get("totalVendido"), money);
+            }
+            Row totalRow = sheet.createRow(rowNum);
+            celda(totalRow, 0, "TOTAL FINAL", section);
+            celdaMoneda(totalRow, 7, totalGanancia, money);
+            celdaMoneda(totalRow, 8, totalVendido, money);
+            for (int i = 0; i < 9; i++) sheet.autoSizeColumn(i);
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=rentabilidad_" + fechaInicio + "_" + fechaFin + ".xlsx");
+            workbook.write(response.getOutputStream());
         }
-
-        // Datos
-        for (Map<String, Object> item : rentabilidad) {
-            Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue((String) item.get("productoNombre"));
-            row.createCell(1).setCellValue((String) item.get("productoCategoria"));
-            row.createCell(2).setCellValue((Integer) item.get("cantidadVendida"));
-
-            Cell pc = row.createCell(3);
-            pc.setCellValue(((BigDecimal) item.get("precioCompra")).doubleValue());
-            pc.setCellStyle(moneyStyle);
-
-            Cell pv = row.createCell(4);
-            pv.setCellValue(((BigDecimal) item.get("precioVentaPromedio")).doubleValue());
-            pv.setCellStyle(moneyStyle);
-
-            Cell mb = row.createCell(5);
-            mb.setCellValue(((BigDecimal) item.get("margenBruto")).doubleValue());
-            mb.setCellStyle(moneyStyle);
-
-            Cell mp = row.createCell(6);
-            mp.setCellValue(((BigDecimal) item.get("margenPorcentaje")).doubleValue() / 100);
-            mp.setCellStyle(percentStyle);
-
-            Cell gt = row.createCell(7);
-            gt.setCellValue(((BigDecimal) item.get("gananciaTotal")).doubleValue());
-            gt.setCellStyle(moneyStyle);
-
-            Cell tv = row.createCell(8);
-            tv.setCellValue(((BigDecimal) item.get("totalVendido")).doubleValue());
-            tv.setCellStyle(moneyStyle);
-        }
-
-        // Ajustar columnas
-        for (int i = 0; i < 9; i++) {
-            sheet.autoSizeColumn(i);
-        }
-
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=rentabilidad_" +
-                fechaInicio + "_" + fechaFin + ".xlsx");
-        workbook.write(response.getOutputStream());
-        workbook.close();
     }
 
-    /**
-     * Exportar rentabilidad a PDF
-     */
     public void exportarRentabilidadPDF(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
         List<Map<String, Object>> rentabilidad = generarRentabilidadProductos(fechaInicio, fechaFin);
         Configuracion config = configuracionService.obtenerConfiguracion();
-
+        BigDecimal totalGanancia = rentabilidad.stream().map(i -> (BigDecimal) i.get("gananciaTotal")).map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalVendido = rentabilidad.stream().map(i -> (BigDecimal) i.get("totalVendido")).map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal margenGlobal = totalVendido.compareTo(BigDecimal.ZERO) > 0 ? totalGanancia.divide(totalVendido, 4, RoundingMode.HALF_UP).multiply(CIEN) : BigDecimal.ZERO;
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=rentabilidad_" +
-                fechaInicio + "_" + fechaFin + ".pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=rentabilidad_" + fechaInicio + "_" + fechaFin + ".pdf");
 
-        Document document = new Document(PageSize.A4.rotate()); // Landscape
+        Document doc = new Document(PageSize.A4.rotate(), 24, 24, 28, 28);
         try {
-            PdfWriter.getInstance(document, response.getOutputStream());
-            document.open();
-
-            // Título
-            Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD);
-            Paragraph title = new Paragraph(config.getNombreEmpresa(), titleFont);
-            title.setAlignment(Element.ALIGN_CENTER);
-            document.add(title);
-
-            Paragraph subtitle = new Paragraph("ANÁLISIS DE RENTABILIDAD POR PRODUCTOS", titleFont);
-            subtitle.setAlignment(Element.ALIGN_CENTER);
-            document.add(subtitle);
-
-            Paragraph periodo = new Paragraph("Periodo: " + fechaInicio + " al " + fechaFin,
-                    new Font(Font.HELVETICA, 10));
-            periodo.setAlignment(Element.ALIGN_CENTER);
-            document.add(periodo);
-            document.add(new Paragraph(" "));
-
-            // Tabla
-            PdfPTable table = new PdfPTable(8);
+            PdfWriter.getInstance(doc, response.getOutputStream());
+            doc.open();
+            Font title = new Font(Font.HELVETICA, 15, Font.BOLD), sub = new Font(Font.HELVETICA, 10),
+                    section = new Font(Font.HELVETICA, 9, Font.BOLD), body = new Font(Font.HELVETICA, 8),
+                    total = new Font(Font.HELVETICA, 9, Font.BOLD);
+            encabezadoPdf(doc, config.getNombreEmpresa(), "Reporte de Rentabilidad por Productos", fechaInicio, fechaFin, title, sub);
+            doc.add(tablaResumenPdf(new String[]{"Total vendido", "Ganancia total", "Margen global", "Productos analizados"},
+                    new String[]{moneda(totalVendido), moneda(totalGanancia), porcentaje(margenGlobal), String.valueOf(rentabilidad.size())},
+                    section, total));
+            doc.add(new Paragraph(" "));
+            PdfPTable table = new PdfPTable(9);
             table.setWidthPercentage(100);
-            table.setWidths(new int[]{3, 2, 1, 1, 1, 1, 1, 2});
-
-            // Headers
-            Font headerFont = new Font(Font.HELVETICA, 8, Font.BOLD);
-            String[] headers = {"Producto", "Categoría", "Cant.", "P.Compra", "P.Venta", "Margen", "Marg.%", "Ganancia"};
-            for (String header : headers) {
-                PdfPCell cell = new PdfPCell(new Paragraph(header, headerFont));
-                cell.setBackgroundColor(Color.LIGHT_GRAY);
-                table.addCell(cell);
+            table.setWidths(new float[]{3.2f, 1.7f, 1f, 1.25f, 1.25f, 1.25f, 1f, 1.4f, 1.5f});
+            for (String header : new String[]{"Producto", "Categoria", "Cant.", "P. compra", "P. venta", "Margen", "Margen %", "Ganancia", "Total vendido"}) {
+                table.addCell(celdaPdf(header, section, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
             }
-
-            // Datos
-            Font dataFont = new Font(Font.HELVETICA, 8);
             for (Map<String, Object> item : rentabilidad) {
-                table.addCell(new Paragraph((String) item.get("productoNombre"), dataFont));
-                table.addCell(new Paragraph((String) item.get("productoCategoria"), dataFont));
-                table.addCell(new Paragraph(item.get("cantidadVendida").toString(), dataFont));
-                table.addCell(new Paragraph("S/ " + item.get("precioCompra"), dataFont));
-                table.addCell(new Paragraph("S/ " + item.get("precioVentaPromedio"), dataFont));
-                table.addCell(new Paragraph("S/ " + item.get("margenBruto"), dataFont));
-                table.addCell(new Paragraph(item.get("margenPorcentaje") + "%", dataFont));
-                table.addCell(new Paragraph("S/ " + item.get("gananciaTotal"), dataFont));
+                table.addCell(celdaPdf(String.valueOf(item.get("productoNombre")), body, null, Element.ALIGN_LEFT, 1));
+                table.addCell(celdaPdf(String.valueOf(item.get("productoCategoria")), body, null, Element.ALIGN_LEFT, 1));
+                table.addCell(celdaPdf(cantidad((BigDecimal) item.get("cantidadVendida")), body, null, Element.ALIGN_CENTER, 1));
+                table.addCell(celdaPdf(moneda((BigDecimal) item.get("precioCompra")), body, null, Element.ALIGN_RIGHT, 1));
+                table.addCell(celdaPdf(moneda((BigDecimal) item.get("precioVentaPromedio")), body, null, Element.ALIGN_RIGHT, 1));
+                table.addCell(celdaPdf(moneda((BigDecimal) item.get("margenBruto")), body, null, Element.ALIGN_RIGHT, 1));
+                table.addCell(celdaPdf(porcentaje((BigDecimal) item.get("margenPorcentaje")), body, null, Element.ALIGN_RIGHT, 1));
+                table.addCell(celdaPdf(moneda((BigDecimal) item.get("gananciaTotal")), body, null, Element.ALIGN_RIGHT, 1));
+                table.addCell(celdaPdf(moneda((BigDecimal) item.get("totalVendido")), body, null, Element.ALIGN_RIGHT, 1));
             }
-
-            document.add(table);
-
+            table.addCell(celdaPdf("TOTAL FINAL", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 7));
+            table.addCell(celdaPdf(moneda(totalGanancia), total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+            table.addCell(celdaPdf(moneda(totalVendido), total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+            doc.add(table);
         } catch (DocumentException e) {
-            log.error("Error generando PDF: {}", e.getMessage(), e);
+            log.error("Error generando PDF de rentabilidad: {}", e.getMessage(), e);
         } finally {
-            document.close();
+            doc.close();
         }
     }
+
+    public void exportarAnalisisVentasExcel(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
+        Map<String, Object> datos = generarAnalisisVentas(fechaInicio, fechaFin);
+        try (Workbook workbook = new XSSFWorkbook()) {
+            CellStyle title = estiloTitulo(workbook), header = estiloCabecera(workbook, IndexedColors.LIGHT_BLUE),
+                    section = estiloSeccion(workbook), money = estiloMoneda(workbook), plain = estiloPlano(workbook), num = estiloNumero(workbook);
+
+            Sheet resumen = workbook.createSheet("Resumen");
+            int rowNum = 0;
+            fila(resumen, rowNum++, 0, "ANALISIS DE VENTAS", title);
+            fila(resumen, rowNum++, 0, "Periodo analizado: " + fechaInicio + " al " + fechaFin, plain);
+            fila(resumen, rowNum++, 0, "Resumen general", section);
+            fila(resumen, rowNum, 0, "Ventas netas registradas", plain); filaNumero(resumen, rowNum++, 1, ((Number) datos.get("totalVentas")).longValue(), num);
+            fila(resumen, rowNum, 0, "Monto total vendido", plain); filaMoneda(resumen, rowNum++, 1, (BigDecimal) datos.get("montoTotalVentas"), money);
+            fila(resumen, rowNum, 0, "Ticket promedio", plain); filaMoneda(resumen, rowNum++, 1, (BigDecimal) datos.get("ticketPromedio"), money);
+            fila(resumen, rowNum, 0, "Dias con ventas", plain); filaNumero(resumen, rowNum++, 1, ((Number) datos.get("diasConVentas")).longValue(), num);
+            rowNum++;
+            Row h = resumen.createRow(rowNum++);
+            celda(h, 0, "Fecha", header);
+            celda(h, 1, "Monto neto", header);
+            for (Map<String, Object> item : (List<Map<String, Object>>) datos.get("ventasPorDia")) {
+                Row row = resumen.createRow(rowNum++);
+                celda(row, 0, String.valueOf(item.get("fecha")), plain);
+                celdaMoneda(row, 1, (BigDecimal) item.get("total"), money);
+            }
+
+            Sheet productos = workbook.createSheet("Top Productos");
+            rowNum = 0;
+            fila(productos, rowNum++, 0, "TOP PRODUCTOS", title);
+            Row hp = productos.createRow(rowNum++);
+            celda(hp, 0, "Producto", header);
+            celda(hp, 1, "Cantidad", header);
+            celda(hp, 2, "Total", header);
+            for (Map<String, Object> item : (List<Map<String, Object>>) datos.get("topProductos")) {
+                Row row = productos.createRow(rowNum++);
+                celda(row, 0, String.valueOf(item.get("productoNombre")), plain);
+                celdaNumeroDecimal(row, 1, (BigDecimal) item.get("cantidadVendida"), plain);
+                celdaMoneda(row, 2, (BigDecimal) item.get("totalVendido"), money);
+            }
+
+            Sheet vendedores = workbook.createSheet("Vendedores");
+            rowNum = 0;
+            fila(vendedores, rowNum++, 0, "VENTAS POR VENDEDOR", title);
+            Row hv = vendedores.createRow(rowNum++);
+            celda(hv, 0, "Vendedor", header);
+            celda(hv, 1, "Ventas", header);
+            celda(hv, 2, "Total", header);
+            for (Map<String, Object> item : (List<Map<String, Object>>) datos.get("ventasPorVendedor")) {
+                Row row = vendedores.createRow(rowNum++);
+                celda(row, 0, String.valueOf(item.get("vendedor")), plain);
+                celdaNumero(row, 1, ((Number) item.get("cantidad")).longValue(), num);
+                celdaMoneda(row, 2, (BigDecimal) item.get("total"), money);
+            }
+
+            Sheet sinRotacion = workbook.createSheet("Sin Rotacion");
+            rowNum = 0;
+            fila(sinRotacion, rowNum++, 0, "PRODUCTOS SIN ROTACION", title);
+            Row hs = sinRotacion.createRow(rowNum++);
+            celda(hs, 0, "Producto", header);
+            celda(hs, 1, "Categoria", header);
+            celda(hs, 2, "Stock actual", header);
+            for (Map<String, Object> item : (List<Map<String, Object>>) datos.get("productosSinRotacion")) {
+                Row row = sinRotacion.createRow(rowNum++);
+                celda(row, 0, String.valueOf(item.get("productoNombre")), plain);
+                celda(row, 1, String.valueOf(item.get("categoria")), plain);
+                celdaNumero(row, 2, ((Number) item.get("stockActual")).longValue(), num);
+            }
+            for (Sheet sheet : List.of(resumen, productos, vendedores, sinRotacion)) for (int i = 0; i < 4; i++) sheet.autoSizeColumn(i);
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=analisis_ventas_" + fechaInicio + "_" + fechaFin + ".xlsx");
+            workbook.write(response.getOutputStream());
+        }
+    }
+
+    public void exportarAnalisisVentasPDF(LocalDate fechaInicio, LocalDate fechaFin, HttpServletResponse response) throws IOException {
+        Map<String, Object> datos = generarAnalisisVentas(fechaInicio, fechaFin);
+        Configuracion config = configuracionService.obtenerConfiguracion();
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=analisis_ventas_" + fechaInicio + "_" + fechaFin + ".pdf");
+
+        Document doc = new Document(PageSize.A4.rotate(), 24, 24, 28, 28);
+        try {
+            PdfWriter.getInstance(doc, response.getOutputStream());
+            doc.open();
+            Font title = new Font(Font.HELVETICA, 15, Font.BOLD), sub = new Font(Font.HELVETICA, 10),
+                    section = new Font(Font.HELVETICA, 9, Font.BOLD), body = new Font(Font.HELVETICA, 8),
+                    total = new Font(Font.HELVETICA, 9, Font.BOLD);
+            encabezadoPdf(doc, config.getNombreEmpresa(), "Reporte de Analisis de Ventas", fechaInicio, fechaFin, title, sub);
+            doc.add(tablaResumenPdf(new String[]{"Ventas", "Monto total", "Ticket promedio", "Dias con ventas", "Vendedores activos"},
+                    new String[]{String.valueOf(datos.get("totalVentas")), moneda((BigDecimal) datos.get("montoTotalVentas")), moneda((BigDecimal) datos.get("ticketPromedio")),
+                            String.valueOf(datos.get("diasConVentas")), String.valueOf(datos.get("vendedoresActivos"))},
+                    section, total));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph("Top productos vendidos", section));
+            doc.add(tablaTopProductosPdf((List<Map<String, Object>>) datos.get("topProductos"), body, total));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph("Ventas por vendedor", section));
+            doc.add(tablaVendedoresPdf((List<Map<String, Object>>) datos.get("ventasPorVendedor"), body, total));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph("Productos sin rotacion", section));
+            doc.add(tablaSinRotacionPdf((List<Map<String, Object>>) datos.get("productosSinRotacion"), body, total));
+        } catch (DocumentException e) {
+            log.error("Error generando PDF de analisis: {}", e.getMessage(), e);
+        } finally {
+            doc.close();
+        }
+    }
+
+    private List<Venta> obtenerVentasReportables(LocalDate fechaInicio, LocalDate fechaFin) {
+        return ventaRepository.findByFechaEmisionBetweenWithDetalles(fechaInicio, fechaFin).stream()
+                .filter(v -> !"ANULADO".equalsIgnoreCase(v.getEstado()))
+                .collect(Collectors.toList());
+    }
+
+    private List<DetalleVentaNeto> construirDetallesNetos(List<Venta> ventas) {
+        Map<String, DetalleVentaNeto> netos = new LinkedHashMap<>();
+        for (Venta venta : ventas) {
+            if (venta.getItems() == null) continue;
+            for (DetalleVenta detalle : venta.getItems()) {
+                if (detalle == null || detalle.getProducto() == null) continue;
+                BigDecimal cantidad = valorSeguro(detalle.getCantidad());
+                BigDecimal ingreso = valorSeguro(detalle.getSubtotal());
+                if (cantidad.compareTo(BigDecimal.ZERO) <= 0 || ingreso.compareTo(BigDecimal.ZERO) <= 0) continue;
+                String nombre = nombreReporte(detalle);
+                String key = claveDetalle(venta.getId(), detalle.getProducto().getId(), nombre);
+                DetalleVentaNeto item = netos.computeIfAbsent(key, k -> {
+                    DetalleVentaNeto data = new DetalleVentaNeto();
+                    data.ventaId = venta.getId();
+                    data.fechaVenta = venta.getFechaEmision();
+                    data.vendedor = nombreVendedor(venta);
+                    data.clienteId = venta.getClienteEntity() != null ? venta.getClienteEntity().getId() : null;
+                    data.clienteNombre = nombreCliente(venta);
+                    data.productoId = detalle.getProducto().getId();
+                    data.nombreItem = nombre;
+                    data.categoria = categoriaReporte(detalle);
+                    return data;
+                });
+                item.cantidad = item.cantidad.add(cantidad);
+                item.ingresoTotal = item.ingresoTotal.add(ingreso);
+                item.costoTotal = item.costoTotal.add(valorSeguro(detalle.getCostoUnitario()).multiply(cantidad));
+            }
+        }
+        aplicarDevolucionesNetas(netos, ventas);
+        return netos.values().stream()
+                .filter(d -> d.cantidad.compareTo(BigDecimal.ZERO) > 0 || d.ingresoTotal.compareTo(BigDecimal.ZERO) > 0)
+                .sorted(Comparator.comparing((DetalleVentaNeto d) -> d.fechaVenta).thenComparing(d -> d.nombreItem, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
+    private void aplicarDevolucionesNetas(Map<String, DetalleVentaNeto> netos, List<Venta> ventas) {
+        if (ventas.isEmpty() || netos.isEmpty()) return;
+        List<Long> ventaIds = ventas.stream().map(Venta::getId).filter(Objects::nonNull).collect(Collectors.toList());
+        List<DetalleDevolucion> devoluciones = detalleDevolucionRepository.findActivosByVentaOriginalIds(ventaIds);
+        if (devoluciones.isEmpty()) return;
+        Map<String, List<DetalleVentaNeto>> porProducto = netos.values().stream().collect(Collectors.groupingBy(d -> d.ventaId + "|" + d.productoId));
+
+        for (DetalleDevolucion devolucion : devoluciones) {
+            if (devolucion.getDevolucion() == null || devolucion.getDevolucion().getVentaOriginal() == null) continue;
+            Long ventaId = devolucion.getDevolucion().getVentaOriginal().getId();
+            Long productoId = devolucion.getProducto() != null ? devolucion.getProducto().getId() : null;
+            DetalleVentaNeto item = netos.get(claveDetalle(ventaId, productoId, nombreReporte(devolucion)));
+            if (item == null) {
+                item = porProducto.getOrDefault(ventaId + "|" + productoId, List.of()).stream()
+                        .filter(d -> d.cantidad.compareTo(BigDecimal.ZERO) > 0 || d.ingresoTotal.compareTo(BigDecimal.ZERO) > 0)
+                        .findFirst().orElse(null);
+            }
+            if (item == null || item.cantidad.compareTo(BigDecimal.ZERO) <= 0) continue;
+            BigDecimal cantidadActual = valorSeguro(item.cantidad);
+            BigDecimal cantidadDevuelta = valorSeguro(devolucion.getCantidadDevuelta()).min(cantidadActual);
+            BigDecimal ingresoActual = valorSeguro(item.ingresoTotal);
+            BigDecimal costoActual = valorSeguro(item.costoTotal);
+            BigDecimal ingresoReducir = valorSeguro(devolucion.getSubtotal());
+            if (ingresoReducir.compareTo(ingresoActual) > 0) {
+                ingresoReducir = ingresoActual.divide(cantidadActual, 4, RoundingMode.HALF_UP).multiply(cantidadDevuelta).min(ingresoActual);
+            }
+            BigDecimal costoReducir = BigDecimal.ZERO;
+            if (costoActual.compareTo(BigDecimal.ZERO) > 0) {
+                costoReducir = costoActual.divide(cantidadActual, 4, RoundingMode.HALF_UP).multiply(cantidadDevuelta).min(costoActual);
+            }
+            item.cantidad = cantidadActual.subtract(cantidadDevuelta).max(BigDecimal.ZERO);
+            item.ingresoTotal = ingresoActual.subtract(ingresoReducir).max(BigDecimal.ZERO);
+            item.costoTotal = costoActual.subtract(costoReducir).max(BigDecimal.ZERO);
+        }
+    }
+
+    private Map<Long, BigDecimal> calcularTotalesNetosPorVenta(List<DetalleVentaNeto> netos) {
+        Map<Long, BigDecimal> out = new HashMap<>();
+        for (DetalleVentaNeto item : netos) out.merge(item.ventaId, valorSeguro(item.ingresoTotal), BigDecimal::add);
+        return out;
+    }
+
+    private List<Map<String, Object>> construirTopProductos(List<DetalleVentaNeto> netos, int limite) {
+        Map<String, Map<String, Object>> agrupado = new LinkedHashMap<>();
+        for (DetalleVentaNeto item : netos) {
+            String key = claveProducto(item.productoId, item.nombreItem);
+            Map<String, Object> out = agrupado.computeIfAbsent(key, k -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("productoId", item.productoId);
+                data.put("nombre", item.nombreItem);
+                data.put("productoNombre", item.nombreItem);
+                data.put("cantidadVendida", BigDecimal.ZERO);
+                data.put("cantidad", BigDecimal.ZERO);
+                data.put("totalVendido", BigDecimal.ZERO);
+                data.put("total", BigDecimal.ZERO);
+                return data;
+            });
+            BigDecimal cantidad = valorSeguro((BigDecimal) out.get("cantidadVendida")).add(item.cantidad);
+            BigDecimal total = valorSeguro((BigDecimal) out.get("totalVendido")).add(item.ingresoTotal);
+            out.put("cantidadVendida", cantidad);
+            out.put("cantidad", cantidad);
+            out.put("totalVendido", total);
+            out.put("total", total);
+        }
+        return agrupado.values().stream()
+                .sorted((a, b) -> {
+                    int cmp = valorSeguro((BigDecimal) b.get("cantidadVendida")).compareTo(valorSeguro((BigDecimal) a.get("cantidadVendida")));
+                    return cmp != 0 ? cmp : valorSeguro((BigDecimal) b.get("totalVendido")).compareTo(valorSeguro((BigDecimal) a.get("totalVendido")));
+                })
+                .limit(limite)
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> construirTopClientes(List<Venta> ventas, Map<Long, BigDecimal> totalesVenta, int limite) {
+        Map<String, Map<String, Object>> agrupado = new LinkedHashMap<>();
+        for (Venta venta : ventas) {
+            BigDecimal total = valorSeguro(totalesVenta.get(venta.getId()));
+            if (total.compareTo(BigDecimal.ZERO) <= 0) continue;
+            String nombre = nombreCliente(venta);
+            String key = venta.getClienteEntity() != null && venta.getClienteEntity().getId() != null ? "C|" + venta.getClienteEntity().getId() : "N|" + normalizar(nombre);
+            Map<String, Object> item = agrupado.computeIfAbsent(key, k -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("nombre", nombre);
+                data.put("total", BigDecimal.ZERO);
+                data.put("cantidad", 0);
+                return data;
+            });
+            item.put("total", valorSeguro((BigDecimal) item.get("total")).add(total));
+            item.put("cantidad", ((Integer) item.get("cantidad")) + 1);
+        }
+        return agrupado.values().stream()
+                .sorted((a, b) -> valorSeguro((BigDecimal) b.get("total")).compareTo(valorSeguro((BigDecimal) a.get("total"))))
+                .limit(limite)
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> construirTopVendedores(List<Venta> ventas, Map<Long, BigDecimal> totalesVenta) {
+        Map<String, Map<String, Object>> agrupado = new LinkedHashMap<>();
+        for (Venta venta : ventas) {
+            BigDecimal total = valorSeguro(totalesVenta.get(venta.getId()));
+            if (total.compareTo(BigDecimal.ZERO) <= 0) continue;
+            String nombre = nombreVendedor(venta);
+            Map<String, Object> item = agrupado.computeIfAbsent(nombre, k -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("nombre", nombre);
+                data.put("vendedor", nombre);
+                data.put("total", BigDecimal.ZERO);
+                data.put("cantidad", 0);
+                return data;
+            });
+            item.put("total", valorSeguro((BigDecimal) item.get("total")).add(total));
+            item.put("cantidad", ((Integer) item.get("cantidad")) + 1);
+        }
+        return agrupado.values().stream()
+                .sorted((a, b) -> valorSeguro((BigDecimal) b.get("total")).compareTo(valorSeguro((BigDecimal) a.get("total"))))
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, ResumenMovimiento> resumirMovimientosCaja(List<MovimientoCaja> movimientos) {
+        Map<String, ResumenMovimiento> out = new HashMap<>();
+        for (MovimientoCaja mov : movimientos) out.computeIfAbsent(categoriaFinanciera(mov), k -> new ResumenMovimiento()).add(mov.getMonto());
+        return out;
+    }
+
+    private String categoriaFinanciera(MovimientoCaja mov) {
+        String categoria = mov.getCategoriaMovimiento();
+        String concepto = normalizar(mov.getConcepto());
+        if (CategoriaMovimiento.OTRO_INGRESO.equalsIgnoreCase(categoria) && concepto.contains("apertura")) return APERTURA_CAJA;
+        if (categoria != null && !categoria.isBlank()) return categoria;
+        return "INGRESO".equalsIgnoreCase(mov.getTipo()) ? CategoriaMovimiento.OTRO_INGRESO : CategoriaMovimiento.OTRO_EGRESO;
+    }
+
+    private Map<String, Object> crearFilaDetalle(String concepto, ResumenMovimiento resumen) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("concepto", concepto);
+        out.put("cantidad", resumen.cantidad);
+        out.put("monto", resumen.total);
+        return out;
+    }
+
+    private BigDecimal sumarMontos(List<Map<String, Object>> items) {
+        return items.stream().map(i -> (BigDecimal) i.get("monto")).map(ReporteFinancieroService::valorSeguro).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private String nombreReporte(DetalleVenta detalle) {
+        Producto producto = detalle.getProducto();
+        String descripcion = detalle.getDescripcion() != null ? detalle.getDescripcion().trim() : "";
+        String nombre = producto != null && producto.getNombre() != null ? producto.getNombre().trim() : "";
+        if (producto != null && "SERVICIO".equalsIgnoreCase(producto.getTipo()) && !descripcion.isBlank() && !descripcion.equalsIgnoreCase(nombre)) return descripcion;
+        if (producto != null && SERVICIO_RAPIDO_CODE.equalsIgnoreCase(producto.getCodigoInterno()) && !descripcion.isBlank()) return descripcion;
+        if (!nombre.isBlank()) return nombre;
+        return descripcion.isBlank() ? "Sin descripcion" : descripcion;
+    }
+
+    private String nombreReporte(DetalleDevolucion detalle) {
+        Producto producto = detalle.getProducto();
+        String descripcion = detalle.getDescripcion() != null ? detalle.getDescripcion().trim() : "";
+        String nombre = producto != null && producto.getNombre() != null ? producto.getNombre().trim() : "";
+        if (producto != null && "SERVICIO".equalsIgnoreCase(producto.getTipo()) && !descripcion.isBlank() && !descripcion.equalsIgnoreCase(nombre)) return descripcion;
+        if (producto != null && SERVICIO_RAPIDO_CODE.equalsIgnoreCase(producto.getCodigoInterno()) && !descripcion.isBlank()) return descripcion;
+        if (!nombre.isBlank()) return nombre;
+        return descripcion.isBlank() ? "Sin descripcion" : descripcion;
+    }
+
+    private String categoriaReporte(DetalleVenta detalle) {
+        if (detalle.getCategoriaServicio() != null && !detalle.getCategoriaServicio().isBlank()) return detalle.getCategoriaServicio();
+        if (detalle.getProducto() != null && detalle.getProducto().getCategoria() != null && !detalle.getProducto().getCategoria().isBlank()) return detalle.getProducto().getCategoria();
+        if (detalle.getProducto() != null && detalle.getProducto().getTipo() != null && !detalle.getProducto().getTipo().isBlank()) return detalle.getProducto().getTipo();
+        return "Sin categoria";
+    }
+
+    private String nombreCliente(Venta venta) {
+        if (venta.getClienteEntity() != null && venta.getClienteEntity().getNombreRazonSocial() != null && !venta.getClienteEntity().getNombreRazonSocial().isBlank()) {
+            return venta.getClienteEntity().getNombreRazonSocial();
+        }
+        if (venta.getClienteDenominacion() != null && !venta.getClienteDenominacion().isBlank()) return venta.getClienteDenominacion();
+        return "Cliente no identificado";
+    }
+
+    private String nombreVendedor(Venta venta) { return venta.getUsuario() != null && venta.getUsuario().getNombreCompleto() != null ? venta.getUsuario().getNombreCompleto() : "Sin asignar"; }
+    private String claveDetalle(Long ventaId, Long productoId, String nombre) { return ventaId + "|" + productoId + "|" + normalizar(nombre); }
+    private String claveProducto(Long productoId, String nombre) { return productoId + "|" + normalizar(nombre); }
+    private String normalizar(String texto) { return texto == null ? "" : texto.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT); }
+    private static BigDecimal valorSeguro(BigDecimal valor) { return valor != null ? valor : BigDecimal.ZERO; }
+    private String capitalizarMes(String texto) { String limpio = texto == null ? "" : texto.replace(".", "").trim(); return limpio.isBlank() ? "" : Character.toUpperCase(limpio.charAt(0)) + limpio.substring(1); }
+    private String moneda(BigDecimal valor) { return "S/ " + valorSeguro(valor).setScale(2, RoundingMode.HALF_UP); }
+    private String porcentaje(BigDecimal valor) { return valorSeguro(valor).setScale(2, RoundingMode.HALF_UP) + "%"; }
+    private String cantidad(BigDecimal valor) { BigDecimal v = valorSeguro(valor).stripTrailingZeros(); return v.scale() < 0 ? v.setScale(0, RoundingMode.UNNECESSARY).toPlainString() : v.toPlainString(); }
+
+    private void encabezadoPdf(Document doc, String empresa, String titulo, LocalDate inicio, LocalDate fin, Font title, Font sub) throws DocumentException {
+        Paragraph pEmpresa = new Paragraph(empresa, title); pEmpresa.setAlignment(Element.ALIGN_CENTER); doc.add(pEmpresa);
+        Paragraph pTitulo = new Paragraph(titulo, title); pTitulo.setAlignment(Element.ALIGN_CENTER); doc.add(pTitulo);
+        Paragraph pPeriodo = new Paragraph("Periodo: " + inicio.format(FECHA_PDF) + " al " + fin.format(FECHA_PDF), sub);
+        pPeriodo.setAlignment(Element.ALIGN_CENTER); doc.add(pPeriodo); doc.add(new Paragraph(" "));
+    }
+
+    private PdfPTable tablaResumenPdf(String[] labels, String[] valores, Font section, Font total) throws DocumentException {
+        PdfPTable table = new PdfPTable(labels.length);
+        table.setWidthPercentage(100);
+        float[] widths = new float[labels.length];
+        Arrays.fill(widths, 2f);
+        table.setWidths(widths);
+        for (String label : labels) table.addCell(celdaPdf(label, section, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
+        for (String valor : valores) table.addCell(celdaPdf(valor, total, null, Element.ALIGN_CENTER, 1));
+        return table;
+    }
+
+    private PdfPTable tablaDetallePdf(List<Map<String, Object>> items, BigDecimal totalMonto, Font body, Font total) throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{4f, 1.2f, 1.8f});
+        table.addCell(celdaPdf("Concepto", total, new Color(229, 231, 235), Element.ALIGN_LEFT, 1));
+        table.addCell(celdaPdf("Cantidad", total, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
+        table.addCell(celdaPdf("Monto", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+        for (Map<String, Object> item : items) {
+            table.addCell(celdaPdf(String.valueOf(item.get("concepto")), body, null, Element.ALIGN_LEFT, 1));
+            table.addCell(celdaPdf(String.valueOf(item.get("cantidad")), body, null, Element.ALIGN_CENTER, 1));
+            table.addCell(celdaPdf(moneda((BigDecimal) item.get("monto")), body, null, Element.ALIGN_RIGHT, 1));
+        }
+        table.addCell(celdaPdf("TOTAL", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 2));
+        table.addCell(celdaPdf(moneda(totalMonto), total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+        return table;
+    }
+
+    private PdfPTable tablaTopProductosPdf(List<Map<String, Object>> items, Font body, Font total) throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{4f, 1.2f, 1.7f});
+        table.addCell(celdaPdf("Producto", total, new Color(229, 231, 235), Element.ALIGN_LEFT, 1));
+        table.addCell(celdaPdf("Cant.", total, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
+        table.addCell(celdaPdf("Total", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+        BigDecimal acumulado = BigDecimal.ZERO;
+        for (Map<String, Object> item : items) {
+            table.addCell(celdaPdf(String.valueOf(item.get("productoNombre")), body, null, Element.ALIGN_LEFT, 1));
+            table.addCell(celdaPdf(cantidad((BigDecimal) item.get("cantidadVendida")), body, null, Element.ALIGN_CENTER, 1));
+            table.addCell(celdaPdf(moneda((BigDecimal) item.get("totalVendido")), body, null, Element.ALIGN_RIGHT, 1));
+            acumulado = acumulado.add(valorSeguro((BigDecimal) item.get("totalVendido")));
+        }
+        table.addCell(celdaPdf("TOTAL TOP PRODUCTOS", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 2));
+        table.addCell(celdaPdf(moneda(acumulado), total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+        return table;
+    }
+
+    private PdfPTable tablaVendedoresPdf(List<Map<String, Object>> items, Font body, Font total) throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{3.8f, 1.2f, 1.7f});
+        table.addCell(celdaPdf("Vendedor", total, new Color(229, 231, 235), Element.ALIGN_LEFT, 1));
+        table.addCell(celdaPdf("Ventas", total, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
+        table.addCell(celdaPdf("Total", total, new Color(229, 231, 235), Element.ALIGN_RIGHT, 1));
+        for (Map<String, Object> item : items) {
+            table.addCell(celdaPdf(String.valueOf(item.get("vendedor")), body, null, Element.ALIGN_LEFT, 1));
+            table.addCell(celdaPdf(String.valueOf(item.get("cantidad")), body, null, Element.ALIGN_CENTER, 1));
+            table.addCell(celdaPdf(moneda((BigDecimal) item.get("total")), body, null, Element.ALIGN_RIGHT, 1));
+        }
+        return table;
+    }
+
+    private PdfPTable tablaSinRotacionPdf(List<Map<String, Object>> items, Font body, Font total) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{4f, 1.2f});
+        table.addCell(celdaPdf("Producto", total, new Color(229, 231, 235), Element.ALIGN_LEFT, 1));
+        table.addCell(celdaPdf("Stock", total, new Color(229, 231, 235), Element.ALIGN_CENTER, 1));
+        int limite = Math.min(items.size(), 15);
+        for (int i = 0; i < limite; i++) {
+            Map<String, Object> item = items.get(i);
+            table.addCell(celdaPdf(String.valueOf(item.get("productoNombre")), body, null, Element.ALIGN_LEFT, 1));
+            table.addCell(celdaPdf(String.valueOf(item.get("stockActual")), body, null, Element.ALIGN_CENTER, 1));
+        }
+        if (limite == 0) table.addCell(celdaPdf("Todos los productos tuvieron rotacion reciente.", body, null, Element.ALIGN_CENTER, 2));
+        return table;
+    }
+
+    private PdfPCell celdaPdf(String texto, Font font, Color fondo, int align, int colspan) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto, font));
+        cell.setHorizontalAlignment(align);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setPadding(6f);
+        if (colspan > 1) cell.setColspan(colspan);
+        if (fondo != null) cell.setBackgroundColor(fondo);
+        return cell;
+    }
+
+    private int escribirDetalleExcel(Sheet sheet, int rowNum, String titulo, List<Map<String, Object>> items, BigDecimal totalMonto,
+                                     CellStyle header, CellStyle section, CellStyle money, CellStyle num, CellStyle plain) {
+        fila(sheet, rowNum++, 0, titulo, section);
+        Row h = sheet.createRow(rowNum++);
+        celda(h, 0, "Concepto", header); celda(h, 1, "Cantidad", header); celda(h, 2, "Monto", header);
+        long totalCantidad = 0;
+        for (Map<String, Object> item : items) {
+            Row row = sheet.createRow(rowNum++);
+            celda(row, 0, String.valueOf(item.get("concepto")), plain);
+            long cantidad = ((Number) item.get("cantidad")).longValue();
+            totalCantidad += cantidad;
+            celdaNumero(row, 1, cantidad, num);
+            celdaMoneda(row, 2, (BigDecimal) item.get("monto"), money);
+        }
+        Row totalRow = sheet.createRow(rowNum++);
+        celda(totalRow, 0, "TOTAL", header);
+        celdaNumero(totalRow, 1, totalCantidad, num);
+        celdaMoneda(totalRow, 2, totalMonto, money);
+        return rowNum;
+    }
+
+    private CellStyle estiloTitulo(Workbook wb) {
+        CellStyle style = wb.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = wb.createFont();
+        font.setBold(true); font.setFontHeightInPoints((short) 13); style.setFont(font);
+        return style;
+    }
+    private CellStyle estiloCabecera(Workbook wb, IndexedColors color) {
+        CellStyle style = wb.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = wb.createFont();
+        font.setBold(true); font.setColor(IndexedColors.WHITE.getIndex()); style.setFont(font);
+        style.setFillForegroundColor(color.getIndex()); style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setAlignment(HorizontalAlignment.CENTER); style.setVerticalAlignment(VerticalAlignment.CENTER);
+        return style;
+    }
+    private CellStyle estiloSeccion(Workbook wb) {
+        CellStyle style = wb.createCellStyle();
+        org.apache.poi.ss.usermodel.Font font = wb.createFont();
+        font.setBold(true); style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex()); style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+    private CellStyle estiloMoneda(Workbook wb) { CellStyle style = wb.createCellStyle(); style.setDataFormat(wb.createDataFormat().getFormat("\"S/ \"#,##0.00")); style.setAlignment(HorizontalAlignment.RIGHT); return style; }
+    private CellStyle estiloNumero(Workbook wb) { CellStyle style = wb.createCellStyle(); style.setAlignment(HorizontalAlignment.CENTER); return style; }
+    private CellStyle estiloPlano(Workbook wb) { return wb.createCellStyle(); }
+    private CellStyle estiloPorcentaje(Workbook wb) { CellStyle style = wb.createCellStyle(); style.setDataFormat(wb.createDataFormat().getFormat("0.00%")); style.setAlignment(HorizontalAlignment.RIGHT); return style; }
+
+    private void fila(Sheet sheet, int rowNum, int col, String texto, CellStyle style) { celda(sheet.createRow(rowNum), col, texto, style); }
+    private void filaMoneda(Sheet sheet, int rowNum, int col, BigDecimal valor, CellStyle style) { celdaMoneda(sheet.getRow(rowNum) != null ? sheet.getRow(rowNum) : sheet.createRow(rowNum), col, valor, style); }
+    private void filaNumero(Sheet sheet, int rowNum, int col, long valor, CellStyle style) { celdaNumero(sheet.getRow(rowNum) != null ? sheet.getRow(rowNum) : sheet.createRow(rowNum), col, valor, style); }
+    private void filaPorcentaje(Sheet sheet, int rowNum, int col, BigDecimal valor, CellStyle style) { celdaPorcentaje(sheet.getRow(rowNum) != null ? sheet.getRow(rowNum) : sheet.createRow(rowNum), col, valor, style); }
+    private void celda(Row row, int col, String valor, CellStyle style) { Cell cell = row.createCell(col); cell.setCellValue(valor); cell.setCellStyle(style); }
+    private void celdaNumero(Row row, int col, long valor, CellStyle style) { Cell cell = row.createCell(col); cell.setCellValue(valor); cell.setCellStyle(style); }
+    private void celdaNumeroDecimal(Row row, int col, BigDecimal valor, CellStyle style) { Cell cell = row.createCell(col); cell.setCellValue(valorSeguro(valor).doubleValue()); cell.setCellStyle(style); }
+    private void celdaMoneda(Row row, int col, BigDecimal valor, CellStyle style) { Cell cell = row.createCell(col); cell.setCellValue(valorSeguro(valor).doubleValue()); cell.setCellStyle(style); }
+    private void celdaPorcentaje(Row row, int col, BigDecimal valor, CellStyle style) { Cell cell = row.createCell(col); cell.setCellValue(valorSeguro(valor).doubleValue() / 100d); cell.setCellStyle(style); }
 }

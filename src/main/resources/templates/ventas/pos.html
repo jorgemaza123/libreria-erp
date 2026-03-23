@@ -986,6 +986,9 @@
                                         <span class="kbd kbd-danger">F8</span> Limpiar
                                     </small>
                                     <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-warning">F9</span> Servicio
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
                                         <span class="kbd">ESC</span> Cancelar
                                     </small>
                                 </div>
@@ -1010,6 +1013,9 @@
                                     <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('LAPICERO_AZUL')">
                                         <i class="fas fa-pen"></i> Lapicero <span class="badge">1.00</span>
                                     </a>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="window.abrirModalServicioRapido && window.abrirModalServicioRapido()">
+                                        <i class="fas fa-magic"></i> Personalizado <span class="badge">F9</span>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -1026,6 +1032,10 @@
                             <span class="shortcut-item">
                                 <span class="kbd kbd-danger">F8</span>
                                 <span class="shortcut-action">Limpiar Venta</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-warning">F9</span>
+                                <span class="shortcut-action">Servicio rapido</span>
                             </span>
                             <span class="shortcut-divider"></span>
                             <span class="shortcut-item">
@@ -1229,6 +1239,13 @@
                             <div class="div-credito d-none">
                                 <div class="form-row-compact">
                                     <div class="form-group-compact">
+                                        <label>Modo Credito</label>
+                                        <select id="entregaAlFinal" class="form-control" onchange="actualizarModoCredito()">
+                                            <option value="false">Entrega inmediata</option>
+                                            <option value="true">Apartado / Entregar al final</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group-compact">
                                         <label>Días Crédito</label>
                                         <select id="diasCredito" class="form-control">
                                             <option value="7">7 Días</option>
@@ -1241,6 +1258,9 @@
                                         <input type="number" id="montoInicial" class="form-control text-right" value="0.00" onkeyup="calcularSaldo()">
                                     </div>
                                 </div>
+                                <small class="text-muted d-block mt-2" id="ayudaCredito">
+                                    Entrega inmediata: sale hoy y queda saldo pendiente.
+                                </small>
                                 <div class="text-right mt-2">
                                     <small class="text-muted">Saldo:</small>
                                     <span class="text-danger font-weight-bold" id="lblSaldo">S/ 0.00</span>
@@ -1270,6 +1290,7 @@
     </div>
 </div>
 
+<div th:replace="~{fragments/layout :: servicioRapidoWidget}"></div>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script th:inline="javascript">
     let carrito = [];
@@ -2279,9 +2300,22 @@ function agregarRapido(codigoBusqueda) {
         let tipo = $("#formaPago").val();
         if(tipo === 'CREDITO') {
             $(".div-credito").removeClass('d-none');
+            actualizarModoCredito();
             calcularSaldo();
         } else {
             $(".div-credito").addClass('d-none');
+            $("#entregaAlFinal").val("false");
+            $("#ayudaCredito").text('Entrega inmediata: sale hoy y queda saldo pendiente.');
+        }
+    }
+
+    function actualizarModoCredito() {
+        let esApartado = $("#entregaAlFinal").val() === 'true';
+        if (esApartado) {
+            $("#tipoComprobante").val("NOTA_VENTA");
+            $("#ayudaCredito").text('Apartado: se reserva el producto, se cobra por cuotas y se entrega al completar el pago.');
+        } else {
+            $("#ayudaCredito").text('Entrega inmediata: sale hoy y queda saldo pendiente.');
         }
     }
 
@@ -2303,6 +2337,8 @@ function agregarRapido(codigoBusqueda) {
             $("#docFeedback").hide();
             $("#formaPago").val("CONTADO").trigger('change');
             $("#montoInicial").val("0.00");
+            $("#entregaAlFinal").val("false");
+            $("#ayudaCredito").text('Entrega inmediata: sale hoy y queda saldo pendiente.');
             clienteTelefonoActual = '';
             // Mostrar visor y abrir buscador
             $('#visorProducto').removeClass('colapsado');
@@ -2375,6 +2411,8 @@ function agregarRapido(codigoBusqueda) {
         let formaPago = $("#formaPago").val();
         let doc = $("#clienteDoc").val();
         let tipoComprobante = $("#tipoComprobante").val();
+        let entregaAlFinal = $("#entregaAlFinal").val() === 'true';
+        let montoInicial = parseFloat($("#montoInicial").val()) || 0;
 
         // Validación 5: Crédito requiere documento
         if (formaPago === 'CREDITO' && (!doc || doc.length < 8)) {
@@ -2387,6 +2425,24 @@ function agregarRapido(codigoBusqueda) {
         }
 
         // Validación 6: Factura requiere RUC
+        if (formaPago === 'CREDITO' && montoInicial > totalVenta) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Monto Inicial InvÃ¡lido',
+                text: 'El monto inicial no puede exceder el total de la operaciÃ³n.',
+                confirmButtonText: 'Revisar Monto'
+            });
+        }
+
+        if (entregaAlFinal && tipoComprobante !== 'NOTA_VENTA') {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Comprobante InvÃ¡lido',
+                text: 'Los apartados deben registrarse como Nota de Venta hasta la entrega final.',
+                confirmButtonText: 'Entendido'
+            });
+        }
+
         if (tipoComprobante === 'FACTURA' && (!doc || doc.length !== 11)) {
             return Swal.fire({
                 icon: 'warning',
@@ -2439,8 +2495,9 @@ function agregarRapido(codigoBusqueda) {
             tipoComprobante: tipoComprobante,
             formaPago: formaPago,
             metodoPago: $("#metodoPago").val(),
-            montoInicial: parseFloat($("#montoInicial").val()) || 0,
+            montoInicial: montoInicial,
             diasCredito: parseInt($("#diasCredito").val()) || 7,
+            entregaAlFinal: entregaAlFinal,
             items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))
         };
 
@@ -2762,13 +2819,18 @@ function agregarRapido(codigoBusqueda) {
     function mostrarModalVentaExitosa(resp, datosVenta) {
         // Obtener teléfono del cliente del campo visible o de la variable
         let telefonoCliente = $("#clienteTelefono").val() || clienteTelefonoActual || '';
+        let esApartado = resp && resp.entregaPendiente === true;
+        let tituloExito = esApartado ? '¡Apartado Registrado!' : '¡Venta Exitosa!';
+        let subtituloExito = esApartado
+            ? 'Se registró el apartado y quedará pendiente hasta la entrega final'
+            : 'Comprobante generado correctamente';
 
         Swal.fire({
-            title: '<i class="fas fa-check-circle text-success"></i> ¡Venta Exitosa!',
+            title: '<i class="fas fa-check-circle text-success"></i> ' + tituloExito,
             html: `
                 <div class="text-center mb-3">
                     <h4 class="text-primary font-weight-bold">${resp.serie}-${resp.numero}</h4>
-                    <p class="text-muted mb-0">Comprobante generado correctamente</p>
+                    <p class="text-muted mb-0">${subtituloExito}</p>
                 </div>
                 <hr>
                 <div class="text-left">

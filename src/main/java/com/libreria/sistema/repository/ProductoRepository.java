@@ -14,183 +14,189 @@ import java.util.Optional;
 
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    // =====================================================
-    //  MÉTODOS CON LOCK PESIMISTA PARA STOCK (CONCURRENCIA)
-    // =====================================================
+       // =====================================================
+       // MÉTODOS CON LOCK PESIMISTA PARA STOCK (CONCURRENCIA)
+       // =====================================================
 
-    /**
-     * Obtiene un producto con LOCK PESIMISTA para operaciones de stock.
-     * CRÍTICO: Usar este método cuando se va a descontar stock para evitar
-     * que dos ventas simultáneas vendan el mismo último ítem.
-     *
-     * El lock se mantiene hasta el fin de la transacción.
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Producto p WHERE p.id = :id")
-    Optional<Producto> findByIdWithLock(@Param("id") Long id);
+       /**
+        * Obtiene un producto con LOCK PESIMISTA para operaciones de stock.
+        * CRÍTICO: Usar este método cuando se va a descontar stock para evitar
+        * que dos ventas simultáneas vendan el mismo último ítem.
+        *
+        * El lock se mantiene hasta el fin de la transacción.
+        */
+       @Lock(LockModeType.PESSIMISTIC_WRITE)
+       @Query("SELECT p FROM Producto p WHERE p.id = :id")
+       Optional<Producto> findByIdWithLock(@Param("id") Long id);
 
-    /**
-     * Obtiene producto por código de barras con LOCK PESIMISTA
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Producto p WHERE p.codigoBarra = :codigoBarra")
-    Optional<Producto> findByCodigoBarraWithLock(@Param("codigoBarra") String codigoBarra);
+       /**
+        * Obtiene producto por código de barras con LOCK PESIMISTA
+        */
+       @Lock(LockModeType.PESSIMISTIC_WRITE)
+       @Query("SELECT p FROM Producto p WHERE p.codigoBarra = :codigoBarra")
+       Optional<Producto> findByCodigoBarraWithLock(@Param("codigoBarra") String codigoBarra);
 
-    /**
-     * Obtiene producto por código interno con LOCK PESIMISTA
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Producto p WHERE p.codigoInterno = :codigoInterno")
-    Optional<Producto> findByCodigoInternoWithLock(@Param("codigoInterno") String codigoInterno);
+       /**
+        * Obtiene producto por código interno con LOCK PESIMISTA
+        */
+       @Lock(LockModeType.PESSIMISTIC_WRITE)
+       @Query("SELECT p FROM Producto p WHERE p.codigoInterno = :codigoInterno")
+       Optional<Producto> findByCodigoInternoWithLock(@Param("codigoInterno") String codigoInterno);
 
-    // =====================================================
-    //  MÉTODOS CON PAGINACIÓN
-    // =====================================================
+       // =====================================================
+       // MÉTODOS CON PAGINACIÓN
+       // =====================================================
 
-    /**
-     * Listado paginado de todos los productos activos
-     */
-    @Query("SELECT p FROM Producto p WHERE p.activo = true ORDER BY p.nombre ASC")
-    Page<Producto> findByActivoTruePaginated(Pageable pageable);
+       /**
+        * Listado paginado de todos los productos activos
+        */
+       @Query("SELECT p FROM Producto p WHERE p.activo = true ORDER BY p.nombre ASC")
+       Page<Producto> findByActivoTruePaginated(Pageable pageable);
 
-    /**
-     * Listado paginado de todos los productos (activos e inactivos)
-     */
-    @Query("SELECT p FROM Producto p ORDER BY p.activo DESC, p.nombre ASC")
-    Page<Producto> findAllPaginated(Pageable pageable);
+       /**
+        * Listado paginado de todos los productos (activos e inactivos)
+        */
+       @Query("SELECT p FROM Producto p ORDER BY p.activo DESC, p.nombre ASC")
+       Page<Producto> findAllPaginated(Pageable pageable);
 
-    /**
-     * Búsqueda paginada por categoría
-     */
-    @Query("SELECT p FROM Producto p WHERE p.activo = true AND LOWER(p.categoria) = LOWER(:categoria) ORDER BY p.nombre ASC")
-    Page<Producto> findByCategoriaPaginated(@Param("categoria") String categoria, Pageable pageable);
+       /**
+        * Búsqueda paginada por categoría
+        */
+       @Query("SELECT p FROM Producto p WHERE p.activo = true AND LOWER(p.categoria) = LOWER(:categoria) ORDER BY p.nombre ASC")
+       Page<Producto> findByCategoriaPaginated(@Param("categoria") String categoria, Pageable pageable);
 
-    /**
-     * Búsqueda inteligente paginada
-     */
-    @Query("SELECT p FROM Producto p WHERE p.activo = true AND " +
-           "(LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
-           "LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
-           "p.codigoInterno LIKE %:termino% OR " +
-           "p.codigoBarra LIKE %:termino%) ORDER BY p.nombre ASC")
-    Page<Producto> buscarInteligentePaginated(@Param("termino") String termino, Pageable pageable);
+       /**
+        * Búsqueda inteligente paginada
+        */
+       @Query("SELECT p FROM Producto p WHERE p.activo = true AND " +
+                     "(LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
+                     "LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
+                     "p.codigoInterno LIKE %:termino% OR " +
+                     "p.codigoBarra LIKE %:termino%) ORDER BY p.nombre ASC")
+       Page<Producto> buscarInteligentePaginated(@Param("termino") String termino, Pageable pageable);
 
-    // =====================================================
-    //  MÉTODOS EXISTENTES (MANTENIDOS)
-    // =====================================================
+       // =====================================================
+       // MÉTODOS EXISTENTES (MANTENIDOS)
+       // =====================================================
 
-    Optional<Producto> findByCodigoBarra(String codigoBarra);
-    Optional<Producto> findByCodigoInterno(String codigoInterno);
-    List<Producto> findByActivoTrue();
+       Optional<Producto> findByCodigoBarra(String codigoBarra);
 
-    /**
-     * Búsqueda inteligente: Busca en nombre O en categoría O en código
-     */
-    @Query("SELECT p FROM Producto p WHERE p.activo = true AND " +
-           "(LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
-           "LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
-           "p.codigoInterno LIKE %:termino%)")
-    List<Producto> buscarInteligente(@Param("termino") String termino);
+       Optional<Producto> findByCodigoInterno(String codigoInterno);
 
-    /**
-     * Top 5 Productos Más Vendidos (sin paginación - para Dashboard)
-     */
-    @Query(value = "SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, SUM(d.cantidad)) " +
-           "FROM DetalleVenta d JOIN d.producto p " +
-           "GROUP BY p.nombre " +
-           "ORDER BY SUM(d.cantidad) DESC " +
-           "LIMIT 5")
-    List<com.libreria.sistema.model.dto.ReporteDTO> obtenerTopProductos();
+       List<Producto> findByActivoTrue();
 
-    /**
-     * Top Productos Más Vendidos con paginación (para reportes)
-     */
-    @Query("SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, SUM(d.cantidad)) " +
-           "FROM DetalleVenta d JOIN d.producto p " +
-           "GROUP BY p.nombre " +
-           "ORDER BY SUM(d.cantidad) DESC")
-    List<com.libreria.sistema.model.dto.ReporteDTO> obtenerTopProductosPaginated(Pageable pageable);
+       List<Producto> findByActivoTrueOrderByNombreAsc();
 
-    /**
-     * Productos Sin Movimiento (Estancados en los últimos 30 días)
-     */
-    @Query(value = "SELECT * FROM productos p WHERE p.id NOT IN " +
-                   "(SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id " +
-                   "WHERE v.fecha_emision >= CURRENT_DATE - INTERVAL '30 days') " +
-                   "AND p.stock_actual > 0 AND p.activo = true", nativeQuery = true)
-    List<Producto> obtenerProductosSinMovimiento();
+       /**
+        * Búsqueda inteligente: Busca en nombre O en categoría O en código
+        */
+       @Query("SELECT p FROM Producto p WHERE p.activo = true AND " +
+                     "(LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
+                     "LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
+                     "p.codigoInterno LIKE %:termino%)")
+       List<Producto> buscarInteligente(@Param("termino") String termino);
 
-    /**
-     * Stock Crítico (productos activos con stock bajo)
-     */
-    @Query("SELECT p FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true ORDER BY p.stockActual ASC")
-    List<Producto> obtenerStockCritico();
+       /**
+        * Top 5 Productos Más Vendidos (sin paginación - para Dashboard)
+        */
+       @Query(value = "SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, SUM(d.cantidad)) " +
+                     "FROM DetalleVenta d JOIN d.producto p " +
+                     "GROUP BY p.nombre " +
+                     "ORDER BY SUM(d.cantidad) DESC " +
+                     "LIMIT 5")
+       List<com.libreria.sistema.model.dto.ReporteDTO> obtenerTopProductos();
 
-    /**
-     * Stock Crítico con paginación
-     */
-    @Query("SELECT p FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true ORDER BY p.stockActual ASC")
-    Page<Producto> obtenerStockCriticoPaginated(Pageable pageable);
+       /**
+        * Top Productos Más Vendidos con paginación (para reportes)
+        */
+       @Query("SELECT new com.libreria.sistema.model.dto.ReporteDTO(p.nombre, SUM(d.cantidad)) " +
+                     "FROM DetalleVenta d JOIN d.producto p " +
+                     "GROUP BY p.nombre " +
+                     "ORDER BY SUM(d.cantidad) DESC")
+       List<com.libreria.sistema.model.dto.ReporteDTO> obtenerTopProductosPaginated(Pageable pageable);
 
-    /**
-     * Contar productos activos
-     */
-    @Query("SELECT COUNT(p) FROM Producto p WHERE p.activo = true")
-    long countActivos();
+       /**
+        * Productos Sin Movimiento (Estancados en los últimos 30 días)
+        */
+       @Query(value = "SELECT * FROM productos p WHERE p.id NOT IN " +
+                     "(SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id " +
+                     "WHERE v.fecha_emision >= CURRENT_DATE - INTERVAL '30 days') " +
+                     "AND p.stock_actual > 0 AND p.activo = true", nativeQuery = true)
+       List<Producto> obtenerProductosSinMovimiento();
 
-    /**
-     * Contar productos con stock crítico
-     */
-    @Query("SELECT COUNT(p) FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true")
-    long countStockCritico();
+       /**
+        * Stock Crítico (productos activos con stock bajo)
+        */
+       @Query("SELECT p FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true ORDER BY p.stockActual ASC")
+       List<Producto> obtenerStockCritico();
 
-    /**
-     * Obtener categorías únicas de productos activos
-     */
-    @Query("SELECT DISTINCT p.categoria FROM Producto p WHERE p.activo = true AND p.categoria IS NOT NULL ORDER BY p.categoria")
-    List<String> findDistinctCategorias();
+       /**
+        * Stock Crítico con paginación
+        */
+       @Query("SELECT p FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true ORDER BY p.stockActual ASC")
+       Page<Producto> obtenerStockCriticoPaginated(Pageable pageable);
 
-    /**
-     * Obtener el último código interno (SKU) con formato SKU-XXXXX
-     */
-    @Query("SELECT p.codigoInterno FROM Producto p WHERE p.codigoInterno LIKE 'SKU-%' ORDER BY p.codigoInterno DESC LIMIT 1")
-    Optional<String> findUltimoSku();
+       /**
+        * Contar productos activos
+        */
+       @Query("SELECT COUNT(p) FROM Producto p WHERE p.activo = true")
+       long countActivos();
 
-    // =====================================================
-    //  STOCK MODULE QUERIES
-    // =====================================================
+       /**
+        * Contar productos con stock crítico
+        */
+       @Query("SELECT COUNT(p) FROM Producto p WHERE p.stockActual <= p.stockMinimo AND p.activo = true")
+       long countStockCritico();
 
-    @Query("SELECT COUNT(p) FROM Producto p WHERE p.activo = true AND p.stockActual = 0")
-    long countSinStock();
+       /**
+        * Obtener categorías únicas de productos activos
+        */
+       @Query("SELECT DISTINCT p.categoria FROM Producto p WHERE p.activo = true AND p.categoria IS NOT NULL ORDER BY p.categoria")
+       List<String> findDistinctCategorias();
 
-    @Query("SELECT COALESCE(SUM(p.stockActual * p.precioCompra), 0) FROM Producto p WHERE p.activo = true AND p.precioCompra IS NOT NULL")
-    java.math.BigDecimal calcularValorInventario();
+       /**
+        * Obtener el último código interno (SKU) con formato SKU-XXXXX
+        */
+       @Query("SELECT p.codigoInterno FROM Producto p WHERE p.codigoInterno LIKE 'SKU-%' ORDER BY p.codigoInterno DESC LIMIT 1")
+       Optional<String> findUltimoSku();
 
-    @Query(value = "SELECT * FROM productos p WHERE p.activo = true " +
-           "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
-           "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
-           "AND (:estado IS NULL " +
-           "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
-           "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
-           "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) " +
-           "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ",
-           countQuery = "SELECT COUNT(*) FROM productos p WHERE p.activo = true " +
-           "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
-           "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
-           "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
-           "AND (:estado IS NULL " +
-           "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
-           "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
-           "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) " +
-           "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ",
-           nativeQuery = true)
-    Page<Producto> buscarStockFiltrado(@Param("termino") String termino,
-                                       @Param("categoria") String categoria,
-                                       @Param("estado") String estado,
-                                       Pageable pageable);
+       // =====================================================
+       // STOCK MODULE QUERIES
+       // =====================================================
+
+       @Query("SELECT COUNT(p) FROM Producto p WHERE p.activo = true AND p.stockActual = 0")
+       long countSinStock();
+
+       @Query("SELECT COALESCE(SUM(p.stockActual * p.precioCompra), 0) FROM Producto p WHERE p.activo = true AND p.precioCompra IS NOT NULL")
+       java.math.BigDecimal calcularValorInventario();
+
+       @Query(value = "SELECT * FROM productos p WHERE p.activo = true " +
+                     "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                     "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                     "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                     "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
+                     "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
+                     "AND (:estado IS NULL " +
+                     "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
+                     "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
+                     "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) "
+                     +
+                     "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ", countQuery = "SELECT COUNT(*) FROM productos p WHERE p.activo = true "
+                                   +
+                                   "AND (:termino IS NULL OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                                   "    OR LOWER(p.codigo_interno) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                                   "    OR LOWER(p.codigo_barra) LIKE LOWER(CONCAT('%', :termino, '%')) " +
+                                   "    OR LOWER(p.categoria) LIKE LOWER(CONCAT('%', :termino, '%'))) " +
+                                   "AND (:categoria IS NULL OR LOWER(p.categoria) = LOWER(:categoria)) " +
+                                   "AND (:estado IS NULL " +
+                                   "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
+                                   "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) "
+                                   +
+                                   "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) "
+                                   +
+                                   "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ", nativeQuery = true)
+       Page<Producto> buscarStockFiltrado(@Param("termino") String termino,
+                     @Param("categoria") String categoria,
+                     @Param("estado") String estado,
+                     Pageable pageable);
 }

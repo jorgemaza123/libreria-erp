@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{fragments/layout}" th:with="active='mi_negocio'">
+
+<head>
+    <title>Mi Negocio</title>
+</head>
+
+<body>
+    <div layout:fragment="content">
+
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2 align-items-center">
+                    <div class="col-sm-6">
+                        <h1><i class="fas fa-store text-primary"></i> Mi Negocio
+                            <small class="text-muted" style="font-size:0.6em;"
+                                th:text="${inicioFmt} + ' — ' + ${finFmt}"></small>
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                            <li class="breadcrumb-item active">Mi Negocio</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- ── SELECTOR DE PERÍODO ──────────────────────────── -->
+                <div class="card card-outline card-primary mb-3">
+                    <div class="card-body py-2">
+                        <form method="get" class="form-inline" id="formPeriodo">
+                            <div class="btn-group mr-3" role="group">
+                                <a th:href="@{/mi-negocio(periodo='hoy')}"
+                                    th:classappend="${periodo == 'hoy'} ? 'btn btn-primary btn-sm active' : 'btn btn-outline-primary btn-sm'">
+                                    Hoy
+                                </a>
+                                <a th:href="@{/mi-negocio(periodo='semana')}"
+                                    th:classappend="${periodo == 'semana'} ? 'btn btn-primary btn-sm active' : 'btn btn-outline-primary btn-sm'">
+                                    Esta semana
+                                </a>
+                                <a th:href="@{/mi-negocio(periodo='mes')}"
+                                    th:classappend="${periodo == 'mes'} ? 'btn btn-primary btn-sm active' : 'btn btn-outline-primary btn-sm'">
+                                    Este mes
+                                </a>
+                            </div>
+                            <div class="input-group input-group-sm mr-2"
+                                th:classappend="${periodo == 'personalizado'} ? '' : 'd-none'" id="rangoPersonalizado">
+                                <input type="date" class="form-control form-control-sm" name="inicio"
+                                    th:value="${inicioIso}">
+                                <div class="input-group-prepend input-group-append">
+                                    <span class="input-group-text">→</span>
+                                </div>
+                                <input type="date" class="form-control form-control-sm" name="fin" th:value="${finIso}">
+                                <input type="hidden" name="periodo" value="personalizado">
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-sm btn-primary">Aplicar</button>
+                                </div>
+                            </div>
+                            <a href="#" onclick="mostrarPersonalizado()"
+                                th:classappend="${periodo == 'personalizado'} ? 'd-none' : 'btn btn-outline-secondary btn-sm'">
+                                <i class="fas fa-calendar-alt"></i> Personalizado
+                            </a>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ── FILA 1: MÉTRICAS PRINCIPALES ─────────────────── -->
+                <div class="row">
+
+                    <!-- Vendí -->
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="info-box shadow-sm">
+                            <span class="info-box-icon bg-teal"><i class="fas fa-arrow-circle-up"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Vendí</span>
+                                <span class="info-box-number"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(vendido, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:4px">
+                                    <div class="progress-bar bg-teal" style="width:100%"></div>
+                                </div>
+                                <span class="progress-description">
+                                    <span th:text="${numVentas}">0</span> ventas ·
+                                    <span th:classappend="${varVendido >= 0} ? 'text-success' : 'text-danger'"
+                                        th:text="(${varVendido >= 0} ? '+' : '') + ${#numbers.formatDecimal(varVendido, 1, 1)} + '% vs período ant.'"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invertí -->
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="info-box shadow-sm">
+                            <span class="info-box-icon bg-maroon"><i class="fas fa-arrow-circle-down"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Invertí en compras</span>
+                                <span class="info-box-number"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(invertido, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:4px">
+                                    <div class="progress-bar bg-maroon" style="width:100%"></div>
+                                </div>
+                                <span class="progress-description text-muted"
+                                    th:text="'Período ant: S/ ' + ${#numbers.formatDecimal(invertidoAnt, 1, 2)}"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gané -->
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="info-box shadow-sm" th:classappend="${ganancia >= 0} ? '' : 'border border-danger'">
+                            <span class="info-box-icon" th:classappend="${ganancia >= 0} ? 'bg-green' : 'bg-danger'">
+                                <i class="fas"
+                                    th:classappend="${ganancia >= 0} ? 'fa-coins' : 'fa-exclamation-circle'"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Gané (utilidad bruta)</span>
+                                <span class="info-box-number"
+                                    th:classappend="${ganancia >= 0} ? 'text-success' : 'text-danger'"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(ganancia, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:4px">
+                                    <div class="progress-bar"
+                                        th:classappend="${ganancia >= 0} ? 'bg-green' : 'bg-danger'" style="width:100%">
+                                    </div>
+                                </div>
+                                <span class="progress-description">
+                                    Margen:
+                                    <strong
+                                        th:classappend="${margenPct >= 20} ? 'text-success' : (${margenPct >= 10} ? 'text-warning' : 'text-danger')"
+                                        th:text="${#numbers.formatDecimal(margenPct, 1, 1)} + '%'">0%</strong>
+                                    ·
+                                    <span th:classappend="${varGanancia >= 0} ? 'text-success' : 'text-danger'"
+                                        th:text="(${varGanancia >= 0} ? '+' : '') + ${#numbers.formatDecimal(varGanancia, 1, 1)} + '% vs ant.'"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flujo de caja del período -->
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="info-box shadow-sm">
+                            <span class="info-box-icon" th:classappend="${flujoCaja >= 0} ? 'bg-blue' : 'bg-orange'">
+                                <i class="fas fa-exchange-alt"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Flujo de caja del período</span>
+                                <span class="info-box-number"
+                                    th:classappend="${flujoCaja >= 0} ? 'text-primary' : 'text-warning'"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(flujoCaja, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:4px">
+                                    <div class="progress-bar bg-blue" style="width:100%"></div>
+                                </div>
+                                <span class="progress-description text-muted small">
+                                    ↑ <span th:text="'S/ ' + ${#numbers.formatDecimal(ingresosCaja, 1, 2)}"></span>
+                                    ↓ <span th:text="'S/ ' + ${#numbers.formatDecimal(egresosCaja, 1, 2)}"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ── FILA 2: INVENTARIO + ALERTA ───────────────────── -->
+                <div class="row">
+                    <div class="col-lg-4 col-md-6">
+                        <div class="card card-outline card-warning shadow-sm">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-boxes text-warning"></i> Capital en Inventario
+                                </h5>
+                            </div>
+                            <div class="card-body text-center py-3">
+                                <h2 class="text-warning font-weight-bold"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(valorInventario, 1, 2)}">S/ 0.00</h2>
+                                <p class="text-muted mb-1">Dinero invertido en stock actual</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Este dinero está "guardado" en productos aún no vendidos.
+                                </small>
+                            </div>
+                            <div class="card-footer text-center">
+                                <a href="/stock" class="text-warning">Ver inventario <i
+                                        class="fas fa-arrow-right"></i></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-md-6">
+                        <div class="card card-outline card-info shadow-sm">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-lightbulb text-info"></i> Resumen del período
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-4 border-right">
+                                        <div class="text-muted small mb-1">Por cada S/ invertido recuperé</div>
+                                        <div class="h4 font-weight-bold"
+                                            th:text="${invertido > 0} ? 'S/ ' + ${#numbers.formatDecimal(vendido / invertido, 1, 2)} : '—'">
+                                            —</div>
+                                    </div>
+                                    <div class="col-4 border-right">
+                                        <div class="text-muted small mb-1">Ganancia por cada S/ invertido</div>
+                                        <div class="h4 font-weight-bold text-success"
+                                            th:text="${invertido > 0} ? 'S/ ' + ${#numbers.formatDecimal(ganancia / invertido, 1, 2)} : '—'">
+                                            —</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-muted small mb-1">Margen promedio del período</div>
+                                        <div class="h4 font-weight-bold"
+                                            th:classappend="${margenPct >= 20} ? 'text-success' : (${margenPct >= 10} ? 'text-warning' : 'text-danger')"
+                                            th:text="${#numbers.formatDecimal(margenPct, 1, 1)} + '%'">0%</div>
+                                    </div>
+                                </div>
+                                <hr class="my-2">
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <div class="text-muted small">Período anterior: vendí</div>
+                                        <div class="font-weight-bold"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(vendidoAnt, 1, 2)}">S/ 0.00</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Período anterior: gané</div>
+                                        <div class="font-weight-bold"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(gananciaAnt, 1, 2)}">S/ 0.00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── FILA 3: POSICIÓN FINANCIERA DEL INVENTARIO ──────── -->
+                <div class="card card-outline card-navy shadow-sm mb-3" id="cardInventarioFinanciero">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-warehouse text-navy"></i> Posición Financiera del Inventario
+                            <small class="text-muted ml-2" style="font-size:0.75em;">Calculado en tiempo real sobre tu
+                                mercadería actual</small>
+                        </h5>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="inventarioFinancieroBody">
+                        <div class="text-center text-muted py-2">
+                            <i class="fas fa-spinner fa-spin"></i> Calculando...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── FILA 4: TOP PRODUCTOS ─────────────────────────── -->
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-trophy text-warning"></i> Top productos más rentables del período
+                        </h5>
+                        <div class="card-tools">
+                            <small class="text-muted">Ordenados por ganancia bruta</small>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div th:if="${#lists.isEmpty(topProductos)}" class="text-center text-muted py-4">
+                            <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+                            No hay ventas con datos de costo en este período.
+                        </div>
+                        <table class="table table-sm table-hover mb-0" th:unless="${#lists.isEmpty(topProductos)}">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th width="30">#</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Vendido</th>
+                                    <th class="text-right">Ingresos</th>
+                                    <th class="text-right">Ganancia</th>
+                                    <th class="text-center" width="120">Margen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="p, stat : ${topProductos}">
+                                    <td class="text-muted" th:text="${stat.count}">1</td>
+                                    <td>
+                                        <span th:text="${p.nombre}">Producto</span>
+                                        <small class="text-muted" th:if="${p.categoria != null}"
+                                            th:text="' · ' + ${p.categoria}"></small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge badge-secondary" th:text="${p.cantidad} + ' uds.'">0</span>
+                                    </td>
+                                    <td class="text-right" th:text="'S/ ' + ${#numbers.formatDecimal(p.ingreso, 1, 2)}">
+                                        S/ 0</td>
+                                    <td class="text-right font-weight-bold text-success"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(p.utilidad, 1, 2)}">S/ 0</td>
+                                    <td class="text-center">
+                                        <div class="progress" style="height:18px; border-radius:9px;">
+                                            <div class="progress-bar"
+                                                th:classappend="${p.margen >= 30} ? 'bg-success' : (${p.margen >= 15} ? 'bg-warning' : 'bg-danger')"
+                                                th:style="'width: ' + ${p.margen} + '%'"
+                                                th:text="${#numbers.formatDecimal(p.margen, 1, 1)} + '%'"
+                                                style="font-size:0.75rem; line-height:18px;">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer text-right">
+                        <a href="/reportes/avanzados" class="text-muted small">
+                            Ver análisis completo <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <th:block layout:fragment="scripts">
+        <script th:inline="none">
+            /*<![CDATA[*/
+            function mostrarPersonalizado() {
+                document.getElementById('rangoPersonalizado').classList.remove('d-none');
+                event.target.classList.add('d-none');
+            }
+
+            // Cargar posición financiera del inventario
+            $(document).ready(function () {
+                $.get('/mi-negocio/api/inventario-resumen', function (d) {
+                    const costo = parseFloat(d.valorAlCosto);
+                    const venta = parseFloat(d.valorAlVenta);
+                    const ganPot = parseFloat(d.gananciaPotencial);
+                    const bajoStk = parseInt(d.productosStockBajo);
+                    const comp30 = parseFloat(d.compras30d);
+                    const vent30 = parseFloat(d.ventas30d);
+                    const totalP = parseInt(d.totalProductos);
+                    const margenPot = costo > 0 ? ((ganPot / costo) * 100) : 0;
+                    const colorGan = margenPot >= 30 ? 'success' : (margenPot >= 15 ? 'warning' : 'secondary');
+
+                    // Texto interpretativo
+                    let interpretacion = '';
+                    if (costo > 0) {
+                        interpretacion = `Tu inventario vale <strong>S/ ${costo.toFixed(2)}</strong> al costo.
+            Si vendieras todo, cobrarías <strong>S/ ${venta.toFixed(2)}</strong>
+            —una ganancia potencial de <strong class="text-${colorGan}">S/ ${ganPot.toFixed(2)}</strong>
+            (${margenPot.toFixed(1)}% de margen).`;
+                    } else {
+                        interpretacion = 'No hay productos con datos de costo disponibles.';
+                    }
+
+                    let html = `
+        <div class="row text-center mb-3">
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-light rounded p-2">
+                    <div class="text-muted small">Productos con stock</div>
+                    <div class="h4 font-weight-bold text-navy">${totalP}</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-light rounded p-2">
+                    <div class="text-muted small">Stock bajo mínimo</div>
+                    <div class="h4 font-weight-bold ${bajoStk > 0 ? 'text-danger' : 'text-success'}">${bajoStk}</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-navy text-white rounded p-2">
+                    <div class="small">Valor al COSTO</div>
+                    <div class="font-weight-bold">S/ ${costo.toFixed(2)}</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-light rounded p-2">
+                    <div class="text-muted small">Valor al PRECIO VENTA</div>
+                    <div class="font-weight-bold text-primary">S/ ${venta.toFixed(2)}</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-${colorGan} text-white rounded p-2">
+                    <div class="small">Ganancia potencial</div>
+                    <div class="font-weight-bold">S/ ${ganPot.toFixed(2)}</div>
+                    <div class="small">${margenPot.toFixed(1)}%</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 mb-2">
+                <div class="bg-light rounded p-2">
+                    <div class="text-muted small">Últimos 30 días</div>
+                    <div class="small">Compras: <strong class="text-danger">S/ ${comp30.toFixed(2)}</strong></div>
+                    <div class="small">Ventas: <strong class="text-success">S/ ${vent30.toFixed(2)}</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-light border-left border-navy py-2 mb-0" style="font-size:0.92rem;">
+            <i class="fas fa-info-circle text-navy mr-1"></i> ${interpretacion}
+        </div>`;
+
+                    $('#inventarioFinancieroBody').html(html);
+                }).fail(function () {
+                    $('#inventarioFinancieroBody').html('<div class="text-muted text-center py-2">No se pudo cargar la posición financiera.</div>');
+                });
+            });
+            /*]]>*/
+        </script>
+    </th:block>
+</body>
+
+</html>

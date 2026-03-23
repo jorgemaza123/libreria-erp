@@ -194,6 +194,12 @@ public class ClienteService {
         });
     }
 
+    @Transactional
+    public void recalcularSaldoDeudor(Long clienteId) {
+        BigDecimal nuevoSaldo = ventaRepository.sumSaldoPendienteCreditoRealByClienteId(clienteId);
+        actualizarSaldoDeudor(clienteId, nuevoSaldo != null ? nuevoSaldo : BigDecimal.ZERO);
+    }
+
     /**
      * Verifica si el cliente puede recibir crédito por un monto específico
      */

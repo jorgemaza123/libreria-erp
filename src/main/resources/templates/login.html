@@ -1,53 +1,60 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Librería | Login</title>
 
   <!-- Google Fonts -->
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css?family=Poppins:300,400,600,700&display=swap"
-  />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,600,700&display=swap" />
 
   <!-- Font Awesome -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 
   <!-- AdminLTE -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css"
-  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" />
 
   <style>
     /* =========================
-       FIX ADMINLTE + CENTRADO
+       FONDO CONSTELACIÓN
     ========================== */
     body.login-page {
       min-height: 100vh !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      background: linear-gradient(120deg, #c044ff, #276cd8, #2f6284);
+      background: #050a1a;
       font-family: "Poppins", sans-serif;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Canvas de constelaciones — ocupa toda la pantalla detrás del login */
+    #constellation-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
     }
 
     .login-box {
       margin: 0 !important;
       width: 380px;
       animation: fadeInUp 0.9s ease;
+      position: relative;
+      z-index: 1;
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.16);
-      backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(18px);
       border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(140, 180, 255, 0.2);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(80, 120, 255, 0.08);
     }
 
     /* =========================
@@ -60,7 +67,7 @@
 
     .logo-icon {
       font-size: 54px;
-      color: #ffffff;
+      color: #c8d8ff;
       margin-bottom: 12px;
       animation: pulseGlow 2.5s infinite;
     }
@@ -71,18 +78,18 @@
     }
 
     .logo-main {
-      color: #ffffff;
+      color: #e0ecff;
     }
 
     .logo-accent {
-      background: linear-gradient(90deg, #ffd86f, #ff6a6a);
+      background: linear-gradient(90deg, #a78bfa, #60a5fa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .logo-sub {
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(180, 200, 255, 0.75);
     }
 
     /* =========================
@@ -93,7 +100,7 @@
     }
 
     .login-box-msg {
-      color: #ffffff;
+      color: rgba(200, 220, 255, 0.9);
       margin-bottom: 20px;
     }
 
@@ -115,8 +122,13 @@
       height: 45px;
       border-radius: 12px;
       font-weight: 600;
-      background: linear-gradient(90deg, #ffd86f, #ff6a6a);
+      background: linear-gradient(90deg, #7c3aed, #3b82f6);
       border: none;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.88;
     }
 
     /* =========================
@@ -125,7 +137,7 @@
     .caps-warning {
       display: none;
       font-size: 12px;
-      color: #ffc107;
+      color: #fbbf24;
       margin-top: 5px;
     }
 
@@ -137,6 +149,7 @@
         opacity: 0;
         transform: translateY(30px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -144,9 +157,17 @@
     }
 
     @keyframes pulseGlow {
-      0% { text-shadow: 0 0 10px rgba(255,255,255,0.6); }
-      50% { text-shadow: 0 0 24px rgba(255,255,255,1); }
-      100% { text-shadow: 0 0 10px rgba(255,255,255,0.6); }
+      0% {
+        text-shadow: 0 0 10px rgba(180, 200, 255, 0.5);
+      }
+
+      50% {
+        text-shadow: 0 0 28px rgba(140, 180, 255, 1);
+      }
+
+      100% {
+        text-shadow: 0 0 10px rgba(180, 200, 255, 0.5);
+      }
     }
 
     /* =========================
@@ -160,6 +181,8 @@
 </head>
 
 <body class="hold-transition login-page">
+  <!-- Canvas de constelaciones (primer elemento del body) -->
+  <canvas id="constellation-canvas"></canvas>
   <div class="login-box">
     <div class="card">
 
@@ -210,14 +233,7 @@
           </div>
 
           <div class="input-group mb-3">
-            <input
-              type="text"
-              name="username"
-              class="form-control"
-              placeholder="Usuario"
-              autocomplete="off"
-              required
-            />
+            <input type="text" name="username" class="form-control" placeholder="Usuario" autocomplete="off" required />
             <div class="input-group-append">
               <div class="input-group-text">
                 <span class="fas fa-user"></span>
@@ -226,15 +242,8 @@
           </div>
 
           <div class="input-group mb-2">
-            <input
-              type="password"
-              name="password"
-              class="form-control"
-              placeholder="Contraseña"
-              autocomplete="new-password"
-              required
-              id="password"
-            />
+            <input type="password" name="password" class="form-control" placeholder="Contraseña"
+              autocomplete="new-password" required id="password" />
             <div class="input-group-append">
               <div class="input-group-text">
                 <span class="fas fa-lock"></span>
@@ -271,7 +280,6 @@
   <script>
     const passwordInput = document.getElementById("password");
     const capsWarning = document.getElementById("capsWarning");
-
     passwordInput.addEventListener("keyup", function (e) {
       if (e.getModifierState && e.getModifierState("CapsLock")) {
         capsWarning.style.display = "block";
@@ -280,5 +288,181 @@
       }
     });
   </script>
+
+  <!-- CONSTELACIÓN ÚTILES ESCOLARES + COMETA -->
+  <script th:inline="none">
+    /*<![CDATA[*/
+    (function () {
+      const canvas = document.getElementById('constellation-canvas');
+      const ctx = canvas.getContext('2d');
+      function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      resize();
+      window.addEventListener('resize', resize);
+
+      /* ---- FORMAS DE ÚTILES (puntos normalizados 0-1) ---- */
+      const SHAPES = {
+        lapiz: {
+          scale: 110,
+          points: [[0.5, 0], [0.38, 0.22], [0.62, 0.22], [0.3, 0.45], [0.7, 0.45], [0.3, 0.82], [0.7, 0.82], [0.38, 1], [0.62, 1]],
+          edges: [[0, 1], [0, 2], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 8], [3, 4], [5, 6]]
+        },
+        borrador: {
+          scale: 95,
+          points: [[0, 0], [1, 0], [1, 0.5], [0, 0.5], [0.35, 0], [0.35, 0.5], [0.5, 0.25]],
+          edges: [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [0, 6], [1, 6], [2, 6], [3, 6]]
+        },
+        regla: {
+          scale: 170,
+          points: [[0, 0], [1, 0], [1, 0.22], [0, 0.22], [0.15, 0], [0.15, 0.14], [0.38, 0], [0.38, 0.14], [0.62, 0], [0.62, 0.14], [0.85, 0], [0.85, 0.14]],
+          edges: [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [6, 7], [8, 9], [10, 11]]
+        },
+        compas: {
+          scale: 115,
+          points: [[0.5, 0], [0.5, 0.18], [0.26, 0.58], [0.74, 0.58], [0.1, 1], [0.9, 1]],
+          edges: [[0, 1], [1, 2], [1, 3], [2, 4], [3, 5]]
+        },
+        tijeras: {
+          scale: 108,
+          points: [[0.5, 0.3], [0.06, 0], [0.94, 0], [0.2, 0.68], [0.38, 1], [0.5, 0.84], [0.62, 0.68], [0.78, 1], [0.5, 0.95]],
+          edges: [[0, 1], [0, 2], [0, 3], [3, 4], [4, 5], [5, 0], [0, 6], [6, 7], [7, 8], [8, 0]]
+        },
+        cuaderno: {
+          scale: 95,
+          points: [[0.12, 0], [1, 0], [1, 1], [0.12, 1], [0, 0], [0, 1], [0.12, 0.33], [1, 0.33], [0.12, 0.66], [1, 0.66]],
+          edges: [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [4, 0], [5, 3], [6, 7], [8, 9]]
+        }
+      };
+      const NAMES = Object.keys(SHAPES);
+
+      function newInst() {
+        const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+        const def = SHAPES[name];
+        const sc = def.scale * (0.65 + Math.random() * 0.7);
+        const n = def.points.length;
+        return {
+          def, sc,
+          x: 90 + Math.random() * (window.innerWidth - 180),
+          y: 90 + Math.random() * (window.innerHeight - 180),
+          angle: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 0.0016,
+          maxLife: 520 + Math.random() * 420, life: 0, phase: 'fadein', alpha: 0,
+          sph: Array.from({ length: n }, () => Math.random() * Math.PI * 2),
+          sspd: Array.from({ length: n }, () => 0.016 + Math.random() * 0.018)
+        };
+      }
+
+      const insts = Array.from({ length: 6 }, () => {
+        const i = newInst(); i.life = Math.random() * i.maxLife; i.phase = 'live'; i.alpha = 1; return i;
+      });
+
+      /* ---- ESTRELLAS DE FONDO ---- */
+      const BG = Array.from({ length: 85 }, () => ({
+        x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.3 + 0.3, ph: Math.random() * Math.PI * 2, spd: 0.009 + Math.random() * 0.018,
+        col: ['#fff', '#c8d8ff', '#a0c0ff'][Math.floor(Math.random() * 3)]
+      }));
+
+      /* ---- COMETA ---- */
+      const COMET_MS = 14000;
+      let comet = null, dim = 0, lastC = Date.now() + 5000;
+
+      function spawnComet() {
+        const W = canvas.width, H = canvas.height;
+        let sx, sy, ex, ey;
+        if (Math.random() < 0.5) { sx = -70; sy = H * (0.1 + Math.random() * 0.5); ex = W + 70; ey = H * (0.4 + Math.random() * 0.5); }
+        else { sx = W * (0.1 + Math.random() * 0.5); sy = -70; ex = W * (0.4 + Math.random() * 0.5); ey = H + 70; }
+        const dx = ex - sx, dy = ey - sy, len = Math.sqrt(dx * dx + dy * dy), spd = 10 + Math.random() * 5;
+        comet = { x: sx, y: sy, vx: dx / len * spd, vy: dy / len * spd, ex, ey, done: false, trail: [] };
+      }
+
+      function rot(px, py, a) { const c = Math.cos(a), s = Math.sin(a); return [px * c - py * s, px * s + py * c]; }
+
+      /* ---- LOOP ---- */
+      function draw() {
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const now = Date.now();
+
+        if (!comet && now - lastC > COMET_MS) { spawnComet(); lastC = now; }
+        if (comet) {
+          if (!comet.done) {
+            comet.x += comet.vx; comet.y += comet.vy;
+            comet.trail.push({ x: comet.x, y: comet.y });
+            if (comet.trail.length > 45) comet.trail.shift();
+            const dx = comet.ex - comet.x, dy = comet.ey - comet.y;
+            if (Math.sqrt(dx * dx + dy * dy) < 25) { comet.done = true; lastC = now; }
+            dim = Math.min(1, dim + 0.05);
+          } else {
+            dim = Math.max(0, dim - 0.028);
+            if (dim <= 0) comet = null;
+          }
+        }
+
+        /* overlay oscurecimiento */
+        if (dim > 0) { ctx.fillStyle = `rgba(2,5,20,${dim * 0.82})`; ctx.fillRect(0, 0, W, H); }
+
+        /* estrellas fondo */
+        const bgBr = 1 - dim * 0.88;
+        for (const s of BG) {
+          s.ph += s.spd;
+          ctx.globalAlpha = (0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.ph))) * bgBr;
+          ctx.fillStyle = s.col; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        /* formas de útiles */
+        for (let i = 0; i < insts.length; i++) {
+          const inst = insts[i];
+          inst.life++;
+          if (inst.phase === 'fadein') { inst.alpha = Math.min(1, inst.alpha + 0.007); if (inst.alpha >= 1) inst.phase = 'live'; }
+          else if (inst.phase === 'live') { if (inst.life >= inst.maxLife) inst.phase = 'fadeout'; }
+          else { inst.alpha = Math.max(0, inst.alpha - 0.006); if (inst.alpha <= 0) { insts[i] = newInst(); continue; } }
+          inst.angle += inst.rotSpd;
+          const base = inst.alpha * (1 - dim * 0.85);
+          if (base < 0.01) continue;
+          const pts = inst.def.points.map(([px, py]) => {
+            const [rx, ry] = rot((px - 0.5) * inst.sc, (py - 0.5) * inst.sc, inst.angle);
+            return [inst.x + rx, inst.y + ry];
+          });
+          /* líneas */
+          ctx.save(); ctx.globalAlpha = base * 0.3; ctx.strokeStyle = '#6ea8fe'; ctx.lineWidth = 0.9;
+          for (const [a, b] of inst.def.edges) { ctx.beginPath(); ctx.moveTo(pts[a][0], pts[a][1]); ctx.lineTo(pts[b][0], pts[b][1]); ctx.stroke(); }
+          ctx.restore();
+          /* estrellas vértice */
+          for (let k = 0; k < pts.length; k++) {
+            inst.sph[k] += inst.sspd[k];
+            const tw = 0.5 + 0.5 * Math.sin(inst.sph[k]), sr = 1.7 + tw * 1.4;
+            ctx.globalAlpha = base * (0.55 + 0.45 * tw);
+            const g = ctx.createRadialGradient(pts[k][0], pts[k][1], 0, pts[k][0], pts[k][1], sr * 2.6);
+            g.addColorStop(0, 'rgba(180,215,255,0.8)'); g.addColorStop(1, 'rgba(100,160,255,0)');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pts[k][0], pts[k][1], sr * 2.6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#dceeff'; ctx.beginPath(); ctx.arc(pts[k][0], pts[k][1], sr, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        /* cometa */
+        if (comet && comet.trail.length > 1) {
+          for (let t = 1; t < comet.trail.length; t++) {
+            const p = t / comet.trail.length;
+            ctx.globalAlpha = p * 0.92; ctx.strokeStyle = `rgba(190,225,255,${p})`; ctx.lineWidth = p * 4;
+            ctx.beginPath(); ctx.moveTo(comet.trail[t - 1].x, comet.trail[t - 1].y);
+            ctx.lineTo(comet.trail[t].x, comet.trail[t].y); ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          const gc = ctx.createRadialGradient(comet.x, comet.y, 0, comet.x, comet.y, 22);
+          gc.addColorStop(0, 'rgba(255,255,255,1)'); gc.addColorStop(0.35, 'rgba(160,210,255,0.9)'); gc.addColorStop(1, 'rgba(80,140,255,0)');
+          ctx.fillStyle = gc; ctx.beginPath(); ctx.arc(comet.x, comet.y, 22, 0, Math.PI * 2); ctx.fill();
+          const gh = ctx.createRadialGradient(comet.x, comet.y, 0, comet.x, comet.y, 58);
+          gh.addColorStop(0, 'rgba(120,190,255,0.2)'); gh.addColorStop(1, 'rgba(80,140,255,0)');
+          ctx.fillStyle = gh; ctx.beginPath(); ctx.arc(comet.x, comet.y, 58, 0, Math.PI * 2); ctx.fill();
+        }
+
+        requestAnimationFrame(draw);
+      }
+      requestAnimationFrame(draw);
+    })();
+    /*]]>*/
+  </script>
 </body>
+
 </html>

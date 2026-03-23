@@ -61,6 +61,9 @@ public class DevolucionService {
     @Autowired
     private ListaEscolarRepository listaEscolarRepository;
 
+    @Autowired
+    private ClienteService clienteService;
+
     private static final int DIAS_MAXIMO_DEVOLUCION = 30;
 
     /**
@@ -109,6 +112,7 @@ public class DevolucionService {
 
         // 6. Procesar detalles y calcular total
         BigDecimal totalDevuelto = procesarDetalles(devolucion, dto.getItems(), ventaOriginal);
+        validarReembolsoCredito(ventaOriginal, dto.getMetodoReembolso(), totalDevuelto);
         devolucion.setTotalDevuelto(totalDevuelto);
 
         // 7. Guardar devolución
@@ -116,6 +120,10 @@ public class DevolucionService {
 
         // 8. Actualizar estado de venta original
         actualizarEstadoVenta(ventaOriginal, totalDevuelto);
+
+        if (ventaOriginal.getClienteEntity() != null && ventaOriginal.getClienteEntity().getId() != null) {
+            clienteService.recalcularSaldoDeudor(ventaOriginal.getClienteEntity().getId());
+        }
 
         // 8b. Si la venta provino de una lista escolar, revertir los items devueltos
         revertirItemsListaEscolar(ventaOriginal, dto.getItems(), totalDevuelto);
@@ -153,7 +161,7 @@ public class DevolucionService {
         BigDecimal totalDevuelto = BigDecimal.ZERO;
 
         for (DevolucionDTO.ItemDevolucion item : items) {
-            Producto producto = productoRepository.findById(item.getProductoId())
+            Producto producto = productoRepository.findByIdWithLock(item.getProductoId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
             // Crear detalle
@@ -173,7 +181,8 @@ public class DevolucionService {
             boolean esServicio = producto.getTipo() != null && "SERVICIO".equalsIgnoreCase(producto.getTipo());
             if (!esServicio) {
                 int cantidadDevuelta = item.getCantidadDevuelta().intValue();
-                producto.setStockActual(producto.getStockActual() + cantidadDevuelta);
+                int stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
+                producto.setStockActual(stockActual + cantidadDevuelta);
                 productoRepository.save(producto);
                 registrarKardex(producto, cantidadDevuelta, devolucion, ventaOriginal);
             }
@@ -241,6 +250,9 @@ public class DevolucionService {
         if ("DEVUELTO_TOTAL".equals(venta.getEstado())) {
             throw new RuntimeException("Esta venta ya fue devuelta completamente");
         }
+        if (Boolean.TRUE.equals(venta.getEntregaPendiente())) {
+            throw new RuntimeException("Este apartado aún no fue entregado. Debe cancelarlo, no devolverlo.");
+        }
 
         // Validar plazo de devolución
         long diasTranscurridos = ChronoUnit.DAYS.between(venta.getFechaEmision(), LocalDate.now());
@@ -253,12 +265,83 @@ public class DevolucionService {
             throw new RuntimeException("Debe seleccionar al menos un producto para devolver");
         }
 
-        // Validar cantidades
-        for (DevolucionDTO.ItemDevolucion item : dto.getItems()) {
-            if (item.getCantidadDevuelta().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new RuntimeException("Las cantidades deben ser mayores a cero");
+        Map<Long, BigDecimal> cantidadesVendidasPorProducto = new HashMap<>();
+        if (venta.getItems() != null) {
+            for (DetalleVenta detalleVenta : venta.getItems()) {
+                if (detalleVenta.getProducto() != null && detalleVenta.getProducto().getId() != null) {
+                    cantidadesVendidasPorProducto.merge(
+                            detalleVenta.getProducto().getId(),
+                            detalleVenta.getCantidad() != null ? detalleVenta.getCantidad() : BigDecimal.ZERO,
+                            BigDecimal::add
+                    );
+                }
             }
         }
+
+        Map<Long, BigDecimal> cantidadesDevueltasPorProducto = obtenerCantidadesDevueltasPorVenta(venta.getId());
+        Map<Long, BigDecimal> cantidadesSolicitadasPorProducto = new HashMap<>();
+        Map<Long, String> descripcionPorProducto = new HashMap<>();
+
+        for (DevolucionDTO.ItemDevolucion item : dto.getItems()) {
+            if (item.getProductoId() == null) {
+                throw new RuntimeException("Uno de los productos seleccionados no tiene ID válido");
+            }
+            if (item.getCantidadDevuelta() == null || item.getCantidadDevuelta().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("Las cantidades deben ser mayores a cero");
+            }
+            if (item.getPrecioUnitario() == null || item.getPrecioUnitario().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("El precio unitario de la devolución debe ser mayor a cero");
+            }
+
+            cantidadesSolicitadasPorProducto.merge(
+                    item.getProductoId(),
+                    item.getCantidadDevuelta(),
+                    BigDecimal::add
+            );
+
+            if (item.getDescripcion() != null && !item.getDescripcion().isBlank()) {
+                descripcionPorProducto.putIfAbsent(item.getProductoId(), item.getDescripcion().trim());
+            }
+        }
+
+        for (Map.Entry<Long, BigDecimal> entry : cantidadesSolicitadasPorProducto.entrySet()) {
+            Long productoId = entry.getKey();
+            BigDecimal cantidadSolicitada = entry.getValue();
+            BigDecimal cantidadVendida = cantidadesVendidasPorProducto.get(productoId);
+
+            if (cantidadVendida == null || cantidadVendida.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("El producto seleccionado no pertenece a la venta original");
+            }
+
+            BigDecimal yaDevuelta = cantidadesDevueltasPorProducto.getOrDefault(productoId, BigDecimal.ZERO);
+            BigDecimal disponible = cantidadVendida.subtract(yaDevuelta);
+
+            if (disponible.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("El producto \"" + describirProducto(productoId, descripcionPorProducto)
+                        + "\" ya fue devuelto completamente");
+            }
+
+            if (cantidadSolicitada.compareTo(disponible) > 0) {
+                throw new RuntimeException("La cantidad a devolver de \"" + describirProducto(productoId, descripcionPorProducto)
+                        + "\" supera lo disponible (" + formatearCantidad(disponible) + ")");
+            }
+        }
+    }
+
+    private String describirProducto(Long productoId, Map<Long, String> descripcionPorProducto) {
+        String descripcion = descripcionPorProducto.get(productoId);
+        if (descripcion != null && !descripcion.isBlank()) {
+            return descripcion;
+        }
+        return "ID " + productoId;
+    }
+
+    private String formatearCantidad(BigDecimal cantidad) {
+        if (cantidad == null) {
+            return "0";
+        }
+        BigDecimal normalizada = cantidad.stripTrailingZeros();
+        return normalizada.scale() < 0 ? normalizada.setScale(0).toPlainString() : normalizada.toPlainString();
     }
 
     /**
@@ -453,6 +536,10 @@ public class DevolucionService {
             ventaRepository.save(ventaOriginal);
         }
 
+        if (ventaOriginal.getClienteEntity() != null && ventaOriginal.getClienteEntity().getId() != null) {
+            clienteService.recalcularSaldoDeudor(ventaOriginal.getClienteEntity().getId());
+        }
+
         // CORRECCION: Si la devolución tuvo reembolso en efectivo, registrar ingreso para anular el egreso
         if ("EFECTIVO".equals(devolucion.getMetodoReembolso()) && devolucion.getTotalDevuelto() != null) {
             try {
@@ -465,6 +552,35 @@ public class DevolucionService {
         }
 
         devolucionRepository.save(devolucion);
+    }
+
+    private void validarReembolsoCredito(Venta ventaOriginal, String metodoReembolso, BigDecimal totalDevuelto) {
+        if (!"CREDITO".equals(ventaOriginal.getFormaPago()) || !"EFECTIVO".equals(metodoReembolso)) {
+            return;
+        }
+
+        BigDecimal montoPagado = ventaOriginal.getMontoPagado() != null
+                ? ventaOriginal.getMontoPagado()
+                : BigDecimal.ZERO;
+        BigDecimal reembolsadoPrevio = obtenerTotalReembolsadoEfectivoPorVenta(ventaOriginal);
+        BigDecimal disponible = montoPagado.subtract(reembolsadoPrevio);
+        if (disponible.compareTo(BigDecimal.ZERO) < 0) {
+            disponible = BigDecimal.ZERO;
+        }
+
+        if (totalDevuelto.compareTo(disponible) > 0) {
+            throw new RuntimeException("El reembolso en efectivo excede lo realmente cobrado. Máximo permitido: S/ "
+                    + disponible.setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+    }
+
+    private BigDecimal obtenerTotalReembolsadoEfectivoPorVenta(Venta ventaOriginal) {
+        return devolucionRepository.findByVentaOriginal(ventaOriginal).stream()
+                .filter(d -> !"ANULADA".equals(d.getEstado()))
+                .filter(d -> "EFECTIVO".equals(d.getMetodoReembolso()))
+                .map(DevolucionVenta::getTotalDevuelto)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**

@@ -41,17 +41,19 @@ public class VentaService {
     private final CajaService cajaService;
     private final FacturacionElectronicaService facturacionService;
     private final ConfiguracionService configuracionService;
+    private final ClienteService clienteService;
 
     public VentaService(ProductoRepository productoRepository,
-                        VentaRepository ventaRepository,
-                        KardexRepository kardexRepository,
-                        CorrelativoRepository correlativoRepository,
-                        ClienteRepository clienteRepository,
-                        AmortizacionRepository amortizacionRepository,
-                        UsuarioRepository usuarioRepository,
-                        CajaService cajaService,
-                        FacturacionElectronicaService facturacionService,
-                        ConfiguracionService configuracionService) {
+            VentaRepository ventaRepository,
+            KardexRepository kardexRepository,
+            CorrelativoRepository correlativoRepository,
+            ClienteRepository clienteRepository,
+            AmortizacionRepository amortizacionRepository,
+            UsuarioRepository usuarioRepository,
+            CajaService cajaService,
+            FacturacionElectronicaService facturacionService,
+            ConfiguracionService configuracionService,
+            ClienteService clienteService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.kardexRepository = kardexRepository;
@@ -62,22 +64,27 @@ public class VentaService {
         this.cajaService = cajaService;
         this.facturacionService = facturacionService;
         this.configuracionService = configuracionService;
+        this.clienteService = clienteService;
     }
 
     /**
      * Crea una nueva venta con soporte DUAL-MODE:
-     * - MODO INTERNO (facturaElectronicaActiva = false): Series I001/IF001, no envía a SUNAT
-     * - MODO ELECTRÓNICO (facturaElectronicaActiva = true): Series B001/F001, envía automáticamente a SUNAT
+     * - MODO INTERNO (facturaElectronicaActiva = false): Series I001/IF001, no
+     * envía a SUNAT
+     * - MODO ELECTRÓNICO (facturaElectronicaActiva = true): Series B001/F001, envía
+     * automáticamente a SUNAT
      *
      * MEJORAS DE SEGURIDAD:
      * - Usa LOCK PESIMISTA para validación de stock (evita race conditions)
-     * - Soporta múltiples métodos de pago (EFECTIVO, YAPE, PLIN, TARJETA, TRANSFERENCIA)
+     * - Soporta múltiples métodos de pago (EFECTIVO, YAPE, PLIN, TARJETA,
+     * TRANSFERENCIA)
      * - Maneja clientes duplicados gracefully
      *
      * @param dto Datos de la venta
      * @return Map con id de la venta y estado SUNAT (si aplica)
-     * @throws RuntimeException si hay error de stock o al procesar
-     * @throws OptimisticLockingFailureException si hay conflicto de concurrencia en stock
+     * @throws RuntimeException                  si hay error de stock o al procesar
+     * @throws OptimisticLockingFailureException si hay conflicto de concurrencia en
+     *                                           stock
      */
     @Transactional
     @Auditable(modulo = "VENTAS", accion = "CREAR", descripcion = "Registrar nueva venta")
@@ -88,9 +95,13 @@ public class VentaService {
 
         // 2. CLIENTE (con manejo de duplicados)
         Cliente cliente = obtenerOCrearCliente(dto);
+        boolean esApartado = dto.isEntregaAlFinal();
 
         // 3. DETERMINAR TIPO Y SERIE SEGÚN MODO
         String tipo = dto.getTipoComprobante() != null ? dto.getTipoComprobante() : "NOTA_VENTA";
+        if (esApartado && !"NOTA_VENTA".equals(tipo)) {
+            throw new RuntimeException("Los apartados deben registrarse como Nota de Venta hasta la entrega final.");
+        }
         String serie = facturacionService.obtenerSerie(tipo, facturaElectronicaActiva);
 
         // 4. OBTENER CORRELATIVO CON LOCK PESIMISTA para evitar race conditions
@@ -113,19 +124,23 @@ public class VentaService {
         // 5. CREAR CABECERA VENTA
         Venta venta = new Venta();
         venta.setClienteEntity(cliente);
-        venta.setClienteDenominacion(dto.getClienteNombre() != null ? dto.getClienteNombre() : cliente.getNombreRazonSocial());
+        venta.setClienteDenominacion(
+                dto.getClienteNombre() != null ? dto.getClienteNombre() : cliente.getNombreRazonSocial());
         venta.setClienteNumeroDocumento(cliente.getNumeroDocumento());
         venta.setClienteTipoDocumento(cliente.getTipoDocumento());
-        // Usar direccion del DTO (snapshot de lo que el usuario vio en pantalla, ej: desde SUNAT)
+        // Usar direccion del DTO (snapshot de lo que el usuario vio en pantalla, ej:
+        // desde SUNAT)
         // Si el DTO no tiene direccion, usar la del cliente guardado
-        String direccionVenta = dto.getClienteDireccion() != null && !dto.getClienteDireccion().isBlank() ?
-                dto.getClienteDireccion() : cliente.getDireccion();
+        String direccionVenta = dto.getClienteDireccion() != null && !dto.getClienteDireccion().isBlank()
+                ? dto.getClienteDireccion()
+                : cliente.getDireccion();
         venta.setClienteDireccion(direccionVenta);
         venta.setTipoComprobante(tipo);
         venta.setSerie(serie);
         venta.setNumero(nuevoNumero);
         venta.setFechaEmision(LocalDate.now());
-        venta.setEstado("EMITIDO");
+        venta.setEstado(esApartado ? "APARTADO" : "EMITIDO");
+        venta.setEntregaPendiente(esApartado);
 
         // NUEVO: Método de pago
         venta.setMetodoPago(dto.getMetodoPago());
@@ -146,7 +161,7 @@ public class VentaService {
         venta.setTotalIgv(totalIgv);
 
         // 7. FORMA DE PAGO
-        BigDecimal montoAbonado = procesarFormaPago(venta, dto, totalVenta);
+        BigDecimal montoAbonado = procesarFormaPago(venta, dto, totalVenta, cliente);
 
         // 8. GUARDAR VENTA
         Venta ventaGuardada = ventaRepository.save(venta);
@@ -156,13 +171,16 @@ public class VentaService {
             registrarPagoYCaja(ventaGuardada, montoAbonado, dto.getMetodoPago());
         }
 
+        if (cliente != null && cliente.getId() != null) {
+            clienteService.recalcularSaldoDeudor(cliente.getId());
+        }
+
         // 10. ENVÍO A SUNAT (SOLO EN MODO ELECTRÓNICO)
         String estadoSunat = "NO_APLICA";
-        if (facturaElectronicaActiva && !tipo.equals("NOTA_VENTA")) {
+        if (!esApartado && facturaElectronicaActiva && !tipo.equals("NOTA_VENTA")) {
             try {
                 SunatResponseDTO respuestaSunat = facturacionService.enviarComprobanteSunat(ventaGuardada.getId());
-                estadoSunat = respuestaSunat.getPayload() != null ?
-                        respuestaSunat.getPayload().getEstado() : "ERROR";
+                estadoSunat = respuestaSunat.getPayload() != null ? respuestaSunat.getPayload().getEstado() : "ERROR";
             } catch (Exception e) {
                 log.error("Error al enviar comprobante a SUNAT. Venta ID: {}", ventaGuardada.getId(), e);
                 estadoSunat = "ERROR_ENVIO";
@@ -174,9 +192,10 @@ public class VentaService {
                 "serie", ventaGuardada.getSerie(),
                 "numero", ventaGuardada.getNumero(),
                 "metodoPago", ventaGuardada.getMetodoPago(),
+                "estadoVenta", ventaGuardada.getEstado(),
+                "entregaPendiente", Boolean.TRUE.equals(ventaGuardada.getEntregaPendiente()),
                 "estadoSunat", estadoSunat,
-                "facturaElectronica", facturaElectronicaActiva
-        );
+                "facturaElectronica", facturaElectronicaActiva);
     }
 
     /**
@@ -199,7 +218,8 @@ public class VentaService {
                     }
 
                     // Actualizar nombre/razon social si esta vacio y el DTO lo tiene
-                    if ((clienteExistente.getNombreRazonSocial() == null || clienteExistente.getNombreRazonSocial().isBlank())
+                    if ((clienteExistente.getNombreRazonSocial() == null
+                            || clienteExistente.getNombreRazonSocial().isBlank())
                             && dto.getClienteNombre() != null && !dto.getClienteNombre().isBlank()) {
                         clienteExistente.setNombreRazonSocial(dto.getClienteNombre());
                         actualizado = true;
@@ -219,8 +239,9 @@ public class VentaService {
                         c.setNombreRazonSocial(dto.getClienteNombre());
                         c.setDireccion(dto.getClienteDireccion());
                         c.setTelefono(dto.getClienteTelefono());
-                        c.setTipoDocumento(dto.getClienteDocumento().length() == Constants.RUC_LENGTH ?
-                            Constants.TIPO_DOC_RUC : Constants.TIPO_DOC_DNI);
+                        c.setTipoDocumento(
+                                dto.getClienteDocumento().length() == Constants.RUC_LENGTH ? Constants.TIPO_DOC_RUC
+                                        : Constants.TIPO_DOC_DNI);
                         return clienteRepository.save(c);
                     } catch (DataIntegrityViolationException e) {
                         // Race condition: otro proceso creó el cliente
@@ -233,7 +254,8 @@ public class VentaService {
     }
 
     /**
-     * Procesa los detalles de venta: validación de stock, creación de detalles y kardex
+     * Procesa los detalles de venta: validación de stock, creación de detalles y
+     * kardex
      *
      * MEJORADO: Usa LOCK PESIMISTA para evitar race conditions en stock
      * Esto previene que dos ventas simultáneas vendan el mismo último ítem
@@ -260,10 +282,11 @@ public class VentaService {
             validarPrecioVenta(prod, item.getPrecioVenta());
 
             // --- NUEVA LÓGICA AGREGADA AQUÍ ---
-            // Verificamos si es un servicio basándonos en tu modelo Producto.java (campo 'tipo')
+            // Verificamos si es un servicio basándonos en tu modelo Producto.java (campo
+            // 'tipo')
             // Asumimos que en BD guardas "SERVICIO" o "PRODUCTO" en ese campo.
             boolean esServicio = prod.getTipo() != null && "SERVICIO".equalsIgnoreCase(prod.getTipo());
-            
+
             int cantidadRequerida = item.getCantidad().intValue();
             int stockDisponible = prod.getStockActual() != null ? prod.getStockActual() : 0;
 
@@ -277,20 +300,27 @@ public class VentaService {
             }
             // ----------------------------------
 
-            // Cálculos matemáticos (Mantenemos tu lógica original)
+            // Cálculos matemáticos
+            // CRÍTICO-2 FIX: IGV calculado directamente (no por diferencia) para evitar
+            // acumulación de errores de redondeo que generan descuadres en declaraciones
+            // SUNAT.
             BigDecimal precioFinal = item.getPrecioVenta();
             BigDecimal cantidad = item.getCantidad();
             BigDecimal subtotalItem = precioFinal.multiply(cantidad);
-            BigDecimal valorUnitario = precioFinal.divide(igvFactor, 6, RoundingMode.HALF_UP);
-            BigDecimal valorVenta = valorUnitario.multiply(cantidad);
-            BigDecimal igvItem = subtotalItem.subtract(valorVenta);
+            // IGV = subtotal × (18/118) — nunca por diferencia
+            BigDecimal igvItem = subtotalItem.multiply(new BigDecimal("18")).divide(new BigDecimal("118"), 2,
+                    RoundingMode.HALF_UP);
+            BigDecimal valorVenta = subtotalItem.subtract(igvItem);
+            BigDecimal valorUnitario = valorVenta.divide(cantidad, 6, RoundingMode.HALF_UP);
 
             // Creación del detalle (Mantenemos tu lógica original)
             DetalleVenta det = new DetalleVenta();
             det.setVenta(venta);
             det.setProducto(prod);
             det.setCantidad(cantidad);
-            det.setDescripcion(prod.getNombre());
+            det.setDescripcion(item.getDescripcion() != null && !item.getDescripcion().isBlank()
+                    ? item.getDescripcion().trim()
+                    : prod.getNombre());
             det.setUnidadMedida(prod.getUnidadMedida() != null ? prod.getUnidadMedida() : "NIU");
             det.setPrecioUnitario(precioFinal);
             det.setValorUnitario(valorUnitario);
@@ -303,7 +333,7 @@ public class VentaService {
             det.setUtilidadTotal(precioFinal.subtract(costoUnit).multiply(cantidad));
 
             det.setPorcentajeIgv(igvPorcentaje);
-            
+
             // Corrección segura para mapear la afectación sin perder lógica
             String codigoAfectacion = Constants.AFECTACION_GRAVADO; // Valor por defecto
             if (prod.getTipoAfectacionIgv() != null) {
@@ -319,8 +349,10 @@ public class VentaService {
             totalIgv = totalIgv.add(igvItem);
 
             // --- LÓGICA KARDEX Y STOCK ---
-            // Si es servicio, NO descontamos stock, pero opcionalmente registramos Kardex informativo
-            // o simplemente no hacemos nada. Aquí asumo que quieres registrar la venta pero no mover stock.
+            // Si es servicio, NO descontamos stock, pero opcionalmente registramos Kardex
+            // informativo
+            // o simplemente no hacemos nada. Aquí asumo que quieres registrar la venta pero
+            // no mover stock.
             if (!esServicio) {
                 registrarKardex(prod, cantidadRequerida, venta);
                 prod.setStockActual(stockDisponible - cantidadRequerida);
@@ -328,8 +360,9 @@ public class VentaService {
             }
         }
 
-        return new BigDecimal[]{totalVenta, totalGravada, totalIgv};
+        return new BigDecimal[] { totalVenta, totalGravada, totalIgv };
     }
+
     /**
      * Registra movimiento en Kardex
      */
@@ -337,7 +370,10 @@ public class VentaService {
         Kardex k = new Kardex();
         k.setProducto(prod);
         k.setTipo("SALIDA");
-        k.setMotivo("VENTA " + venta.getSerie() + "-" + venta.getNumero());
+        String motivo = Boolean.TRUE.equals(venta.getEntregaPendiente())
+                ? "APARTADO " + venta.getSerie() + "-" + venta.getNumero()
+                : "VENTA " + venta.getSerie() + "-" + venta.getNumero();
+        k.setMotivo(motivo);
         k.setCantidad(cantidad);
         k.setStockAnterior(prod.getStockActual());
         k.setStockActual(prod.getStockActual() - cantidad);
@@ -349,18 +385,37 @@ public class VentaService {
      *
      * @return Monto abonado
      */
-    private BigDecimal procesarFormaPago(Venta venta, VentaDTO dto, BigDecimal totalVenta) {
+    private BigDecimal procesarFormaPago(Venta venta, VentaDTO dto, BigDecimal totalVenta, Cliente cliente) {
         BigDecimal montoAbonado;
 
         if ("CREDITO".equals(dto.getFormaPago())) {
             venta.setFormaPago("CREDITO");
             BigDecimal inicial = dto.getMontoInicial() != null ? dto.getMontoInicial() : BigDecimal.ZERO;
+            if (inicial.compareTo(totalVenta) > 0) {
+                throw new RuntimeException("El monto inicial no puede exceder el total de la operación.");
+            }
             montoAbonado = inicial;
             venta.setMontoPagado(inicial);
             venta.setSaldoPendiente(totalVenta.subtract(inicial));
-            int dias = dto.getDiasCredito() != null ? dto.getDiasCredito() : Constants.DEFAULT_CREDIT_DAYS;
+            int dias = resolverDiasCredito(dto, cliente);
             venta.setFechaVencimiento(LocalDate.now().plusDays(dias));
+
+            if (Boolean.TRUE.equals(venta.getEntregaPendiente())) {
+                venta.setEstado(venta.getSaldoPendiente().compareTo(BigDecimal.ZERO) == 0
+                        ? "LISTO_ENTREGA"
+                        : "APARTADO");
+            } else {
+                if (venta.getSaldoPendiente().compareTo(BigDecimal.ZERO) > 0) {
+                    validarCreditoInmediato(cliente, venta.getSaldoPendiente());
+                    venta.setEstado("EMITIDO");
+                } else {
+                    venta.setEstado("PAGADO_TOTAL");
+                }
+            }
         } else {
+            if (dto.isEntregaAlFinal()) {
+                throw new RuntimeException("El apartado debe registrarse como crédito para permitir pagos parciales.");
+            }
             venta.setFormaPago("CONTADO");
             venta.setMontoPagado(totalVenta);
             venta.setSaldoPendiente(BigDecimal.ZERO);
@@ -381,13 +436,19 @@ public class VentaService {
         amo.setVenta(venta);
         amo.setMonto(monto);
         amo.setMetodoPago(metodoPago != null ? metodoPago : "EFECTIVO");
-        amo.setObservacion("PAGO INICIAL / CONTADO - " + metodoPago);
+        amo.setObservacion(Boolean.TRUE.equals(venta.getEntregaPendiente())
+                ? "ADELANTO APARTADO - " + metodoPago
+                : "PAGO INICIAL / CONTADO - " + metodoPago);
         amortizacionRepository.save(amo);
 
         // Movimiento de caja - OBLIGATORIO: Si falla, debe abortar la transacción
-        cajaService.registrarMovimiento("INGRESO",
-                "VENTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")",
-                monto, CategoriaMovimiento.VENTA);
+        String concepto = Boolean.TRUE.equals(venta.getEntregaPendiente())
+                ? "ADELANTO APARTADO " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")"
+                : "VENTA " + venta.getSerie() + "-" + venta.getNumero() + " (" + metodoPago + ")";
+        String categoria = Boolean.TRUE.equals(venta.getEntregaPendiente())
+                ? CategoriaMovimiento.COBRANZA
+                : CategoriaMovimiento.VENTA;
+        cajaService.registrarMovimiento("INGRESO", concepto, monto, categoria);
     }
 
     /**
@@ -409,6 +470,30 @@ public class VentaService {
         return facturacionService.isFacturacionElectronicaActiva();
     }
 
+    private int resolverDiasCredito(VentaDTO dto, Cliente cliente) {
+        if (dto.getDiasCredito() != null && dto.getDiasCredito() > 0) {
+            return dto.getDiasCredito();
+        }
+        if (cliente != null && cliente.getDiasCredito() != null && cliente.getDiasCredito() > 0) {
+            return cliente.getDiasCredito();
+        }
+        return Constants.DEFAULT_CREDIT_DAYS;
+    }
+
+    private void validarCreditoInmediato(Cliente cliente, BigDecimal saldoPendiente) {
+        if (cliente == null || cliente.getId() == null) {
+            throw new RuntimeException("Debe seleccionar un cliente registrado para ventas a crédito con entrega inmediata.");
+        }
+        if (!cliente.isTieneCredito()) {
+            throw new RuntimeException("El cliente no tiene crédito habilitado para entregar mercadería antes del pago total.");
+        }
+        if (!cliente.puedeRecibirCredito(saldoPendiente)) {
+            BigDecimal disponible = cliente.getCreditoDisponible();
+            throw new RuntimeException("El cliente excede su límite de crédito. Disponible: S/ " +
+                    disponible.setScale(2, RoundingMode.HALF_UP));
+        }
+    }
+
     /**
      * CONTROL DE PRECIOS: Verifica si el usuario actual tiene rol ADMIN.
      * Solo los administradores pueden modificar precios en el POS.
@@ -417,7 +502,8 @@ public class VentaService {
      */
     private boolean isUsuarioAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
+        if (auth == null)
+            return false;
 
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -428,16 +514,30 @@ public class VentaService {
      * CONTROL DE PRECIOS: Valida que el precio enviado sea válido.
      *
      * REGLAS DE SEGURIDAD:
-     * 1. SOBREPRECIO: Si el precio enviado es MAYOR al precio real (con tolerancia de 0.01),
-     *    se rechaza SIEMPRE, incluso para ADMIN. Esto previene fraude por sobrecobro.
-     * 2. MODIFICACIÓN: Solo ADMIN puede modificar precios (hacia abajo, para descuentos)
+     * 1. SOBREPRECIO: Si el precio enviado es MAYOR al precio real (con tolerancia
+     * de 0.01),
+     * se rechaza SIEMPRE, incluso para ADMIN. Esto previene fraude por sobrecobro.
+     * 2. MODIFICACIÓN: Solo ADMIN puede modificar precios (hacia abajo, para
+     * descuentos)
      * 3. MÍNIMO: El precio no puede ser menor al precio mínimo configurado
      *
-     * @param producto El producto a validar
+     * @param producto      El producto a validar
      * @param precioEnviado El precio enviado desde el frontend
      * @throws RuntimeException si hay manipulación de precios no autorizada
      */
     private void validarPrecioVenta(Producto producto, BigDecimal precioEnviado) {
+        boolean esServicioGenericoVariable =
+                producto.getTipo() != null
+                        && "SERVICIO".equalsIgnoreCase(producto.getTipo())
+                        && "SERV-001".equalsIgnoreCase(producto.getCodigoInterno());
+
+        // SERV-001 es el comodín de servicios personalizados del sistema.
+        // Su precio es variable por diseño y no debe quedar sujeto al control
+        // de sobreprecio de productos con tarifa fija.
+        if (esServicioGenericoVariable) {
+            return;
+        }
+
         BigDecimal precioVenta = producto.getPrecioVenta();
         BigDecimal precioMinimo = precioVenta.multiply(Constants.DESCUENTO_MINIMO_VENTA);
 
@@ -453,7 +553,7 @@ public class VentaService {
         if (precioEnviado.compareTo(precioMaximoPermitido) > 0) {
             String mensaje = String.format(
                     "ALERTA DE SEGURIDAD: Intento de sobreprecio detectado en el producto '%s'. " +
-                    "Precio real: S/ %.2f, Precio enviado: S/ %.2f. Operación bloqueada.",
+                            "Precio real: S/ %.2f, Precio enviado: S/ %.2f. Operación bloqueada.",
                     producto.getNombre(), precioVenta, precioEnviado);
 
             log.error("!!! {} - Usuario: {}", mensaje,
@@ -462,7 +562,8 @@ public class VentaService {
             throw new RuntimeException(mensaje);
         }
 
-        // Si el precio está dentro del rango permitido (igual o menor con tolerancia), es válido
+        // Si el precio está dentro del rango permitido (igual o menor con tolerancia),
+        // es válido
         if (precioEnviado.subtract(precioVenta).abs().compareTo(tolerancia) <= 0) {
             return; // Precio es igual (con tolerancia de redondeo)
         }
@@ -479,7 +580,7 @@ public class VentaService {
 
             throw new RuntimeException(String.format(
                     "No autorizado: Solo administradores pueden modificar precios. " +
-                    "Producto '%s', precio correcto: S/ %.2f",
+                            "Producto '%s', precio correcto: S/ %.2f",
                     producto.getNombre(), precioVenta));
         }
 
@@ -501,7 +602,7 @@ public class VentaService {
     }
 
     // =====================================================
-    //  ANULACIÓN DE VENTAS CON COMUNICACIÓN DE BAJA SUNAT
+    // ANULACIÓN DE VENTAS CON COMUNICACIÓN DE BAJA SUNAT
     // =====================================================
 
     /**
@@ -519,7 +620,7 @@ public class VentaService {
      * - ENTONCES: Ejecuta llamada a API de baja
      *
      * @param ventaId ID de la venta a anular
-     * @param motivo Motivo de la anulación
+     * @param motivo  Motivo de la anulación
      * @return Map con resultado de la operación
      */
     @Transactional
@@ -608,12 +709,15 @@ public class VentaService {
         }
 
         // 7. Registrar egreso en caja si fue pagada (revertir el ingreso)
-        // FIX ERROR-10: usar CategoriaMovimiento.DEVOLUCION en lugar de OTRO_EGRESO para
-        // que los reportes financieros distingan correctamente anulaciones de otros egresos.
+        // FIX ERROR-10: usar CategoriaMovimiento.DEVOLUCION en lugar de OTRO_EGRESO
+        // para
+        // que los reportes financieros distingan correctamente anulaciones de otros
+        // egresos.
         if (venta.getMontoPagado() != null && venta.getMontoPagado().compareTo(BigDecimal.ZERO) > 0) {
             try {
                 String concepto = "ANULACIÓN VENTA " + venta.getSerie() + "-" + venta.getNumero();
-                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado(), CategoriaMovimiento.DEVOLUCION);
+                cajaService.registrarMovimiento("EGRESO", concepto, venta.getMontoPagado(),
+                        CategoriaMovimiento.DEVOLUCION);
             } catch (Exception e) {
                 // Si la caja está cerrada, no podemos registrar pero no bloqueamos la anulación
                 log.warn("No se pudo registrar egreso por anulación (¿caja cerrada?): {}", e.getMessage());
@@ -623,6 +727,10 @@ public class VentaService {
 
         // 8. Guardar cambios
         ventaRepository.save(venta);
+
+        if (venta.getClienteEntity() != null && venta.getClienteEntity().getId() != null) {
+            clienteService.recalcularSaldoDeudor(venta.getClienteEntity().getId());
+        }
 
         // 9. Preparar resultado
         resultado.put("success", true);
@@ -640,5 +748,38 @@ public class VentaService {
         log.info("Venta {}-{} anulada. Estado SUNAT baja: {}", venta.getSerie(), venta.getNumero(), estadoSunatBaja);
 
         return resultado;
+    }
+
+    @Transactional
+    @Auditable(modulo = "VENTAS", accion = "MODIFICAR", descripcion = "Entregar apartado pagado")
+    public Map<String, Object> entregarApartado(Long ventaId) {
+        Venta venta = ventaRepository.findByIdWithDetalles(ventaId)
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + ventaId));
+
+        if (!Boolean.TRUE.equals(venta.getEntregaPendiente())) {
+            throw new RuntimeException("Esta operación no tiene entrega pendiente.");
+        }
+        if ("ANULADO".equals(venta.getEstado())) {
+            throw new RuntimeException("No se puede entregar una venta anulada.");
+        }
+        if (venta.getSaldoPendiente() != null && venta.getSaldoPendiente().compareTo(BigDecimal.ZERO) > 0) {
+            throw new RuntimeException("No se puede entregar mientras exista saldo pendiente.");
+        }
+
+        venta.setEntregaPendiente(false);
+        venta.setFechaEntregaReal(java.time.LocalDateTime.now());
+        venta.setFechaEmision(LocalDate.now());
+        venta.setEstado("PAGADO_TOTAL");
+        ventaRepository.save(venta);
+
+        if (venta.getClienteEntity() != null && venta.getClienteEntity().getId() != null) {
+            clienteService.recalcularSaldoDeudor(venta.getClienteEntity().getId());
+        }
+
+        return Map.of(
+                "id", venta.getId(),
+                "serie", venta.getSerie(),
+                "numero", venta.getNumero(),
+                "estado", venta.getEstado());
     }
 }

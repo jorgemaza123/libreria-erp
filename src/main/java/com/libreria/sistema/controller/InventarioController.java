@@ -51,18 +51,22 @@ public class InventarioController {
             List<Producto> nuevosProductos = new ArrayList<>();
             int filasProcesadas = 0;
             for (Row row : sheet) {
-                if (row.getRowNum() == 0) continue; 
+                if (row.getRowNum() == 0)
+                    continue;
                 String nombre = "";
                 Cell cellName = row.getCell(0);
-                if(cellName != null) nombre = cellName.getStringCellValue();
-                if (nombre.isEmpty()) continue;
+                if (cellName != null)
+                    nombre = cellName.getStringCellValue();
+                if (nombre.isEmpty())
+                    continue;
 
                 Producto p = new Producto();
                 p.setNombre(nombre.toUpperCase());
                 // ... lógica simple para evitar errores si celdas vacías ...
-                p.setStockActual((int)(row.getCell(4) != null ? row.getCell(4).getNumericCellValue() : 0));
+                p.setStockActual((int) (row.getCell(4) != null ? row.getCell(4).getNumericCellValue() : 0));
                 p.setPrecioVenta(BigDecimal.valueOf(row.getCell(3) != null ? row.getCell(3).getNumericCellValue() : 0));
-                p.setPrecioCompra(BigDecimal.valueOf(row.getCell(2) != null ? row.getCell(2).getNumericCellValue() : 0));
+                p.setPrecioCompra(
+                        BigDecimal.valueOf(row.getCell(2) != null ? row.getCell(2).getNumericCellValue() : 0));
                 p.setActivo(true);
                 nuevosProductos.add(p);
                 filasProcesadas++;
@@ -79,7 +83,8 @@ public class InventarioController {
     @GetMapping("/etiquetas/{id}")
     public String generarEtiquetas(@PathVariable Long id, Model model) {
         Producto p = productoRepository.findById(id).orElse(null);
-        if(p == null) return "redirect:/productos";
+        if (p == null)
+            return "redirect:/productos";
         model.addAttribute("producto", p);
         return "inventario/etiquetas";
     }
@@ -90,24 +95,27 @@ public class InventarioController {
 
     @GetMapping("/ajuste")
     public String vistaAjuste(Model model) {
-        // Enviamos la lista para el select buscador
-        model.addAttribute("productos", productoRepository.findAll());
+        // Solo productos activos ordenados por nombre
+        model.addAttribute("productos", productoRepository.findByActivoTrueOrderByNombreAsc());
         return "inventario/ajuste";
     }
 
-    // FIX ERROR-6: @Transactional garantiza que kardex y producto se confirmen juntos.
-    // FIX ERROR-4: tipo de kardex corregido a "AJUSTE" (era "ENTRADA (AJUSTE)" / "SALIDA (AJUSTE)").
+    // FIX ERROR-6: @Transactional garantiza que kardex y producto se confirmen
+    // juntos.
+    // FIX ERROR-4: tipo de kardex corregido a "AJUSTE" (era "ENTRADA (AJUSTE)" /
+    // "SALIDA (AJUSTE)").
     @PostMapping("/ajustar")
     @Transactional
     public String procesarAjuste(@RequestParam Long productoId,
-                                 @RequestParam Integer stockReal,
-                                 @RequestParam String motivo,
-                                 RedirectAttributes attr) {
+            @RequestParam Integer stockReal,
+            @RequestParam String motivo,
+            RedirectAttributes attr) {
         try {
             Producto prod = productoRepository.findById(productoId)
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-            int stockSistema = prod.getStockActual();
+            // FIX: null-safe para evitar NullPointerException en auto-unboxing
+            int stockSistema = prod.getStockActual() != null ? prod.getStockActual() : 0;
             int diferencia = stockReal - stockSistema;
 
             if (diferencia == 0) {
@@ -115,7 +123,8 @@ public class InventarioController {
                 return "redirect:/inventario/ajuste";
             }
 
-            // FIX ERROR-4: tipo unificado a "AJUSTE"; el detalle (sobrante/faltante) queda en motivo
+            // FIX ERROR-4: tipo unificado a "AJUSTE"; el detalle (sobrante/faltante) queda
+            // en motivo
             Kardex k = new Kardex();
             k.setProducto(prod);
             k.setStockAnterior(stockSistema);

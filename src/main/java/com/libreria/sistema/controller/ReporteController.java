@@ -31,9 +31,9 @@ public class ReporteController {
     @GetMapping("/exportar/excel")
     @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
     public void exportarExcel(@RequestParam String tipo,
-                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
-                              HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            HttpServletResponse response) throws IOException {
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String headerKey = "Content-Disposition";
@@ -46,9 +46,9 @@ public class ReporteController {
     @GetMapping("/exportar/pdf")
     @PreAuthorize("hasPermission(null, 'REPORTES_EXPORTAR')")
     public void exportarPdf(@RequestParam String tipo,
-                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
-                            HttpServletResponse response) throws IOException {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            HttpServletResponse response) throws IOException {
 
         try {
             response.setContentType("application/pdf");
@@ -58,8 +58,11 @@ public class ReporteController {
 
             reporteService.generarPdf(tipo, inicio, fin, response.getOutputStream());
         } catch (Exception e) {
-            e.printStackTrace();
-            response.sendError(500, "Error al generar PDF: " + e.getMessage());
+            // MEDIO-4 FIX: No exponer stack trace ni detalles internos al cliente.
+            // El log completo queda registrado para debugging interno.
+            org.slf4j.LoggerFactory.getLogger(ReporteController.class)
+                    .error("Error generando PDF para reporte tipo={} inicio={} fin={}", tipo, inicio, fin, e);
+            response.sendError(500, "No se pudo generar el reporte. Contacte al administrador.");
         }
     }
 }

@@ -63,6 +63,8 @@ public class VentaDTO {
     @Max(value = 90, message = "Los días de crédito no pueden exceder 90")
     private Integer diasCredito;
 
+    private Boolean entregaAlFinal = false;
+
     // =====================================================
     //  ITEMS DE LA VENTA
     // =====================================================
@@ -89,6 +91,9 @@ public class VentaDTO {
         @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
         @DecimalMax(value = "999999.99", message = "El precio no puede exceder 999999.99")
         private BigDecimal precioVenta;
+
+        @Size(max = 200, message = "La descripción no puede exceder 200 caracteres")
+        private String descripcion;
     }
 
     // =====================================================
@@ -114,5 +119,9 @@ public class VentaDTO {
      */
     public boolean esContado() {
         return "CONTADO".equalsIgnoreCase(formaPago);
+    }
+
+    public boolean isEntregaAlFinal() {
+        return Boolean.TRUE.equals(entregaAlFinal);
     }
 }

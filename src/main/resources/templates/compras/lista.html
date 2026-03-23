@@ -1,144 +1,292 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{fragments/layout}"
-      th:with="active='compras'">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{fragments/layout}" th:with="active='compras'">
+
 <head>
     <title>Historial de Compras</title>
 </head>
+
 <body>
 
-<div layout:fragment="content">
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6"><h1>Historial de Compras</h1></div>
-                <div class="col-sm-6 text-right">
-                    <a th:href="@{/compras/nueva}" class="btn btn-navy"><i class="fas fa-plus"></i> Registrar Compra</a>
+    <div layout:fragment="content">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1>Historial de Compras</h1>
+                    </div>
+                    <div class="col-sm-6 text-right">
+                        <a th:href="@{/compras/nueva}" class="btn btn-navy"><i class="fas fa-plus"></i> Registrar
+                            Compra</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="content">
-        <div class="container-fluid">
-            <div class="card">
-                <div class="card-body">
-                    <table id="tablaCompras" class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Proveedor</th>
-                                <th>Documento</th>
-                                <th>Total</th>
-                                <th>Obs</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="c : ${compras}">
-                                <td th:text="${c.fecha != null ? #temporals.format(c.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
-                                <td th:text="${c.proveedor != null ? c.proveedor.razonSocial : 'PROVEEDOR ELIMINADO'}"></td>
-                                <td th:text="${c.tipoComprobante} + ' ' + ${c.numeroComprobante}"></td>
-                                <td class="font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 'COMMA', 2, 'POINT')}"></td>
-                                <td th:text="${c.observaciones}"></td>
-                                <td>
-                                    <button class="btn btn-info btn-sm"
-                                            th:onclick="verDetalle([[${c.id}]])"
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-body">
+                        <table id="tablaCompras" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Proveedor</th>
+                                    <th>Documento</th>
+                                    <th>Total</th>
+                                    <th>Obs</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="c : ${compras}">
+                                    <td
+                                        th:text="${c.fecha != null ? #temporals.format(c.fecha, 'dd/MM/yyyy HH:mm') : '-'}">
+                                    </td>
+                                    <td
+                                        th:text="${c.proveedor != null ? c.proveedor.razonSocial : 'PROVEEDOR ELIMINADO'}">
+                                    </td>
+                                    <td th:text="${c.tipoComprobante} + ' ' + ${c.numeroComprobante}"></td>
+                                    <td class="font-weight-bold"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 'COMMA', 2, 'POINT')}">
+                                    </td>
+                                    <td th:text="${c.observaciones}"></td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" th:onclick="verDetalle([[${c.id}]])"
                                             title="Ver Detalles">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-success btn-sm ml-1"
+                                            th:onclick="verTrazabilidad([[${c.id}]], [[${c.tipoComprobante + ' ' + c.numeroComprobante}]])"
+                                            title="Ver Trazabilidad del Lote">
+                                            <i class="fas fa-chart-line"></i> Trazabilidad
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal Detalle simple -->
+        <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-navy">
+                        <h5 class="modal-title">Detalle de Compra</h5>
+                        <button type="button" class="close text-white"
+                            data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6"><strong>Proveedor:</strong> <span id="lblProveedor"></span></div>
+                            <div class="col-md-6 text-right"><strong>Documento:</strong> <span id="lblDocumento"></span>
+                            </div>
+                        </div>
+                        <table class="table table-sm table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th class="text-right">Costo U.</th>
+                                    <th class="text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyDetalle"></tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-right">TOTAL:</th>
+                                    <th class="text-right" id="lblTotal"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- Modal Detalle -->
-    <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-navy">
-                    <h5 class="modal-title">Detalle de Compra</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <strong>Proveedor:</strong> <span id="lblProveedor"></span>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <strong>Documento:</strong> <span id="lblDocumento"></span>
+        <!-- ========== MODAL TRAZABILIDAD DE LOTE ========== -->
+        <div class="modal fade" id="modalTrazabilidad" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-chart-line"></i> Trazabilidad del Lote — <span
+                                id="trazDoc"></span></h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body" id="trazBody">
+                        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p class="mt-2">Calculando...</p>
                         </div>
                     </div>
-
-                    <table class="table table-sm table-bordered">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th class="text-center">Cant.</th>
-                                <th class="text-right">Costo U.</th>
-                                <th class="text-right">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyDetalle"></tbody>
-                        <tfoot>
-                            <tr>
-                                <th colspan="3" class="text-right">TOTAL:</th>
-                                <th class="text-right" id="lblTotal"></th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
-</div>
 
-<th:block layout:fragment="scripts">
-    <script th:inline="none">
-        $(document).ready(function () {
-            $("#tablaCompras").DataTable({
-                "responsive": true,
-                "autoWidth": false,
-                "order": [[0, "desc"]],
-                "language": { "url": "/js/datatables-es.json" }
+    <th:block layout:fragment="scripts">
+        <script th:inline="none">
+            /*<![CDATA[*/
+            $(document).ready(function () {
+                $("#tablaCompras").DataTable({
+                    "responsive": true,
+                    "autoWidth": false,
+                    "order": [[0, "desc"]],
+                    "language": { "url": "/js/datatables-es.json" }
+                });
             });
-        });
 
-        function verDetalle(id) {
-            $("#tbodyDetalle").html('<tr><td colspan="4" class="text-center">Cargando...</td></tr>');
-            $("#modalDetalle").modal("show");
-
-            $.get("/compras/api/detalle/" + id, function(data) {
-                $("#lblProveedor").text(data.proveedor);
-                $("#lblDocumento").text(data.documento);
-                $("#lblTotal").text('S/ ' + data.total.toFixed(2));
-
-                let html = "";
-                data.items.forEach(item => {
-                    html += `<tr>
+            function verDetalle(id) {
+                $("#tbodyDetalle").html('<tr><td colspan="4" class="text-center">Cargando...</td></tr>');
+                $("#modalDetalle").modal("show");
+                $.get("/compras/api/detalle/" + id, function (data) {
+                    $("#lblProveedor").text(data.proveedor);
+                    $("#lblDocumento").text(data.documento);
+                    $("#lblTotal").text('S/ ' + data.total.toFixed(2));
+                    let html = "";
+                    data.items.forEach(item => {
+                        html += `<tr>
                         <td>${item.producto}</td>
                         <td class="text-center">${item.cantidad}</td>
                         <td class="text-right">S/ ${item.precio.toFixed(2)}</td>
                         <td class="text-right">S/ ${item.subtotal.toFixed(2)}</td>
                     </tr>`;
+                    });
+                    $("#tbodyDetalle").html(html);
+                }).fail(function () {
+                    $("#tbodyDetalle").html('<tr><td colspan="4" class="text-danger text-center">Error al cargar datos</td></tr>');
                 });
-                $("#tbodyDetalle").html(html);
-            }).fail(function() {
-                $("#tbodyDetalle").html('<tr><td colspan="4" class="text-danger text-center">Error al cargar datos</td></tr>');
-            });
-        }
-    </script>
-</th:block>
+            }
+
+            function verTrazabilidad(id, docLabel) {
+                $("#trazDoc").text(docLabel);
+                $("#trazBody").html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Calculando trazabilidad...</p></div>');
+                $("#modalTrazabilidad").modal("show");
+
+                $.get("/compras/api/detalle-completo/" + id, function (d) {
+                    const invertido = parseFloat(d.totalInvertido);
+                    const recuperado = parseFloat(d.totalRecuperado);
+                    const pendiente = parseFloat(d.pendienteRecuperar);
+                    const pctGlobal = invertido > 0 ? Math.min(100, (recuperado / invertido) * 100) : 0;
+                    const colorGlobal = pctGlobal >= 100 ? 'success' : (pctGlobal >= 50 ? 'warning' : 'danger');
+
+                    // Cabecera resumen
+                    let resumen = `
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="info-box mb-0">
+                            <span class="info-box-icon bg-navy"><i class="fas fa-shopping-cart"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Invertido</span>
+                                <span class="info-box-number">S/ ${invertido.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box mb-0">
+                            <span class="info-box-icon bg-success"><i class="fas fa-hand-holding-usd"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Recuperado en ventas</span>
+                                <span class="info-box-number">S/ ${recuperado.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box mb-0">
+                            <span class="info-box-icon bg-${pendiente > 0 ? 'warning' : 'success'}"><i class="fas fa-hourglass-half"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Por recuperar</span>
+                                <span class="info-box-number">S/ ${pendiente.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box mb-0">
+                            <span class="info-box-icon bg-${colorGlobal}"><i class="fas fa-percent"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Rotación del lote</span>
+                                <span class="info-box-number">${pctGlobal.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress mb-3" style="height:18px;">
+                    <div class="progress-bar bg-${colorGlobal}" style="width:${pctGlobal}%">
+                        ${pctGlobal.toFixed(1)}% vendido
+                    </div>
+                </div>`;
+
+                    // Tabla de productos
+                    let rows = '';
+                    d.items.forEach(item => {
+                        const pct = parseFloat(item.pctRotacion);
+                        const color = pct >= 80 ? 'success' : (pct >= 40 ? 'warning' : 'danger');
+                        const ganancia = parseFloat(item.ingresoGenerado) - parseFloat(item.costoRecuperado);
+                        rows += `<tr>
+                        <td><strong>${item.producto}</strong></td>
+                        <td class="text-center">${item.cantComprada}</td>
+                        <td class="text-right text-muted">S/ ${parseFloat(item.costoUnit).toFixed(2)}</td>
+                        <td class="text-right">S/ ${parseFloat(item.subtotal).toFixed(2)}</td>
+                        <td class="text-center text-success font-weight-bold">${item.vendidos}</td>
+                        <td class="text-center text-warning">${item.pendientes}</td>
+                        <td class="text-center">${item.stockActual}</td>
+                        <td class="text-right text-success">S/ ${parseFloat(item.ingresoGenerado).toFixed(2)}</td>
+                        <td class="text-right ${ganancia >= 0 ? 'text-success' : 'text-danger'} font-weight-bold">
+                            S/ ${ganancia.toFixed(2)}
+                        </td>
+                        <td style="min-width:90px">
+                            <div class="progress" style="height:12px;" title="${pct}%">
+                                <div class="progress-bar bg-${color}" style="width:${pct}%"></div>
+                            </div>
+                            <small class="text-${color}">${pct}%</small>
+                        </td>
+                    </tr>`;
+                    });
+
+                    let tabla = `
+                <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped" style="font-size:0.88rem">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center" title="Unidades compradas en este lote">Comprado</th>
+                            <th class="text-right">Costo unit.</th>
+                            <th class="text-right">Invertido</th>
+                            <th class="text-center text-success">Vendidos</th>
+                            <th class="text-center text-warning">Pendientes</th>
+                            <th class="text-center" title="Stock actual en sistema">Stock</th>
+                            <th class="text-right">Ingreso ventas</th>
+                            <th class="text-right">Ganancia</th>
+                            <th>Rotación</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                </div>
+                <p class="text-muted small mt-2">
+                  <i class="fas fa-info-circle"></i>
+                  "Vendidos" = unidades de este producto vendidas desde la fecha de la compra.
+                  "Pendientes" = estimado (mín. entre comprado y stock actual).
+                </p>`;
+
+                    $("#trazBody").html(resumen + tabla);
+                }).fail(function () {
+                    $("#trazBody").html('<div class="alert alert-danger">Error al cargar la trazabilidad</div>');
+                });
+            }
+            /*]]>*/
+        </script>
+    </th:block>
 
 </body>
+
 </html>

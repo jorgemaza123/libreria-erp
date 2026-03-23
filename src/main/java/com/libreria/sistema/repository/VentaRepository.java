@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +27,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      * Usar para listados donde se necesita acceder a los detalles.
      */
     @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
-    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin ORDER BY v.fechaEmision DESC")
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
     List<Venta> findByFechaEmisionBetweenWithDetalles(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
@@ -44,13 +47,17 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      * Obtiene ventas filtradas por rango de fechas - PARA REPORTES
      * Evita traer toda la historia a memoria (N+1 Problem)
      */
-    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin ORDER BY v.fechaEmision DESC")
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
     List<Venta> findByFechaEmisionBetween(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
      * Obtiene ventas filtradas por rango de fechas con paginación
      */
-    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin ORDER BY v.fechaEmision DESC")
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
     Page<Venta> findByFechaEmisionBetweenPaginated(
             @Param("inicio") LocalDate inicio,
             @Param("fin") LocalDate fin,
@@ -59,25 +66,31 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Obtiene ventas desde una fecha específica (útil para reportes de periodo abierto)
      */
-    @Query("SELECT v FROM Venta v WHERE v.fechaEmision >= :inicio ORDER BY v.fechaEmision DESC")
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision >= :inicio " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
     List<Venta> findByFechaEmisionGreaterThanEqual(@Param("inicio") LocalDate inicio);
 
     /**
      * Obtiene ventas hasta una fecha específica
      */
-    @Query("SELECT v FROM Venta v WHERE v.fechaEmision <= :fin ORDER BY v.fechaEmision DESC")
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision <= :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
     List<Venta> findByFechaEmisionLessThanEqual(@Param("fin") LocalDate fin);
 
     /**
      * Suma total de ventas por rango de fechas (para resumen de reportes)
      */
-    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin AND v.estado != 'ANULADO'")
+    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND v.estado != 'ANULADO' AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
     BigDecimal sumTotalByFechaEmisionBetween(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
      * Cuenta ventas por rango de fechas
      */
-    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin")
+    @Query("SELECT COUNT(v) FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
     long countByFechaEmisionBetween(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
@@ -142,6 +155,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      */
     @Query("SELECT new com.libreria.sistema.model.dto.ReporteDTO(CAST(v.fechaEmision AS string), SUM(v.total)) " +
            "FROM Venta v WHERE v.estado != 'ANULADO' AND v.fechaEmision >= :fechaInicio " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
            "GROUP BY v.fechaEmision ORDER BY v.fechaEmision ASC")
     List<com.libreria.sistema.model.dto.ReporteDTO> obtenerVentasUltimaSemana(@Param("fechaInicio") LocalDate fechaInicio);
 
@@ -175,6 +189,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
            "OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%')) " +
            "OR v.clienteNumeroDocumento LIKE %:termino%) " +
            "AND v.estado != 'ANULADO' " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
            "ORDER BY v.fechaEmision DESC")
     List<Venta> buscarParaDevolucion(@Param("termino") String termino);
 
@@ -197,6 +212,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      */
     @Query("SELECT v.metodoPago, COUNT(v), SUM(v.total) FROM Venta v " +
            "WHERE v.fechaEmision BETWEEN :inicio AND :fin AND v.estado != 'ANULADO' " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
            "GROUP BY v.metodoPago")
     List<Object[]> resumenPorMetodoPago(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
@@ -243,13 +259,15 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Total de compras de un cliente
      */
-    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.clienteEntity.id = :clienteId AND v.estado != 'ANULADO'")
+    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v WHERE v.clienteEntity.id = :clienteId " +
+           "AND v.estado != 'ANULADO' AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
     BigDecimal sumTotalByClienteId(@Param("clienteId") Long clienteId);
 
     /**
      * Cantidad de compras de un cliente
      */
-    @Query("SELECT COUNT(v) FROM Venta v WHERE v.clienteEntity.id = :clienteId AND v.estado != 'ANULADO'")
+    @Query("SELECT COUNT(v) FROM Venta v WHERE v.clienteEntity.id = :clienteId " +
+           "AND v.estado != 'ANULADO' AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
     long countByClienteId(@Param("clienteId") Long clienteId);
 
     /**
@@ -280,11 +298,45 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     long countVentasValidasByPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
+     * Suma ventas válidas usando fecha/hora real de registro.
+     * Se usa para el dashboard intradía sin alterar los reportes contables por fecha.
+     */
+    @Query("SELECT COALESCE(SUM(v.total), 0) FROM Venta v " +
+           "WHERE v.fechaCreacion BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL')")
+    BigDecimal sumVentasValidasByFechaCreacionPeriodo(@Param("inicio") LocalDateTime inicio,
+                                                      @Param("fin") LocalDateTime fin);
+
+    /**
+     * Cuenta ventas válidas usando fecha/hora real de registro.
+     */
+    @Query("SELECT COUNT(v) FROM Venta v " +
+           "WHERE v.fechaCreacion BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL')")
+    long countVentasValidasByFechaCreacionPeriodo(@Param("inicio") LocalDateTime inicio,
+                                                  @Param("fin") LocalDateTime fin);
+
+    /**
+     * Obtiene la primera venta válida registrada dentro del rango horario.
+     */
+    @Query("SELECT MIN(v.fechaCreacion) FROM Venta v " +
+           "WHERE v.fechaCreacion BETWEEN :inicio AND :fin " +
+           "AND v.estado IN ('EMITIDO', 'PAGADO_TOTAL', 'DEVUELTO_PARCIAL')")
+    LocalDateTime findPrimeraVentaValidaByFechaCreacionPeriodo(@Param("inicio") LocalDateTime inicio,
+                                                               @Param("fin") LocalDateTime fin);
+
+    /**
      * Total creditos pendientes (saldo > 0, no anulados)
      */
     @Query("SELECT COALESCE(SUM(v.saldoPendiente), 0) FROM Venta v " +
            "WHERE v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
     BigDecimal sumCreditosPendientes();
+
+    @Query("SELECT COALESCE(SUM(v.saldoPendiente), 0) FROM Venta v " +
+           "WHERE v.clienteEntity.id = :clienteId AND v.formaPago = 'CREDITO' " +
+           "AND v.saldoPendiente > 0 AND v.estado != 'ANULADO' " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
+    BigDecimal sumSaldoPendienteCreditoRealByClienteId(@Param("clienteId") Long clienteId);
 
     /**
      * Conteo de ventas por forma de pago (CONTADO vs CREDITO)
@@ -337,13 +389,15 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     @Query("SELECT COUNT(v) FROM Venta v " +
            "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
            "AND v.tipoComprobante IN ('BOLETA', 'FACTURA') " +
-           "AND v.estado != 'ANULADO'")
+           "AND v.estado != 'ANULADO' " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL)")
     long countComprobantesElectronicosByPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     
     @Query("SELECT v.tipoComprobante, COUNT(v) FROM Venta v " +
            "WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
            "AND v.estado != 'ANULADO' " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
            "AND v.sunatEstado IS NOT NULL " +
            "GROUP BY v.tipoComprobante")
     List<Object[]> countByTipoComprobanteAndPeriodo(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);

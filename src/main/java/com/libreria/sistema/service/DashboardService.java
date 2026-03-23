@@ -3,6 +3,7 @@ package com.libreria.sistema.service;
 import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.dto.ReporteDTO;
 import com.libreria.sistema.repository.CajaRepository;
+import com.libreria.sistema.repository.CompraRepository;
 import com.libreria.sistema.repository.CotizacionRepository;
 import com.libreria.sistema.repository.DetalleVentaRepository;
 import com.libreria.sistema.repository.ProductoRepository;
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -31,6 +33,8 @@ import java.util.*;
  */
 @Service
 public class DashboardService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Lima");
+    private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
@@ -40,6 +44,7 @@ public class DashboardService {
     private final SunatBillingService sunatBillingService;
     private final LicenseValidationService licenseService;
     private final ConfiguracionService configuracionService;
+    private final CompraRepository compraRepository;
 
     public DashboardService(ProductoRepository productoRepository,
                            VentaRepository ventaRepository,
@@ -48,7 +53,8 @@ public class DashboardService {
                            DetalleVentaRepository detalleVentaRepository,
                            SunatBillingService sunatBillingService,
                            LicenseValidationService licenseService,
-                           ConfiguracionService configuracionService) {
+                           ConfiguracionService configuracionService,
+                           CompraRepository compraRepository) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.cajaRepository = cajaRepository;
@@ -57,15 +63,20 @@ public class DashboardService {
         this.sunatBillingService = sunatBillingService;
         this.licenseService = licenseService;
         this.configuracionService = configuracionService;
+        this.compraRepository = compraRepository;
     }
 
     public Map<String, Object> obtenerDatosDashboard() {
-        LocalDate hoy = LocalDate.now();
+        LocalDateTime ahora = LocalDateTime.now(BUSINESS_ZONE).withSecond(0).withNano(0);
+        LocalDate hoy = ahora.toLocalDate();
         LocalDate ayer = hoy.minusDays(1);
         LocalDate inicioMes = hoy.withDayOfMonth(1);
-        YearMonth mesAnterior = YearMonth.now().minusMonths(1);
+        YearMonth mesAnterior = YearMonth.now(BUSINESS_ZONE).minusMonths(1);
         LocalDate inicioMesPasado = mesAnterior.atDay(1);
         LocalDate finMesPasado = mesAnterior.atEndOfMonth();
+        LocalDateTime inicioHoyOperativo = hoy.atStartOfDay();
+        LocalDateTime inicioAyerOperativo = ayer.atStartOfDay();
+        LocalDateTime corteAyerMismoHorario = ayer.atTime(ahora.toLocalTime());
 
         // ============================================================
         // 1. KPIs PRINCIPALES (queries optimizados en BD)
@@ -75,13 +86,21 @@ public class DashboardService {
         BigDecimal totalVentasMes = ventaRepository.sumVentasValidasByPeriodo(inicioMes, hoy);
         long cantidadVentasMes = ventaRepository.countVentasValidasByPeriodo(inicioMes, hoy);
 
-        // Ventas de hoy
-        BigDecimal ventasHoy = ventaRepository.sumVentasValidasByPeriodo(hoy, hoy);
-        long cantidadVentasHoy = ventaRepository.countVentasValidasByPeriodo(hoy, hoy);
+        // Ventas de hoy: corte intradia usando fecha/hora real de registro.
+        BigDecimal ventasHoy = ventaRepository.sumVentasValidasByFechaCreacionPeriodo(inicioHoyOperativo, ahora);
+        long cantidadVentasHoy = ventaRepository.countVentasValidasByFechaCreacionPeriodo(inicioHoyOperativo, ahora);
 
-        // Ventas de ayer
+        // Ventas de ayer (día completo)
         BigDecimal ventasAyer = ventaRepository.sumVentasValidasByPeriodo(ayer, ayer);
         long cantidadVentasAyer = ventaRepository.countVentasValidasByPeriodo(ayer, ayer);
+
+        // Ventas de ayer al mismo horario, para comparacion inteligente.
+        BigDecimal ventasAyerMismoHorario = ventaRepository.sumVentasValidasByFechaCreacionPeriodo(
+                inicioAyerOperativo, corteAyerMismoHorario);
+        long cantidadVentasAyerMismoHorario = ventaRepository.countVentasValidasByFechaCreacionPeriodo(
+                inicioAyerOperativo, corteAyerMismoHorario);
+        LocalDateTime primeraVentaHoy = ventaRepository.findPrimeraVentaValidaByFechaCreacionPeriodo(
+                inicioHoyOperativo, ahora);
 
         // Ventas del mes pasado
         BigDecimal ventasMesPasado = ventaRepository.sumVentasValidasByPeriodo(inicioMesPasado, finMesPasado);
@@ -97,11 +116,28 @@ public class DashboardService {
         BigDecimal gastosMes = cajaRepository.sumarEgresosPorFechas(inicioMes, hoy);
 
         // ============================================================
+        // FLUJO DE INVERSIÓN del mes
+        // ============================================================
+        BigDecimal comprasMes = compraRepository.sumTotalByPeriodo(
+                inicioMes.atStartOfDay(), hoy.atTime(23, 59, 59));
+        BigDecimal comprasHoy = compraRepository.sumTotalByPeriodo(
+                inicioHoyOperativo, ahora);
+        if (comprasMes == null) comprasMes = BigDecimal.ZERO;
+        if (comprasHoy == null) comprasHoy = BigDecimal.ZERO;
+
+        BigDecimal flujoNetoMes = (totalVentasMes != null ? totalVentasMes : BigDecimal.ZERO)
+                .subtract(comprasMes);
+        BigDecimal roiMes = comprasMes.compareTo(BigDecimal.ZERO) > 0
+                ? flujoNetoMes.divide(comprasMes, 4, RoundingMode.HALF_UP)
+                              .multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // ============================================================
         // 2. INDICADORES DE VARIACION (%)
         // ============================================================
 
-        // Variacion ventas hoy vs ayer
-        BigDecimal variacionDiaria = calcularVariacion(ventasHoy, ventasAyer);
+        // Variacion ventas hoy vs ayer al mismo horario
+        BigDecimal variacionDiaria = calcularVariacion(ventasHoy, ventasAyerMismoHorario);
 
         // Variacion mes actual vs mes pasado
         BigDecimal variacionMensual = calcularVariacion(totalVentasMes, ventasMesPasado);
@@ -120,7 +156,7 @@ public class DashboardService {
                 inicioMes, PageRequest.of(0, 5));
 
         // Grafico de ventas mensuales (12 meses) - query agrupado
-        LocalDate inicio12Meses = YearMonth.now().minusMonths(11).atDay(1);
+        LocalDate inicio12Meses = YearMonth.now(BUSINESS_ZONE).minusMonths(11).atDay(1);
         Map<String, Map<String, BigDecimal>> comparativa = construirComparativa12Meses(inicio12Meses);
 
         // Modalidad de venta (CONTADO vs CREDITO) - query agrupado
@@ -135,12 +171,12 @@ public class DashboardService {
         List<String> estadosPendientesCoti = Arrays.asList("EMITIDA", "EMITIDO", "ENVIADA", "APROBADA", "EN_NEGOCIACION");
         long cotizacionesPendientes = cotizacionRepository.countByEstadoIn(estadosPendientesCoti);
         BigDecimal montoCotizadoMes = cotizacionRepository.sumTotalByFechaCreacionBetween(
-                inicioMes.atStartOfDay(), LocalDateTime.now());
+                inicioMes.atStartOfDay(), ahora);
         List<String> estadosConvertidos = Arrays.asList("CONVERTIDA", "CONVERTIDO_VENTA");
         long cotizacionesMes = cotizacionRepository.countByFechaCreacionBetween(
-                inicioMes.atStartOfDay(), LocalDateTime.now());
+                inicioMes.atStartOfDay(), ahora);
         long convertidasMes = cotizacionRepository.countByEstadoInAndFechaCreacionBetween(
-                estadosConvertidos, inicioMes.atStartOfDay(), LocalDateTime.now());
+                estadosConvertidos, inicioMes.atStartOfDay(), ahora);
         double tasaConversionCoti = cotizacionesMes > 0 ? (double) convertidasMes / cotizacionesMes * 100 : 0;
 
         // ============================================================
@@ -153,6 +189,14 @@ public class DashboardService {
         BigDecimal margenPromedioMes = (totalVentasMes != null && totalVentasMes.compareTo(BigDecimal.ZERO) > 0)
                 ? utilidadMes.divide(totalVentasMes, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
+        BigDecimal ticketPromedioHoy = cantidadVentasHoy > 0
+                ? ventasHoy.divide(BigDecimal.valueOf(cantidadVentasHoy), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        String horaPrimeraVentaHoy = primeraVentaHoy != null
+                ? primeraVentaHoy.toLocalTime().format(HOUR_FORMATTER)
+                : "Sin ventas";
+        String horaCorteDashboard = ahora.toLocalTime().format(HOUR_FORMATTER);
+        String rangoOperativoHoy = "00:00 - " + horaCorteDashboard;
 
         // ============================================================
         // 5. ALERTAS STOCK + MARGEN BAJO
@@ -199,9 +243,15 @@ public class DashboardService {
         resultado.put("cantidadVentasHoy", cantidadVentasHoy);
         resultado.put("ventasAyer", ventasAyer);
         resultado.put("cantidadVentasAyer", cantidadVentasAyer);
+        resultado.put("ventasAyerMismoHorario", ventasAyerMismoHorario);
+        resultado.put("cantidadVentasAyerMismoHorario", cantidadVentasAyerMismoHorario);
         resultado.put("ventasMesPasado", ventasMesPasado);
         resultado.put("cantidadVentasMes", cantidadVentasMes);
         resultado.put("cantidadVentasMesPasado", cantidadVentasMesPasado);
+        resultado.put("ticketPromedioHoy", ticketPromedioHoy);
+        resultado.put("horaPrimeraVentaHoy", horaPrimeraVentaHoy);
+        resultado.put("horaCorteDashboard", horaCorteDashboard);
+        resultado.put("rangoOperativoHoy", rangoOperativoHoy);
 
         // Indicadores de variacion
         resultado.put("variacionDiaria", variacionDiaria);
@@ -239,6 +289,11 @@ public class DashboardService {
         resultado.put("alertaPago", licenseInfo.isAlertaPago());
         resultado.put("tieneDeudaSunat", sunatBillingService.hayDeudaPendiente());
         resultado.put("deudaTotalSunat", sunatBillingService.obtenerDeudaTotal());
+
+        resultado.put("comprasMes", comprasMes);
+        resultado.put("comprasHoy", comprasHoy);
+        resultado.put("flujoNetoMes", flujoNetoMes);
+        resultado.put("roiMes", roiMes);
 
         return resultado;
     }
@@ -295,7 +350,7 @@ public class DashboardService {
         // Construir mapa ordenado con los 12 meses
         Map<String, Map<String, BigDecimal>> comparativa = new LinkedHashMap<>();
         for (int i = 11; i >= 0; i--) {
-            YearMonth mes = YearMonth.now().minusMonths(i);
+            YearMonth mes = YearMonth.now(BUSINESS_ZONE).minusMonths(i);
             String clave = mes.format(DateTimeFormatter.ofPattern("yyyy-MM"));
             String etiqueta = mes.format(DateTimeFormatter.ofPattern("MMM yyyy"));
 

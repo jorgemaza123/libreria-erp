@@ -1,254 +1,1390 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{fragments/layout}"
-      th:with="active='compras'">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{fragments/layout}" th:with="active='compras'">
+
 <head>
     <title>Registrar Compra</title>
 </head>
+
 <body>
 
-<div layout:fragment="content">
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1>Registrar Ingreso de Mercadería</h1>
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
-                        <li class="breadcrumb-item"><a th:href="@{/compras/lista}">Compras</a></li>
-                        <li class="breadcrumb-item active">Nueva</li>
-                    </ol>
+    <div layout:fragment="content">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1>Registrar Ingreso de Mercadería</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                            <li class="breadcrumb-item"><a th:href="@{/compras/lista}">Compras</a></li>
+                            <li class="breadcrumb-item active">Nueva</li>
+                        </ol>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="content">
-        <div class="container-fluid">
-            <form id="formCompra">
-                <div class="card card-navy">
-                    <div class="card-header"><h3 class="card-title">Datos del Proveedor y Comprobante</h3></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Proveedor</label>
+        <section class="content">
+            <div class="container-fluid">
+                <form id="formCompra">
+                    <div class="card card-navy">
+                        <div class="card-header">
+                            <h3 class="card-title">Datos del Proveedor y Comprobante</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Proveedor</label>
+                                        <div class="input-group">
+                                            <select class="form-control select2" id="proveedor" required>
+                                                <option value="">Seleccione...</option>
+                                                <option th:each="p : ${proveedores}" th:value="${p.id}"
+                                                    th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
+                                            </select>
+                                            <div class="input-group-append">
+                                                <a th:href="@{/proveedores/nuevo}" class="btn btn-success"
+                                                    title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Tipo Doc.</label>
+                                        <select class="form-control" id="tipoDoc">
+                                            <option value="FACTURA">FACTURA</option>
+                                            <option value="BOLETA">BOLETA</option>
+                                            <option value="GUIA">GUÍA REMISIÓN</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Nro. Comprobante</label>
+                                        <input type="text" class="form-control" id="nroDoc" placeholder="Ej: F001-4520"
+                                            required>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Observaciones</label>
+                                        <input type="text" class="form-control" id="obs" placeholder="Opcional">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-navy card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Detalle de Productos</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label>Buscar Producto</label>
                                     <div class="input-group">
-                                        <select class="form-control select2" id="proveedor" required>
-                                            <option value="">Seleccione...</option>
-                                            <option th:each="p : ${proveedores}" th:value="${p.id}" th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
+                                        <select class="form-control select2" id="productoSelect">
+                                            <option value="">Buscar por nombre o código...</option>
+                                            <option th:each="prod : ${productos}" th:value="${prod.id}"
+                                                th:data-costo="${prod.precioCompra}"
+                                                th:data-precio-venta="${prod.precioVenta}"
+                                                th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
                                         </select>
                                         <div class="input-group-append">
-                                            <a th:href="@{/proveedores/nuevo}" class="btn btn-success" title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
+                                            <button type="button" class="btn btn-outline-success" id="btnNuevoProducto"
+                                                title="Crear nuevo producto"
+                                                onclick="$('#modalNuevoProducto').modal('show')">
+                                                <i class="fas fa-plus"></i> Nuevo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label>Cantidad <small class="text-muted">(unidades)</small></label>
+                                    <input type="number" class="form-control" id="cantInput" value="1" min="1"
+                                        oninput="sincronizarDesdeTotal()">
+                                </div>
+                                <div class="col-md-2">
+                                    <label>
+                                        Total pagado <small class="text-muted">(de la boleta)</small>
+                                    </label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text font-weight-bold">S/</span>
+                                        </div>
+                                        <input type="number" step="0.01" class="form-control" id="totalPagadoInput"
+                                            placeholder="0.00" oninput="sincronizarDesdeTotal()">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label>Costo unit. <small class="text-muted">(calculado)</small></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">S/</span>
+                                        </div>
+                                        <input type="number" step="0.01" class="form-control bg-light" id="costoInput"
+                                            placeholder="0.00" oninput="sincronizarDesdeCosto()">
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-success btn-block" onclick="agregarItem()"
+                                        title="Agregar al carrito">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Indicador visual de lo que pagaste -->
+                            <div id="indicadorCosto" class="row mb-2 d-none">
+                                <div class="col-12">
+                                    <div class="alert alert-info py-1 px-3 mb-0 d-flex align-items-center"
+                                        style="font-size:0.88rem;">
+                                        <i class="fas fa-receipt mr-2"></i>
+                                        <span id="textoIndicador"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ── PANEL DE PRECIO (COMPLETAMENTE LIBRE) ───────────────── -->
+                            <div id="panelPrecio" class="d-none mb-3">
+                                <div class="card card-outline card-success mb-0">
+                                    <div class="card-header py-2">
+                                        <h6 class="card-title mb-0">
+                                            <i class="fas fa-tags text-success"></i>
+                                            ¿A cuánto lo vendo?
+                                            <small class="text-muted ml-2">Costo unit: S/ <span
+                                                    id="ppCostoUnit">0.00</span></small>
+                                            <small id="ppMargenActualLabel" class="text-info ml-2 d-none">|
+                                                Margen actual: <span id="ppMargenActualVal"></span></small>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body py-3">
+                                        <div class="row align-items-center">
+
+                                            <!-- Control margen ↔ precio (completamente libre) -->
+                                            <div class="col-lg-5">
+                                                <p class="text-muted small mb-2">Define tu margen de ganancia o el
+                                                    precio directamente:</p>
+                                                <div class="row align-items-center mb-2">
+                                                    <div class="col-5">
+                                                        <label class="small mb-1">Margen (%)</label>
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="number" step="0.1"
+                                                                class="form-control font-weight-bold"
+                                                                id="ppMargenCustom" placeholder="Ej: 35" min="0"
+                                                                max="9999" oninput="actualizarPrecioCustom()">
+                                                            <div class="input-group-append"><span
+                                                                    class="input-group-text">%</span></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-2 text-center text-muted small">⇔ ó</div>
+                                                    <div class="col-5">
+                                                        <label class="small mb-1">Precio venta (S/)</label>
+                                                        <div class="input-group input-group-sm">
+                                                            <div class="input-group-prepend"><span
+                                                                    class="input-group-text">S/</span></div>
+                                                            <input type="number" step="0.01"
+                                                                class="form-control font-weight-bold"
+                                                                id="ppPrecioCustom" placeholder="0.00"
+                                                                oninput="actualizarMargenCustom()">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div id="ppResumenCustom" class="text-muted small"></div>
+                                            </div>
+
+                                            <!-- Indicadores de ganancia -->
+                                            <div class="col-lg-4 border-left">
+                                                <div class="row text-center px-2">
+                                                    <div class="col-6">
+                                                        <div class="bg-light rounded py-2">
+                                                            <div class="text-muted small">Ganancia por unidad</div>
+                                                            <div class="font-weight-bold text-success"
+                                                                id="ppGananciaUnit">S/ 0.00</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="bg-light rounded py-2">
+                                                            <div class="text-muted small">Si vendes TODO el lote</div>
+                                                            <div class="font-weight-bold text-primary"
+                                                                id="ppGananciaLote">S/ 0.00</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Botón aplicar -->
+                                            <div class="col-lg-3 border-left text-center">
+                                                <p class="text-muted small mb-2">Guarda este precio de venta ahora:</p>
+                                                <button type="button" class="btn btn-success btn-block"
+                                                    onclick="aplicarPrecioVenta()">
+                                                    <i class="fas fa-check"></i> Usar este precio de venta
+                                                </button>
+                                                <small class="text-muted">También puedes ajustarlo despues en
+                                                    Productos</small>
+                                            </div>
+
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-2">
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead class="bg-navy">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th width="80" class="text-center">Cant.</th>
+                                            <th width="130" class="text-right">Total pagado</th>
+                                            <th width="130" class="text-right">Costo unit.</th>
+                                            <th width="50"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaItems"></tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
+                                            <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span
+                                                    id="totalVenta">0.00</span></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer text-right">
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> REGISTRAR
+                                COMPRA</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ===== MODAL: Calculadora de Despiece ===== -->
+        <div class="modal fade" id="modalCalculadora" tabindex="-1">
+            <div class="modal-dialog modal-md">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="fas fa-calculator"></i> Calculadora de Despiece</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">
+                            Ingresa el costo total del lote y cuántas unidades vendibles trae.
+                            El sistema calcula el costo por unidad y el precio de venta sugerido según el margen que tú
+                            elijas.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-4">
                                 <div class="form-group">
-                                    <label>Tipo Doc.</label>
-                                    <select class="form-control" id="tipoDoc">
-                                        <option value="FACTURA">FACTURA</option>
-                                        <option value="BOLETA">BOLETA</option>
-                                        <option value="GUIA">GUÍA REMISIÓN</option>
+                                    <label>Costo total del lote (S/)</label>
+                                    <input type="number" step="0.01" class="form-control" id="calcCostoTotal"
+                                        placeholder="Ej: 6.00" oninput="calcularDespiece()">
+                                    <small class="text-muted">Total que aparece en tu boleta</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Unidades vendibles en el lote</label>
+                                    <input type="number" class="form-control" id="calcUnidades"
+                                        placeholder="Ej: 12 (una docena)" oninput="calcularDespiece()">
+                                    <small class="text-muted">Ej: 1/2 doc. = 6 unid.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Margen de ganancia (%)</label>
+                                    <input type="number" step="0.1" class="form-control" id="calcMargen"
+                                        placeholder="Ej: 35" oninput="calcularDespiece()">
+                                    <small class="text-muted">Libre — escribe el que quieras</small>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div id="calcResultado" class="d-none">
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted small">Costo unitario</div>
+                                        <div class="font-weight-bold text-primary" style="font-size:1.2rem"
+                                            id="calcCostoUnit">S/ 0.00</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted small">Precio venta sugerido</div>
+                                        <div class="font-weight-bold text-success" style="font-size:1.2rem"
+                                            id="calcPrecioVenta">S/ 0.00</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted small">Ganancia por unidad</div>
+                                        <div class="font-weight-bold text-warning" style="font-size:1.2rem"
+                                            id="calcGanancia">S/ 0.00</div>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="bg-success text-white rounded p-2">
+                                        <div class="small">Ganancia TOTAL del lote</div>
+                                        <div class="font-weight-bold" style="font-size:1.2rem" id="calcGananciaLote">S/
+                                            0.00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="calcAlerta" class="mt-2"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-warning" id="btnUsarPrecioVenta"
+                            onclick="usarPrecioVentaCalculado()" disabled>
+                            <i class="fas fa-tag"></i> Aplicar precio de venta sugerido
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btnUsarCosto" onclick="usarCostoCalculado()"
+                            disabled>
+                            <i class="fas fa-check"></i> Usar solo el costo unitario
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Alerta de cambio de precio ===== -->
+        <div class="modal fade" id="modalAlertaPrecios" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Costo de productos
+                            actualizado</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>El costo de los siguientes productos cambió <strong>más del 10%</strong>. ¿Deseas actualizar
+                            el precio de venta para mantener tu margen?</p>
+                        <table class="table table-sm table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-right">Costo ant.</th>
+                                    <th class="text-right">Costo nuevo</th>
+                                    <th class="text-right">Cambio</th>
+                                    <th class="text-right">P. venta actual</th>
+                                    <th class="text-right">P. venta sugerido</th>
+                                    <th class="text-center">Actualizar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaAlertaPrecios"></tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Omitir</button>
+                        <button type="button" class="btn btn-warning" id="btnActualizarPrecios">
+                            <i class="fas fa-save"></i> Actualizar seleccionados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: Nuevo Producto Rápido ===== -->
+        <div class="modal fade" id="modalNuevoProducto" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-box-open mr-1"></i> Nuevo Producto</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body pb-2">
+                        <!-- Fila 1: Identificación -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-2">
+                                    <label class="small font-weight-bold">Nombre <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" id="np_nombre"
+                                        class="form-control form-control-sm font-weight-bold"
+                                        placeholder="Ej: LAPICERO AZUL FABER" style="text-transform:uppercase" required>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-2">
+                                    <label class="small">Cód. Barras</label>
+                                    <input type="text" id="np_codigoBarra" class="form-control form-control-sm"
+                                        placeholder="Escanea o escribe">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-2">
+                                    <label class="small">SKU / Cód. Interno</label>
+                                    <input type="text" id="np_codigoInterno" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-2">
+                                    <label class="small">Categoría</label>
+                                    <input type="text" id="np_categoria" class="form-control form-control-sm"
+                                        list="np_listaCat" placeholder="Ej: PAPELERÍA">
+                                    <datalist id="np_listaCat">
+                                        <option value="UTILES ESCOLARES">
+                                        <option value="OFICINA">
+                                        <option value="PAPELERÍA">
+                                        <option value="TECNOLOGÍA">
+                                        <option value="ARTE Y DISEÑO">
+                                        <option value="REGALOS">
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-2">
+                                    <label class="small">Descripción</label>
+                                    <input type="text" id="np_descripcion" class="form-control form-control-sm"
+                                        placeholder="Opcional">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Fila 2: Especificaciones -->
+                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2">
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Marca</label>
+                                    <input type="text" id="np_marca" class="form-control form-control-sm"
+                                        placeholder="Ej: Faber">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Modelo</label>
+                                    <input type="text" id="np_modelo" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Color</label>
+                                    <input type="text" id="np_color" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Tipo</label>
+                                    <select id="np_tipo" class="form-control form-control-sm">
+                                        <option value="ESTANDAR">Estándar</option>
+                                        <option value="PREMIUM">Premium</option>
+                                        <option value="ECONOMICO">Económico</option>
+                                        <option value="SERVICIO">Servicio</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Nro. Comprobante</label>
-                                    <input type="text" class="form-control" id="nroDoc" placeholder="Ej: F001-4520" required>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Unidad</label>
+                                    <select id="np_unidadMedida" class="form-control form-control-sm">
+                                        <option value="UNIDAD">UNIDAD</option>
+                                        <option value="PAQUETE">PAQUETE</option>
+                                        <option value="CAJA">CAJA</option>
+                                        <option value="METRO">METRO</option>
+                                        <option value="LITRO">LITRO</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Observaciones</label>
-                                    <input type="text" class="form-control" id="obs" placeholder="Opcional">
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small">Afect. IGV</label>
+                                    <select id="np_tipoAfectacionIgv" class="form-control form-control-sm">
+                                        <option value="GRAVADO">GRAVADO (18%)</option>
+                                        <option value="EXONERADO">EXONERADO</option>
+                                        <option value="INAFECTO">INAFECTO</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="card card-navy card-outline">
-                    <div class="card-header"><h3 class="card-title">Detalle de Productos</h3></div>
-                    <div class="card-body">
-                        <div class="row mb-3 align-items-end">
+                        <!-- Fila 2.5: Ubicación Física -->
+                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2">
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small text-muted">Estante</label>
+                                    <input type="text" id="np_ubicacionEstante" class="form-control form-control-sm"
+                                        placeholder="Ej: A">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small text-muted">Fila</label>
+                                    <input type="text" id="np_ubicacionFila" class="form-control form-control-sm"
+                                        placeholder="Ej: 1">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
+                                    <label class="small text-muted">Columna</label>
+                                    <input type="text" id="np_ubicacionColumna" class="form-control form-control-sm"
+                                        placeholder="Ej: 3">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Fila 3: Precios -->
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group mb-2">
+                                    <label class="small text-secondary">Precio Compra (S/)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" id="np_precioCompra" class="form-control"
+                                            placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-2">
+                                    <label class="small text-success font-weight-bold">Precio Venta (Público) <span
+                                            class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" id="np_precioVenta"
+                                            class="form-control border-success font-weight-bold" placeholder="0.00"
+                                            required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-2">
+                                    <label class="small text-primary">Precio Mayorista (S/)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                        <input type="number" step="0.01" id="np_precioMayorista" class="form-control"
+                                            placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-2">
+                                    <label class="small text-danger">Stock Mínimo</label>
+                                    <input type="number" id="np_stockMinimo" class="form-control form-control-sm"
+                                        value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
-                                <label>Buscar Producto</label>
-                                <select class="form-control select2" id="productoSelect">
-                                    <option value="">Buscar por nombre o código...</option>
-                                    <option th:each="prod : ${productos}"
-                                            th:value="${prod.id}"
-                                            th:data-costo="${prod.precioCompra}"
-                                            th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label>Costo Unit. (S/)</label>
-                                <input type="number" step="0.01" class="form-control" id="costoInput" placeholder="0.00">
-                            </div>
-                            <div class="col-md-2">
-                                <label>Cantidad</label>
-                                <input type="number" class="form-control" id="cantInput" value="1" min="1">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-success btn-block" onclick="agregarItem()">
-                                    <i class="fas fa-plus"></i> Agregar
-                                </button>
+                                <div class="form-group mb-2">
+                                    <label class="small text-dark">Stock Actual</label>
+                                    <input type="number" id="np_stockActual" class="form-control form-control-sm"
+                                        value="0" min="0" step="1">
+                                    <small class="form-text text-muted">
+                                        Se usara para llenar la cantidad de esta compra sin duplicar el stock.
+                                    </small>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead class="bg-navy">
-                                <tr>
-                                    <th>Producto</th>
-                                    <th width="100">Cantidad</th>
-                                    <th width="150">Costo Unit.</th>
-                                    <th width="150">Subtotal</th>
-                                    <th width="50"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaItems"></tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
-                                    <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span id="totalVenta">0.00</span></td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                        </div>
+                        <div id="np_error" class="alert alert-danger d-none py-1 small"></div>
                     </div>
-                    <div class="card-footer text-right">
-                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> REGISTRAR COMPRA</button>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btnGuardarNuevoProducto">
+                            <i class="fas fa-save mr-1"></i> Guardar y Seleccionar
+                        </button>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
-    </section>
-</div>
 
-<th:block layout:fragment="scripts">
-    <script>
-        let carrito = [];
+        <!-- ===== MODAL: Despiece / Fraccionamiento ===== -->
+        <div class="modal fade" id="modalDespiece" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title"><i class="fas fa-cut mr-1"></i> Despiece / Fraccionamiento</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2 small">
+                            <i class="fas fa-info-circle"></i>
+                            Divide unidades del producto original en otra presentación.
+                            Ej: 2 paquetes de 100 hojas → 200 hojas sueltas.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card card-outline card-secondary mb-3">
+                                    <div class="card-header py-1">
+                                        <h6 class="mb-0">📦 Producto Original</h6>
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <p class="mb-1"><strong id="dp_nombreOriginal">—</strong></p>
+                                        <p class="mb-1 small text-muted">Cantidad en carrito: <strong
+                                                id="dp_cantOriginal">—</strong></p>
+                                        <div class="form-group mb-2">
+                                            <label class="small">¿Cuántas unidades quieres fraccionar?</label>
+                                            <input type="number" id="dp_cantFraccionar"
+                                                class="form-control form-control-sm" min="1" placeholder="Ej: 2"
+                                                oninput="calcularDespiece2()">
+                                            <small class="text-muted">Debe ser ≤ cantidad en carrito</small>
+                                        </div>
+                                        <div class="form-group mb-0">
+                                            <label class="small">¿Cuántas unidades del producto destino trae 1 unidad
+                                                original?</label>
+                                            <input type="number" id="dp_ratio" class="form-control form-control-sm"
+                                                min="1" placeholder="Ej: 100 (si 1 paquete = 100 hojas)"
+                                                oninput="calcularDespiece2()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card card-outline card-success mb-3">
+                                    <div class="card-header py-1">
+                                        <h6 class="mb-0">🏷️ Producto Destino (fraccionado)</h6>
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <div class="form-group mb-2">
+                                            <label class="small">Seleccionar producto existente o crear nuevo</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-control select2" id="dp_productoDestino">
+                                                    <option value="">Seleccionar producto...</option>
+                                                    <option th:each="prod : ${productos}" th:value="${prod.id}"
+                                                        th:data-costo="${prod.precioCompra}"
+                                                        th:text="${prod.codigoBarra != null ? prod.codigoBarra + ' - ' : ''} + ${prod.nombre}">
+                                                    </option>
+                                                </select>
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-outline-success"
+                                                        title="Crear nuevo producto destino"
+                                                        onclick="abrirNuevoProductoDesdeDespiece()">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label class="small">Costo unitario del producto destino (S/)</label>
+                                            <div class="input-group input-group-sm">
+                                                <div class="input-group-prepend"><span
+                                                        class="input-group-text">S/</span>
+                                                </div>
+                                                <input type="number" step="0.0001" id="dp_costoDestino"
+                                                    class="form-control" placeholder="0.0000"
+                                                    oninput="calcularDespiece2()">
+                                            </div>
+                                        </div>
+                                        <div id="dp_resultado" class="alert alert-success py-2 d-none">
+                                            <i class="fas fa-check-circle"></i>
+                                            Se agregarán <strong id="dp_cantResultado">0</strong> unidades
+                                            al carrito con costo S/ <strong id="dp_costoResultado">0</strong>/u
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-info" id="btnConfirmarDespiece" disabled>
+                            <i class="fas fa-cut mr-1"></i> Agregar despiece al carrito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        $(document).ready(function() {
-            $('.select2').select2({ theme: 'bootstrap4' });
+    <th:block layout:fragment="scripts">
+        <script>
+            let carrito = [];
+            let costoCalculado = 0;
+            let salidaPermitida = false;
+            let guardandoCompra = false;
 
-            // Al seleccionar producto, cargar su último costo
-            $('#productoSelect').on('change', function() {
-                let costo = $(this).find(':selected').data('costo');
-                $('#costoInput').val(costo || '');
-                $('#cantInput').focus();
-            });
-        });
+            function inicializarSelect2Compras() {
+                $('#proveedor, #productoSelect').each(function () {
+                    if (!$(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2({ theme: 'bootstrap4', width: '100%' });
+                    }
+                });
 
-        function agregarItem() {
-            let id = $('#productoSelect').val();
-            let nombre = $('#productoSelect option:selected').text();
-            let cantidad = parseInt($('#cantInput').val());
-            let costo = parseFloat($('#costoInput').val());
-
-            if (!id || !cantidad || !costo) {
-                Swal.fire('Error', 'Complete todos los campos del producto', 'warning');
-                return;
+                if ($('#dp_productoDestino').hasClass('select2-hidden-accessible')) {
+                    $('#dp_productoDestino').select2('destroy');
+                }
+                $('#dp_productoDestino').select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    dropdownParent: $('#modalDespiece')
+                });
             }
 
-            // Verificar si ya existe en carrito
-            let existe = carrito.find(i => i.productoId == id);
-            if (existe) {
-                existe.cantidad += cantidad;
-                existe.costo = costo;
-            } else {
-                carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo });
+            function compraTieneCambiosPendientes() {
+                let hayDatosCabecera = !!$('#proveedor').val()
+                    || ($('#tipoDoc').val() || 'FACTURA') !== 'FACTURA'
+                    || $.trim($('#nroDoc').val() || '') !== ''
+                    || $.trim($('#obs').val() || '') !== '';
+                let hayDetalleEnEdicion = !!$('#productoSelect').val()
+                    || parseFloat($('#cantInput').val() || '0') > 1
+                    || parseFloat($('#costoInput').val() || '0') > 0
+                    || parseFloat($('#totalPagadoInput').val() || '0') > 0;
+                let hayProductoNuevoEnEdicion = $('#modalNuevoProducto').hasClass('show')
+                    && (
+                        $.trim($('#np_nombre').val() || '') !== ''
+                        || parseFloat($('#np_stockActual').val() || '0') > 0
+                        || parseFloat($('#np_precioCompra').val() || '0') > 0
+                        || parseFloat($('#np_precioVenta').val() || '0') > 0
+                    );
+                return carrito.length > 0 || hayDatosCabecera || hayDetalleEnEdicion || hayProductoNuevoEnEdicion;
             }
 
-            renderizarTabla();
-            $('#productoSelect').val('').trigger('change');
-            $('#costoInput').val('');
-            $('#cantInput').val(1);
-        }
-
-        function renderizarTabla() {
-            let html = '';
-            let total = 0;
-
-            carrito.forEach((item, index) => {
-                let subtotal = item.cantidad * item.costo;
-                total += subtotal;
-                html += `<tr>
-                    <td>${item.nombre}</td>
-                    <td class="text-center">${item.cantidad}</td>
-                    <td class="text-right">S/ ${item.costo.toFixed(2)}</td>
-                    <td class="text-right">S/ ${subtotal.toFixed(2)}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(${index})"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>`;
-            });
-
-            $('#tablaItems').html(html);
-            $('#totalVenta').text(total.toFixed(2));
-        }
-
-        function eliminarItem(index) {
-            carrito.splice(index, 1);
-            renderizarTabla();
-        }
-
-        $('#formCompra').submit(function(e) {
-            e.preventDefault();
-
-            if (carrito.length === 0) {
-                Swal.fire('Error', 'Agregue al menos un producto a la compra', 'warning');
-                return;
+            function debeAdvertirSalidaCompra() {
+                return !salidaPermitida && (guardandoCompra || compraTieneCambiosPendientes());
             }
 
-            let data = {
-                proveedorId: $('#proveedor').val(),
-                tipoComprobante: $('#tipoDoc').val(),
-                numeroComprobante: $('#nroDoc').val(),
-                observaciones: $('#obs').val(),
-                items: carrito
-            };
+            function esNavegacionIgnorable(anchor, href) {
+                if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('mailto:')) {
+                    return true;
+                }
+                if (anchor.target === '_blank' || anchor.hasAttribute('download')) {
+                    return true;
+                }
+                try {
+                    let destino = new URL(href, window.location.origin);
+                    let actual = new URL(window.location.href);
+                    return destino.href === actual.href;
+                } catch (e) {
+                    return false;
+                }
+            }
 
-            Swal.fire({
-                title: 'Procesando Compra',
-                text: 'Registrando ingreso de mercadería...',
-                didOpen: () => Swal.showLoading()
-            });
+            function confirmarSalidaCompra(urlDestino) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Hay una compra en edicion',
+                    text: guardandoCompra
+                        ? 'La compra se esta procesando. Si sales ahora podrias interrumpir el registro.'
+                        : 'Si sales ahora, perderas el avance no registrado.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Salir sin guardar',
+                    cancelButtonText: 'Volver a editar',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        salidaPermitida = true;
+                        window.location.href = urlDestino;
+                    }
+                });
+            }
 
-            $.ajax({
-                url: '/compras/api/guardar',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                success: function(resp) {
-                    Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
-                        .then(() => window.location.href = '/compras/lista');
-                },
-                error: function(xhr) {
-                    if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) {
+            $(document).ready(function () {
+                inicializarSelect2Compras();
+
+                $('#productoSelect').on('change', function () {
+                    let costo = $(this).find(':selected').data('costo');
+                    if (costo) {
+                        // Al seleccionar producto, pre-llenamos costo unit y calculamos total
+                        $('#costoInput').val(parseFloat(costo).toFixed(2));
+                        sincronizarDesdeCosto();
+                    } else {
+                        $('#costoInput').val('');
+                        $('#totalPagadoInput').val('');
+                        $('#indicadorCosto').addClass('d-none');
+                    }
+                    $('#cantInput').focus();
+                });
+
+                $(document).on('click', 'a[href]', function (e) {
+                    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
                         return;
                     }
-                    let mensaje = 'Ocurrió un error al guardar';
-                    try {
-                        let resp = JSON.parse(xhr.responseText);
-                        mensaje = resp.error || resp.message || xhr.responseText;
-                    } catch(e) {
-                        mensaje = xhr.responseText || mensaje;
+
+                    let href = $(this).attr('href');
+                    if (esNavegacionIgnorable(this, href) || !debeAdvertirSalidaCompra()) {
+                        return;
                     }
-                    Swal.fire('Error', mensaje, 'error');
+
+                    e.preventDefault();
+                    confirmarSalidaCompra(href);
+                });
+
+                window.addEventListener('beforeunload', function (e) {
+                    if (!debeAdvertirSalidaCompra()) {
+                        return;
+                    }
+                    e.preventDefault();
+                    e.returnValue = '';
+                });
+            });
+
+            // ── SINCRONIZACIÓN total ↔ costo unitario ────────────────────
+            function sincronizarDesdeTotal() {
+                let cant = parseFloat($('#cantInput').val()) || 0;
+                let total = parseFloat($('#totalPagadoInput').val()) || 0;
+                if (cant > 0 && total > 0) {
+                    let unit = total / cant;
+                    $('#costoInput').val(unit.toFixed(4));
+                    mostrarIndicador(cant, total, unit);
+                } else {
+                    $('#indicadorCosto').addClass('d-none');
+                }
+            }
+
+            function sincronizarDesdeCosto() {
+                let cant = parseFloat($('#cantInput').val()) || 0;
+                let unit = parseFloat($('#costoInput').val()) || 0;
+                if (cant > 0 && unit > 0) {
+                    let total = cant * unit;
+                    $('#totalPagadoInput').val(total.toFixed(2));
+                    mostrarIndicador(cant, total, unit);
+                } else {
+                    $('#indicadorCosto').addClass('d-none');
+                }
+            }
+
+            function mostrarIndicador(cant, total, unit) {
+                let nombre = $('#productoSelect option:selected').text().split(' - ').slice(1).join(' - ') || 'este producto';
+                $('#textoIndicador').html(
+                    '<strong>' + cant + ' unid.</strong> de ' + nombre +
+                    ' → pagaste <strong>S/ ' + parseFloat(total).toFixed(2) + '</strong>' +
+                    ' → costo unitario: <strong>S/ ' + parseFloat(unit).toFixed(2) + '</strong>'
+                );
+                $('#indicadorCosto').removeClass('d-none');
+                mostrarPanelPrecio(unit);
+            }
+
+            // ── PANEL DE PRECIO (COMPLETAMENTE LIBRE) ────────────────
+            function mostrarPanelPrecio(costoUnit) {
+                if (!costoUnit || costoUnit <= 0) { $('#panelPrecio').addClass('d-none'); return; }
+                const costoUnitF = parseFloat(costoUnit);
+                $('#ppCostoUnit').text(costoUnitF.toFixed(4));
+
+                // Si el producto ya tiene precio de venta, mostrar margen actual
+                let selectedOption = $('#productoSelect option:selected');
+                let precioVentaActual = parseFloat(selectedOption.data('precio-venta') || 0);
+                if (precioVentaActual > 0 && costoUnitF > 0) {
+                    let margenActual = ((precioVentaActual - costoUnitF) / costoUnitF * 100);
+                    $('#ppMargenActualVal').text('S/ ' + precioVentaActual.toFixed(2) + ' (' + margenActual.toFixed(1) + '%)');
+                    $('#ppMargenActualLabel').removeClass('d-none');
+                    // Pre-llenar con el margen actual como punto de partida
+                    $('#ppMargenCustom').val(margenActual.toFixed(1));
+                } else {
+                    $('#ppMargenActualLabel').addClass('d-none');
+                    $('#ppMargenCustom').val('');
+                }
+                $('#ppPrecioCustom').val('');
+                $('#ppGananciaUnit').text('S/ 0.00');
+                $('#ppGananciaLote').text('S/ 0.00');
+                $('#ppResumenCustom').html('');
+                $('#panelPrecio').removeClass('d-none');
+            }
+
+            function actualizarPrecioCustom() {
+                let costo = parseFloat($('#costoInput').val()) || 0;
+                let margen = parseFloat($('#ppMargenCustom').val());
+                if (costo > 0 && !isNaN(margen)) {
+                    let precio = costo * (1 + margen / 100);
+                    $('#ppPrecioCustom').val(precio.toFixed(2));
+                    actualizarResumenCustom();
+                }
+            }
+
+            function actualizarMargenCustom() {
+                let costo = parseFloat($('#costoInput').val()) || 0;
+                let precio = parseFloat($('#ppPrecioCustom').val()) || 0;
+                if (costo > 0 && precio > 0) {
+                    let margen = ((precio - costo) / costo) * 100;
+                    $('#ppMargenCustom').val(margen.toFixed(1));
+                    actualizarResumenCustom();
+                }
+            }
+
+            function actualizarResumenCustom() {
+                let costo = parseFloat($('#costoInput').val()) || 0;
+                let precio = parseFloat($('#ppPrecioCustom').val()) || 0;
+                let margen = parseFloat($('#ppMargenCustom').val()) || 0;
+                let cant = parseFloat($('#cantInput').val()) || 1;
+                if (costo > 0 && precio > 0) {
+                    let gan = precio - costo;
+                    let ganLote = gan * cant;
+                    let clase = margen >= 30 ? 'text-success' : (margen >= 15 ? 'text-warning' : 'text-danger');
+                    $('#ppGananciaUnit').html('<span class="' + clase + ' font-weight-bold">S/ ' + gan.toFixed(2) + '</span>');
+                    $('#ppGananciaLote').html('<span class="' + clase + ' font-weight-bold">S/ ' + ganLote.toFixed(2) + '</span>');
+                    $('#ppResumenCustom').html(
+                        '<span class="' + clase + '">' + margen.toFixed(1) + '% de margen</span> — ' +
+                        'Ganas S/ ' + gan.toFixed(2) + '/unid · ' +
+                        'S/ ' + ganLote.toFixed(2) + ' si vendes todo el lote (' + cant + ' unid.)'
+                    );
+                } else {
+                    $('#ppGananciaUnit').text('S/ 0.00');
+                    $('#ppGananciaLote').text('S/ 0.00');
+                    $('#ppResumenCustom').html('');
+                }
+            }
+
+            function aplicarPrecioVenta() {
+                let productoId = $('#productoSelect').val();
+                let precio = parseFloat($('#ppPrecioCustom').val());
+                if (!productoId) { Swal.fire('Aviso', 'Selecciona primero un producto', 'warning'); return; }
+                if (!precio || precio <= 0) { Swal.fire('Aviso', 'Define un precio de venta válido', 'warning'); return; }
+
+                $.ajax({
+                    url: '/compras/api/actualizar-precio-venta',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify([{ productoId: productoId, nuevoPrecioVenta: precio }]),
+                    success: function () {
+                        let margen = parseFloat($('#ppMargenCustom').val()).toFixed(1);
+                        Swal.fire({
+                            icon: 'success', title: '¡Precio guardado!',
+                            html: `Precio de venta actualizado a <strong>S/ ${precio.toFixed(2)}</strong> (${margen}% de margen)`,
+                            timer: 2000, showConfirmButton: false
+                        });
+                    },
+                    error: function () { Swal.fire('Error', 'No se pudo actualizar el precio', 'error'); }
+                });
+            }
+
+            // ── CALCULADORA DE DESPIECE (mejorada: aplica precio de venta también) ────
+            let _calcCostoUnit = 0, _calcPrecioVentaUnit = 0;
+
+            function calcularDespiece() {
+                let total = parseFloat($('#calcCostoTotal').val()) || 0;
+                let unidades = parseFloat($('#calcUnidades').val()) || 0;
+                let margen = parseFloat($('#calcMargen').val());
+
+                if (total <= 0 || unidades <= 0) {
+                    $('#calcResultado').addClass('d-none');
+                    $('#btnUsarCosto, #btnUsarPrecioVenta').prop('disabled', true);
+                    return;
+                }
+
+                _calcCostoUnit = total / unidades;
+                let precioVenta = isNaN(margen) ? 0 : _calcCostoUnit * (1 + margen / 100);
+                let ganUnit = precioVenta - _calcCostoUnit;
+                let ganLote = ganUnit * unidades;
+                _calcPrecioVentaUnit = precioVenta;
+
+                $('#calcCostoUnit').text('S/ ' + _calcCostoUnit.toFixed(2));
+                $('#calcPrecioVenta').text(precioVenta > 0 ? 'S/ ' + precioVenta.toFixed(2) : '—');
+                $('#calcGanancia').text(ganUnit > 0 ? 'S/ ' + ganUnit.toFixed(2) : '—');
+                $('#calcGananciaLote').text(ganLote > 0 ? 'S/ ' + ganLote.toFixed(2) : '—');
+
+                // Alerta si vendes a pérdida
+                if (margen < 0) {
+                    $('#calcAlerta').html('<div class="alert alert-danger py-1">⚠ Margen negativo: venderías a pérdida.</div>');
+                } else if (margen < 10) {
+                    $('#calcAlerta').html('<div class="alert alert-warning py-1">⚠ Margen muy bajo. Considera cubrir costos de operación.</div>');
+                } else {
+                    $('#calcAlerta').html('');
+                }
+
+                $('#calcResultado').removeClass('d-none');
+                $('#btnUsarCosto').prop('disabled', false);
+                $('#btnUsarPrecioVenta').prop('disabled', precioVenta <= 0);
+            }
+
+            function usarCostoCalculado() {
+                if (_calcCostoUnit <= 0) return;
+                let cant = parseFloat($('#calcUnidades').val()) || 1;
+                $('#cantInput').val(cant);
+                $('#costoInput').val(_calcCostoUnit.toFixed(4));
+                $('#totalPagadoInput').val(parseFloat($('#calcCostoTotal').val() || 0).toFixed(2));
+                sincronizarDesdeCosto();
+                $('#modalCalculadora').modal('hide');
+            }
+
+            function usarPrecioVentaCalculado() {
+                usarCostoCalculado(); // también aplica cantidad y costo
+                let productoId = $('#productoSelect').val();
+                if (!productoId || _calcPrecioVentaUnit <= 0) {
+                    Swal.fire('Aviso', 'Selecciona primero un producto', 'warning'); return;
+                }
+                // Guardar el precio de venta en el servidor
+                $.ajax({
+                    url: '/compras/api/actualizar-precio-venta',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify([{ productoId: productoId, nuevoPrecioVenta: _calcPrecioVentaUnit }]),
+                    success: function () {
+                        Swal.fire({
+                            icon: 'success', title: 'Precio guardado',
+                            html: 'Costo unitario y precio de venta S/ ' + _calcPrecioVentaUnit.toFixed(2) + ' aplicados',
+                            timer: 2500, showConfirmButton: false
+                        });
+                    },
+                    error: function () { Swal.fire('Error', 'No se pudo guardar el precio de venta', 'error'); }
+                });
+            }
+
+            // ── CARRITO ──────────────────────────────────────────────────
+            function agregarItem() {
+                let id = $('#productoSelect').val();
+                let nombre = $('#productoSelect option:selected').text();
+                let cantidad = parseInt($('#cantInput').val());
+                let costo = parseFloat($('#costoInput').val());
+                let totalPag = parseFloat($('#totalPagadoInput').val()) || +(cantidad * costo).toFixed(2);
+
+                if (!id || !cantidad || !costo) {
+                    Swal.fire('Error', 'Selecciona un producto, ingresa la cantidad y el total pagado (o el costo unitario)', 'warning');
+                    return;
+                }
+
+                let existe = carrito.find(i => i.productoId == id);
+                if (existe) {
+                    existe.cantidad += cantidad;
+                    existe.costo = costo;
+                    existe.totalPagado = +(existe.cantidad * costo).toFixed(2);
+                } else {
+                    carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo, totalPagado: totalPag });
+                }
+
+                renderizarTabla();
+                $('#productoSelect').val('').trigger('change');
+                $('#costoInput').val('');
+                $('#totalPagadoInput').val('');
+                $('#cantInput').val(1);
+                $('#indicadorCosto').addClass('d-none');
+            }
+
+            function renderizarTabla() {
+                let html = '';
+                let gran = 0;
+                carrito.forEach((item, index) => {
+                    let subtotal = item.totalPagado || +(item.cantidad * item.costo).toFixed(2);
+                    gran += subtotal;
+                    html += `<tr>
+                    <td>${item.nombre}</td>
+                    <td class="text-center">${item.cantidad}</td>
+                    <td class="text-right font-weight-bold">S/ ${subtotal.toFixed(2)}</td>
+                    <td class="text-right text-muted small">S/ ${item.costo.toFixed(4)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-info btn-sm mr-1" title="Despiece / Fraccionamiento"
+                            onclick="abrirDespiece(${index})">
+                            <i class="fas fa-cut"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+                });
+                $('#tablaItems').html(html);
+                $('#totalVenta').text(gran.toFixed(2));
+            }
+
+            function eliminarItem(index) {
+                carrito.splice(index, 1);
+                renderizarTabla();
+            }
+
+            // ── MODAL: NUEVO PRODUCTO RÁPIDO ────────────────────────────────
+            // Limpiar modal al abrir
+            $('#modalNuevoProducto').on('show.bs.modal', function () {
+                $('#np_nombre,#np_codigoBarra,#np_codigoInterno,#np_categoria,#np_descripcion').val('');
+                $('#np_marca,#np_modelo,#np_color,#np_precioCompra,#np_precioVenta,#np_precioMayorista').val('');
+                $('#np_ubicacionEstante,#np_ubicacionFila,#np_ubicacionColumna').val('');
+                $('#np_stockActual').val(parseInt($('#cantInput').val(), 10) > 0 ? parseInt($('#cantInput').val(), 10) : 0);
+                $('#np_stockMinimo').val(0);
+                $('#np_tipo').val('ESTANDAR');
+                $('#np_unidadMedida').val('UNIDAD');
+                $('#np_tipoAfectacionIgv').val('GRAVADO');
+                $('#np_error').addClass('d-none').text('');
+                $('#btnGuardarNuevoProducto').prop('disabled', false);
+
+                // Autogenerar SKU
+                $('#np_codigoInterno').val('Cargando...');
+                $.get('/compras/api/siguiente-sku', function (data) {
+                    if (data && data.sku) {
+                        $('#np_codigoInterno').val(data.sku);
+                    } else {
+                        $('#np_codigoInterno').val('');
+                    }
+                }).fail(function () {
+                    $('#np_codigoInterno').val('');
+                });
+            });
+
+            // Guardar producto via API y auto-seleccionar en carrito
+            $('#btnGuardarNuevoProducto').on('click', function () {
+                let nombre = $('#np_nombre').val().trim();
+                let sku = $('#np_codigoInterno').val().trim();
+                let precioVenta = $('#np_precioVenta').val();
+                let stockActual = parseInt($('#np_stockActual').val(), 10);
+
+                if (!nombre) { $('#np_error').removeClass('d-none').text('El nombre es obligatorio.'); return; }
+                if (!sku) { $('#np_error').removeClass('d-none').text('El SKU / Código Interno es obligatorio.'); return; }
+                if (!precioVenta || parseFloat(precioVenta) <= 0) { $('#np_error').removeClass('d-none').text('Ingresa un precio de venta válido (mayor a cero).'); return; }
+                if (Number.isNaN(stockActual) || stockActual < 0) { $('#np_error').removeClass('d-none').text('Ingresa un stock válido (0 o mayor).'); return; }
+
+                $('#np_error').addClass('d-none').text('');
+                let btn = $(this).prop('disabled', true).text('Guardando...');
+                let datos = {
+                    nombre: nombre.toUpperCase(),
+                    codigoBarra: $('#np_codigoBarra').val().trim(),
+                    codigoInterno: sku,
+                    categoria: $('#np_categoria').val().trim(),
+                    descripcion: $('#np_descripcion').val().trim(),
+                    marca: $('#np_marca').val().trim(),
+                    modelo: $('#np_modelo').val().trim(),
+                    color: $('#np_color').val().trim(),
+                    ubicacionEstante: $('#np_ubicacionEstante').val().trim(),
+                    ubicacionFila: $('#np_ubicacionFila').val().trim(),
+                    ubicacionColumna: $('#np_ubicacionColumna').val().trim(),
+                    tipo: $('#np_tipo').val(),
+                    unidadMedida: $('#np_unidadMedida').val(),
+                    tipoAfectacionIgv: $('#np_tipoAfectacionIgv').val(),
+                    precioCompra: $('#np_precioCompra').val() || '0',
+                    precioVenta: precioVenta,
+                    precioMayorista: $('#np_precioMayorista').val() || '0',
+                    stockMinimo: $('#np_stockMinimo').val() || '0'
+                };
+
+                $.ajax({
+                    url: '/compras/api/crear-producto',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(datos),
+                    success: function (prod) {
+                        // Agregar al select2 y seleccionarlo
+                        let label = (prod.codigoBarra ? prod.codigoBarra + ' - ' : '') + prod.nombre;
+                        let newOption = new Option(label, prod.id, true, true);
+                        $(newOption).attr('data-costo', prod.precioCompra);
+                        $(newOption).attr('data-precio-venta', prod.precioVenta);
+                        $('#productoSelect').append(newOption).trigger('change');
+
+                        if (stockActual > 0) {
+                            $('#cantInput').val(stockActual);
+                        }
+
+                        // Pre-llenar costo si viene el precio de compra
+                        if (prod.precioCompra && parseFloat(prod.precioCompra) > 0) {
+                            $('#costoInput').val(parseFloat(prod.precioCompra).toFixed(2));
+                            sincronizarDesdeCosto();
+                        }
+
+                        // Al mismo tiempo, actualizar dp_productoDestino
+                        let dupOption = new Option(label, prod.id, false, false);
+                        $(dupOption).attr('data-costo', prod.precioCompra);
+                        $('#dp_productoDestino').append(dupOption).trigger('change.select2');
+
+                        $('#modalNuevoProducto').modal('hide');
+                        Swal.fire({
+                            icon: 'success', title: '¡Producto creado!',
+                            text: prod.nombre + ' registrado correctamente.',
+                            timer: 2000, showConfirmButton: false
+                        });
+                    },
+                    error: function (xhr) {
+                        let msg = xhr.responseJSON ? xhr.responseJSON.error : 'Error al crear el producto';
+                        $('#np_error').removeClass('d-none').text(msg);
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Guardar y Seleccionar');
+                    }
+                });
+            });
+
+            // ── MODAL: DESPIECE / FRACCIONAMIENTO ────────────────────────────
+            let _despieceIndex = -1; // índice del item del carrito que se está fraccionando
+
+            function abrirDespiece(index) {
+                _despieceIndex = index;
+                let item = carrito[index];
+                $('#dp_nombreOriginal').text(item.nombre);
+                $('#dp_cantOriginal').text(item.cantidad);
+                $('#dp_cantFraccionar').val(item.cantidad).attr('max', item.cantidad);
+                $('#dp_ratio').val('');
+                $('#dp_costoDestino').val('');
+                $('#dp_productoDestino').val('').trigger('change');
+                $('#dp_resultado').addClass('d-none');
+                $('#btnConfirmarDespiece').prop('disabled', true);
+                $('#modalDespiece').modal('show');
+            }
+
+            // Cuando se selecciona el producto destino, pre-llenar su costo
+            $('#dp_productoDestino').on('change', function () {
+                let costo = $(this).find(':selected').data('costo');
+                if (costo && parseFloat(costo) > 0) {
+                    $('#dp_costoDestino').val(parseFloat(costo).toFixed(4));
+                    calcularDespiece2();
                 }
             });
-        });
-    </script>
-</th:block>
+
+            function calcularDespiece2() {
+                let frac = parseFloat($('#dp_cantFraccionar').val()) || 0;
+                let ratio = parseFloat($('#dp_ratio').val()) || 0;
+                let costo = parseFloat($('#dp_costoDestino').val()) || 0;
+                let maxCant = _despieceIndex >= 0 ? carrito[_despieceIndex].cantidad : 0;
+
+                if (frac > 0 && ratio > 0) {
+                    let cantResultado = frac * ratio;
+                    $('#dp_cantResultado').text(cantResultado);
+                    $('#dp_costoResultado').text(costo > 0 ? costo.toFixed(4) : 'por definir');
+                    $('#dp_resultado').removeClass('d-none');
+                    let destino = $('#dp_productoDestino').val();
+                    let valid = destino && frac <= maxCant && ratio > 0;
+                    $('#btnConfirmarDespiece').prop('disabled', !valid);
+                } else {
+                    $('#dp_resultado').addClass('d-none');
+                    $('#btnConfirmarDespiece').prop('disabled', true);
+                }
+            }
+
+            $('#btnConfirmarDespiece').on('click', function () {
+                let frac = parseFloat($('#dp_cantFraccionar').val()) || 0;
+                let ratio = parseFloat($('#dp_ratio').val()) || 0;
+                let costo = parseFloat($('#dp_costoDestino').val()) || 0;
+                let destinoId = $('#dp_productoDestino').val();
+                let destinoNombre = $('#dp_productoDestino option:selected').text();
+                let cantResultado = frac * ratio;
+                let totalPag = +(cantResultado * costo).toFixed(2);
+
+                // Agregar producto destino al carrito
+                let existe = carrito.find(i => i.productoId == destinoId);
+                if (existe) {
+                    existe.cantidad += cantResultado;
+                    existe.costo = costo;
+                    existe.totalPagado = +(existe.cantidad * costo).toFixed(2);
+                } else {
+                    carrito.push({
+                        productoId: destinoId, nombre: destinoNombre,
+                        cantidad: cantResultado, costo: costo, totalPagado: totalPag
+                    });
+                }
+
+                renderizarTabla();
+                $('#modalDespiece').modal('hide');
+                Swal.fire({
+                    icon: 'success', title: 'Despiece agregado',
+                    html: `<strong>${cantResultado}</strong> unidades de <strong>${destinoNombre}</strong> agregadas al carrito.`,
+                    timer: 2500, showConfirmButton: false
+                });
+            });
+
+            // Abrir modal de nuevo producto desde el modal de despiece
+            function abrirNuevoProductoDesdeDespiece() {
+                $('#modalDespiece').modal('hide');
+                // Pequeño delay para que el primer modal cierre antes de abrir el segundo
+                setTimeout(function () {
+                    $('#modalNuevoProducto').modal('show');
+                    // Al guardar el nuevo producto, volver al despiece
+                    $('#modalNuevoProducto').one('hidden.bs.modal', function () {
+                        setTimeout(function () { abrirDespiece(_despieceIndex); }, 200);
+                    });
+                }, 300);
+            }
+
+            // ── GUARDAR COMPRA ───────────────────────────────────────────
+            $('#formCompra').submit(function (e) {
+                e.preventDefault();
+
+                if (carrito.length === 0) {
+                    Swal.fire('Error', 'Agregue al menos un producto a la compra', 'warning');
+                    return;
+                }
+
+                let data = {
+                    proveedorId: $('#proveedor').val(),
+                    tipoComprobante: $('#tipoDoc').val(),
+                    numeroComprobante: $('#nroDoc').val(),
+                    observaciones: $('#obs').val(),
+                    items: carrito
+                };
+
+                guardandoCompra = true;
+                Swal.fire({ title: 'Procesando Compra', text: 'Registrando ingreso de mercadería...', didOpen: () => Swal.showLoading() });
+
+                $.ajax({
+                    url: '/compras/api/guardar',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function (resp) {
+                        guardandoCompra = false;
+                        Swal.close();
+                        if (resp.alertasPrecios && resp.alertasPrecios.length > 0) {
+                            mostrarAlertaPrecios(resp.alertasPrecios);
+                        } else {
+                            Swal.fire('¡Éxito!', 'Compra registrada correctamente', 'success')
+                                .then(() => {
+                                    salidaPermitida = true;
+                                    window.location.href = '/compras/lista';
+                                });
+                        }
+                    },
+                    error: function (xhr) {
+                        guardandoCompra = false;
+                        if (window.manejarErrorCajaCerrada && window.manejarErrorCajaCerrada(xhr)) return;
+                        let mensaje = 'Ocurrió un error al guardar';
+                        try {
+                            let resp = JSON.parse(xhr.responseText);
+                            mensaje = resp.error || resp.message || xhr.responseText;
+                        } catch (e) { mensaje = xhr.responseText || mensaje; }
+                        Swal.fire('Error', mensaje, 'error');
+                    }
+                });
+            });
+
+            // ── ALERTA DE CAMBIO DE PRECIO ───────────────────────────────
+            function mostrarAlertaPrecios(alertas) {
+                let html = '';
+                alertas.forEach((a, i) => {
+                    html += `<tr>
+                    <td>${a.nombre}</td>
+                    <td class="text-right">S/ ${parseFloat(a.costoAnterior).toFixed(2)}</td>
+                    <td class="text-right">S/ ${parseFloat(a.costoNuevo).toFixed(2)}</td>
+                    <td class="text-right text-warning font-weight-bold">${parseFloat(a.cambioPct).toFixed(1)}%</td>
+                    <td class="text-right">S/ ${parseFloat(a.precioVentaActual).toFixed(2)}</td>
+                    <td class="text-right text-success font-weight-bold">S/ ${parseFloat(a.precioVentaSugerido).toFixed(2)}</td>
+                    <td class="text-center">
+                        <input type="checkbox" class="chk-alerta" checked
+                               data-producto-id="${a.productoId}"
+                               data-precio-sugerido="${parseFloat(a.precioVentaSugerido).toFixed(2)}">
+                    </td>
+                </tr>`;
+                });
+                $('#tablaAlertaPrecios').html(html);
+                $('#modalAlertaPrecios').modal('show');
+            }
+
+            $('#btnActualizarPrecios').on('click', function () {
+                let items = [];
+                $('.chk-alerta:checked').each(function () {
+                    items.push({
+                        productoId: $(this).data('producto-id'),
+                        nuevoPrecioVenta: $(this).data('precio-sugerido')
+                    });
+                });
+
+                if (items.length === 0) {
+                    $('#modalAlertaPrecios').modal('hide');
+                    salidaPermitida = true;
+                    window.location.href = '/compras/lista';
+                    return;
+                }
+
+                $.ajax({
+                    url: '/compras/api/actualizar-precio-venta',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(items),
+                    success: function () {
+                        $('#modalAlertaPrecios').modal('hide');
+                        Swal.fire('¡Listo!', 'Compra registrada y precios actualizados', 'success')
+                            .then(() => {
+                                salidaPermitida = true;
+                                window.location.href = '/compras/lista';
+                            });
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'No se pudieron actualizar los precios', 'error');
+                    }
+                });
+            });
+
+            $('#modalAlertaPrecios').on('hidden.bs.modal', function () {
+                salidaPermitida = true;
+                window.location.href = '/compras/lista';
+            });
+        </script>
+    </th:block>
 
 </body>
+
 </html>
