@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_pedidos'">
+<head>
+    <title>Pedidos Personalizados</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h1>Pedidos Personalizados</h1>
+            <a href="/personalizado/pedidos/nuevo" class="btn btn-primary">
+                <i class="fas fa-plus mr-1"></i>Nuevo pedido
+            </a>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <form class="form-row" method="get">
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" name="termino" th:value="${termino}" placeholder="Buscar por código, cliente o destinatario">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" name="estado">
+                                <option value="">Todos los estados</option>
+                                <option value="BORRADOR" th:selected="${estado == 'BORRADOR'}">Borrador</option>
+                                <option value="COTIZADO" th:selected="${estado == 'COTIZADO'}">Cotizado</option>
+                                <option value="CONFIRMADO" th:selected="${estado == 'CONFIRMADO'}">Confirmado</option>
+                                <option value="EN_PRODUCCION" th:selected="${estado == 'EN_PRODUCCION'}">En producción</option>
+                                <option value="LISTO" th:selected="${estado == 'LISTO'}">Listo</option>
+                                <option value="VENDIDO" th:selected="${estado == 'VENDIDO'}">Vendido</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary btn-block" type="submit">Filtrar</button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="/personalizado/pedidos" class="btn btn-outline-secondary btn-block">Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Cliente</th>
+                                <th>Entrega</th>
+                                <th>Estado</th>
+                                <th>Total</th>
+                                <th>Saldo</th>
+                                <th>Fecha</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(pedidos)}">
+                                <td colspan="8" class="text-center text-muted py-4">No se encontraron pedidos.</td>
+                            </tr>
+                            <tr th:each="pedido : ${pedidos}">
+                                <td th:text="${pedido.codigoPedido}">PP-0001</td>
+                                <td>
+                                    <div class="font-weight-bold" th:text="${pedido.clienteNombre ?: 'PUBLICO GENERAL'}">Cliente</div>
+                                    <small class="text-muted" th:text="${pedido.nombreDestinatario ?: '-'}">Destinatario</small>
+                                </td>
+                                <td th:text="${pedido.modoEntrega}">RECOJO</td>
+                                <td><span class="badge badge-info" th:text="${pedido.estado}">BORRADOR</span></td>
+                                <td th:text="${'S/ ' + #numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</td>
+                                <td th:text="${'S/ ' + #numbers.formatDecimal(pedido.saldo, 1, 2)}">S/ 0.00</td>
+                                <td th:text="${pedido.fechaCreacion != null ? #temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                <td class="text-right">
+                                    <a th:href="@{'/personalizado/pedidos/detalle/' + ${pedido.id}}" class="btn btn-outline-primary btn-sm">Ver</a>
+                                    <a th:href="@{'/personalizado/pedidos/editar/' + ${pedido.id}}" class="btn btn-outline-secondary btn-sm">Editar</a>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

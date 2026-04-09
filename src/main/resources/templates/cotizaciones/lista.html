@@ -127,6 +127,9 @@
                                 <td>
                                     <span th:text="${c.clienteNombre}"></span><br/>
                                     <small class="text-muted" th:text="${c.clienteDocumento}"></small>
+                                    <small class="d-block text-success mt-1" th:if="${ordenesVinculadas[c.id] != null}">
+                                        Proyecto OS-<span th:text="${#numbers.formatInteger(ordenesVinculadas[c.id], 6)}">000001</span>
+                                    </small>
                                 </td>
                                 <td>
                                     <th:block th:with="tieneProductos=${false},tieneServicios=${false}">
@@ -190,6 +193,10 @@
                                         <i class="fas fa-file-pdf"></i>
                                     </button>
 
+                                    <button class="btn btn-info btn-xs" th:onclick="'abrirContratoPdf(' + ${c.id} + ')'" title="Contrato PDF">
+                                        <i class="fas fa-file-signature"></i>
+                                    </button>
+
                                     <!-- WhatsApp -->
                                     <button class="btn btn-success btn-xs"
                                             th:onclick="enviarWhatsapp([[${c.clienteNombre}]], [[${c.serie}]], [[${c.numero}]], [[${c.total}]], [[${c.clienteTelefono}]])"
@@ -236,6 +243,10 @@
     <script>
         function abrirPdf(id) {
             window.open('/cotizaciones/pdf/' + id, '_blank', 'width=900,height=700');
+        }
+
+        function abrirContratoPdf(id) {
+            window.open('/cotizaciones/contrato-pdf/' + id, '_blank', 'width=980,height=760');
         }
 
         async function enviarWhatsapp(nombre, serie, numero, total, telefono) {

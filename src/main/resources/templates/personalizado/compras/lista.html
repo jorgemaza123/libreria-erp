@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_compras'">
+<head>
+    <title>Compras Personalizadas</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h1>Compras de Personalizado</h1>
+            <a href="/personalizado/compras/nueva" class="btn btn-primary">
+                <i class="fas fa-plus mr-1"></i>Nueva compra
+            </a>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Proveedor</th>
+                                <th>Documento</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(compras)}">
+                                <td colspan="5" class="text-center text-muted py-4">Todavía no hay compras en este módulo.</td>
+                            </tr>
+                            <tr th:each="compra : ${compras}">
+                                <td th:text="${compra.fecha != null ? #temporals.format(compra.fecha, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                <td th:text="${compra.proveedor != null ? compra.proveedor.razonSocial : '-'}">Proveedor</td>
+                                <td th:text="${compra.tipoComprobante + ' ' + compra.numeroComprobante}">Factura</td>
+                                <td th:text="${compra.detalles != null ? compra.detalles.size() : 0}">0</td>
+                                <td th:text="${'S/ ' + #numbers.formatDecimal(compra.total, 1, 2)}">S/ 0.00</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

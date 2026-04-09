@@ -36,6 +36,8 @@
                                 <th>Cliente</th>
                                 <th>Trabajo</th>
                                 <th>Estado</th>
+                                <th>Total</th>
+                                <th>Abonado</th>
                                 <th>Saldo</th>
                                 <th>Acciones</th>
                             </tr>
@@ -61,6 +63,8 @@
                                     <span th:if="${o.estado == 'ENTREGADO'}" class="badge badge-success">ENTREGADO</span>
                                     <span th:if="${o.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
                                 </td>
+                                <td th:text="'S/ ' + ${#numbers.formatDecimal(o.total, 1, 2)}" class="font-weight-bold"></td>
+                                <td th:text="'S/ ' + ${#numbers.formatDecimal(o.aCuenta, 1, 2)}" class="text-info font-weight-bold"></td>
                                 <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
 
                                 <td>

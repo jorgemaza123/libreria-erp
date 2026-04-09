@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_pedidos'">
+<head>
+    <title>Detalle Pedido Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <div>
+                <h1 th:text="${pedido.codigoPedido}">Pedido</h1>
+                <small class="text-muted" th:text="${pedido.clienteNombre ?: 'PUBLICO GENERAL'}">Cliente</small>
+            </div>
+            <div>
+                <a th:href="@{'/personalizado/pedidos/editar/' + ${pedido.id}}" class="btn btn-primary">Editar</a>
+                <a href="/personalizado/pedidos" class="btn btn-outline-secondary">Volver</a>
+            </div>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header"><h3 class="card-title">Resumen del pedido</h3></div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Cliente:</strong> <span th:text="${pedido.clienteNombre ?: 'PUBLICO GENERAL'}"></span></p>
+                                    <p><strong>Documento:</strong> <span th:text="${pedido.clienteNumeroDocumento ?: '-'}"></span></p>
+                                    <p><strong>WhatsApp:</strong> <span th:text="${pedido.clienteWhatsapp ?: pedido.clienteTelefono ?: '-'}"></span></p>
+                                    <p><strong>Destinatario:</strong> <span th:text="${pedido.nombreDestinatario ?: '-'}"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Estado:</strong> <span class="badge badge-info" th:text="${pedido.estado}">BORRADOR</span></p>
+                                    <p><strong>Entrega:</strong> <span th:text="${pedido.modoEntrega}"></span></p>
+                                    <p><strong>Dirección:</strong> <span th:text="${pedido.direccionEntrega ?: '-'}"></span></p>
+                                    <p><strong>Fecha solicitada:</strong> <span th:text="${pedido.fechaEntregaSolicitada != null ? #temporals.format(pedido.fechaEntregaSolicitada, 'dd/MM/yyyy') : '-'}"></span></p>
+                                </div>
+                            </div>
+                            <div class="border rounded p-3 bg-light" th:if="${pedido.dedicatoria || pedido.nombreEtiqueta}">
+                                <p class="mb-1" th:if="${pedido.nombreEtiqueta}"><strong>Etiqueta:</strong> <span th:text="${pedido.nombreEtiqueta}"></span></p>
+                                <p class="mb-0" th:if="${pedido.dedicatoria}"><strong>Dedicatoria:</strong> <span th:text="${pedido.dedicatoria}"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header"><h3 class="card-title">Modelos y componentes</h3></div>
+                        <div class="card-body">
+                            <div class="border rounded p-3 mb-3" th:each="item : ${pedido.items}">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="mb-1" th:text="${item.codigoModeloSnapshot + ' - ' + item.nombreComercialSnapshot}">MODELO</h5>
+                                        <small class="text-muted" th:text="${item.categoriaSnapshot}">CATEGORIA</small>
+                                    </div>
+                                    <div class="text-right">
+                                        <div><strong th:text="${'S/ ' + #numbers.formatDecimal(item.precioFinal,1,2)}">S/ 0.00</strong></div>
+                                        <small class="text-muted" th:text="${'Cantidad: ' + item.cantidad}">Cantidad</small>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th>Categoría</th>
+                                            <th>Nombre</th>
+                                            <th>Cantidad</th>
+                                            <th>Costo</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="componente : ${item.componentes}" th:if="${!componente.eliminado}">
+                                            <td th:text="${componente.categoria ?: '-'}">CAT</td>
+                                            <td th:text="${componente.nombre}">Nombre</td>
+                                            <td th:text="${componente.cantidad}">1</td>
+                                            <td th:text="${'S/ ' + #numbers.formatDecimal(componente.costoTotal,1,2)}">S/ 0.00</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card card-outline card-success">
+                        <div class="card-header"><h3 class="card-title">Totales</h3></div>
+                        <div class="card-body">
+                            <p><strong>Subtotal:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(pedido.subtotal,1,2)}"></span></p>
+                            <p><strong>Descuento:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(pedido.descuento,1,2)}"></span></p>
+                            <p><strong>Envío:</strong> <span th:text="${pedido.envioGratis ? 'GRATIS' : 'S/ ' + #numbers.formatDecimal(pedido.costoEnvio,1,2)}"></span></p>
+                            <p><strong>Total:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(pedido.total,1,2)}"></span></p>
+                            <p><strong>Adelanto:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(pedido.adelanto,1,2)}"></span></p>
+                            <p class="mb-0"><strong>Saldo:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(pedido.saldo,1,2)}"></span></p>
+                        </div>
+                    </div>
+
+                    <div class="card card-outline card-dark">
+                        <div class="card-header"><h3 class="card-title">Acciones</h3></div>
+                        <div class="card-body">
+                            <a th:href="@{'/personalizado/api/pdf/' + ${pedido.id}}" target="_blank" class="btn btn-outline-danger btn-block mb-2">
+                                <i class="fas fa-file-pdf mr-1"></i>Descargar PDF
+                            </a>
+                            <a th:if="${whatsappUrl != null and !#strings.isEmpty(whatsappUrl)}" th:href="${whatsappUrl}" target="_blank" class="btn btn-outline-success btn-block mb-3">
+                                <i class="fab fa-whatsapp mr-1"></i>Enviar por WhatsApp
+                            </a>
+
+                            <div class="border rounded p-2 mb-2">
+                                <label class="small mb-1">Comprobante</label>
+                                <select class="form-control form-control-sm" id="detalleTipoComprobante">
+                                    <option value="NOTA_VENTA">NOTA_VENTA</option>
+                                    <option value="BOLETA">BOLETA</option>
+                                    <option value="FACTURA">FACTURA</option>
+                                </select>
+                            </div>
+                            <div class="border rounded p-2 mb-2">
+                                <label class="small mb-1">Forma de pago</label>
+                                <select class="form-control form-control-sm" id="detalleFormaPago">
+                                    <option value="CONTADO">CONTADO</option>
+                                    <option value="CREDITO">CREDITO</option>
+                                </select>
+                            </div>
+                            <div class="border rounded p-2 mb-3">
+                                <label class="small mb-1">Método de pago</label>
+                                <select class="form-control form-control-sm" id="detalleMetodoPago">
+                                    <option value="EFECTIVO">EFECTIVO</option>
+                                    <option value="YAPE">YAPE</option>
+                                    <option value="PLIN">PLIN</option>
+                                    <option value="TARJETA">TARJETA</option>
+                                    <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-block" id="btnCerrarVentaDetalle"
+                                    th:if="${pedido.ventaId == null}">
+                                <i class="fas fa-cash-register mr-1"></i>Cerrar venta
+                            </button>
+                            <a th:if="${pedido.ventaId != null}" th:href="@{'/ventas/detalle/' + ${pedido.ventaId}}" class="btn btn-success btn-block">
+                                <i class="fas fa-receipt mr-1"></i>Ver venta generada
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        const pedidoIdDetalle = [[${pedido.id}]];
+        $('#btnCerrarVentaDetalle').on('click', function () {
+            $.post('/personalizado/api/cerrar-venta/' + pedidoIdDetalle, {
+                tipoComprobante: $('#detalleTipoComprobante').val(),
+                formaPago: $('#detalleFormaPago').val(),
+                metodoPago: $('#detalleMetodoPago').val()
+            }).done(function (resp) {
+                let html = '<div class="text-left">';
+                html += '<p>Venta generada correctamente.</p>';
+                html += '<a class="btn btn-primary btn-block mb-2" target="_blank" href="' + resp.imprimirUrl + '">Abrir impresión</a>';
+                html += '<a class="btn btn-danger btn-block mb-2" target="_blank" href="' + resp.pdfUrl + '">Abrir PDF</a>';
+                if (resp.whatsappUrl) {
+                    html += '<a class="btn btn-success btn-block" target="_blank" href="' + resp.whatsappUrl + '">Enviar WhatsApp</a>';
+                }
+                html += '</div>';
+                Swal.fire({ icon: 'success', title: 'Venta cerrada', html: html, width: 480 })
+                    .then(() => window.location.reload());
+            }).fail(function (xhr) {
+                const msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'No se pudo cerrar la venta.';
+                Swal.fire('Error', msg, 'error');
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

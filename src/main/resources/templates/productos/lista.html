@@ -20,6 +20,9 @@
                     <a href="/productos/nuevo" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nuevo
                     </a>
+                    <a href="/laminas" class="btn btn-outline-info ml-2">
+                        <i class="fas fa-layer-group"></i> Laminas
+                    </a>
                     <button type="button" class="btn btn-dark ml-2" id="btnImprimirEtiquetas" onclick="mostrarModalEtiquetas()" disabled>
                         <i class="fas fa-print"></i> Imprimir Etiquetas (<span id="contadorSeleccionados">0</span>)
                     </button>
@@ -75,6 +78,13 @@
 
             <div class="card">
                 <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="filtroSoloLaminas">
+                            <label class="custom-control-label font-weight-bold" for="filtroSoloLaminas">Solo laminas</label>
+                        </div>
+                        <small class="text-muted">Activa este filtro para ver solo productos marcados como laminas escolares.</small>
+                    </div>
                     <table id="tablaProductos" class="table table-bordered table-striped">
                         <thead>
                             <tr>
@@ -92,7 +102,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="p : ${productos}">
+                            <tr th:each="p : ${productos}" th:attr="data-es-lamina=${p.esLamina}">
                                 <td class="text-center">
                                     <input type="checkbox" class="producto-checkbox"
                                            th:value="${p.id}"
@@ -119,20 +129,51 @@
                                         <span th:text="${p.marca}"></span> 
                                         <span th:if="${p.modelo}" th:text="'- ' + ${p.modelo}"></span>
                                     </small>
+                                    <small th:if="${p.esLamina}" class="d-block text-info font-weight-bold">
+                                        <i class="fas fa-layer-group mr-1"></i>
+                                        <span th:text="${p.laminaEtiquetaTexto}"></span>
+                                    </small>
                                 </td>
                                 
-                                <td th:text="${p.categoria}"></td>
-                                <td th:text="'S/ ' + ${p.precioVenta}"></td>
-                                
-                                <td class="text-center" 
-                                    th:classappend="${p.stockActual <= (p.stockMinimo != null ? p.stockMinimo : 0)} ? 'text-danger font-weight-bold' : 'text-success font-weight-bold'"
-                                    th:text="${p.stockActual}">
+                                <td>
+                                    <span th:text="${p.categoria}"></span>
+                                    <span th:if="${p.clasificacion == 'INSUMO'}" class="badge badge-secondary ml-1">INSUMO</span>
+                                    <span th:if="${p.esLamina}" class="badge badge-info ml-1">LAMINA</span>
                                 </td>
+                                <td th:text="${p.precioVenta != null ? 'S/ ' + p.precioVenta : '-'}"></td>
+                                
+                                 <td class="text-center" 
+                                     th:classappend="${(p.stockActual != null ? p.stockActual : 0) <= (p.stockMinimo != null ? p.stockMinimo : 0)} ? 'text-danger font-weight-bold' : 'text-success font-weight-bold'"
+                                     th:text="${p.stockActual != null ? p.stockActual : 0}">
+                                 </td>
 
-                                <td th:text="${p.ubicacionEstante} + '-' + ${p.ubicacionFila}"></td>
+
+                                <td th:text="${p.ubicacionResumenTexto}"></td>
 
                                 <td>
-                                    <a th:href="@{/productos/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm" title="Editar">
+                                    <button type="button" class="btn btn-secondary btn-sm"
+                                            th:data-nombre="${p.nombre}"
+                                            th:data-codigo-barra="${p.codigoBarra}"
+                                            th:data-codigo-interno="${p.codigoInterno}"
+                                            th:data-categoria="${p.categoria}"
+                                            th:data-clasificacion="${p.clasificacion}"
+                                            th:data-es-lamina="${p.esLamina}"
+                                            th:data-stock="${p.stockActual}"
+                                            th:data-stock-minimo="${p.stockMinimo}"
+                                            th:data-costo="${p.precioCompra}"
+                                            th:data-precio-venta="${p.precioVenta}"
+                                            th:data-unidad="${p.unidadMedida}"
+                                            th:data-ubicacion="${p.ubicacionResumenTexto}"
+                                            th:data-marca="${p.marca}"
+                                            th:data-modelo="${p.modelo}"
+                                            onclick="mostrarModalResumenProducto(this)"
+                                            title="Vista rapida">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                    <a th:unless="${p.esLamina}" th:href="@{/productos/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a th:if="${p.esLamina}" th:href="@{/laminas/editar/{id}(id=${p.id})}" class="btn btn-warning btn-sm" title="Editar lamina">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <a th:href="@{/productos/eliminar/{id}(id=${p.id})}" class="btn btn-danger btn-sm" onclick="return confirm('¿Desactivar producto?')" title="Eliminar">
@@ -163,6 +204,66 @@
                 </div>
                 <div class="modal-body text-center bg-light">
                     <img id="imgPreview" src="" class="img-fluid rounded shadow" style="max-height: 400px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalResumenProducto" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary">
+                    <h5 class="modal-title text-white" id="resumenProductoTitulo">Resumen del producto</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Codigo</small>
+                            <strong id="resumenProductoCodigo">-</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Clasificacion</small>
+                            <strong id="resumenProductoClasificacion">-</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Categoria</small>
+                            <strong id="resumenProductoCategoria">-</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Unidad</small>
+                            <strong id="resumenProductoUnidad">-</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Stock actual</small>
+                            <strong id="resumenProductoStock">0</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Stock minimo</small>
+                            <strong id="resumenProductoStockMinimo">0</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Costo por unidad</small>
+                            <strong id="resumenProductoCosto">S/ 0.00</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Precio de venta</small>
+                            <strong id="resumenProductoPrecioVenta">S/ 0.00</strong>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <small class="text-muted d-block">Marca / Modelo</small>
+                            <strong id="resumenProductoMarcaModelo">-</strong>
+                        </div>
+                        <div class="col-md-6 mb-0">
+                            <small class="text-muted d-block">Ubicacion</small>
+                            <strong id="resumenProductoUbicacion">-</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -219,13 +320,32 @@
 <th:block layout:fragment="scripts">
     <script>
         $(document).ready(function () {
-            $("#tablaProductos").DataTable({
+            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                if (settings.nTable.id !== 'tablaProductos') {
+                    return true;
+                }
+                if (!$('#filtroSoloLaminas').is(':checked')) {
+                    return true;
+                }
+
+                const rowNode = tablaProductos.row(dataIndex).node();
+                if (!rowNode) {
+                    return true;
+                }
+                return String($(rowNode).attr('data-es-lamina')) === 'true';
+            });
+
+            const tablaProductos = $("#tablaProductos").DataTable({
                 "responsive": true,
                 "autoWidth": false,
                 "language": { "url": "/js/datatables-es.json" },
                 "columnDefs": [
                     { "orderable": false, "targets": 0 } // Deshabilitar ordenamiento en checkbox
                 ]
+            });
+
+            $('#filtroSoloLaminas').on('change', function() {
+                tablaProductos.draw();
             });
         });
 
@@ -234,6 +354,27 @@
             $("#tituloImagen").text(nombreProducto);
             $("#imgPreview").attr("src", "/uploads/" + nombreArchivo);
             $("#modalImagen").modal("show");
+        }
+
+        function mostrarModalResumenProducto(button) {
+            const data = button.dataset || {};
+            const codigo = data.codigoBarra || data.codigoInterno || '-';
+            const costo = parseFloat(data.costo || '0');
+            const precioVenta = parseFloat(data.precioVenta || '0');
+            const marcaModelo = [data.marca || '', data.modelo || ''].filter(Boolean).join(' - ');
+
+            $('#resumenProductoTitulo').text(data.nombre || 'Resumen del producto');
+            $('#resumenProductoCodigo').text(codigo);
+            $('#resumenProductoClasificacion').text(data.clasificacion || '-');
+            $('#resumenProductoCategoria').text(data.categoria || '-');
+            $('#resumenProductoUnidad').text(data.unidad || '-');
+            $('#resumenProductoStock').text(data.stock || '0');
+            $('#resumenProductoStockMinimo').text(data.stockMinimo || '0');
+            $('#resumenProductoCosto').text('S/ ' + costo.toFixed(4));
+            $('#resumenProductoPrecioVenta').text('S/ ' + precioVenta.toFixed(2));
+            $('#resumenProductoMarcaModelo').text(marcaModelo || '-');
+            $('#resumenProductoUbicacion').text(data.ubicacion || '-');
+            $('#modalResumenProducto').modal('show');
         }
 
         // ========== FUNCIONES PARA ETIQUETAS ==========

@@ -39,8 +39,7 @@
                             </div>
                             <div class="card-footer text-right">
                                 <!-- M-4: deshabilitar botón al submit para evitar doble registro -->
-                                <button type="submit" class="btn btn-danger btn-block font-weight-bold"
-                                        onclick="this.disabled=true; this.form.submit();">
+                                <button type="submit" class="btn btn-danger btn-block font-weight-bold" id="btnRegistrarGasto">
                                     <i class="fas fa-save"></i> REGISTRAR GASTO
                                 </button>
                             </div>
@@ -96,6 +95,13 @@
 </div>
 
 <th:block layout:fragment="scripts">
+    <script>
+        $(function () {
+            $('form[action="/gastos/guardar"]').on('submit', function () {
+                $('#btnRegistrarGasto').prop('disabled', true);
+            });
+        });
+    </script>
     <script th:if="${success}"> Swal.fire('Registrado', '[[${success}]]', 'success'); </script>
     <script th:if="${error}"> Swal.fire('Error', '[[${error}]]', 'error'); </script>
 </th:block>

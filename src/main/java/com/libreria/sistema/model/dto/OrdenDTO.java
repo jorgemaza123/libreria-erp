@@ -1,5 +1,7 @@
 package com.libreria.sistema.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +15,10 @@ public class OrdenDTO {
     private String clienteNombre;
     private String clienteTelefono;
     private String clienteDocumento;
+    private String clienteEmail;
+    private String clienteDireccion;
     private LocalDate fechaEntrega;
+    @JsonProperty("aCuenta")
     private BigDecimal aCuenta;
     private String observaciones;
     private List<ItemDTO> items;

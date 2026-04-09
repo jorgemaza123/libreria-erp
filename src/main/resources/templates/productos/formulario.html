@@ -107,8 +107,33 @@
 
                         <hr>
 
+                        <div class="row align-items-end mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label>Clasificación</label>
+                                    <select class="form-control" th:field="*{clasificacion}" id="clasificacionSelect">
+                                        <option value="MERCADERIA">Mercadería</option>
+                                        <option value="INSUMO">Insumo interno</option>
+                                    </select>
+                                    <small class="text-muted">Todos los productos actuales quedan como mercadería si no eliges otra opción.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="alert alert-info mb-0 d-none" id="alertaInsumo">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    El insumo se compra y controla en stock, pero no aparece en ventas ni necesita ubicación o precio de venta.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border-left border-info mb-3">
+                            <i class="fas fa-layer-group text-info mr-1"></i>
+                            Las laminas escolares ahora se administran en su modulo propio para no mezclar este formulario con datos de ubicacion y busqueda exclusivos.
+                            <a href="/laminas" class="font-weight-bold ml-1">Ir a Laminas</a>
+                        </div>
+
                         <h5 class="text-info"><i class="fas fa-info-circle"></i> Especificaciones</h5>
-                        <div class="row bg-light p-3 rounded mb-3">
+                        <div class="row bg-light p-3 rounded mb-3 js-bloque-insumo-oculto">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Marca</label>
@@ -158,16 +183,16 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-bloque-insumo-oculto">
                                 <div class="form-group">
                                     <label class="text-success font-weight-bold">Precio Venta (Público) *</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
-                                        <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" required>
+                                        <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" id="precioVentaInput" required>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-bloque-insumo-oculto">
                                 <div class="form-group">
                                     <label class="text-primary">Precio Mayorista</label>
                                     <div class="input-group">
@@ -176,7 +201,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-bloque-insumo-oculto">
                                 <div class="form-group">
                                     <label>Afectación IGV</label>
                                     <select class="form-control" th:field="*{tipoAfectacionIgv}">
@@ -201,13 +226,13 @@
                                     </small>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-bloque-insumo-oculto">
                                 <div class="form-group">
                                     <label class="text-danger">Stock Mínimo</label>
                                     <input type="number" class="form-control" th:field="*{stockMinimo}">
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-bloque-insumo-oculto">
                                 <div class="form-group">
                                     <label>Unidad Medida</label>
                                     <select class="form-control" th:field="*{unidadMedida}">
@@ -221,9 +246,10 @@
                             </div>
                         </div>
 
-                        <hr>
-                        <h6 class="text-muted">Ubicación Física en Almacén</h6>
-                        <div class="row">
+                        <div class="js-bloque-insumo-oculto">
+                            <hr>
+                            <h6 class="text-muted">Ubicación Física en Almacén</h6>
+                            <div class="row">
                             <div class="col-md-4">
                                 <div class="input-group mb-3">
                                     <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-layer-group"></i> Estante</span></div>
@@ -241,6 +267,7 @@
                                     <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-columns"></i> Columna</span></div>
                                     <input type="text" class="form-control" th:field="*{ubicacionColumna}">
                                 </div>
+                            </div>
                             </div>
                         </div>
 
@@ -325,6 +352,36 @@
 
         $(document).ready(function () {
             bsCustomFileInput.init();
+
+            function actualizarFormularioClasificacion() {
+                const esInsumo = ($('#clasificacionSelect').val() || 'MERCADERIA') === 'INSUMO';
+                $('.js-bloque-insumo-oculto').toggleClass('d-none', esInsumo);
+                $('#alertaInsumo').toggleClass('d-none', !esInsumo);
+                $('#precioVentaInput').prop('required', !esInsumo);
+
+                if (esInsumo) {
+                    if (!$('#precioVentaInput').val()) {
+                        $('#precioVentaInput').val('0');
+                    }
+                    $('#stockMinimo').val('0');
+                    $('#ubicacionEstante, #ubicacionFila, #ubicacionColumna').val('');
+                }
+            }
+
+            $('#clasificacionSelect').on('change', actualizarFormularioClasificacion);
+            actualizarFormularioClasificacion();
+
+            $('form').on('submit', function () {
+                if (($('#clasificacionSelect').val() || 'MERCADERIA') === 'INSUMO') {
+                    if (!$('#precioVentaInput').val()) {
+                        $('#precioVentaInput').val('0');
+                    }
+                    $('#precioMayorista').val($('#precioMayorista').val() || '0');
+                    $('#stockMinimo').val('0');
+                    $('#ubicacionEstante, #ubicacionFila, #ubicacionColumna').val('');
+                    $('#tipo').val('ESTANDAR');
+                }
+            });
 
             // Preview de imagen al seleccionar archivo
             document.getElementById('customFile').addEventListener('change', function () {

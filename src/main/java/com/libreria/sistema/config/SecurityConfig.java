@@ -83,6 +83,7 @@ public class SecurityConfig {
                     "/solicitudes/**",
                     "/servicios/**",
                     "/stock/**",
+                    "/laminas/**",
                     // Configuracion y administracion
                     "/configuracion/**",
                     "/usuarios/**",
@@ -161,6 +162,7 @@ public class SecurityConfig {
                 .requestMatchers("/solicitudes/**").authenticated()
                 .requestMatchers("/servicios/**").authenticated()
                 .requestMatchers("/stock/**").authenticated()
+                .requestMatchers("/laminas/**").authenticated()
                 .requestMatchers("/vendedor/**").authenticated()
 
                 // ============================================================
@@ -314,7 +316,12 @@ public class SecurityConfig {
                 response.setCharacterEncoding("UTF-8");
                 response.getWriter().write("{\"error\": \"No tiene permisos para realizar esta acción.\", \"code\": 403}");
             } else {
-                response.sendRedirect("/error/403");
+                String referer = request.getHeader("Referer");
+                String destino = "/";
+                if (referer != null && !referer.isBlank() && !referer.contains("/login")) {
+                    destino = referer;
+                }
+                response.sendRedirect(destino);
             }
         };
     }

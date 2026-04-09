@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='laminas'">
+<head>
+    <title th:text="${titulo}">Lamina</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 th:text="${titulo}">Nueva Lamina</h1>
+                    <small class="text-muted">Registro corto pensado solo para laminas escolares.</small>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/productos}">Productos</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/laminas}">Laminas</a></li>
+                        <li class="breadcrumb-item active" th:text="${titulo}">Formulario</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div class="card card-primary card-outline">
+                <form th:action="@{/laminas/guardar}" th:object="${lamina}" method="post">
+                    <input type="hidden" th:field="*{id}">
+                    <input type="hidden" th:field="*{activo}">
+                    <input type="hidden" th:field="*{precioCompra}">
+                    <input type="hidden" th:field="*{precioVenta}">
+                    <input type="hidden" th:field="*{stockMinimo}">
+
+                    <div class="card-body">
+                        <div class="callout callout-info">
+                            <h5 class="mb-2">Campos minimos</h5>
+                            <p class="mb-1">La lamina se registrara con precio de venta por defecto de <strong th:text="${'S/ ' + #numbers.formatDecimal(precioVentaDefault, 1, 2)}">S/ 0.50</strong>.</p>
+                            <p class="mb-0">No se pide stock minimo ni datos de producto general para no volver tedioso el registro.</p>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Numero de lamina</label>
+                                    <input type="text" class="form-control form-control-lg" th:field="*{laminaNumero}" placeholder="Ej: 1083" autofocus required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Titulo</label>
+                                    <input type="text" class="form-control form-control-lg" th:field="*{laminaTitulo}" placeholder="Ej: CELULA ANIMAL" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Marca</label>
+                                    <input type="text" class="form-control form-control-lg" th:field="*{laminaMarca}" placeholder="Ej: ALFA">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label>Categoria escolar</label>
+                                    <div class="input-group">
+                                        <select class="form-control" th:field="*{laminaCategoria}" id="laminaCategoriaSelect" required>
+                                            <option value="">Selecciona una categoria</option>
+                                            <option th:each="categoria : ${laminaCategorias}"
+                                                    th:value="${categoria.nombre}"
+                                                    th:text="${categoria.nombre}"></option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modalNuevaCategoria">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Ejemplo: BIOLOGIA, HISTORIA, MATEMATICA.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Bolsa / contenedor</label>
+                                    <input type="text" class="form-control" th:field="*{laminaContenedor}" placeholder="Ej: BOLSA 1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Stock inicial</label>
+                                    <input type="number" min="0" class="form-control"
+                                           th:field="*{stockActual}"
+                                           th:readonly="${lamina.id != null}"
+                                           th:classappend="${lamina.id != null} ? 'bg-light text-muted' : ''">
+                                    <small th:if="${lamina.id != null}" class="text-muted">Despues ajustalo desde inventario.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row" th:if="${lamina.id == null}">
+                            <div class="col-md-12">
+                                <label class="mb-2">Cantidad rapida</label>
+                                <div class="btn-group btn-group-sm d-flex flex-wrap" role="group">
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="1">1</button>
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="2">2</button>
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="3">3</button>
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="5">5</button>
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="10">10</button>
+                                    <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="20">20</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer text-right">
+                        <a th:href="@{/laminas}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-outline-primary" name="continuar" value="true" th:if="${lamina.id == null}">
+                            <i class="fas fa-save mr-1"></i>Guardar y siguiente
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check mr-1"></i>Guardar lamina
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalNuevaCategoria" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva categoria de lamina</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="categoriaError"></div>
+                    <div class="form-group mb-0">
+                        <label>Nombre</label>
+                        <input type="text" class="form-control" id="nuevaCategoriaNombre" placeholder="Ej: BIOLOGIA">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarCategoriaRapida">
+                        <i class="fas fa-save mr-1"></i>Guardar categoria
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(function () {
+            $('.stock-chip').on('click', function () {
+                $('#stockActual').val($(this).data('stock'));
+            });
+
+            $('#btnGuardarCategoriaRapida').on('click', function () {
+                const nombre = ($('#nuevaCategoriaNombre').val() || '').trim();
+                const $error = $('#categoriaError');
+                $error.addClass('d-none').text('');
+
+                if (!nombre) {
+                    $error.removeClass('d-none').text('Escribe el nombre de la categoria.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/laminas/categorias/api/guardar',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ nombre }),
+                    success: function (response) {
+                        const select = $('#laminaCategoriaSelect');
+                        if (select.find('option[value="' + response.nombre + '"]').length === 0) {
+                            select.append(new Option(response.nombre, response.nombre, true, true));
+                        }
+                        select.val(response.nombre).trigger('change');
+                        $('#nuevaCategoriaNombre').val('');
+                        $('#modalNuevaCategoria').modal('hide');
+                    },
+                    error: function (xhr) {
+                        const mensaje = xhr.responseJSON && xhr.responseJSON.error
+                            ? xhr.responseJSON.error
+                            : 'No se pudo guardar la categoria.';
+                        $error.removeClass('d-none').text(mensaje);
+                    }
+                });
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

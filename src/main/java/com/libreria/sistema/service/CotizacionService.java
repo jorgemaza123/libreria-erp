@@ -37,6 +37,7 @@ public class CotizacionService {
     private final UsuarioRepository usuarioRepository;
     private final CorrelativoRepository correlativoRepository;
     private final AmortizacionRepository amortizacionRepository;
+    private final OrdenServicioRepository ordenServicioRepository;
     private final ServicioCategoriaRepository servicioCategoriaRepository;
     private final CajaService cajaService;
     private final ConfiguracionService configuracionService;
@@ -49,6 +50,7 @@ public class CotizacionService {
                              UsuarioRepository usuarioRepository,
                              CorrelativoRepository correlativoRepository,
                              AmortizacionRepository amortizacionRepository,
+                             OrdenServicioRepository ordenServicioRepository,
                              ServicioCategoriaRepository servicioCategoriaRepository,
                              CajaService cajaService,
                              ConfiguracionService configuracionService) {
@@ -60,6 +62,7 @@ public class CotizacionService {
         this.usuarioRepository = usuarioRepository;
         this.correlativoRepository = correlativoRepository;
         this.amortizacionRepository = amortizacionRepository;
+        this.ordenServicioRepository = ordenServicioRepository;
         this.servicioCategoriaRepository = servicioCategoriaRepository;
         this.cajaService = cajaService;
         this.configuracionService = configuracionService;
@@ -101,6 +104,11 @@ public class CotizacionService {
         c.setClienteDocumento(dto.getClienteDocumento());
         c.setClienteNombre(dto.getClienteNombre());
         c.setClienteTelefono(dto.getClienteTelefono());
+        c.setClienteEmail(dto.getClienteEmail());
+        c.setClienteDireccion(dto.getClienteDireccion());
+        c.setTipoServicioContrato(dto.getTipoServicioContrato());
+        c.setTituloProyectoServicio(dto.getTituloProyectoServicio());
+        c.setFechaEntregaComprometida(dto.getFechaEntregaComprometida());
         c.setObservaciones(dto.getObservaciones());
         c.setCondiciones(dto.getCondiciones());
 
@@ -122,6 +130,7 @@ public class CotizacionService {
         // Procesar items
         BigDecimal totalBruto = BigDecimal.ZERO;
         BigDecimal igvFactor = configuracionService.getIgvFactor();
+        Producto productoServicio = null;
 
         for (CotizacionDTO.ItemDTO item : dto.getItems()) {
             DetalleCotizacion det = new DetalleCotizacion();
@@ -135,8 +144,12 @@ public class CotizacionService {
             det.setSubtotal(item.getCantidad().multiply(item.getPrecioUnitario()));
 
             if ("SERVICIO".equals(det.getTipoItem())) {
+                if (productoServicio == null) {
+                    productoServicio = productoRepository.findByCodigoInterno("SERV-001")
+                            .orElseThrow(() -> new Exception("Producto SERV-001 no encontrado. Ejecute DataInitializer."));
+                }
                 det.setDescripcion(item.getDescripcion() != null ? item.getDescripcion() : "SERVICIO");
-                det.setProducto(null);
+                det.setProducto(productoServicio);
             } else {
                 Producto p = productoRepository.findById(item.getProductoId())
                         .orElseThrow(() -> new Exception("Producto no encontrado: ID " + item.getProductoId()));
@@ -168,7 +181,9 @@ public class CotizacionService {
             c.setSaldoPendiente(BigDecimal.ZERO);
         }
 
-        return cotizacionRepository.save(c);
+        Cotizacion guardada = cotizacionRepository.save(c);
+        asegurarOrdenServicioSiAplica(guardada);
+        return guardada;
     }
 
     @Transactional
@@ -183,6 +198,11 @@ public class CotizacionService {
         c.setClienteDocumento(dto.getClienteDocumento());
         c.setClienteNombre(dto.getClienteNombre());
         c.setClienteTelefono(dto.getClienteTelefono());
+        c.setClienteEmail(dto.getClienteEmail());
+        c.setClienteDireccion(dto.getClienteDireccion());
+        c.setTipoServicioContrato(dto.getTipoServicioContrato());
+        c.setTituloProyectoServicio(dto.getTituloProyectoServicio());
+        c.setFechaEntregaComprometida(dto.getFechaEntregaComprometida());
         c.setObservaciones(dto.getObservaciones());
         c.setCondiciones(dto.getCondiciones());
         c.setFormaPago(dto.getFormaPago() != null ? dto.getFormaPago() : "CONTADO");
@@ -201,6 +221,7 @@ public class CotizacionService {
 
         BigDecimal totalBruto = BigDecimal.ZERO;
         BigDecimal igvFactor = configuracionService.getIgvFactor();
+        Producto productoServicio = null;
 
         for (CotizacionDTO.ItemDTO item : dto.getItems()) {
             DetalleCotizacion det = new DetalleCotizacion();
@@ -214,8 +235,12 @@ public class CotizacionService {
             det.setSubtotal(item.getCantidad().multiply(item.getPrecioUnitario()));
 
             if ("SERVICIO".equals(det.getTipoItem())) {
+                if (productoServicio == null) {
+                    productoServicio = productoRepository.findByCodigoInterno("SERV-001")
+                            .orElseThrow(() -> new Exception("Producto SERV-001 no encontrado. Ejecute DataInitializer."));
+                }
                 det.setDescripcion(item.getDescripcion() != null ? item.getDescripcion() : "SERVICIO");
-                det.setProducto(null);
+                det.setProducto(productoServicio);
             } else {
                 Producto p = productoRepository.findById(item.getProductoId())
                         .orElseThrow(() -> new Exception("Producto no encontrado"));
@@ -246,6 +271,7 @@ public class CotizacionService {
         }
 
         cotizacionRepository.save(c);
+        asegurarOrdenServicioSiAplica(c);
     }
 
     // =====================================================
@@ -443,6 +469,7 @@ public class CotizacionService {
 
         c.setEstado(nuevoEstado);
         cotizacionRepository.save(c);
+        asegurarOrdenServicioSiAplica(c);
     }
 
     @Transactional
@@ -549,6 +576,26 @@ public class CotizacionService {
         return servicioCategoriaRepository.findByActivaTrueOrderByOrdenAsc();
     }
 
+    public Map<Long, Long> obtenerOrdenesVinculadas(List<Cotizacion> cotizaciones) {
+        if (cotizaciones == null || cotizaciones.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> ids = cotizaciones.stream()
+                .map(Cotizacion::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Long> resultado = new HashMap<>();
+        for (OrdenServicio orden : ordenServicioRepository.findByCotizacionIdIn(ids)) {
+            if (orden.getCotizacionId() != null && orden.getId() != null) {
+                resultado.put(orden.getCotizacionId(), orden.getId());
+            }
+        }
+        return resultado;
+    }
+
     // =====================================================
     //  SCHEDULER: VENCIMIENTO AUTOMÁTICO
     // =====================================================
@@ -633,5 +680,95 @@ public class CotizacionService {
     private boolean esConvertible(String estado) {
         return "EMITIDA".equals(estado) || "EMITIDO".equals(estado)
                 || "ENVIADA".equals(estado) || "APROBADA".equals(estado) || "EN_NEGOCIACION".equals(estado);
+    }
+
+    private void asegurarOrdenServicioSiAplica(Cotizacion cotizacion) {
+        if (cotizacion == null || cotizacion.getId() == null) {
+            return;
+        }
+        if (!"APROBADA".equalsIgnoreCase(cotizacion.getEstado())) {
+            return;
+        }
+        if (!tieneServicios(cotizacion)) {
+            return;
+        }
+        if (ordenServicioRepository.findByCotizacionId(cotizacion.getId()).isPresent()) {
+            return;
+        }
+
+        OrdenServicio orden = new OrdenServicio();
+        orden.setCotizacionId(cotizacion.getId());
+        orden.setTipoServicio(resolverTipoServicio(cotizacion));
+        orden.setTituloTrabajo(resolverTituloProyecto(cotizacion));
+        orden.setClienteNombre(cotizacion.getClienteNombre());
+        orden.setClienteTelefono(cotizacion.getClienteTelefono());
+        orden.setClienteDocumento(cotizacion.getClienteDocumento());
+        orden.setFechaEntregaEstimada(cotizacion.getFechaEntregaComprometida());
+        orden.setTotal(valorMonetario(cotizacion.getTotal()));
+
+        BigDecimal adelanto = valorMonetario(cotizacion.getMontoInicial());
+        if (adelanto.compareTo(orden.getTotal()) > 0) {
+            adelanto = orden.getTotal();
+        }
+        orden.setACuenta(adelanto);
+        orden.setSaldo(orden.getTotal().subtract(adelanto));
+        orden.setEstado("PENDIENTE");
+        orden.setObservaciones(construirObservacionesOrden(cotizacion));
+
+        for (DetalleCotizacion detalle : cotizacion.getItems()) {
+            OrdenItem item = new OrdenItem();
+            item.setOrden(orden);
+            item.setDescripcion(detalle.getDescripcion());
+            item.setCosto(valorMonetario(detalle.getSubtotal()));
+            orden.getItems().add(item);
+        }
+
+        ordenServicioRepository.save(orden);
+    }
+
+    private boolean tieneServicios(Cotizacion cotizacion) {
+        return cotizacion.getItems() != null && cotizacion.getItems().stream()
+                .anyMatch(item -> "SERVICIO".equalsIgnoreCase(item.getTipoItem()));
+    }
+
+    private String resolverTipoServicio(Cotizacion cotizacion) {
+        if (cotizacion.getTipoServicioContrato() != null && !cotizacion.getTipoServicioContrato().isBlank()) {
+            return cotizacion.getTipoServicioContrato().trim();
+        }
+        return cotizacion.getItems().stream()
+                .filter(item -> "SERVICIO".equalsIgnoreCase(item.getTipoItem()))
+                .map(DetalleCotizacion::getCategoriaServicio)
+                .filter(Objects::nonNull)
+                .filter(valor -> !valor.isBlank())
+                .findFirst()
+                .map(valor -> valor.replace('_', ' '))
+                .orElse("SERVICIO PROFESIONAL");
+    }
+
+    private String resolverTituloProyecto(Cotizacion cotizacion) {
+        if (cotizacion.getTituloProyectoServicio() != null && !cotizacion.getTituloProyectoServicio().isBlank()) {
+            return cotizacion.getTituloProyectoServicio().trim();
+        }
+        return cotizacion.getItems().stream()
+                .filter(item -> item.getDescripcion() != null && !item.getDescripcion().isBlank())
+                .findFirst()
+                .map(DetalleCotizacion::getDescripcion)
+                .orElse("Proyecto vinculado a cotización " + cotizacion.getSerie() + "-" + String.format("%06d", cotizacion.getNumero()));
+    }
+
+    private String construirObservacionesOrden(Cotizacion cotizacion) {
+        List<String> partes = new ArrayList<>();
+        partes.add("Orden generada automáticamente desde la cotización " + cotizacion.getSerie() + "-" + String.format("%06d", cotizacion.getNumero()) + ".");
+        if (cotizacion.getFechaEntregaComprometida() != null) {
+            partes.add("Entrega comprometida: " + cotizacion.getFechaEntregaComprometida() + ".");
+        }
+        if (cotizacion.getObservaciones() != null && !cotizacion.getObservaciones().isBlank()) {
+            partes.add(cotizacion.getObservaciones().trim());
+        }
+        return String.join(" ", partes);
+    }
+
+    private BigDecimal valorMonetario(BigDecimal valor) {
+        return valor != null ? valor : BigDecimal.ZERO;
     }
 }

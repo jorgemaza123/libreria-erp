@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='laminas'">
+<head>
+    <title>Importar Laminas</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Importar Laminas desde Excel</h1>
+                    <small class="text-muted">Carga muchas laminas de una sola vez con una plantilla simple.</small>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/productos}">Productos</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/laminas}">Laminas</a></li>
+                        <li class="breadcrumb-item active">Importar</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${warning}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div th:if="${erroresImportacionLaminas}" class="alert alert-warning">
+                <h5 class="mb-2"><i class="fas fa-exclamation-circle mr-2"></i>Filas con observaciones</h5>
+                <ul class="mb-0">
+                    <li th:each="err : ${erroresImportacionLaminas}" th:text="${err}"></li>
+                </ul>
+            </div>
+
+            <div th:if="${actualizacionesImportacionLaminas}" class="alert alert-info">
+                <h5 class="mb-2"><i class="fas fa-sync-alt mr-2"></i>Filas que actualizaron una lamina existente</h5>
+                <ul class="mb-0">
+                    <li th:each="detalle : ${actualizacionesImportacionLaminas}" th:text="${detalle}"></li>
+                </ul>
+            </div>
+
+            <div th:if="${omitidasImportacionLaminas}" class="alert alert-secondary">
+                <h5 class="mb-2"><i class="fas fa-forward mr-2"></i>Filas omitidas por existir previamente</h5>
+                <ul class="mb-0">
+                    <li th:each="detalle : ${omitidasImportacionLaminas}" th:text="${detalle}"></li>
+                </ul>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="card card-info card-outline">
+                        <form th:action="@{/laminas/importar}" method="post" enctype="multipart/form-data">
+                            <div class="card-body">
+                                <div class="callout callout-info">
+                                    <h5 class="mb-2">Estructura esperada</h5>
+                                    <p class="mb-1">Columnas: <code>NUMERO_LAMINA</code>, <code>TITULO</code>, <code>MARCA</code>, <code>CATEGORIA</code>, <code>BOLSA</code>, <code>STOCK</code>, <code>PRECIO_VENTA</code>.</p>
+                                    <p class="mb-0">Si <code>PRECIO_VENTA</code> viene vacio, la lamina se registra con <strong th:text="${'S/ ' + #numbers.formatDecimal(precioVentaDefault, 1, 2)}">S/ 0.50</strong>.</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Archivo Excel</label>
+                                    <div class="custom-file">
+                                        <input type="file" class="custom-file-input" id="archivo" name="archivo" accept=".xlsx,.xls" required>
+                                        <label class="custom-file-label" for="archivo">Selecciona un archivo...</label>
+                                    </div>
+                                </div>
+
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="actualizarExistentes" name="actualizarExistentes" value="true">
+                                    <label class="custom-control-label" for="actualizarExistentes">Actualizar laminas existentes si el numero ya existe</label>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <a th:href="@{/laminas}" class="btn btn-secondary">Volver</a>
+                                <button type="submit" class="btn btn-info">
+                                    <i class="fas fa-file-import mr-1"></i>Importar laminas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="card card-secondary card-outline">
+                        <div class="card-body">
+                            <h5 class="mb-3">Plantilla recomendada</h5>
+                            <p class="text-muted">Descarga la plantilla y pega tu listado. Es la forma mas segura para cargar cientos de laminas sin tocar el modulo general de productos.</p>
+                            <a th:href="@{/laminas/plantilla-excel}" class="btn btn-outline-secondary btn-block mb-3">
+                                <i class="fas fa-download mr-1"></i>Descargar plantilla Excel
+                            </a>
+
+                            <div class="callout callout-warning mb-0">
+                                <h6 class="mb-2">Consejos</h6>
+                                <ul class="mb-0 pl-3">
+                                    <li>Usa una bolsa por bloque de laminas para ubicarlas facil.</li>
+                                    <li>Si una categoria no existe, el sistema la crea automaticamente.</li>
+                                    <li>No mezcles productos normales en este archivo.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(function () {
+            $('.custom-file-input').on('change', function () {
+                const fileName = $(this).val().split('\\').pop();
+                $(this).next('.custom-file-label').html(fileName || 'Selecciona un archivo...');
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

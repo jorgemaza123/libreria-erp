@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface CompraRepository extends JpaRepository<Compra, Long> {
 
@@ -37,4 +38,12 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
      */
     @Query("SELECT c FROM Compra c WHERE c.fecha BETWEEN :inicio AND :fin AND c.estado != 'ANULADA'")
     List<Compra> findByPeriodo(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
+
+    @EntityGraph(attributePaths = {"proveedor", "detalles", "detalles.producto"})
+    @Query("SELECT c FROM Compra c WHERE c.proveedor.id = :proveedorId AND c.estado != 'ANULADA' ORDER BY c.fecha DESC")
+    List<Compra> findRecientesParaClonar(@Param("proveedorId") Long proveedorId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"proveedor", "detalles", "detalles.producto"})
+    @Query("SELECT c FROM Compra c WHERE c.id = :id")
+    Optional<Compra> findConDetallesById(@Param("id") Long id);
 }

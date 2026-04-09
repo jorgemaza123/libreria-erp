@@ -42,10 +42,10 @@ public class AppErrorController implements ErrorController {
         String path = requestUri != null ? requestUri.toString() : request.getRequestURI();
 
         // Log del error
-        if (statusCode >= 500) {
+        if (statusCode >= 500 || statusCode == 200) {
             log.error("Error {} en {}: {}", statusCode, path, errorMessage);
             if (exception != null) {
-                log.error("Excepción:", (Throwable) exception);
+                log.error("Excepción real (posible crash de renderizado):", (Throwable) exception);
             }
         } else {
             log.warn("Error {} en {}: {}", statusCode, path, errorMessage);

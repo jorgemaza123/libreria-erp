@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='laminas'">
+<head>
+    <title>Carga Rapida de Laminas</title>
+    <style>
+        .lamina-grid-input {
+            min-width: 0;
+        }
+
+        .lamina-grid-table td,
+        .lamina-grid-table th {
+            vertical-align: middle;
+        }
+
+        .lamina-grid-table .form-control {
+            min-width: 120px;
+        }
+
+        .lamina-grid-empty {
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #64748b;
+        }
+
+        .lamina-shortcut-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 28px;
+            padding: 0 10px;
+            border-radius: 8px;
+            background: #1f2937;
+            color: #fff;
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 0.76rem;
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Carga Rapida de Laminas</h1>
+                    <small class="text-muted">Para registrar varias laminas de una sola bolsa sin repetir el formulario una por una.</small>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/productos}">Productos</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/laminas}">Laminas</a></li>
+                        <li class="breadcrumb-item active">Carga rapida</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${warning}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div th:if="${erroresCargaRapida}" class="alert alert-warning">
+                <h5 class="mb-2"><i class="fas fa-exclamation-circle mr-2"></i>Lineas que no se pudieron procesar</h5>
+                <ul class="mb-0">
+                    <li th:each="err : ${erroresCargaRapida}" th:text="${err}"></li>
+                </ul>
+            </div>
+
+            <div th:if="${actualizacionesCargaRapida}" class="alert alert-info">
+                <h5 class="mb-2"><i class="fas fa-sync-alt mr-2"></i>Lineas que actualizaron una lamina existente</h5>
+                <ul class="mb-0">
+                    <li th:each="detalle : ${actualizacionesCargaRapida}" th:text="${detalle}"></li>
+                </ul>
+            </div>
+
+            <div class="card card-success card-outline">
+                <form th:action="@{/laminas/carga-rapida}" th:object="${dto}" method="post" id="formCargaRapidaLaminas">
+                    <input type="hidden" th:field="*{lineas}" id="lineasLaminas">
+
+                    <div class="card-body">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Categoria escolar</label>
+                                    <div class="input-group">
+                                        <select class="form-control" th:field="*{laminaCategoria}" id="cargaCategoriaSelect" required>
+                                            <option value="">Selecciona una categoria</option>
+                                            <option th:each="categoria : ${laminaCategorias}"
+                                                    th:value="${categoria.nombre}"
+                                                    th:text="${categoria.nombre}"></option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modalNuevaCategoria">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Marca</label>
+                                    <input type="text" class="form-control" th:field="*{laminaMarca}" placeholder="Ej: HUASCARAN">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Bolsa / contenedor</label>
+                                    <input type="text" class="form-control" th:field="*{laminaContenedor}" placeholder="Ej: BOLSA 1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Stock por lamina</label>
+                                    <input type="number" min="1" class="form-control" th:field="*{stockActual}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="mb-2">Cantidad rapida</label>
+                            <div class="btn-group btn-group-sm d-flex flex-wrap" role="group">
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="1">1</button>
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="2">2</button>
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="3">3</button>
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="5">5</button>
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="10">10</button>
+                                <button type="button" class="btn btn-outline-secondary mr-2 mb-2 stock-chip" data-stock="20">20</button>
+                            </div>
+                        </div>
+
+                        <div class="callout callout-info">
+                            <h5 class="mb-2">Captura rapida por teclado</h5>
+                            <p class="mb-2">Entra al numero, presiona <span class="lamina-shortcut-chip">ENTER</span>, completa el titulo y vuelve a presionar <span class="lamina-shortcut-chip">ENTER</span> para crear la siguiente fila automaticamente.</p>
+                            <p class="mb-0">Tambien puedes pegar un bloque completo con formatos como <code>1083 | CELULA ANIMAL</code>, <code>1083[TAB]CELULA ANIMAL</code> o <code>1083;CELULA ANIMAL</code>.</p>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-4">
+                                <div class="card card-light card-outline h-100">
+                                    <div class="card-header py-2">
+                                        <h3 class="card-title font-weight-bold mb-0">Pegado rapido</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group mb-2">
+                                            <label for="bloquePegadoLaminas">Pega varias lineas</label>
+                                            <textarea class="form-control" id="bloquePegadoLaminas" rows="8" placeholder="1083 | CELULA ANIMAL&#10;1084[TAB]CELULA VEGETAL&#10;1085;TEJIDOS HUMANOS"></textarea>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-info btn-block" id="btnImportarBloqueLaminas">
+                                            <i class="fas fa-file-import mr-1"></i>Convertir bloque a filas
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-8">
+                                <div class="card card-light card-outline mb-3">
+                                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                        <h3 class="card-title font-weight-bold mb-0">Lineas a registrar</h3>
+                                        <div>
+                                            <span class="badge badge-info mr-2" id="contadorFilasLaminas">0 filas</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAgregarFilaLamina">
+                                                <i class="fas fa-plus mr-1"></i>Agregar fila
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered table-hover mb-0 lamina-grid-table">
+                                                <thead class="thead-light">
+                                                <tr>
+                                                    <th style="width: 48px;" class="text-center">#</th>
+                                                    <th style="width: 190px;">Numero</th>
+                                                    <th>Titulo</th>
+                                                    <th style="width: 70px;" class="text-center">Quitar</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody id="filasLaminasBody"></tbody>
+                                            </table>
+                                        </div>
+                                        <div class="p-4 text-center lamina-grid-empty d-none" id="mensajeSinFilasLaminas">
+                                            <i class="fas fa-keyboard fa-2x mb-2"></i>
+                                            <div>Empieza escribiendo el numero de la primera lamina.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-info" id="btnPrevisualizar">
+                                        <i class="fas fa-eye mr-1"></i>Previsualizar
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive d-none" id="previewContainer">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="thead-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Numero</th>
+                                            <th>Titulo</th>
+                                            <th>Categoria</th>
+                                            <th>Bolsa</th>
+                                            <th>Stock</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="previewBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer text-right">
+                        <a th:href="@{/laminas}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save mr-1"></i>Guardar carga rapida
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalNuevaCategoria" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva categoria de lamina</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="categoriaError"></div>
+                    <div class="form-group mb-0">
+                        <label>Nombre</label>
+                        <input type="text" class="form-control" id="nuevaCategoriaNombre" placeholder="Ej: BIOLOGIA">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarCategoriaRapida">
+                        <i class="fas fa-save mr-1"></i>Guardar categoria
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(function () {
+            const $tbody = $('#filasLaminasBody');
+            const $hiddenLineas = $('#lineasLaminas');
+            let salidaPermitidaCargaRapida = false;
+            const estadoInicialCargaRapida = {
+                categoria: ($('#cargaCategoriaSelect').val() || '').trim(),
+                marca: ($('#laminaMarca').val() || '').trim(),
+                contenedor: ($('#laminaContenedor').val() || '').trim(),
+                stock: ($('#stockActual').val() || '').trim()
+            };
+
+            function cargaRapidaTieneCambiosPendientes() {
+                const categoriaActual = ($('#cargaCategoriaSelect').val() || '').trim();
+                const marcaActual = ($('#laminaMarca').val() || '').trim();
+                const contenedorActual = ($('#laminaContenedor').val() || '').trim();
+                const stockActual = ($('#stockActual').val() || '').trim();
+                const bloquePegado = ($('#bloquePegadoLaminas').val() || '').trim();
+                const lineasActuales = ($('#lineasLaminas').val() || '').trim();
+                const nuevaCategoria = ($('#nuevaCategoriaNombre').val() || '').trim();
+
+                return categoriaActual !== estadoInicialCargaRapida.categoria
+                    || marcaActual !== estadoInicialCargaRapida.marca
+                    || contenedorActual !== estadoInicialCargaRapida.contenedor
+                    || stockActual !== estadoInicialCargaRapida.stock
+                    || bloquePegado !== ''
+                    || lineasActuales !== ''
+                    || nuevaCategoria !== '';
+            }
+
+            function debeAdvertirSalidaCargaRapida() {
+                return !salidaPermitidaCargaRapida && cargaRapidaTieneCambiosPendientes();
+            }
+
+            function esNavegacionIgnorable(anchor, href) {
+                if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('mailto:')) {
+                    return true;
+                }
+                if (anchor.target === '_blank' || anchor.hasAttribute('download')) {
+                    return true;
+                }
+                try {
+                    const destino = new URL(href, window.location.origin);
+                    const actual = new URL(window.location.href);
+                    return destino.href === actual.href;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function confirmarSalidaCargaRapida(urlDestino) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Hay una carga rapida en edicion',
+                    text: 'Si sales ahora, perderas las laminas que aun no has guardado.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Salir sin guardar',
+                    cancelButtonText: 'Volver a editar',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        salidaPermitidaCargaRapida = true;
+                        window.location.href = urlDestino;
+                    }
+                });
+            }
+
+            function parsearLinea(linea) {
+                let numero = '';
+                let titulo = '';
+                const valor = (linea || '').trim();
+
+                if (!valor) {
+                    return { numero: '', titulo: '' };
+                }
+
+                if (valor.includes('|')) {
+                    const partes = valor.split('|', 2);
+                    numero = (partes[0] || '').trim();
+                    titulo = (partes[1] || '').trim();
+                } else if (valor.includes('\t')) {
+                    const partes = valor.split('\t', 2);
+                    numero = (partes[0] || '').trim();
+                    titulo = (partes[1] || '').trim();
+                } else if (valor.includes(';')) {
+                    const partes = valor.split(';', 2);
+                    numero = (partes[0] || '').trim();
+                    titulo = (partes[1] || '').trim();
+                } else if (/^\d+[A-Za-z0-9-]*$/.test(valor)) {
+                    numero = valor;
+                } else {
+                    titulo = valor;
+                }
+
+                return { numero, titulo };
+            }
+
+            function obtenerFilasRegistrables() {
+                const filas = [];
+                $('#filasLaminasBody tr').each(function () {
+                    const numero = ($(this).find('.lamina-numero-input').val() || '').trim();
+                    const titulo = ($(this).find('.lamina-titulo-input').val() || '').trim();
+                    if (!numero && !titulo) {
+                        return;
+                    }
+                    filas.push({ numero, titulo });
+                });
+                return filas;
+            }
+
+            function sincronizarLineasHidden() {
+                const lineas = obtenerFilasRegistrables().map(function (fila) {
+                    if (fila.numero && fila.titulo) {
+                        return fila.numero + ' | ' + fila.titulo;
+                    }
+                    return fila.numero || fila.titulo;
+                });
+                $hiddenLineas.val(lineas.join('\n'));
+                $('#contadorFilasLaminas').text(lineas.length + ' fila' + (lineas.length === 1 ? '' : 's'));
+                $('#mensajeSinFilasLaminas').toggleClass('d-none', lineas.length > 0 || $('#filasLaminasBody tr').length > 0);
+                renumerarFilas();
+            }
+
+            function renumerarFilas() {
+                $('#filasLaminasBody tr').each(function (index) {
+                    $(this).find('.fila-indice').text(index + 1);
+                });
+            }
+
+            function crearFila(datos, enfocarCampo) {
+                const fila = $('<tr>\
+                    <td class="text-center align-middle fila-indice"></td>\
+                    <td><input type="text" class="form-control form-control-sm lamina-numero-input lamina-grid-input" placeholder="Ej: 1083"></td>\
+                    <td><input type="text" class="form-control form-control-sm lamina-titulo-input lamina-grid-input" placeholder="Ej: CELULA ANIMAL"></td>\
+                    <td class="text-center align-middle">\
+                        <button type="button" class="btn btn-outline-danger btn-sm btnEliminarFilaLamina" title="Eliminar fila">\
+                            <i class="fas fa-trash-alt"></i>\
+                        </button>\
+                    </td>\
+                </tr>');
+
+                if (datos) {
+                    fila.find('.lamina-numero-input').val(datos.numero || '');
+                    fila.find('.lamina-titulo-input').val(datos.titulo || '');
+                }
+
+                $tbody.append(fila);
+                sincronizarLineasHidden();
+
+                const selector = enfocarCampo === 'titulo' ? '.lamina-titulo-input' : '.lamina-numero-input';
+                const $input = fila.find(selector);
+                setTimeout(function () {
+                    $input.trigger('focus').select();
+                }, 0);
+            }
+
+            function asegurarAlMenosUnaFila() {
+                if ($('#filasLaminasBody tr').length === 0) {
+                    crearFila({ numero: '', titulo: '' }, 'numero');
+                }
+            }
+
+            function importarBloquePegado() {
+                const bloque = ($('#bloquePegadoLaminas').val() || '').replace(/\r/g, '');
+                const lineas = bloque.split('\n').map(function (linea) { return linea.trim(); }).filter(Boolean);
+
+                if (lineas.length === 0) {
+                    Swal.fire('Aviso', 'Pega al menos una linea para convertirla en filas.', 'info');
+                    return;
+                }
+
+                const filasVacias = $('#filasLaminasBody tr').filter(function () {
+                    const numero = ($(this).find('.lamina-numero-input').val() || '').trim();
+                    const titulo = ($(this).find('.lamina-titulo-input').val() || '').trim();
+                    return !numero && !titulo;
+                });
+                filasVacias.remove();
+
+                lineas.forEach(function (linea) {
+                    crearFila(parsearLinea(linea));
+                });
+
+                $('#bloquePegadoLaminas').val('');
+                sincronizarLineasHidden();
+
+                const $ultimaFila = $('#filasLaminasBody tr:last .lamina-numero-input');
+                if ($ultimaFila.length) {
+                    $ultimaFila.trigger('focus').select();
+                }
+            }
+
+            function renderizarPreview() {
+                sincronizarLineasHidden();
+                const filas = obtenerFilasRegistrables();
+                const categoria = $('#cargaCategoriaSelect').val() || 'SIN CATEGORIA';
+                const bolsa = $('#laminaContenedor').val() || '-';
+                const stock = $('#stockActual').val() || 1;
+                const body = $('#previewBody');
+
+                body.empty();
+
+                if (filas.length === 0) {
+                    $('#previewContainer').addClass('d-none');
+                    return;
+                }
+
+                filas.forEach(function (fila, index) {
+                    body.append(
+                        '<tr>' +
+                        '<td>' + (index + 1) + '</td>' +
+                        '<td>' + (fila.numero || '-') + '</td>' +
+                        '<td>' + (fila.titulo || '-') + '</td>' +
+                        '<td>' + categoria + '</td>' +
+                        '<td>' + bolsa + '</td>' +
+                        '<td>' + stock + '</td>' +
+                        '</tr>'
+                    );
+                });
+
+                $('#previewContainer').removeClass('d-none');
+            }
+
+            $('.stock-chip').on('click', function () {
+                $('#stockActual').val($(this).data('stock'));
+            });
+
+            $('#btnAgregarFilaLamina').on('click', function () {
+                crearFila({ numero: '', titulo: '' }, 'numero');
+            });
+
+            $('#btnImportarBloqueLaminas').on('click', function () {
+                importarBloquePegado();
+            });
+
+            $('#btnPrevisualizar').on('click', function () {
+                renderizarPreview();
+            });
+
+            $(document).on('input', '.lamina-numero-input, .lamina-titulo-input', function () {
+                sincronizarLineasHidden();
+            });
+
+            $(document).on('keydown', '.lamina-numero-input', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $(this).closest('tr').find('.lamina-titulo-input').trigger('focus').select();
+                }
+            });
+
+            $(document).on('keydown', '.lamina-titulo-input', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const $filaActual = $(this).closest('tr');
+                    const $siguiente = $filaActual.next('tr').find('.lamina-numero-input');
+
+                    if ($siguiente.length) {
+                        $siguiente.trigger('focus').select();
+                        return;
+                    }
+
+                    crearFila({ numero: '', titulo: '' }, 'numero');
+                }
+            });
+
+            $(document).on('click', '.btnEliminarFilaLamina', function () {
+                $(this).closest('tr').remove();
+                asegurarAlMenosUnaFila();
+                sincronizarLineasHidden();
+            });
+
+            $('#formCargaRapidaLaminas').on('submit', function (e) {
+                sincronizarLineasHidden();
+                if (!$('#lineasLaminas').val().trim()) {
+                    e.preventDefault();
+                    Swal.fire('Aviso', 'Agrega al menos una lamina antes de guardar la carga rapida.', 'warning');
+                    salidaPermitidaCargaRapida = false;
+                    return;
+                }
+                salidaPermitidaCargaRapida = true;
+            });
+
+            $(document).on('click', 'a[href]', function (e) {
+                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                    return;
+                }
+
+                const href = $(this).attr('href');
+                if (esNavegacionIgnorable(this, href) || !debeAdvertirSalidaCargaRapida()) {
+                    return;
+                }
+
+                e.preventDefault();
+                confirmarSalidaCargaRapida(href);
+            });
+
+            window.addEventListener('beforeunload', function (e) {
+                if (!debeAdvertirSalidaCargaRapida()) {
+                    return;
+                }
+                e.preventDefault();
+                e.returnValue = '';
+            });
+
+            $('#btnGuardarCategoriaRapida').on('click', function () {
+                const nombre = ($('#nuevaCategoriaNombre').val() || '').trim();
+                const $error = $('#categoriaError');
+                $error.addClass('d-none').text('');
+
+                if (!nombre) {
+                    $error.removeClass('d-none').text('Escribe el nombre de la categoria.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/laminas/categorias/api/guardar',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ nombre }),
+                    success: function (response) {
+                        const select = $('#cargaCategoriaSelect');
+                        if (select.find('option[value="' + response.nombre + '"]').length === 0) {
+                            select.append(new Option(response.nombre, response.nombre, true, true));
+                        }
+                        select.val(response.nombre).trigger('change');
+                        $('#nuevaCategoriaNombre').val('');
+                        $('#modalNuevaCategoria').modal('hide');
+                    },
+                    error: function (xhr) {
+                        const mensaje = xhr.responseJSON && xhr.responseJSON.error
+                            ? xhr.responseJSON.error
+                            : 'No se pudo guardar la categoria.';
+                        $error.removeClass('d-none').text(mensaje);
+                    }
+                });
+            });
+
+            const lineasIniciales = ($hiddenLineas.val() || '').replace(/\r/g, '').split('\n').map(function (linea) {
+                return linea.trim();
+            }).filter(Boolean);
+
+            if (lineasIniciales.length > 0) {
+                lineasIniciales.forEach(function (linea) {
+                    crearFila(parsearLinea(linea));
+                });
+            } else {
+                crearFila({ numero: '', titulo: '' }, 'numero');
+            }
+
+            sincronizarLineasHidden();
+        });
+    </script>
+</th:block>
+</body>
+</html>

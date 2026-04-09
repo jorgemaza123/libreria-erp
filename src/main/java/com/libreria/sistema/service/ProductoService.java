@@ -6,6 +6,7 @@ import com.libreria.sistema.repository.ProductoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +20,9 @@ public class ProductoService {
     }
 
     public List<Producto> listarTodos() {
-        return productoRepository.findAll();
+        // FIX: usar query con filtro activo=true para evitar cargar productos inactivos
+        // que causaba ERR_INCOMPLETE_CHUNKED_ENCODING por exceso de datos en la respuesta
+        return productoRepository.findByActivoTrueOrderByNombreAsc();
     }
     
     public List<Producto> listarActivos() {
@@ -33,6 +36,8 @@ public class ProductoService {
     @Transactional
     @Auditable(modulo = "PRODUCTOS", accion = "MODIFICAR", descripcion = "Guardar producto")
     public void guardar(Producto producto) throws Exception {
+        normalizarProducto(producto);
+
         // 1. Autogenerar código interno si está vacío
         if (producto.getCodigoInterno() == null || producto.getCodigoInterno().trim().isEmpty()) {
             long cantidad = productoRepository.count();
@@ -61,6 +66,78 @@ public class ProductoService {
         }
 
         productoRepository.save(producto);
+    }
+
+    private void normalizarProducto(Producto producto) {
+        if (producto.getClasificacion() == null || producto.getClasificacion().isBlank()) {
+            producto.setClasificacion(Producto.CLASIFICACION_MERCADERIA);
+        } else {
+            producto.setClasificacion(producto.getClasificacion().trim().toUpperCase());
+        }
+
+        if (producto.getOrigenCatalogo() == null || producto.getOrigenCatalogo().isBlank()) {
+            producto.setOrigenCatalogo(Producto.ORIGEN_CATALOGO_GENERAL);
+        } else {
+            producto.setOrigenCatalogo(producto.getOrigenCatalogo().trim().toUpperCase());
+        }
+
+        producto.setEsLamina(Boolean.TRUE.equals(producto.getEsLamina()));
+
+        if (producto.esLamina()) {
+            producto.setLaminaNumero(normalizarTexto(producto.getLaminaNumero()));
+            producto.setLaminaTitulo(normalizarTexto(producto.getLaminaTitulo()));
+            producto.setLaminaMarca(normalizarTexto(producto.getLaminaMarca()));
+            producto.setLaminaCategoria(normalizarTexto(producto.getLaminaCategoria()));
+            producto.setLaminaProveedorRef(normalizarTexto(producto.getLaminaProveedorRef()));
+            producto.setLaminaZona(normalizarTexto(producto.getLaminaZona()));
+            producto.setLaminaContenedor(normalizarTexto(producto.getLaminaContenedor()));
+            producto.setLaminaPosicion(normalizarTexto(producto.getLaminaPosicion()));
+
+            if ((producto.getMarca() == null || producto.getMarca().isBlank()) && producto.getLaminaMarca() != null) {
+                producto.setMarca(producto.getLaminaMarca());
+            }
+        } else {
+            producto.setLaminaNumero(null);
+            producto.setLaminaTitulo(null);
+            producto.setLaminaMarca(null);
+            producto.setLaminaCategoria(null);
+            producto.setLaminaProveedorRef(null);
+            producto.setLaminaZona(null);
+            producto.setLaminaContenedor(null);
+            producto.setLaminaPosicion(null);
+        }
+
+        if (producto.esInsumo()) {
+            if (producto.getPrecioVenta() == null) {
+                producto.setPrecioVenta(BigDecimal.ZERO);
+            }
+            if (producto.getPrecioMayorista() == null) {
+                producto.setPrecioMayorista(BigDecimal.ZERO);
+            }
+            if (producto.getStockMinimo() == null) {
+                producto.setStockMinimo(0);
+            }
+            if (producto.getUnidadMedida() == null || producto.getUnidadMedida().isBlank()) {
+                producto.setUnidadMedida("UNIDAD");
+            }
+            if (producto.getTipoAfectacionIgv() == null || producto.getTipoAfectacionIgv().isBlank()) {
+                producto.setTipoAfectacionIgv("GRAVADO");
+            }
+            if (producto.getTipo() == null || producto.getTipo().isBlank() || "SERVICIO".equalsIgnoreCase(producto.getTipo())) {
+                producto.setTipo("ESTANDAR");
+            }
+            producto.setUbicacionEstante(null);
+            producto.setUbicacionFila(null);
+            producto.setUbicacionColumna(null);
+        }
+    }
+
+    private String normalizarTexto(String valor) {
+        if (valor == null) {
+            return null;
+        }
+        String limpio = valor.trim();
+        return limpio.isEmpty() ? null : limpio.toUpperCase();
     }
 
     /**

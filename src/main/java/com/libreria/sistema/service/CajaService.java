@@ -71,17 +71,27 @@ public class CajaService {
      */
     @Transactional
     public void registrarMovimiento(String tipo, String concepto, BigDecimal monto, String categoria) {
+        if (tipo == null || tipo.isBlank()) {
+            throw new IllegalArgumentException("El tipo de movimiento es obligatorio.");
+        }
+        if (concepto == null || concepto.isBlank()) {
+            throw new IllegalArgumentException("El concepto del movimiento es obligatorio.");
+        }
+        if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El monto debe ser mayor a cero.");
+        }
+
         SesionCaja sesion = obtenerSesionActiva()
                 .orElseThrow(() -> new RuntimeException("CAJA CERRADA: Debe abrir caja antes de operar."));
 
         MovimientoCaja mov = new MovimientoCaja();
-        mov.setTipo(tipo);
-        mov.setConcepto(concepto.toUpperCase());
+        mov.setTipo(tipo.trim().toUpperCase());
+        mov.setConcepto(concepto.trim().toUpperCase());
         mov.setMonto(monto);
         mov.setFecha(LocalDateTime.now());
         mov.setUsuario(getUsuarioActual());
         mov.setSesion(sesion);
-        mov.setCategoriaMovimiento(categoria);
+        mov.setCategoriaMovimiento(categoria != null && !categoria.isBlank() ? categoria.trim().toUpperCase() : null);
 
         movimientoRepo.save(mov);
     }
@@ -92,7 +102,7 @@ public class CajaService {
      */
     @Transactional
     public void registrarMovimiento(String tipo, String concepto, BigDecimal monto) {
-        String categoria = "INGRESO".equals(tipo) ? CategoriaMovimiento.OTRO_INGRESO : CategoriaMovimiento.OTRO_EGRESO;
+        String categoria = "INGRESO".equalsIgnoreCase(tipo) ? CategoriaMovimiento.OTRO_INGRESO : CategoriaMovimiento.OTRO_EGRESO;
         registrarMovimiento(tipo, concepto, monto, categoria);
     }
 

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_plantillas'">
+<head>
+    <title>Formulario de Plantilla Personalizada</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1 th:text="${dto.id != null ? 'Editar plantilla' : 'Nueva plantilla'}">Nueva plantilla</h1>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <form th:action="@{/personalizado/plantillas/guardar}" method="post" enctype="multipart/form-data" id="formPlantillaPersonalizada">
+                <input type="hidden" name="id" th:value="${dto.id}">
+                <input type="hidden" name="fotoActual" th:value="${dto.fotoActual}">
+                <input type="hidden" name="componentesJson" id="componentesJson" th:value="${dto.componentesJson}">
+                <input type="hidden" name="rangosJson" id="rangosJson" th:value="${dto.rangosJson}">
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card card-primary card-outline">
+                            <div class="card-header"><h3 class="card-title">Datos comerciales</h3></div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label>Código modelo</label>
+                                        <input type="text" class="form-control" name="codigoModelo" th:value="${dto.codigoModelo}" required>
+                                    </div>
+                                    <div class="form-group col-md-5">
+                                        <label>Nombre comercial</label>
+                                        <input type="text" class="form-control" name="nombreComercial" th:value="${dto.nombreComercial}" required>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Slug</label>
+                                        <input type="text" class="form-control" name="slug" th:value="${dto.slug}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>Categoría</label>
+                                        <input type="text" class="form-control" name="categoria" th:value="${dto.categoria}" placeholder="TAZA, STICKER, POLO">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Colección / ocasión</label>
+                                        <input type="text" class="form-control" name="coleccionOcasion" th:value="${dto.coleccionOcasion}" placeholder="DIA_DE_LA_MADRE">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Margen mínimo %</label>
+                                        <input type="number" step="0.01" class="form-control" name="margenMinimoPct" th:value="${dto.margenMinimoPct}">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Margen objetivo %</label>
+                                        <input type="number" step="0.01" class="form-control" name="margenObjetivoPct" th:value="${dto.margenObjetivoPct}">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descripción comercial</label>
+                                    <textarea class="form-control" rows="3" name="descripcionComercial" th:text="${dto.descripcionComercial}"></textarea>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label>Observaciones internas</label>
+                                    <textarea class="form-control" rows="2" name="observacionesInternas" th:text="${dto.observacionesInternas}"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-info card-outline">
+                            <div class="card-header"><h3 class="card-title">Componentes base y opcionales</h3></div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-2">
+                                        <label>Origen</label>
+                                        <select class="form-control" id="cpTipoOrigen">
+                                            <option value="INSUMO">INSUMO</option>
+                                            <option value="ADICIONAL">ADICIONAL</option>
+                                            <option value="MANUAL">MANUAL</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Insumo</label>
+                                        <select class="form-control" id="cpInsumo">
+                                            <option value="">-</option>
+                                            <option th:each="insumo : ${insumosActivos}" th:value="${insumo.id}" th:text="${insumo.codigo + ' - ' + insumo.nombre}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Adicional</label>
+                                        <select class="form-control" id="cpAdicional">
+                                            <option value="">-</option>
+                                            <option th:each="adicional : ${adicionalesActivos}" th:value="${adicional.id}" th:text="${adicional.nombre}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Descripción manual</label>
+                                        <input type="text" class="form-control" id="cpDescripcion" placeholder="Caja kraft premium">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-2">
+                                        <label>Cantidad</label>
+                                        <input type="number" step="0.01" class="form-control" id="cpCantidad" value="1">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Clase</label>
+                                        <select class="form-control" id="cpClase">
+                                            <option value="BASE">BASE</option>
+                                            <option value="INCLUIDO">INCLUIDO</option>
+                                            <option value="OPCIONAL">OPCIONAL</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Orden</label>
+                                        <input type="number" class="form-control" id="cpOrden" value="0">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>&nbsp;</label>
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="cpIncluido" checked>
+                                            <label class="custom-control-label" for="cpIncluido">Incluido</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>&nbsp;</label>
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="cpEditableCantidad" checked>
+                                            <label class="custom-control-label" for="cpEditableCantidad">Editable</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>&nbsp;</label>
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="cpEliminar">
+                                            <label class="custom-control-label" for="cpEliminar">Puede quitarse</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-info mb-3" id="btnAgregarComponente">Agregar componente</button>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                        <tr>
+                                            <th>Origen</th>
+                                            <th>Nombre</th>
+                                            <th>Cantidad</th>
+                                            <th>Clase</th>
+                                            <th>Flags</th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="tablaComponentesPlantilla"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-success card-outline">
+                            <div class="card-header"><h3 class="card-title">Rangos de precio</h3></div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-2">
+                                        <label>Cant. mínima</label>
+                                        <input type="number" class="form-control" id="rgMin" value="1">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Cant. máxima</label>
+                                        <input type="number" class="form-control" id="rgMax" placeholder="Vacío = abierto">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Margen min %</label>
+                                        <input type="number" step="0.01" class="form-control" id="rgMargenMin">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Margen obj %</label>
+                                        <input type="number" step="0.01" class="form-control" id="rgMargenObj">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Cargo fijo</label>
+                                        <input type="number" step="0.01" class="form-control" id="rgCargo" value="0">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Desc. mayor %</label>
+                                        <input type="number" step="0.01" class="form-control" id="rgDescuento" value="0">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="rgActivo" checked>
+                                        <label class="custom-control-label" for="rgActivo">Rango activo</label>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-success mb-3" id="btnAgregarRango">Agregar rango</button>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                        <tr>
+                                            <th>Cantidad</th>
+                                            <th>Margen mínimo</th>
+                                            <th>Margen objetivo</th>
+                                            <th>Cargo fijo</th>
+                                            <th>Desc. mayor</th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="tablaRangosPlantilla"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="card card-secondary card-outline">
+                            <div class="card-header"><h3 class="card-title">Estado y foto</h3></div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Foto principal</label>
+                                    <input type="file" class="form-control-file" name="fotoFile" accept="image/*">
+                                    <div class="mt-3" th:if="${dto.fotoActual}">
+                                        <img th:src="@{'/uploads/' + ${dto.fotoActual}}" alt="foto"
+                                             style="width:100%;max-height:280px;object-fit:cover;border-radius:16px;">
+                                    </div>
+                                </div>
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="activo" name="activo" th:checked="${dto.activo == null || dto.activo}">
+                                    <label class="custom-control-label" for="activo">Activa</label>
+                                </div>
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="visibleWeb" name="visibleWeb" th:checked="${dto.visibleWeb == null || dto.visibleWeb}">
+                                    <label class="custom-control-label" for="visibleWeb">Visible en web</label>
+                                </div>
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="vendibleDirecto" name="vendibleDirecto" th:checked="${dto.vendibleDirecto == null || dto.vendibleDirecto}">
+                                    <label class="custom-control-label" for="vendibleDirecto">Vendible directo</label>
+                                </div>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="permitePersonalizacion" name="permitePersonalizacion" th:checked="${dto.permitePersonalizacion == null || dto.permitePersonalizacion}">
+                                    <label class="custom-control-label" for="permitePersonalizacion">Permite personalización</label>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <a href="/personalizado/plantillas" class="btn btn-outline-secondary">Cancelar</a>
+                                <button type="submit" class="btn btn-primary">Guardar plantilla</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        let componentes = [];
+        let rangos = [];
+        const insumosIndex = {};
+        const adicionalesIndex = {};
+        /*[# th:each="insumo : ${insumosActivos}"]*/
+        insumosIndex[[${insumo.id}]] = [[${insumo.nombre}]];
+        /*[/]*/
+        /*[# th:each="adicional : ${adicionalesActivos}"]*/
+        adicionalesIndex[[${adicional.id}]] = [[${adicional.nombre}]];
+        /*[/]*/
+
+        function renderComponentes() {
+            const tbody = $('#tablaComponentesPlantilla');
+            if (!componentes.length) {
+                tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">Aún no hay componentes.</td></tr>');
+                return;
+            }
+            tbody.html(componentes.map((item, index) => `
+                <tr>
+                    <td>${item.tipoOrigen}</td>
+                    <td>${resolverNombreComponente(item)}</td>
+                    <td>${item.cantidadBase}</td>
+                    <td>${item.tipoComponente}</td>
+                    <td>
+                        ${(item.incluidoPorDefecto ? '<span class="badge badge-success mr-1">Incluido</span>' : '')}
+                        ${(item.editableCantidad ? '<span class="badge badge-info mr-1">Editable</span>' : '')}
+                        ${(item.puedeEliminarse ? '<span class="badge badge-warning">Removible</span>' : '')}
+                    </td>
+                    <td class="text-right"><button type="button" class="btn btn-sm btn-outline-danger" onclick="quitarComponente(${index})">Quitar</button></td>
+                </tr>
+            `).join(''));
+        }
+
+        function renderRangos() {
+            const tbody = $('#tablaRangosPlantilla');
+            if (!rangos.length) {
+                tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">Aún no hay rangos.</td></tr>');
+                return;
+            }
+            tbody.html(rangos.map((item, index) => `
+                <tr>
+                    <td>${item.cantidadMax ? item.cantidadMin + ' - ' + item.cantidadMax : item.cantidadMin + '+'}</td>
+                    <td>${parseFloat(item.margenMinimoPct || 0).toFixed(2)}%</td>
+                    <td>${parseFloat(item.margenObjetivoPct || 0).toFixed(2)}%</td>
+                    <td>S/ ${parseFloat(item.cargoFijo || 0).toFixed(2)}</td>
+                    <td>${parseFloat(item.descuentoMayorPct || 0).toFixed(2)}%</td>
+                    <td class="text-right"><button type="button" class="btn btn-sm btn-outline-danger" onclick="quitarRango(${index})">Quitar</button></td>
+                </tr>
+            `).join(''));
+        }
+
+        function resolverNombreComponente(item) {
+            if (item.tipoOrigen === 'INSUMO' && item.insumoPersonalizadoId) {
+                return insumosIndex[item.insumoPersonalizadoId] || ('INSUMO #' + item.insumoPersonalizadoId);
+            }
+            if (item.tipoOrigen === 'ADICIONAL' && item.adicionalPersonalizadoId) {
+                return adicionalesIndex[item.adicionalPersonalizadoId] || ('ADICIONAL #' + item.adicionalPersonalizadoId);
+            }
+            return item.descripcionManual || 'COMPONENTE';
+        }
+
+        function syncPlantillaJson() {
+            $('#componentesJson').val(JSON.stringify(componentes));
+            $('#rangosJson').val(JSON.stringify(rangos));
+        }
+
+        function quitarComponente(index) {
+            componentes.splice(index, 1);
+            syncPlantillaJson();
+            renderComponentes();
+        }
+
+        function quitarRango(index) {
+            rangos.splice(index, 1);
+            syncPlantillaJson();
+            renderRangos();
+        }
+
+        $('#btnAgregarComponente').on('click', function () {
+            const tipoOrigen = $('#cpTipoOrigen').val();
+            const insumoId = $('#cpInsumo').val();
+            const adicionalId = $('#cpAdicional').val();
+            const descripcion = ($('#cpDescripcion').val() || '').trim();
+            if (tipoOrigen === 'INSUMO' && !insumoId) {
+                Swal.fire('Aviso', 'Selecciona un insumo.', 'warning');
+                return;
+            }
+            if (tipoOrigen === 'ADICIONAL' && !adicionalId) {
+                Swal.fire('Aviso', 'Selecciona un adicional.', 'warning');
+                return;
+            }
+            if (tipoOrigen === 'MANUAL' && !descripcion) {
+                Swal.fire('Aviso', 'Escribe una descripción manual.', 'warning');
+                return;
+            }
+            componentes.push({
+                tipoOrigen: tipoOrigen,
+                insumoPersonalizadoId: insumoId ? parseInt(insumoId, 10) : null,
+                adicionalPersonalizadoId: adicionalId ? parseInt(adicionalId, 10) : null,
+                descripcionManual: descripcion,
+                cantidadBase: parseFloat($('#cpCantidad').val() || '1'),
+                tipoComponente: $('#cpClase').val(),
+                incluidoPorDefecto: $('#cpIncluido').is(':checked'),
+                editableCantidad: $('#cpEditableCantidad').is(':checked'),
+                puedeEliminarse: $('#cpEliminar').is(':checked'),
+                orden: parseInt($('#cpOrden').val() || '0', 10)
+            });
+            syncPlantillaJson();
+            renderComponentes();
+            $('#cpDescripcion').val('');
+            $('#cpCantidad').val('1');
+            $('#cpOrden').val('0');
+            $('#cpInsumo, #cpAdicional').val('');
+        });
+
+        $('#btnAgregarRango').on('click', function () {
+            const cantidadMin = parseInt($('#rgMin').val() || '0', 10);
+            if (!cantidadMin || cantidadMin <= 0) {
+                Swal.fire('Aviso', 'Ingresa una cantidad mínima válida.', 'warning');
+                return;
+            }
+            const maxRaw = ($('#rgMax').val() || '').trim();
+            rangos.push({
+                cantidadMin: cantidadMin,
+                cantidadMax: maxRaw ? parseInt(maxRaw, 10) : null,
+                margenMinimoPct: parseFloat($('#rgMargenMin').val() || '0'),
+                margenObjetivoPct: parseFloat($('#rgMargenObj').val() || '0'),
+                cargoFijo: parseFloat($('#rgCargo').val() || '0'),
+                descuentoMayorPct: parseFloat($('#rgDescuento').val() || '0'),
+                activo: $('#rgActivo').is(':checked')
+            });
+            syncPlantillaJson();
+            renderRangos();
+            $('#rgMin').val('1');
+            $('#rgMax').val('');
+            $('#rgMargenMin, #rgMargenObj').val('');
+            $('#rgCargo, #rgDescuento').val('0');
+            $('#rgActivo').prop('checked', true);
+        });
+
+        $(function () {
+            try { componentes = JSON.parse($('#componentesJson').val() || '[]'); } catch (e) { componentes = []; }
+            try { rangos = JSON.parse($('#rangosJson').val() || '[]'); } catch (e) { rangos = []; }
+            renderComponentes();
+            renderRangos();
+            $('#formPlantillaPersonalizada').on('submit', function () {
+                syncPlantillaJson();
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

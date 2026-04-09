@@ -14,6 +14,7 @@ import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.ProveedorRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -37,16 +39,12 @@ public class CompraService {
     @Autowired
     private KardexRepository kardexRepository;
 
-    // FIX ERROR-2+3: necesitamos ProveedorRepository y CajaService en el servicio
     @Autowired
     private ProveedorRepository proveedorRepository;
 
     @Autowired
     private CajaService cajaService;
 
-    /**
-     * Resultado enriquecido de una compra: incluye la entidad y alertas de precios.
-     */
     public static class ResultadoCompra {
         private final Compra compra;
         private final List<Map<String, Object>> alertasPrecios;
@@ -65,13 +63,6 @@ public class CompraService {
         }
     }
 
-    /**
-     * FIX ERROR-2: guardarCompra movido al servicio con @Transactional.
-     * Garantiza que stock, kardex, compra y movimiento de caja se confirmen
-     * o se reviertan juntos. Si la caja está cerrada, toda la operación falla.
-     *
-     * FIX ERROR-4: tipo de kardex corregido a "INGRESO" (era "ENTRADA").
-     */
     @Transactional
     @Auditable(modulo = "COMPRAS", accion = "CREAR", descripcion = "Registrar nueva compra")
     public ResultadoCompra guardarCompra(CompraDTO dto) {
@@ -87,13 +78,14 @@ public class CompraService {
         BigDecimal totalCompra = BigDecimal.ZERO;
         List<Map<String, Object>> alertasPrecios = new ArrayList<>();
 
-        // ALTO-2 FIX: Validar cantidades y costos antes de procesar (fail-fast)
         for (CompraDTO.DetalleDTO item : dto.getItems()) {
-            if (item.getCantidad() == null || item.getCantidad() <= 0) {
-                throw new RuntimeException("Cantidad inválida o cero para uno de los productos. Verifique los datos.");
+            int cantidadBase = resolverCantidadBase(item);
+            BigDecimal costoBase = resolverCostoBase(item, cantidadBase);
+            if (cantidadBase <= 0) {
+                throw new RuntimeException("Cantidad invalida o cero para uno de los productos. Verifique los datos.");
             }
-            if (item.getCosto() == null || item.getCosto().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new RuntimeException("Costo inválido o cero para uno de los productos. Verifique los datos.");
+            if (costoBase.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("Costo invalido o cero para uno de los productos. Verifique los datos.");
             }
         }
 
@@ -101,53 +93,55 @@ public class CompraService {
             Producto prod = productoRepository.findById(item.getProductoId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado ID: " + item.getProductoId()));
 
+            int cantidadBase = resolverCantidadBase(item);
+            BigDecimal costoBase = resolverCostoBase(item, cantidadBase);
+            BigDecimal subtotal = resolverSubtotal(item, cantidadBase, costoBase);
+
             DetalleCompra det = new DetalleCompra();
             det.setCompra(compra);
             det.setProducto(prod);
-            det.setCantidad(item.getCantidad());
-            det.setPrecioUnitario(item.getCosto());
-
-            BigDecimal subtotal = item.getCosto().multiply(new BigDecimal(item.getCantidad()));
+            det.setCantidad(cantidadBase);
+            det.setPrecioUnitario(costoBase);
+            det.setTipoCatalogo(normalizarTexto(item.getTipoCatalogo()).isBlank() ? "PRODUCTO_GENERAL" : normalizarTexto(item.getTipoCatalogo()).toUpperCase());
+            det.setPresentacionNombre(normalizarTexto(item.getPresentacionNombre()).isBlank() ? null : normalizarTexto(item.getPresentacionNombre()).toUpperCase());
+            det.setCantidadPresentacion(item.getCantidadPresentacion());
+            det.setFactorPresentacion(item.getFactorPresentacion());
+            det.setPrecioPorPresentacion(item.getPrecioPorPresentacion());
             det.setSubtotal(subtotal);
             compra.getDetalles().add(det);
             totalCompra = totalCompra.add(subtotal);
 
-            // FIX ERROR-4: tipo corregido de "ENTRADA" a "INGRESO"
+            int stockAntes = prod.getStockActual() != null ? prod.getStockActual() : 0;
+            int cantidadNueva = cantidadBase;
+            BigDecimal costoActual = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
+            BigDecimal costoNuevo = costoBase;
+            BigDecimal precioVentaActual = prod.getPrecioVenta();
+
             Kardex kardex = new Kardex();
             kardex.setProducto(prod);
             kardex.setTipo("INGRESO");
             kardex.setMotivo("COMPRA " + compra.getTipoComprobante() + " " + compra.getNumeroComprobante());
-            kardex.setCantidad(item.getCantidad());
-            kardex.setStockAnterior(prod.getStockActual());
-            kardex.setStockActual(prod.getStockActual() + item.getCantidad());
+            kardex.setCantidad(cantidadNueva);
+            kardex.setStockAnterior(stockAntes);
+            kardex.setStockActual(stockAntes + cantidadNueva);
             kardexRepository.save(kardex);
-
-            // Costo promedio ponderado
-            BigDecimal costoActual = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
-            // Guardar valores anteriores para alerta
-            BigDecimal precioVentaActual = prod.getPrecioVenta();
-            int stockAntes = prod.getStockActual() != null ? prod.getStockActual() : 0;
-            int cantidadNueva = item.getCantidad();
-            BigDecimal costoNuevo = item.getCosto();
 
             if (stockAntes + cantidadNueva > 0) {
                 BigDecimal valorActual = costoActual.multiply(BigDecimal.valueOf(stockAntes));
                 BigDecimal valorNuevo = costoNuevo.multiply(BigDecimal.valueOf(cantidadNueva));
                 BigDecimal costoPromedio = valorActual.add(valorNuevo)
-                        .divide(BigDecimal.valueOf(stockAntes + cantidadNueva), 2, java.math.RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(stockAntes + cantidadNueva), 2, RoundingMode.HALF_UP);
                 prod.setPrecioCompra(costoPromedio);
             } else {
                 prod.setPrecioCompra(costoNuevo);
             }
 
-            // Detectar cambio significativo de costo (> 10%) para alertar al usuario
-            BigDecimal costoFinal = prod.getPrecioCompra(); // ya actualizado
-            if (costoActual.compareTo(BigDecimal.ZERO) > 0 && precioVentaActual != null) {
+            BigDecimal costoFinal = prod.getPrecioCompra();
+            if (!prod.esInsumo() && costoActual.compareTo(BigDecimal.ZERO) > 0 && precioVentaActual != null) {
                 BigDecimal cambioPct = costoFinal.subtract(costoActual).abs()
                         .divide(costoActual, 4, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
                 if (cambioPct.compareTo(new BigDecimal("10")) > 0) {
-                    // Calcular precio sugerido manteniendo el margen actual
                     BigDecimal margenActual = precioVentaActual.subtract(costoActual)
                             .divide(costoActual, 4, RoundingMode.HALF_UP);
                     BigDecimal precioSugerido = costoFinal.multiply(BigDecimal.ONE.add(margenActual))
@@ -171,7 +165,6 @@ public class CompraService {
         compra.setTotal(totalCompra);
         Compra guardada = compraRepository.save(compra);
 
-        // Movimiento de caja — si la caja está cerrada lanza excepción y revierte todo
         cajaService.registrarMovimiento(
                 "EGRESO",
                 "COMPRA PROV: " + prov.getRazonSocial() + " DOC: " + guardada.getNumeroComprobante(),
@@ -182,85 +175,56 @@ public class CompraService {
         return new ResultadoCompra(guardada, alertasPrecios);
     }
 
-    /**
-     * Anular una compra (solo ADMIN)
-     * - Cambia el estado a ANULADA
-     * - Revierte el stock (decrementa)
-     * - Registra kardex con tipo SALIDA
-     * FIX ERROR-3: también revierte el egreso en caja.
-     */
     @Transactional
     @Auditable(modulo = "COMPRAS", accion = "ANULAR", descripcion = "Anular compra")
     public void anularCompra(Long compraId) {
-        // Obtener la compra
         Compra compra = compraRepository.findById(compraId)
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada"));
 
-        // Validar que no esté ya anulada
         if ("ANULADA".equals(compra.getEstado())) {
-            throw new RuntimeException("La compra ya está anulada");
+            throw new RuntimeException("La compra ya esta anulada");
         }
 
-        // Cambiar estado
         compra.setEstado("ANULADA");
 
-        // Reversar stock (decrementar lo que se había agregado)
         for (DetalleCompra detalle : compra.getDetalles()) {
             Producto producto = detalle.getProducto();
-            if (producto != null) {
-                int cantidadComprada = detalle.getCantidad();
-
-                // Verificar que hay suficiente stock para reversar
-                if (producto.getStockActual() < cantidadComprada) {
-                    log.error(
-                            "Stock insuficiente para reversar compra. Producto: {}, Stock actual: {}, Cantidad a reversar: {}",
-                            producto.getNombre(), producto.getStockActual(), cantidadComprada);
-                    throw new RuntimeException("Stock insuficiente para reversar la compra del producto: " +
-                            producto.getNombre() + ". Stock actual: " + producto.getStockActual() +
-                            ", Se requiere: " + cantidadComprada);
-                }
-
-                // Decrementar stock
-                producto.setStockActual(producto.getStockActual() - cantidadComprada);
-                productoRepository.save(producto);
-
-                // Registrar en kardex
-                Kardex kardex = new Kardex();
-                kardex.setProducto(producto);
-                kardex.setTipo("SALIDA");
-                kardex.setMotivo("ANULACIÓN COMPRA " + compra.getNumeroComprobante() +
-                        " (ID: " + compra.getId() + ")");
-                kardex.setCantidad(cantidadComprada);
-                kardex.setStockAnterior(producto.getStockActual() + cantidadComprada);
-                kardex.setStockActual(producto.getStockActual());
-                kardexRepository.save(kardex);
+            if (producto == null) {
+                continue;
             }
+
+            int cantidadComprada = detalle.getCantidad();
+            int stockActual = producto.getStockActual() != null ? producto.getStockActual() : 0;
+            if (stockActual < cantidadComprada) {
+                throw new RuntimeException("Stock insuficiente para reversar la compra del producto: " +
+                        producto.getNombre() + ". Stock actual: " + stockActual + ", Se requiere: " + cantidadComprada);
+            }
+
+            producto.setStockActual(stockActual - cantidadComprada);
+            productoRepository.save(producto);
+
+            Kardex kardex = new Kardex();
+            kardex.setProducto(producto);
+            kardex.setTipo("SALIDA");
+            kardex.setMotivo("ANULACION COMPRA " + compra.getNumeroComprobante() + " (ID: " + compra.getId() + ")");
+            kardex.setCantidad(cantidadComprada);
+            kardex.setStockAnterior(stockActual);
+            kardex.setStockActual(producto.getStockActual());
+            kardexRepository.save(kardex);
         }
 
-        // Guardar compra con estado anulado
         compraRepository.save(compra);
 
-        // FIX ERROR-3: revertir el egreso de caja registrado al crear la compra.
-        // Si la caja está cerrada se registra una advertencia pero no se bloquea la
-        // anulación,
-        // ya que el stock ya fue revertido y la compra marcada como ANULADA.
         try {
-            String concepto = "ANULACIÓN COMPRA " + compra.getNumeroComprobante() + " (ID: " + compraId + ")";
+            String concepto = "ANULACION COMPRA " + compra.getNumeroComprobante() + " (ID: " + compraId + ")";
             cajaService.registrarMovimiento("INGRESO", concepto, compra.getTotal(), CategoriaMovimiento.OTRO_INGRESO);
         } catch (Exception e) {
-            log.warn("No se pudo registrar ingreso de anulación en caja (¿caja cerrada?): {}", e.getMessage());
+            log.warn("No se pudo registrar ingreso de anulacion en caja: {}", e.getMessage());
         }
 
         log.info("Compra {} anulada exitosamente", compraId);
     }
 
-    /**
-     * CRÍTICO-3 FIX: Actualizar precios de venta con @Transactional (atomicidad
-     * garantizada).
-     * Antes se hacía directamente en el controller sin transacción:
-     * si fallaba el producto 3 de 5, los 2 primeros quedaban actualizados y el
-     * resto no.
-     */
     @Transactional
     @Auditable(modulo = "COMPRAS", accion = "ACTUALIZAR_PRECIO", descripcion = "Actualizar precios de venta desde alerta de compra")
     public void actualizarPreciosVenta(List<Map<String, Object>> items) {
@@ -274,94 +238,318 @@ public class CompraService {
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado ID: " + productoId));
             p.setPrecioVenta(nuevoPrecio);
             productoRepository.save(p);
-            log.info("Precio venta actualizado (transaccional): {} \u2192 S/{}", p.getNombre(), nuevoPrecio);
+            log.info("Precio venta actualizado (transaccional): {} -> S/{}", p.getNombre(), nuevoPrecio);
         }
     }
 
-    /**
-     * Crea un producto rápido desde el formulario de compras.
-     * stockActual = 0; la propia compra sumará el stock al registrarse.
-     */
     @Transactional
     public Map<String, Object> crearProductoRapido(Map<String, Object> datos) {
-        String nombre = (String) datos.get("nombre");
-        if (nombre == null || nombre.isBlank())
-            throw new RuntimeException("El nombre del producto es obligatorio");
+        Producto guardado = guardarProductoRapido(datos, obtenerSiguienteSkuDisponible());
+        log.info("Producto rapido creado desde Compras: id={}, nombre={}", guardado.getId(), guardado.getNombre());
+        return mapearProductoCompra(guardado);
+    }
 
-        String precioVentaStr = datos.getOrDefault("precioVenta", "0").toString();
-        BigDecimal precioVenta = new BigDecimal(precioVentaStr);
-        if (precioVenta.compareTo(BigDecimal.ZERO) <= 0)
-            throw new RuntimeException("El precio de venta debe ser mayor a cero");
+    public Map<String, Object> crearProductosRapidosLote(List<Map<String, Object>> items) {
+        List<Map<String, Object>> creados = new ArrayList<>();
+        List<Map<String, Object>> errores = new ArrayList<>();
+        int siguienteSku = obtenerSiguienteNumeroSku();
+
+        for (int i = 0; i < items.size(); i++) {
+            Map<String, Object> item = items.get(i);
+            try {
+                Map<String, Object> datos = new HashMap<>(item);
+                if (normalizarTexto(datos.get("codigoInterno")).isBlank()) {
+                    datos.put("codigoInterno", String.format("SKU-%05d", siguienteSku++));
+                }
+
+                Map<String, Object> creado = crearProductoRapido(datos);
+                copiarSiPresente(item, creado, "referencia");
+                copiarSiPresente(item, creado, "cantidadCompra");
+                copiarSiPresente(item, creado, "costoCompra");
+                copiarSiPresente(item, creado, "totalCompra");
+                copiarSiPresente(item, creado, "nombreOriginal");
+                creados.add(creado);
+            } catch (Exception e) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("indice", i);
+                error.put("nombre", normalizarTexto(item.get("nombre")));
+                error.put("error", e.getMessage());
+                copiarSiPresente(item, error, "referencia");
+                errores.add(error);
+            }
+        }
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("creados", creados);
+        respuesta.put("errores", errores);
+        respuesta.put("totalCreados", creados.size());
+        return respuesta;
+    }
+
+    @Transactional
+    public Map<String, Object> crearProveedorRapido(Map<String, Object> datos) {
+        String ruc = normalizarTexto(datos.get("ruc")).replaceAll("\\D", "");
+        String razonSocial = normalizarTexto(datos.get("razonSocial")).toUpperCase();
+
+        if (ruc.isBlank()) {
+            throw new RuntimeException("El RUC es obligatorio");
+        }
+        if (ruc.length() != 11) {
+            throw new RuntimeException("El RUC debe tener 11 digitos");
+        }
+        if (razonSocial.isBlank()) {
+            throw new RuntimeException("La razon social es obligatoria");
+        }
+
+        Optional<Proveedor> existente = proveedorRepository.findByRuc(ruc);
+        if (existente.isPresent()) {
+            return mapearProveedorCompra(existente.get(), true);
+        }
+
+        Proveedor proveedor = new Proveedor();
+        proveedor.setActivo(true);
+        proveedor.setRuc(ruc);
+        proveedor.setRazonSocial(razonSocial);
+
+        try {
+            Proveedor guardado = proveedorRepository.save(proveedor);
+            return mapearProveedorCompra(guardado, false);
+        } catch (DataIntegrityViolationException e) {
+            Proveedor guardado = proveedorRepository.findByRuc(ruc)
+                    .orElseThrow(() -> new RuntimeException("No se pudo registrar el proveedor. Verifique si el RUC ya existe."));
+            return mapearProveedorCompra(guardado, true);
+        }
+    }
+
+    private Producto guardarProductoRapido(Map<String, Object> datos, String skuSugerido) {
+        String nombre = normalizarTexto(datos.get("nombre")).toUpperCase();
+        if (nombre.isBlank()) {
+            throw new RuntimeException("El nombre del producto es obligatorio");
+        }
+
+        String clasificacion = strOrDefault(datos, "clasificacion", Producto.CLASIFICACION_MERCADERIA).trim().toUpperCase();
+        boolean esInsumo = Producto.CLASIFICACION_INSUMO.equals(clasificacion);
+
+        BigDecimal precioVenta = esInsumo
+                ? parseDecimalOrDefault(datos, "precioVenta", BigDecimal.ZERO)
+                : parsePositiveDecimal(datos, "precioVenta", "El precio de venta debe ser mayor a cero");
+        String codigoBarra = normalizarTexto(datos.get("codigoBarra"));
+        String codigoInterno = normalizarTexto(datos.get("codigoInterno"));
+        if (codigoInterno.isBlank()) {
+            codigoInterno = skuSugerido;
+        }
+
+        if (!codigoBarra.isBlank() && productoRepository.findByCodigoBarra(codigoBarra).isPresent()) {
+            throw new RuntimeException("Ya existe un producto con ese codigo de barras");
+        }
+        if (!codigoInterno.isBlank() && productoRepository.findByCodigoInterno(codigoInterno).isPresent()) {
+            throw new RuntimeException("Ya existe un producto con ese SKU / codigo interno");
+        }
 
         Producto p = new Producto();
-        p.setNombre(nombre.toUpperCase().trim());
+        p.setNombre(nombre);
         p.setActivo(true);
         p.setStockActual(0);
         p.setPrecioVenta(precioVenta);
+        p.setCodigoBarra(codigoBarra.isBlank() ? null : codigoBarra);
+        p.setCodigoInterno(codigoInterno.isBlank() ? null : codigoInterno);
+        p.setClasificacion(clasificacion);
 
         parseBD(datos, "precioCompra").ifPresent(p::setPrecioCompra);
         parseBD(datos, "precioMayorista").ifPresent(p::setPrecioMayorista);
         parseInt(datos, "stockMinimo").ifPresent(p::setStockMinimo);
 
-        setIfPresent(datos, "categoria", v -> p.setCategoria(v.trim()));
-        setIfPresent(datos, "codigoBarra", v -> p.setCodigoBarra(v.trim()));
-        setIfPresent(datos, "codigoInterno", v -> p.setCodigoInterno(v.trim()));
-        setIfPresent(datos, "marca", v -> p.setMarca(v.trim()));
-        setIfPresent(datos, "modelo", v -> p.setModelo(v.trim()));
-        setIfPresent(datos, "color", v -> p.setColor(v.trim()));
-        setIfPresent(datos, "descripcion", v -> p.setDescripcion(v.trim()));
-        setIfPresent(datos, "ubicacionEstante", v -> p.setUbicacionEstante(v.trim()));
-        setIfPresent(datos, "ubicacionFila", v -> p.setUbicacionFila(v.trim()));
-        setIfPresent(datos, "ubicacionColumna", v -> p.setUbicacionColumna(v.trim()));
-        p.setTipo(strOrDefault(datos, "tipo", "ESTANDAR"));
+        setIfPresent(datos, "categoria", value -> p.setCategoria(value.trim().toUpperCase()));
+        setIfPresent(datos, "marca", value -> p.setMarca(value.trim().toUpperCase()));
+        setIfPresent(datos, "modelo", value -> p.setModelo(value.trim()));
+        setIfPresent(datos, "color", value -> p.setColor(value.trim()));
+        setIfPresent(datos, "descripcion", value -> p.setDescripcion(value.trim()));
+        if (!esInsumo) {
+            setIfPresent(datos, "ubicacionEstante", value -> p.setUbicacionEstante(value.trim().toUpperCase()));
+            setIfPresent(datos, "ubicacionFila", value -> p.setUbicacionFila(value.trim().toUpperCase()));
+            setIfPresent(datos, "ubicacionColumna", value -> p.setUbicacionColumna(value.trim().toUpperCase()));
+        }
+        p.setTipo(esInsumo ? "ESTANDAR" : strOrDefault(datos, "tipo", "ESTANDAR"));
         p.setUnidadMedida(strOrDefault(datos, "unidadMedida", "UNIDAD"));
         p.setTipoAfectacionIgv(strOrDefault(datos, "tipoAfectacionIgv", "GRAVADO"));
 
-        Producto guardado = productoRepository.save(p);
-        log.info("Producto rápido creado desde Compras: id={}, nombre={}", guardado.getId(), guardado.getNombre());
+        if (esInsumo) {
+            p.setUbicacionEstante(null);
+            p.setUbicacionFila(null);
+            p.setUbicacionColumna(null);
+            if (p.getPrecioMayorista() == null) {
+                p.setPrecioMayorista(BigDecimal.ZERO);
+            }
+            if (p.getStockMinimo() == null) {
+                p.setStockMinimo(0);
+            }
+        }
 
+        try {
+            return productoRepository.save(p);
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("No se pudo crear el producto. Verifique si el codigo de barras o el SKU ya existen.");
+        }
+    }
+
+    private Map<String, Object> mapearProductoCompra(Producto guardado) {
         Map<String, Object> result = new HashMap<>();
         result.put("id", guardado.getId());
         result.put("nombre", guardado.getNombre());
         result.put("codigoBarra", guardado.getCodigoBarra() != null ? guardado.getCodigoBarra() : "");
+        result.put("codigoInterno", guardado.getCodigoInterno() != null ? guardado.getCodigoInterno() : "");
         result.put("precioCompra", guardado.getPrecioCompra() != null ? guardado.getPrecioCompra() : BigDecimal.ZERO);
-        result.put("precioVenta", guardado.getPrecioVenta());
+        result.put("precioVenta", guardado.getPrecioVenta() != null ? guardado.getPrecioVenta() : BigDecimal.ZERO);
+        result.put("clasificacion", guardado.getClasificacion() != null ? guardado.getClasificacion() : Producto.CLASIFICACION_MERCADERIA);
         return result;
     }
 
-    // ── helpers privados ──────────────────────────────────────────────────────
+    private Map<String, Object> mapearProveedorCompra(Proveedor proveedor, boolean existente) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", proveedor.getId());
+        result.put("ruc", proveedor.getRuc());
+        result.put("razonSocial", proveedor.getRazonSocial());
+        result.put("existente", existente);
+        return result;
+    }
 
-    private java.util.Optional<BigDecimal> parseBD(Map<String, Object> m, String key) {
-        Object v = m.get(key);
-        if (v == null)
-            return java.util.Optional.empty();
+    private int obtenerSiguienteNumeroSku() {
+        return productoRepository.findUltimoSku()
+                .map(ultimo -> {
+                    try {
+                        return Integer.parseInt(ultimo.replace("SKU-", "")) + 1;
+                    } catch (NumberFormatException e) {
+                        return 1;
+                    }
+                })
+                .orElse(1);
+    }
+
+    private String obtenerSiguienteSkuDisponible() {
+        return String.format("SKU-%05d", obtenerSiguienteNumeroSku());
+    }
+
+    private BigDecimal parsePositiveDecimal(Map<String, Object> datos, String key, String errorMessage) {
+        Object value = datos.get(key);
+        if (value == null || value.toString().isBlank()) {
+            throw new RuntimeException(errorMessage);
+        }
         try {
-            BigDecimal bd = new BigDecimal(v.toString());
-            return bd.compareTo(BigDecimal.ZERO) > 0 ? java.util.Optional.of(bd) : java.util.Optional.empty();
-        } catch (Exception e) {
-            return java.util.Optional.empty();
+            BigDecimal bd = new BigDecimal(value.toString());
+            if (bd.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException(errorMessage);
+            }
+            return bd;
+        } catch (NumberFormatException e) {
+            throw new RuntimeException(errorMessage);
         }
     }
 
-    private java.util.Optional<Integer> parseInt(Map<String, Object> m, String key) {
+    private Optional<BigDecimal> parseBD(Map<String, Object> m, String key) {
         Object v = m.get(key);
-        if (v == null)
-            return java.util.Optional.empty();
+        if (v == null) {
+            return Optional.empty();
+        }
         try {
-            return java.util.Optional.of(Integer.parseInt(v.toString()));
+            BigDecimal bd = new BigDecimal(v.toString());
+            return bd.compareTo(BigDecimal.ZERO) > 0 ? Optional.of(bd) : Optional.empty();
         } catch (Exception e) {
-            return java.util.Optional.empty();
+            return Optional.empty();
+        }
+    }
+
+    private BigDecimal parseDecimalOrDefault(Map<String, Object> datos, String key, BigDecimal def) {
+        Object value = datos.get(key);
+        if (value == null || value.toString().isBlank()) {
+            return def;
+        }
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
+    private Optional<Integer> parseInt(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        if (v == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Integer.parseInt(v.toString()));
+        } catch (Exception e) {
+            return Optional.empty();
         }
     }
 
     private void setIfPresent(Map<String, Object> m, String key, java.util.function.Consumer<String> setter) {
         Object v = m.get(key);
-        if (v != null && !v.toString().isBlank())
+        if (v != null && !v.toString().isBlank()) {
             setter.accept(v.toString());
+        }
+    }
+
+    private String normalizarTexto(Object value) {
+        return value == null ? "" : value.toString().trim();
+    }
+
+    private void copiarSiPresente(Map<String, Object> origen, Map<String, Object> destino, String key) {
+        if (origen.containsKey(key)) {
+            destino.put(key, origen.get(key));
+        }
     }
 
     private String strOrDefault(Map<String, Object> m, String key, String def) {
         Object v = m.get(key);
         return (v != null && !v.toString().isBlank()) ? v.toString() : def;
+    }
+
+    private int resolverCantidadBase(CompraDTO.DetalleDTO item) {
+        if (item.getCantidadPresentacion() != null
+                && item.getFactorPresentacion() != null
+                && item.getCantidadPresentacion().compareTo(BigDecimal.ZERO) > 0
+                && item.getFactorPresentacion().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal cantidadBase = item.getCantidadPresentacion()
+                    .multiply(item.getFactorPresentacion())
+                    .setScale(0, RoundingMode.HALF_UP);
+            return cantidadBase.intValueExact();
+        }
+
+        if (item.getCantidad() != null) {
+            return item.getCantidad();
+        }
+
+        throw new RuntimeException("La línea de compra no tiene una cantidad válida.");
+    }
+
+    private BigDecimal resolverCostoBase(CompraDTO.DetalleDTO item, int cantidadBase) {
+        if (item.getCantidadPresentacion() != null
+                && item.getFactorPresentacion() != null
+                && item.getPrecioPorPresentacion() != null
+                && item.getCantidadPresentacion().compareTo(BigDecimal.ZERO) > 0
+                && item.getFactorPresentacion().compareTo(BigDecimal.ZERO) > 0
+                && item.getPrecioPorPresentacion().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal totalLinea = item.getPrecioPorPresentacion().multiply(item.getCantidadPresentacion());
+            return totalLinea.divide(BigDecimal.valueOf(cantidadBase), 4, RoundingMode.HALF_UP);
+        }
+
+        if (item.getCosto() != null) {
+            return item.getCosto().setScale(4, RoundingMode.HALF_UP);
+        }
+
+        throw new RuntimeException("La línea de compra no tiene un costo válido.");
+    }
+
+    private BigDecimal resolverSubtotal(CompraDTO.DetalleDTO item, int cantidadBase, BigDecimal costoBase) {
+        if (item.getCantidadPresentacion() != null
+                && item.getPrecioPorPresentacion() != null
+                && item.getCantidadPresentacion().compareTo(BigDecimal.ZERO) > 0
+                && item.getPrecioPorPresentacion().compareTo(BigDecimal.ZERO) > 0) {
+            return item.getPrecioPorPresentacion()
+                    .multiply(item.getCantidadPresentacion())
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return costoBase.multiply(BigDecimal.valueOf(cantidadBase)).setScale(2, RoundingMode.HALF_UP);
     }
 }

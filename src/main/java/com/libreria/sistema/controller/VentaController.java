@@ -2,12 +2,16 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.aspect.RequerirCajaAbierta;
 import com.libreria.sistema.model.*;
+import com.libreria.sistema.model.dto.PosProformaDTO;
 import com.libreria.sistema.model.dto.ServicioRapidoDTO;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.service.ConfiguracionService;
 import com.libreria.sistema.service.ConsultaDocumentoService;
+import com.libreria.sistema.service.CotizacionPdfService;
 import com.libreria.sistema.service.DevolucionService;
+import com.libreria.sistema.service.LaminaBusquedaService;
+import com.libreria.sistema.service.LaminaService;
 import com.libreria.sistema.service.ProductoBusquedaService;
 import com.libreria.sistema.service.ReporteService;
 import com.libreria.sistema.service.VentaService;
@@ -18,6 +22,8 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -26,8 +32,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -43,10 +51,13 @@ public class VentaController {
     private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
     private final ConfiguracionService configuracionService;
+    private final CotizacionPdfService cotizacionPdfService;
     private final VentaService ventaService;
     private final ReporteService reporteService;
     private final ConsultaDocumentoService consultaDocumentoService;
     private final ProductoBusquedaService productoBusquedaService;
+    private final LaminaBusquedaService laminaBusquedaService;
+    private final LaminaService laminaService;
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
@@ -58,18 +69,24 @@ public class VentaController {
             VentaRepository ventaRepository,
             ClienteRepository clienteRepository,
             ConfiguracionService configuracionService,
+            CotizacionPdfService cotizacionPdfService,
             VentaService ventaService,
             ReporteService reporteService,
             ConsultaDocumentoService consultaDocumentoService,
-            ProductoBusquedaService productoBusquedaService) {
+            ProductoBusquedaService productoBusquedaService,
+            LaminaBusquedaService laminaBusquedaService,
+            LaminaService laminaService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.clienteRepository = clienteRepository;
         this.configuracionService = configuracionService;
+        this.cotizacionPdfService = cotizacionPdfService;
         this.ventaService = ventaService;
         this.reporteService = reporteService;
         this.consultaDocumentoService = consultaDocumentoService;
         this.productoBusquedaService = productoBusquedaService;
+        this.laminaBusquedaService = laminaBusquedaService;
+        this.laminaService = laminaService;
     }
 
     /** Redirige /ventas → /ventas/lista para evitar Error 500 en URL raíz. */
@@ -118,6 +135,8 @@ public class VentaController {
         model.addAttribute("serieFacturaInfo", facturaElectronicaActiva ? "F001 (Oficial SUNAT)" : "IF001 (Interno)");
         model.addAttribute("modoFacturacion", facturaElectronicaActiva ? "ELECTRÓNICA" : "INTERNA");
 
+        model.addAttribute("laminaCategoriasPos", laminaService.listarCategoriasActivas());
+        model.addAttribute("laminaPrecioVentaDefault", LaminaService.PRECIO_VENTA_DEFAULT);
         return "ventas/pos";
     }
 
@@ -213,6 +232,45 @@ public class VentaController {
         }).collect(Collectors.toList());
     }
 
+    @GetMapping("/api/buscar-laminas")
+    @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
+    @ResponseBody
+    public List<Map<String, Object>> buscarLaminas(@RequestParam String term) {
+        return laminaBusquedaService.buscar(term, 25).stream().map(p -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", p.getId());
+            map.put("text", construirTextoLamina(p));
+            map.put("precio", p.getPrecioVenta());
+            map.put("stock", p.getStockActual());
+            map.put("stockMinimo", p.getStockMinimo());
+            map.put("nombre", p.getNombre());
+            map.put("marca", p.getLaminaMarca() != null ? p.getLaminaMarca() : p.getMarca());
+            map.put("categoria", p.getCategoria());
+            map.put("descripcion", p.getDescripcion());
+            map.put("imagen", p.getImagen());
+            map.put("codigoBarra", p.getCodigoBarra());
+            map.put("codigoInterno", p.getCodigoInterno());
+            map.put("esLamina", true);
+            map.put("laminaNumero", p.getLaminaNumero());
+            map.put("laminaTitulo", p.getLaminaTitulo());
+            map.put("laminaMarca", p.getLaminaMarca());
+            map.put("laminaCategoria", p.getLaminaCategoria());
+            map.put("laminaProveedorRef", p.getLaminaProveedorRef());
+            map.put("laminaZona", p.getLaminaZona());
+            map.put("laminaContenedor", p.getLaminaContenedor());
+            map.put("laminaPosicion", p.getLaminaPosicion());
+            map.put("ubicacionTexto", p.getLaminaUbicacionTexto());
+            map.put("ubicacion", p.getLaminaUbicacionTexto());
+            map.put("ubicacionEstante", p.getLaminaZona());
+            map.put("ubicacionFila", p.getLaminaContenedor());
+            map.put("ubicacionColumna", p.getLaminaPosicion());
+            map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
+            map.put("stockBajo", p.getStockActual() != null && p.getStockMinimo() != null
+                    && p.getStockActual() <= p.getStockMinimo());
+            return map;
+        }).collect(Collectors.toList());
+    }
+
     /**
      * AUTOCOMPLETE: Sugerencias rápidas en tiempo real.
      * Optimizado para velocidad, retorna máximo 10 resultados.
@@ -251,6 +309,23 @@ public class VentaController {
                         return map;
                     }).collect(Collectors.toList());
         }).orElse(List.of());
+    }
+
+    private String construirTextoLamina(Producto producto) {
+        StringBuilder texto = new StringBuilder("LAMINA");
+        if (producto.getLaminaNumero() != null && !producto.getLaminaNumero().isBlank()) {
+            texto.append(" ").append(producto.getLaminaNumero());
+        }
+        if (producto.getLaminaTitulo() != null && !producto.getLaminaTitulo().isBlank()) {
+            texto.append(" - ").append(producto.getLaminaTitulo());
+        } else if (producto.getNombre() != null && !producto.getNombre().isBlank()) {
+            texto.append(" - ").append(producto.getNombre());
+        }
+        if (producto.getLaminaMarca() != null && !producto.getLaminaMarca().isBlank()) {
+            texto.append(" [").append(producto.getLaminaMarca()).append("]");
+        }
+        texto.append(" (Stock: ").append(producto.getStockActual() != null ? producto.getStockActual() : 0).append(")");
+        return texto.toString();
     }
 
     /**
@@ -442,6 +517,37 @@ public class VentaController {
             log.error("Error inesperado al procesar venta", e);
             errorResponse.put("error", "Error interno al procesar la venta. Por favor contacte al administrador.");
             errorResponse.put("code", "INTERNAL_ERROR");
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/api/proforma-pdf")
+    @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
+    public ResponseEntity<?> exportarProformaPdf(@RequestBody PosProformaDTO dto) {
+        Map<String, Object> errorResponse = new HashMap<>();
+
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            errorResponse.put("error", "Agregue al menos un producto al carrito antes de exportar la cotizacion.");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        try {
+            Cotizacion proforma = construirProformaDesdePos(dto);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            cotizacionPdfService.generarPdf(proforma, outputStream);
+
+            String archivo = "Cotizacion-POS-" + LocalDate.now() + ".pdf";
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + archivo + "\"")
+                    .body(outputStream.toByteArray());
+        } catch (RuntimeException e) {
+            log.warn("Error validando cotizacion temporal desde POS: {}", e.getMessage());
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        } catch (Exception e) {
+            log.error("Error inesperado al exportar cotizacion temporal desde POS", e);
+            errorResponse.put("error", "No se pudo generar la cotizacion PDF.");
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
@@ -715,6 +821,78 @@ public class VentaController {
                 log.error("Error al enviar respuesta de error", ex);
             }
         }
+    }
+
+    private Cotizacion construirProformaDesdePos(PosProformaDTO dto) {
+        Cotizacion cotizacion = new Cotizacion();
+        cotizacion.setSerie("P001");
+        cotizacion.setNumero(LocalDateTime.now().toLocalTime().toSecondOfDay());
+        cotizacion.setFechaEmision(LocalDate.now());
+        cotizacion.setFechaVencimiento(LocalDate.now().plusDays(7));
+        cotizacion.setClienteNombre(dto.getClienteNombre() != null && !dto.getClienteNombre().isBlank()
+                ? dto.getClienteNombre().trim()
+                : "CLIENTE VARIOS");
+        cotizacion.setClienteDocumento(dto.getClienteDocumento() != null && !dto.getClienteDocumento().isBlank()
+                ? dto.getClienteDocumento().trim()
+                : "00000000");
+        cotizacion.setClienteTelefono(dto.getClienteTelefono() != null ? dto.getClienteTelefono().trim() : "");
+        cotizacion.setFormaPago(dto.getFormaPago() != null && !dto.getFormaPago().isBlank()
+                ? dto.getFormaPago().trim()
+                : "CONTADO");
+        cotizacion.setMetodoPago(dto.getMetodoPago() != null && !dto.getMetodoPago().isBlank()
+                ? dto.getMetodoPago().trim()
+                : "EFECTIVO");
+        cotizacion.setEstado("EMITIDA");
+        cotizacion.setObservaciones(dto.getObservaciones() != null && !dto.getObservaciones().isBlank()
+                ? dto.getObservaciones().trim()
+                : "Cotizacion generada desde POS. Sujeta a disponibilidad de stock.");
+        cotizacion.setCondiciones("Precios sujetos a variacion y stock disponible al momento de la venta.");
+
+        BigDecimal totalBruto = BigDecimal.ZERO;
+        BigDecimal descuento = dto.getDescuento() != null ? dto.getDescuento() : BigDecimal.ZERO;
+        BigDecimal igvFactor = configuracionService.getIgvFactor();
+
+        for (PosProformaDTO.ItemDTO itemDto : dto.getItems()) {
+            if (itemDto.getProductoId() == null) {
+                throw new RuntimeException("Todos los productos de la cotizacion deben tener ID valido.");
+            }
+            if (itemDto.getCantidad() == null || itemDto.getCantidad().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("Todas las cantidades de la cotizacion deben ser mayores a cero.");
+            }
+            if (itemDto.getPrecioVenta() == null || itemDto.getPrecioVenta().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("Todos los precios de la cotizacion deben ser mayores a cero.");
+            }
+
+            Producto producto = productoRepository.findById(itemDto.getProductoId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: ID " + itemDto.getProductoId()));
+
+            DetalleCotizacion detalle = new DetalleCotizacion();
+            detalle.setCotizacion(cotizacion);
+            detalle.setProducto(producto);
+            detalle.setCantidad(itemDto.getCantidad());
+            detalle.setPrecioUnitario(itemDto.getPrecioVenta().setScale(2, RoundingMode.HALF_UP));
+            detalle.setSubtotal(detalle.getCantidad().multiply(detalle.getPrecioUnitario()).setScale(2, RoundingMode.HALF_UP));
+            detalle.setTipoItem("SERVICIO".equalsIgnoreCase(producto.getTipo()) ? "SERVICIO" : "PRODUCTO");
+            detalle.setCategoriaServicio("SERVICIO".equalsIgnoreCase(detalle.getTipoItem()) ? producto.getCategoria() : null);
+            detalle.setDescripcion(itemDto.getDescripcion() != null && !itemDto.getDescripcion().isBlank()
+                    ? itemDto.getDescripcion().trim()
+                    : producto.getNombre());
+            cotizacion.getItems().add(detalle);
+            totalBruto = totalBruto.add(detalle.getSubtotal());
+        }
+
+        BigDecimal totalConDescuento = totalBruto.subtract(descuento).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal subtotal = totalConDescuento.divide(igvFactor, 2, RoundingMode.HALF_UP);
+        BigDecimal igv = totalConDescuento.subtract(subtotal).setScale(2, RoundingMode.HALF_UP);
+
+        cotizacion.setDescuento(descuento.setScale(2, RoundingMode.HALF_UP));
+        cotizacion.setSubtotal(subtotal);
+        cotizacion.setIgv(igv);
+        cotizacion.setTotal(totalConDescuento);
+        cotizacion.setMontoInicial(BigDecimal.ZERO);
+        cotizacion.setSaldoPendiente(BigDecimal.ZERO);
+        cotizacion.setDiasCredito(null);
+        return cotizacion;
     }
 
     @PostMapping("/api/solicitar-stock")

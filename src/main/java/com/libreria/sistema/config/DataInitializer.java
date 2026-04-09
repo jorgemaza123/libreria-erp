@@ -64,6 +64,20 @@ public class DataInitializer {
                     log.info(">>> SANITIZACIÓN: {} productos con version NULL corregidos.", productosActualizados);
                 }
 
+                int clasificacionesActualizadas = entityManager
+                    .createNativeQuery("UPDATE productos SET clasificacion = 'MERCADERIA' WHERE clasificacion IS NULL OR TRIM(clasificacion) = ''")
+                    .executeUpdate();
+                if (clasificacionesActualizadas > 0) {
+                    log.info(">>> SANITIZACIÓN: {} productos migrados a clasificacion MERCADERIA.", clasificacionesActualizadas);
+                }
+
+                int origenesActualizados = entityManager
+                    .createNativeQuery("UPDATE productos SET origen_catalogo = 'GENERAL' WHERE origen_catalogo IS NULL OR TRIM(origen_catalogo) = ''")
+                    .executeUpdate();
+                if (origenesActualizados > 0) {
+                    log.info(">>> SANITIZACIÓN: {} productos migrados a origen GENERAL.", origenesActualizados);
+                }
+
                 // NUEVO: Arreglar correlativos con version NULL (SOLUCIÓN A TU ERROR)
                 int correlativosActualizados = entityManager
                     .createNativeQuery("UPDATE correlativos SET version = 0 WHERE version IS NULL")
@@ -156,7 +170,25 @@ public class DataInitializer {
                     servicio.setTipoAfectacionIgv("GRAVADO");
                     servicio.setActivo(true);
                     servicio.setTipo("SERVICIO");
+                    servicio.setOrigenCatalogo(Producto.ORIGEN_CATALOGO_GENERAL);
                     productoRepo.save(servicio);
+                }
+
+                if (productoRepo.findByCodigoInterno("SERV-PERS-001").isEmpty()) {
+                    Producto servicioPersonalizado = new Producto();
+                    servicioPersonalizado.setCodigoInterno("SERV-PERS-001");
+                    servicioPersonalizado.setCodigoBarra("SERV-PERS");
+                    servicioPersonalizado.setNombre("SERVICIO PERSONALIZADO");
+                    servicioPersonalizado.setCategoria("PERSONALIZADO");
+                    servicioPersonalizado.setPrecioCompra(BigDecimal.ZERO);
+                    servicioPersonalizado.setPrecioVenta(BigDecimal.ZERO);
+                    servicioPersonalizado.setStockActual(999999);
+                    servicioPersonalizado.setUnidadMedida("UNIDAD");
+                    servicioPersonalizado.setTipoAfectacionIgv("GRAVADO");
+                    servicioPersonalizado.setActivo(true);
+                    servicioPersonalizado.setTipo("SERVICIO");
+                    servicioPersonalizado.setOrigenCatalogo(Producto.ORIGEN_CATALOGO_GENERAL);
+                    productoRepo.save(servicioPersonalizado);
                 }
 
                 // 4.1 SERVICIOS POS Y PRODUCTOS RÁPIDOS

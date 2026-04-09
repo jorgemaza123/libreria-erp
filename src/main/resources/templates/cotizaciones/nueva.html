@@ -168,6 +168,36 @@
                                    th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteTelefono : ''}">
                         </div>
 
+                        <div class="section-label"><i class="fas fa-briefcase"></i> Servicio / Proyecto</div>
+
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Tipo de servicio</label>
+                            <input type="text" id="tipoServicioContrato" class="form-control form-control-sm"
+                                   placeholder="Ej: DTF, Servicio tecnico, Desarrollo web"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.tipoServicioContrato : ''}">
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Nombre del proyecto o trabajo</label>
+                            <input type="text" id="tituloProyectoServicio" class="form-control form-control-sm"
+                                   placeholder="Ej: Landing page para campaña escolar"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.tituloProyectoServicio : ''}">
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Fecha de entrega</label>
+                            <input type="date" id="fechaEntregaComprometida" class="form-control form-control-sm"
+                                   th:value="${cotizacionEdicion != null && cotizacionEdicion.fechaEntregaComprometida != null ? cotizacionEdicion.fechaEntregaComprometida : ''}">
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Email del cliente</label>
+                            <input type="email" id="clienteEmail" class="form-control form-control-sm"
+                                   placeholder="correo@cliente.com"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteEmail : ''}">
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small mb-1">Direccion del cliente</label>
+                            <textarea id="clienteDireccion" class="form-control form-control-sm" rows="2" placeholder="Direccion o referencia de trabajo" th:text="${cotizacionEdicion != null ? cotizacionEdicion.clienteDireccion : ''}"></textarea>
+                        </div>
+
                         <!-- Forma de Pago -->
                         <div class="section-label"><i class="fas fa-money-bill-wave"></i> Forma de Pago</div>
 
@@ -516,6 +546,11 @@
             $('#clienteNombre').val('CLIENTE VARIOS');
             $('#clienteDoc').val('');
             $('#clienteTelefono').val('');
+            $('#clienteEmail').val('');
+            $('#clienteDireccion').val('');
+            $('#tipoServicioContrato').val('');
+            $('#tituloProyectoServicio').val('');
+            $('#fechaEntregaComprometida').val('');
             $('#descuento').val(0);
             $('#observaciones').val('');
             $('#condiciones').val('');
@@ -545,6 +580,11 @@
             clienteDocumento: $('#clienteDoc').val(),
             clienteNombre: $('#clienteNombre').val(),
             clienteTelefono: $('#clienteTelefono').val(),
+            clienteEmail: $('#clienteEmail').val(),
+            clienteDireccion: $('#clienteDireccion').val(),
+            tipoServicioContrato: $('#tipoServicioContrato').val(),
+            tituloProyectoServicio: $('#tituloProyectoServicio').val(),
+            fechaEntregaComprometida: $('#fechaEntregaComprometida').val() || null,
             observaciones: $('#observaciones').val(),
             condiciones: $('#condiciones').val(),
             formaPago: formaPago,

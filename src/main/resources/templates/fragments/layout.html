@@ -26,12 +26,11 @@
 
     <link rel="stylesheet" th:href="@{/public/css-personalizado(v=${#dates.createNow().time})}" />
 
-    <style>
-        .sidebar-overlay { display: none !important; }
-        body { overflow-x: hidden !important; padding-right: 0 !important; }
-        .nav-sidebar .nav-item > .nav-link { margin-bottom: 0.2rem; }
-        .nav-treeview { margin-left: 10px; font-size: 0.9em; }
-    </style>
+      <style>
+          body { overflow-x: hidden !important; padding-right: 0 !important; }
+          .nav-sidebar .nav-item > .nav-link { margin-bottom: 0.2rem; }
+          .nav-treeview { margin-left: 10px; font-size: 0.9em; }
+      </style>
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -189,6 +188,50 @@
                             </a>
                         </li>
 
+                        <li sec:authorize="hasPermission(null, 'PERSONALIZADO_VER')" class="nav-item" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_pedidos' or active == 'personalizado_configuracion' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_pedidos' or active == 'personalizado_configuracion' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-gift"></i>
+                                <p>Personalizado <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/personalizado" class="nav-link" th:classappend="${active == 'personalizado_dashboard' ? 'active' : ''}">
+                                        <i class="fas fa-chart-pie nav-icon"></i><p>Resumen</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/insumos" class="nav-link" th:classappend="${active == 'personalizado_insumos' ? 'active' : ''}">
+                                        <i class="fas fa-box-open nav-icon"></i><p>Insumos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/compras" class="nav-link" th:classappend="${active == 'personalizado_compras' ? 'active' : ''}">
+                                        <i class="fas fa-shopping-basket nav-icon"></i><p>Compras</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/plantillas" class="nav-link" th:classappend="${active == 'personalizado_plantillas' ? 'active' : ''}">
+                                        <i class="fas fa-images nav-icon"></i><p>Plantillas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/adicionales" class="nav-link" th:classappend="${active == 'personalizado_adicionales' ? 'active' : ''}">
+                                        <i class="fas fa-plus-square nav-icon"></i><p>Adicionales</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/pedidos" class="nav-link" th:classappend="${active == 'personalizado_pedidos' ? 'active' : ''}">
+                                        <i class="fas fa-file-signature nav-icon"></i><p>Pedidos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/personalizado/configuracion" class="nav-link" th:classappend="${active == 'personalizado_configuracion' ? 'active' : ''}">
+                                        <i class="fas fa-cogs nav-icon"></i><p>Configuración</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                         <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
@@ -301,8 +344,8 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'active' : ''}">
+                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'laminas' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'laminas' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>
                                 <p>Logística <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -312,11 +355,16 @@
                                         <i class="fas fa-cubes nav-icon"></i><p>Control de Stock</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="/productos" class="nav-link" th:classappend="${active == 'productos' ? 'active' : ''}">
-                                        <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
-                                    </a>
-                                </li>
+                                  <li class="nav-item">
+                                     <a href="/productos" class="nav-link" th:classappend="${active == 'productos' ? 'active' : ''}">
+                                         <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
+                                     </a>
+                                  </li>
+                                  <li class="nav-item">
+                                      <a href="/laminas" class="nav-link" th:classappend="${active == 'laminas' ? 'active' : ''}">
+                                          <i class="fas fa-layer-group nav-icon"></i><p>Laminas</p>
+                                      </a>
+                                  </li>
                                 <li class="nav-item">
                                     <a href="/inventario/ajuste" class="nav-link text-warning" th:classappend="${active == 'ajuste' ? 'active' : ''}">
                                         <i class="nav-icon fas fa-balance-scale"></i><p>Ajuste Individual</p>
@@ -1083,7 +1131,7 @@
             };
 
             $(document).ready(function () {
-                setTimeout(function () { $(".sidebar-overlay").remove(); $("body").removeClass("sidebar-open"); }, 200);
+
                 if($('.select2').length) { $('.select2').select2({ theme: 'bootstrap4' }); }
             });
 

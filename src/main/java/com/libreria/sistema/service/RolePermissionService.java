@@ -356,6 +356,13 @@ public class RolePermissionService {
         permisos.add(crearPermisoSiNoExiste("STOCK", "AJUSTAR", "STOCK_AJUSTAR", "Ajustar stock de productos"));
         permisos.add(crearPermisoSiNoExiste("STOCK", "MOVIMIENTOS", "STOCK_MOVIMIENTOS", "Ver movimientos de stock"));
 
+        // PERSONALIZADO
+        permisos.add(crearPermisoSiNoExiste("PERSONALIZADO", "VER", "PERSONALIZADO_VER", "Ver módulo Personalizado"));
+        permisos.add(crearPermisoSiNoExiste("PERSONALIZADO", "CREAR", "PERSONALIZADO_CREAR", "Crear insumos, plantillas y pedidos personalizados"));
+        permisos.add(crearPermisoSiNoExiste("PERSONALIZADO", "EDITAR", "PERSONALIZADO_EDITAR", "Editar catálogos y pedidos del módulo Personalizado"));
+        permisos.add(crearPermisoSiNoExiste("PERSONALIZADO", "VENDER", "PERSONALIZADO_VENDER", "Cerrar ventas del módulo Personalizado"));
+        permisos.add(crearPermisoSiNoExiste("PERSONALIZADO", "CONFIGURAR", "PERSONALIZADO_CONFIGURAR", "Configurar zonas, adicionales y catálogos del módulo Personalizado"));
+
         log.info("Permisos por defecto creados/verificados");
     }
 
@@ -426,6 +433,10 @@ public class RolePermissionService {
         agregarPermiso(permisosVendedor, "CLIENTES_VER");
         agregarPermiso(permisosVendedor, "CLIENTES_CREAR");
         agregarPermiso(permisosVendedor, "CLIENTES_EDITAR");
+        agregarPermiso(permisosVendedor, "PERSONALIZADO_VER");
+        agregarPermiso(permisosVendedor, "PERSONALIZADO_CREAR");
+        agregarPermiso(permisosVendedor, "PERSONALIZADO_EDITAR");
+        agregarPermiso(permisosVendedor, "PERSONALIZADO_VENDER");
         vendedor.setPermissions(permisosVendedor);
         roleRepository.save(vendedor);
 
@@ -477,6 +488,9 @@ public class RolePermissionService {
         agregarPermiso(permisosAlmacenero, "STOCK_VER");
         agregarPermiso(permisosAlmacenero, "STOCK_AJUSTAR");
         agregarPermiso(permisosAlmacenero, "STOCK_MOVIMIENTOS");
+        agregarPermiso(permisosAlmacenero, "PERSONALIZADO_VER");
+        agregarPermiso(permisosAlmacenero, "PERSONALIZADO_CREAR");
+        agregarPermiso(permisosAlmacenero, "PERSONALIZADO_EDITAR");
         almacenero.setPermissions(permisosAlmacenero);
         roleRepository.save(almacenero);
 

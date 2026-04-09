@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_dashboard'">
+<head>
+    <title>Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Personalizado</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Personalizado</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${resumen.insumosActivos}">0</h3>
+                            <p>Insumos activos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-box-open"></i></div>
+                        <a href="/personalizado/insumos" class="small-box-footer">Ver insumos <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${resumen.plantillasActivas}">0</h3>
+                            <p>Plantillas activas</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-images"></i></div>
+                        <a href="/personalizado/plantillas" class="small-box-footer">Ver plantillas <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${resumen.pedidosPendientes}">0</h3>
+                            <p>Pedidos pendientes</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-file-signature"></i></div>
+                        <a href="/personalizado/pedidos" class="small-box-footer">Ver pedidos <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${resumen.adicionalesActivos}">0</h3>
+                            <p>Adicionales activos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-plus-square"></i></div>
+                        <a href="/personalizado/adicionales" class="small-box-footer">Configurar <i class="fas fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Pedidos recientes</h3>
+                            <div class="card-tools">
+                                <a href="/personalizado/pedidos/nuevo" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus mr-1"></i>Nuevo pedido
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Cliente</th>
+                                        <th>Estado</th>
+                                        <th>Total</th>
+                                        <th>Fecha</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:if="${#lists.isEmpty(pedidosRecientes)}">
+                                        <td colspan="6" class="text-center text-muted py-4">Aún no hay pedidos personalizados.</td>
+                                    </tr>
+                                    <tr th:each="pedido : ${pedidosRecientes}">
+                                        <td th:text="${pedido.codigoPedido}">PP-0001</td>
+                                        <td th:text="${pedido.clienteNombre ?: 'PUBLICO GENERAL'}">Cliente</td>
+                                        <td><span class="badge badge-info" th:text="${pedido.estado}">BORRADOR</span></td>
+                                        <td th:text="${'S/ ' + #numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</td>
+                                        <td th:text="${pedido.fechaCreacion != null ? #temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                        <td class="text-right">
+                                            <a th:href="@{'/personalizado/pedidos/detalle/' + ${pedido.id}}" class="btn btn-outline-primary btn-sm">Ver</a>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card card-success card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Plantillas activas</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item text-muted text-center py-4" th:if="${#lists.isEmpty(plantillasActivas)}">
+                                    Aún no hay plantillas activas.
+                                </li>
+                                <li class="list-group-item" th:each="plantilla : ${plantillasActivas}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="font-weight-bold" th:text="${plantilla.nombreComercial}">Modelo</div>
+                                            <small class="text-muted" th:text="${plantilla.codigoModelo + ' · ' + plantilla.categoria}">COD-001</small>
+                                        </div>
+                                        <a th:href="@{'/personalizado/plantillas/detalle/' + ${plantilla.id}}" class="btn btn-outline-success btn-sm">Abrir</a>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header">
+                            <h3 class="card-title">Accesos rápidos</h3>
+                        </div>
+                        <div class="card-body">
+                            <a href="/personalizado/insumos/nuevo" class="btn btn-outline-primary btn-block mb-2">
+                                <i class="fas fa-box-open mr-1"></i>Registrar insumo
+                            </a>
+                            <a href="/personalizado/compras/nueva" class="btn btn-outline-info btn-block mb-2">
+                                <i class="fas fa-shopping-basket mr-1"></i>Registrar compra
+                            </a>
+                            <a href="/personalizado/plantillas/nueva" class="btn btn-outline-success btn-block mb-2">
+                                <i class="fas fa-images mr-1"></i>Crear plantilla
+                            </a>
+                            <a href="/personalizado/configuracion" class="btn btn-outline-dark btn-block">
+                                <i class="fas fa-cogs mr-1"></i>Configurar zonas y reglas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

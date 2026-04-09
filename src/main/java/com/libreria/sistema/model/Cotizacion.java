@@ -27,6 +27,13 @@ public class Cotizacion {
     private String clienteDocumento;
     private String clienteNombre;
     private String clienteTelefono;
+    private String clienteEmail;
+    private String clienteDireccion;
+
+    // Servicio / proyecto
+    private String tipoServicioContrato;
+    private String tituloProyectoServicio;
+    private LocalDate fechaEntregaComprometida;
 
     @Column(columnDefinition = "TEXT")
     private String observaciones;

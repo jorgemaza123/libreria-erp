@@ -78,6 +78,8 @@ public class ProductoController {
     public String nuevo(Model model) {
         Producto p = new Producto();
         p.setActivo(true);
+        p.setEsLamina(false);
+        p.setClasificacion(Producto.CLASIFICACION_MERCADERIA);
         p.setStockMinimo(Constants.DEFAULT_STOCK_MINIMO);
         p.setUnidadMedida("UNIDAD");
         p.setCodigoInterno(generarSiguienteSku()); // SKU autogenerado pero editable
@@ -91,6 +93,10 @@ public class ProductoController {
     @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes attributes) {
         return productoService.obtenerPorId(id).map(producto -> {
+            if (producto.esLamina()) {
+                attributes.addFlashAttribute("warning", "Las laminas se editan desde su modulo dedicado.");
+                return "redirect:/laminas/editar/" + id;
+            }
             model.addAttribute("producto", producto);
             model.addAttribute("titulo", "Editar Producto");
             return "productos/formulario";

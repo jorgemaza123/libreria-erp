@@ -66,11 +66,11 @@ public class SistemaApplication {
                 if (exitCode == 0) {
                     System.out.println(">>>  CERTIFICADO CREADO EXITOSAMENTE.");
                 } else {
-                    System.err.println(">>> ❌ ERROR: Keytool falló con código " + exitCode);
+                    System.err.println(">>>  ERROR: Keytool falló con código " + exitCode);
                 }
                 
             } catch (Exception e) {
-                System.err.println(">>> ❌ ERROR CRÍTICO generando certificado: " + e.getMessage());
+                System.err.println(">>>  ERROR CRÍTICO generando certificado: " + e.getMessage());
                 e.printStackTrace();
             }
         } else {

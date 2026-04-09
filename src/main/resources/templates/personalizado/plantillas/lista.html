@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_plantillas'">
+<head>
+    <title>Plantillas Personalizadas</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h1>Plantillas Comerciales</h1>
+            <a href="/personalizado/plantillas/nueva" class="btn btn-primary">
+                <i class="fas fa-plus mr-1"></i>Nueva plantilla
+            </a>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Código modelo</th>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Margen min.</th>
+                                <th>Web</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(plantillas)}">
+                                <td colspan="8" class="text-center text-muted py-4">Aún no hay plantillas registradas.</td>
+                            </tr>
+                            <tr th:each="plantilla : ${plantillas}">
+                                <td>
+                                    <img th:if="${plantilla.fotoPrincipal}" th:src="@{'/uploads/' + ${plantilla.fotoPrincipal}}" alt="foto"
+                                         style="width:56px;height:56px;object-fit:cover;border-radius:12px;">
+                                    <div th:unless="${plantilla.fotoPrincipal}" class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                         style="width:56px;height:56px;">
+                                        <i class="fas fa-image text-muted"></i>
+                                    </div>
+                                </td>
+                                <td th:text="${plantilla.codigoModelo}">MOD-001</td>
+                                <td>
+                                    <div class="font-weight-bold" th:text="${plantilla.nombreComercial}">Taza mamá</div>
+                                    <small class="text-muted" th:text="${plantilla.coleccionOcasion ?: '-'}">COLECCIÓN</small>
+                                </td>
+                                <td th:text="${plantilla.categoria}">TAZA</td>
+                                <td th:text="${#numbers.formatDecimal(plantilla.margenMinimoPct,1,2) + '%'}">20.00%</td>
+                                <td>
+                                    <span class="badge" th:classappend="${plantilla.visibleWeb ? 'badge-success' : 'badge-secondary'}"
+                                          th:text="${plantilla.visibleWeb ? 'Visible' : 'Oculta'}">Visible</span>
+                                </td>
+                                <td>
+                                    <span class="badge" th:classappend="${plantilla.activo ? 'badge-primary' : 'badge-secondary'}"
+                                          th:text="${plantilla.activo ? 'Activa' : 'Inactiva'}">Activa</span>
+                                </td>
+                                <td class="text-right">
+                                    <a th:href="@{'/personalizado/plantillas/detalle/' + ${plantilla.id}}" class="btn btn-outline-primary btn-sm">Ver</a>
+                                    <a th:href="@{'/personalizado/plantillas/editar/' + ${plantilla.id}}" class="btn btn-outline-secondary btn-sm">Editar</a>
+                                    <form th:action="@{'/personalizado/plantillas/duplicar/' + ${plantilla.id}}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-info btn-sm">Duplicar</button>
+                                    </form>
+                                    <form th:action="@{'/personalizado/plantillas/toggle/' + ${plantilla.id}}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-warning btn-sm" th:text="${plantilla.activo ? 'Desactivar' : 'Activar'}">Estado</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

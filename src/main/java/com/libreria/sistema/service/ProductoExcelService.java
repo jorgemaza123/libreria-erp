@@ -45,7 +45,16 @@ public class ProductoExcelService {
         "UNIDAD_MEDIDA",      // 12 - Opcional (UNIDAD, CAJA, KG, LITRO, METRO)
         "UBICACION_FILA",     // 13 - Opcional
         "UBICACION_COLUMNA",  // 14 - Opcional
-        "UBICACION_ESTANTE"   // 15 - Opcional
+        "UBICACION_ESTANTE",  // 15 - Opcional
+        "CLASIFICACION",      // 16 - Opcional (MERCADERIA/INSUMO)
+        "ES_LAMINA",          // 17 - Opcional (SI/NO)
+        "LAMINA_NUMERO",      // 18 - Opcional
+        "LAMINA_TITULO",      // 19 - Opcional
+        "LAMINA_MARCA",       // 20 - Opcional
+        "LAMINA_PROVEEDOR_REF", // 21 - Opcional
+        "LAMINA_ZONA",        // 22 - Opcional
+        "LAMINA_CONTENEDOR",  // 23 - Opcional
+        "LAMINA_POSICION"     // 24 - Opcional
     };
 
     public ProductoExcelService(ProductoRepository productoRepository) {
@@ -117,7 +126,16 @@ public class ProductoExcelService {
                 "UNIDAD/CAJA/KG/L/M", // UNIDAD_MEDIDA
                 "Opcional",           // UBICACION_FILA
                 "Opcional",           // UBICACION_COLUMNA
-                "Opcional"            // UBICACION_ESTANTE
+                "Opcional",           // UBICACION_ESTANTE
+                "MERCADERIA/INSUMO",  // CLASIFICACION
+                "SI/NO",              // ES_LAMINA
+                "Ej: 1083",           // LAMINA_NUMERO
+                "Ej: CELULA ANIMAL",  // LAMINA_TITULO
+                "Ej: ALFA",           // LAMINA_MARCA
+                "Opcional",           // LAMINA_PROVEEDOR_REF
+                "Ej: VITRINA A",      // LAMINA_ZONA
+                "Ej: FOLDER 03",      // LAMINA_CONTENEDOR
+                "Ej: 1083"            // LAMINA_POSICION
             };
 
             for (int i = 0; i < instrucciones.length; i++) {
@@ -144,7 +162,16 @@ public class ProductoExcelService {
                 "UNIDAD",              // UNIDAD_MEDIDA
                 "A",                   // UBICACION_FILA
                 "1",                   // UBICACION_COLUMNA
-                "EST-01"               // UBICACION_ESTANTE
+                "EST-01",              // UBICACION_ESTANTE
+                "MERCADERIA",          // CLASIFICACION
+                "NO",                  // ES_LAMINA
+                "",                    // LAMINA_NUMERO
+                "",                    // LAMINA_TITULO
+                "",                    // LAMINA_MARCA
+                "",                    // LAMINA_PROVEEDOR_REF
+                "",                    // LAMINA_ZONA
+                "",                    // LAMINA_CONTENEDOR
+                ""                     // LAMINA_POSICION
             };
 
             CellStyle exampleStyle = workbook.createCellStyle();
@@ -213,6 +240,15 @@ public class ProductoExcelService {
                 row.createCell(13).setCellValue(p.getUbicacionFila() != null ? p.getUbicacionFila() : "");
                 row.createCell(14).setCellValue(p.getUbicacionColumna() != null ? p.getUbicacionColumna() : "");
                 row.createCell(15).setCellValue(p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "");
+                row.createCell(16).setCellValue(p.getClasificacion() != null ? p.getClasificacion() : Producto.CLASIFICACION_MERCADERIA);
+                row.createCell(17).setCellValue(p.esLamina() ? "SI" : "NO");
+                row.createCell(18).setCellValue(p.getLaminaNumero() != null ? p.getLaminaNumero() : "");
+                row.createCell(19).setCellValue(p.getLaminaTitulo() != null ? p.getLaminaTitulo() : "");
+                row.createCell(20).setCellValue(p.getLaminaMarca() != null ? p.getLaminaMarca() : "");
+                row.createCell(21).setCellValue(p.getLaminaProveedorRef() != null ? p.getLaminaProveedorRef() : "");
+                row.createCell(22).setCellValue(p.getLaminaZona() != null ? p.getLaminaZona() : "");
+                row.createCell(23).setCellValue(p.getLaminaContenedor() != null ? p.getLaminaContenedor() : "");
+                row.createCell(24).setCellValue(p.getLaminaPosicion() != null ? p.getLaminaPosicion() : "");
             }
 
             // Auto-ajustar columnas
@@ -393,6 +429,44 @@ public class ProductoExcelService {
         p.setUbicacionFila(getCellStringValue(row.getCell(13)));
         p.setUbicacionColumna(getCellStringValue(row.getCell(14)));
         p.setUbicacionEstante(getCellStringValue(row.getCell(15)));
+
+        String clasificacion = getCellStringValue(row.getCell(16));
+        p.setClasificacion(clasificacion != null && !clasificacion.isEmpty()
+                ? clasificacion.toUpperCase()
+                : Producto.CLASIFICACION_MERCADERIA);
+
+        p.setEsLamina(parseBooleanValue(row.getCell(17)));
+        p.setLaminaNumero(normalizarTexto(getCellStringValue(row.getCell(18))));
+        p.setLaminaTitulo(normalizarTexto(getCellStringValue(row.getCell(19))));
+        p.setLaminaMarca(normalizarTexto(getCellStringValue(row.getCell(20))));
+        p.setLaminaProveedorRef(normalizarTexto(getCellStringValue(row.getCell(21))));
+        p.setLaminaZona(normalizarTexto(getCellStringValue(row.getCell(22))));
+        p.setLaminaContenedor(normalizarTexto(getCellStringValue(row.getCell(23))));
+        p.setLaminaPosicion(normalizarTexto(getCellStringValue(row.getCell(24))));
+
+        if (p.esInsumo()) {
+            if (p.getPrecioVenta() == null) {
+                p.setPrecioVenta(BigDecimal.ZERO);
+            }
+            if (p.getPrecioMayorista() == null) {
+                p.setPrecioMayorista(BigDecimal.ZERO);
+            }
+            p.setStockMinimo(0);
+            p.setUbicacionFila(null);
+            p.setUbicacionColumna(null);
+            p.setUbicacionEstante(null);
+            p.setTipo("ESTANDAR");
+        }
+
+        if (!p.esLamina()) {
+            p.setLaminaNumero(null);
+            p.setLaminaTitulo(null);
+            p.setLaminaMarca(null);
+            p.setLaminaProveedorRef(null);
+            p.setLaminaZona(null);
+            p.setLaminaContenedor(null);
+            p.setLaminaPosicion(null);
+        }
     }
 
     private boolean isRowEmpty(Row row) {
@@ -472,5 +546,26 @@ public class ProductoExcelService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private boolean parseBooleanValue(Cell cell) {
+        String value = getCellStringValue(cell);
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toUpperCase();
+        return "SI".equals(normalized)
+                || "S".equals(normalized)
+                || "TRUE".equals(normalized)
+                || "1".equals(normalized)
+                || "YES".equals(normalized);
+    }
+
+    private String normalizarTexto(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed.toUpperCase();
     }
 }

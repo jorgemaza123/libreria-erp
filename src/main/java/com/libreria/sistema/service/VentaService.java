@@ -278,6 +278,10 @@ public class VentaService {
             Producto prod = productoRepository.findByIdWithLock(item.getProductoId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: ID " + item.getProductoId()));
 
+            if (prod.esInsumo()) {
+                throw new RuntimeException("El producto '" + prod.getNombre() + "' está marcado como insumo y no puede venderse desde el POS.");
+            }
+
             // Mantenemos tu validación de seguridad de precios
             validarPrecioVenta(prod, item.getPrecioVenta());
 
@@ -529,9 +533,10 @@ public class VentaService {
         boolean esServicioGenericoVariable =
                 producto.getTipo() != null
                         && "SERVICIO".equalsIgnoreCase(producto.getTipo())
-                        && "SERV-001".equalsIgnoreCase(producto.getCodigoInterno());
+                        && ("SERV-001".equalsIgnoreCase(producto.getCodigoInterno())
+                        || "SERV-PERS-001".equalsIgnoreCase(producto.getCodigoInterno()));
 
-        // SERV-001 es el comodín de servicios personalizados del sistema.
+        // SERV-001 y SERV-PERS-001 son servicios con precio variable.
         // Su precio es variable por diseño y no debe quedar sujeto al control
         // de sobreprecio de productos con tarifa fija.
         if (esServicioGenericoVariable) {

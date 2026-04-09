@@ -2,9 +2,11 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Cotizacion;
 import com.libreria.sistema.model.dto.CotizacionDTO;
+import com.libreria.sistema.service.CotizacionContratoPdfService;
 import com.libreria.sistema.service.CotizacionPdfService;
 import com.libreria.sistema.service.CotizacionService;
 import com.libreria.sistema.service.ConfiguracionService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,9 +18,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
 
 @Controller
@@ -28,13 +36,16 @@ public class CotizacionController {
 
     private final CotizacionService cotizacionService;
     private final CotizacionPdfService cotizacionPdfService;
+    private final CotizacionContratoPdfService cotizacionContratoPdfService;
     private final ConfiguracionService configuracionService;
 
     public CotizacionController(CotizacionService cotizacionService,
                                 CotizacionPdfService cotizacionPdfService,
+                                CotizacionContratoPdfService cotizacionContratoPdfService,
                                 ConfiguracionService configuracionService) {
         this.cotizacionService = cotizacionService;
         this.cotizacionPdfService = cotizacionPdfService;
+        this.cotizacionContratoPdfService = cotizacionContratoPdfService;
         this.configuracionService = configuracionService;
     }
 
@@ -66,14 +77,11 @@ public class CotizacionController {
         model.addAttribute("cotizaciones", pageCoti);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", pageCoti.getTotalPages());
-
-        // Filtros activos para mantener en paginación
         model.addAttribute("termino", termino);
         model.addAttribute("estado", estado);
         model.addAttribute("fechaDesde", fechaDesde);
         model.addAttribute("fechaHasta", fechaHasta);
-
-        // KPIs
+        model.addAttribute("ordenesVinculadas", cotizacionService.obtenerOrdenesVinculadas(pageCoti.getContent()));
         model.addAttribute("kpis", cotizacionService.obtenerKPIs());
 
         return "cotizaciones/lista";
@@ -110,8 +118,8 @@ public class CotizacionController {
         try {
             Long ventaId = cotizacionService.convertirAVenta(id, tipo);
             return ResponseEntity.ok(Map.of(
-                "mensaje", "Cotización convertida a Venta exitosamente",
-                "ventaId", ventaId
+                    "mensaje", "Cotización convertida a Venta exitosamente",
+                    "ventaId", ventaId
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -178,6 +186,23 @@ public class CotizacionController {
         response.getOutputStream().flush();
     }
 
+    @GetMapping("/contrato-pdf/{id}")
+    @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
+    public void descargarContratoPdf(@PathVariable Long id, HttpServletResponse response) throws Exception {
+        Cotizacion cotizacion = cotizacionService.obtenerPorId(id);
+        if (cotizacion == null) {
+            response.sendError(404, "Cotización no encontrada");
+            return;
+        }
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition",
+                "inline; filename=Contrato-Cotizacion-" + cotizacion.getSerie() + "-" + cotizacion.getNumero() + ".pdf");
+
+        cotizacionContratoPdfService.generarPdf(cotizacion, response.getOutputStream());
+        response.getOutputStream().flush();
+    }
+
     @GetMapping("/imprimir/{id}")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public String imprimir(@PathVariable Long id, Model model) {
@@ -189,9 +214,9 @@ public class CotizacionController {
     @GetMapping("/exportar/excel")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     public ResponseEntity<byte[]> exportarExcel(@RequestParam(required = false) String termino,
-                                                 @RequestParam(required = false) String estado,
-                                                 @RequestParam(required = false) String fechaDesde,
-                                                 @RequestParam(required = false) String fechaHasta) {
+                                                @RequestParam(required = false) String estado,
+                                                @RequestParam(required = false) String fechaDesde,
+                                                @RequestParam(required = false) String fechaHasta) {
         try {
             byte[] bytes = cotizacionService.exportarExcel(termino, estado, fechaDesde, fechaHasta);
             HttpHeaders headers = new HttpHeaders();
@@ -212,14 +237,12 @@ public class CotizacionController {
         return "cotizaciones/modal_detalle :: contenido";
     }
 
-    // --- API: Categorías de servicio (dinámicas) ---
     @GetMapping("/api/categorias")
     @ResponseBody
     public ResponseEntity<?> categorias() {
         return ResponseEntity.ok(cotizacionService.obtenerCategoriasActivas());
     }
 
-    // --- API: Tendencia mensual (12 meses) ---
     @GetMapping("/api/tendencia")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     @ResponseBody
@@ -227,23 +250,21 @@ public class CotizacionController {
         return ResponseEntity.ok(cotizacionService.obtenerTendenciaMensual());
     }
 
-    // --- API: Conversión por categoría ---
     @GetMapping("/api/conversion-categoria")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     @ResponseBody
     public ResponseEntity<?> conversionCategoria(@RequestParam(required = false) String desde,
-                                                  @RequestParam(required = false) String hasta) {
+                                                 @RequestParam(required = false) String hasta) {
         if (desde == null || desde.isEmpty()) desde = java.time.LocalDate.now().withDayOfMonth(1).toString();
         if (hasta == null || hasta.isEmpty()) hasta = java.time.LocalDate.now().toString();
         return ResponseEntity.ok(cotizacionService.obtenerConversionPorCategoria(desde + " 00:00:00", hasta + " 23:59:59"));
     }
 
-    // --- API: Rentabilidad desde ventas reales ---
     @GetMapping("/api/rentabilidad-ventas")
     @PreAuthorize("hasPermission(null, 'COTIZACIONES_VER')")
     @ResponseBody
     public ResponseEntity<?> rentabilidadVentas(@RequestParam(required = false) String desde,
-                                                 @RequestParam(required = false) String hasta) {
+                                                @RequestParam(required = false) String hasta) {
         java.time.LocalDate desdeDate = (desde != null && !desde.isEmpty())
                 ? java.time.LocalDate.parse(desde) : java.time.LocalDate.now().withDayOfMonth(1);
         java.time.LocalDate hastaDate = (hasta != null && !hasta.isEmpty())

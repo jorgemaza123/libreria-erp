@@ -385,6 +385,9 @@ public class ListaEscolarService {
         // 4. Validar y preparar items
         List<DetalleListaEscolar> itemsAVender = new ArrayList<>();
         BigDecimal totalVenta = BigDecimal.ZERO;
+        // FIX: cachear productos bloqueados para evitar doble findByIdWithLock
+        // que causa OptimisticLockException cuando el mismo producto aparece múltiples veces
+        Map<Long, Producto> productosCacheados = new HashMap<>();
 
         for (ItemSeleccionadoDTO item : dto.getItemsSeleccionados()) {
             DetalleListaEscolar detalle = null;
@@ -411,9 +414,10 @@ public class ListaEscolarService {
             }
             // else: producto adicional sin entrada en la lista — solo validar stock
 
-            // Validar producto asignado
-            Producto producto = productoRepository.findByIdWithLock(item.getProductoId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + item.getProductoId()));
+            // Validar producto asignado (usar caché para evitar doble lock del mismo producto)
+            Producto producto = productosCacheados.computeIfAbsent(item.getProductoId(),
+                    pid -> productoRepository.findByIdWithLock(pid)
+                            .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + pid)));
 
             // Validar stock (si no es servicio)
             if (!"SERVICIO".equalsIgnoreCase(producto.getTipo())) {
@@ -445,7 +449,8 @@ public class ListaEscolarService {
             DetalleListaEscolar detalleLista = itemsAVender.get(i);
             ItemSeleccionadoDTO itemDTO = dto.getItemsSeleccionados().get(i);
 
-            Producto producto = productoRepository.findByIdWithLock(itemDTO.getProductoId()).get();
+            // FIX: reusar el producto ya cacheado desde la fase de validación (evita OptimisticLockException)
+            Producto producto = productosCacheados.get(itemDTO.getProductoId());
 
             // Crear detalle venta
             DetalleVenta detalleVenta = new DetalleVenta();

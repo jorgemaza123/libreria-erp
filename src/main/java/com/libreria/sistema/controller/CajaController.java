@@ -92,10 +92,18 @@ public class CajaController {
                              @RequestParam(required = false) String categoria,
                              RedirectAttributes attr) {
         try {
+            if (concepto == null || concepto.trim().isBlank()) {
+                attr.addFlashAttribute("error", "El concepto es obligatorio.");
+                return "redirect:/caja";
+            }
+            if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
+                attr.addFlashAttribute("error", "El monto debe ser mayor a cero.");
+                return "redirect:/caja";
+            }
             if (categoria != null && !categoria.isBlank()) {
-                cajaService.registrarMovimiento(tipo, concepto, monto, categoria);
+                cajaService.registrarMovimiento(tipo, concepto.trim(), monto, categoria);
             } else {
-                cajaService.registrarMovimiento(tipo, concepto, monto);
+                cajaService.registrarMovimiento(tipo, concepto.trim(), monto);
             }
             attr.addFlashAttribute("success", "Registrado");
         } catch (Exception e) {

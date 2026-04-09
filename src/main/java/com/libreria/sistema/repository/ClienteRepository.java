@@ -80,7 +80,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     List<Cliente> findClientesMorosos();
 
     /**
-     * Total de deuda de todos los clientes
+     * Total de deuda de todos los clientes para tener en cuenta
      */
     @Query("SELECT COALESCE(SUM(c.saldoDeudor), 0) FROM Cliente c WHERE c.activo = true")
     BigDecimal sumarDeudaTotal();

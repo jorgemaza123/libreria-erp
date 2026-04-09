@@ -35,6 +35,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             p.nombre ILIKE '%' || :termino || '%'
             OR p.marca ILIKE '%' || :termino || '%'
@@ -78,6 +80,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             -- Token 1 (obligatorio) - busca en todos los campos incluyendo tags
             p.nombre ILIKE '%' || :token1 || '%'
@@ -150,6 +154,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT p.* FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             p.nombre ILIKE '%' || :t1 || '%'
             OR p.marca ILIKE '%' || :t1 || '%'
@@ -224,6 +230,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             p.codigo_barra ILIKE :termino || '%'
             OR p.codigo_interno ILIKE :termino || '%'
@@ -262,6 +270,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (p.codigo_barra = :codigo OR p.codigo_interno = :codigo)
         LIMIT 1
         """, nativeQuery = true)
@@ -277,6 +287,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             :termino IS NULL OR :termino = ''
             OR p.nombre ILIKE '%' || :termino || '%'
@@ -291,6 +303,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
             countQuery = """
         SELECT COUNT(*) FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             :termino IS NULL OR :termino = ''
             OR p.nombre ILIKE '%' || :termino || '%'
@@ -321,6 +335,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND p.id != :productoId
         AND p.stock_actual > 0
         AND (
@@ -357,6 +373,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND p.search_vector @@ plainto_tsquery('spanish', :termino)
         ORDER BY
             CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
@@ -389,6 +407,8 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT * FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             similarity(p.nombre, :t1) > :threshold
             OR similarity(coalesce(p.marca, ''), :t1) > :threshold
@@ -432,6 +452,7 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
     @Query(value = """
         SELECT COUNT(*) FROM productos p
         WHERE p.activo = true
+        AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
         AND (
             p.nombre ILIKE '%' || :termino || '%'
             OR p.marca ILIKE '%' || :termino || '%'

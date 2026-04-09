@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='laminas'">
+<head>
+    <title>Inventario - Laminas Escolares</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Inventario - Laminas Escolares</h1>
+                    <small class="text-muted">Modulo rapido para registrar, ubicar y vender laminas sin mezclarlo con productos generales.</small>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <a href="/laminas/nuevo" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva lamina
+                    </a>
+                    <a href="/laminas/carga-rapida" class="btn btn-success ml-2">
+                        <i class="fas fa-bolt"></i> Carga rapida
+                    </a>
+                    <a href="/laminas/importar" class="btn btn-info ml-2">
+                        <i class="fas fa-file-import"></i> Importar Excel
+                    </a>
+                    <a href="/laminas/categorias" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-tags"></i> Categorias
+                    </a>
+                    <a href="/productos" class="btn btn-outline-dark ml-2">
+                        <i class="fas fa-boxes"></i> Productos
+                    </a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-12">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/productos">Productos</a></li>
+                        <li class="breadcrumb-item active">Laminas</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-exclamation-triangle mr-2"></i><span th:text="${warning}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div th:if="${erroresCargaRapida}" class="alert alert-warning">
+                <h5 class="mb-2"><i class="fas fa-exclamation-circle mr-2"></i>Lineas con observaciones</h5>
+                <ul class="mb-0">
+                    <li th:each="err : ${erroresCargaRapida}" th:text="${err}"></li>
+                </ul>
+            </div>
+
+            <div class="card card-primary card-outline">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <div class="callout callout-info mb-0">
+                                <h5 class="mb-2">Carga simple</h5>
+                                <p class="mb-0">Cada lamina se guarda con precio de venta por defecto de <strong th:text="${'S/ ' + #numbers.formatDecimal(precioVentaDefault, 1, 2)}">S/ 0.50</strong>, sin stock minimo y con ubicacion basada en <strong>categoria + bolsa</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small-box bg-light h-100 mb-0">
+                                <div class="inner">
+                                    <h3 th:text="${#lists.size(laminas)}">0</h3>
+                                    <p>Laminas activas registradas</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <table id="tablaLaminas" class="table table-bordered table-striped table-hover">
+                        <thead>
+                        <tr>
+                            <th style="width: 90px;">Numero</th>
+                            <th>Titulo</th>
+                            <th style="width: 160px;">Marca</th>
+                            <th style="width: 160px;">Categoria</th>
+                            <th style="width: 130px;">Bolsa</th>
+                            <th style="width: 90px;" class="text-center">Stock</th>
+                            <th style="width: 110px;" class="text-right">P. Venta</th>
+                            <th style="width: 110px;" class="text-center">Estado</th>
+                            <th style="width: 130px;" class="text-center">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="lamina : ${laminas}">
+                            <td th:text="${lamina.laminaNumero != null ? lamina.laminaNumero : '-'}">-</td>
+                            <td>
+                                <div class="font-weight-bold" th:text="${lamina.laminaTitulo != null ? lamina.laminaTitulo : lamina.nombre}">LAMINA</div>
+                                <small class="text-muted" th:text="${lamina.laminaUbicacionTexto != null ? lamina.laminaUbicacionTexto : 'SIN UBICACION'}">SIN UBICACION</small>
+                            </td>
+                            <td th:text="${lamina.laminaMarca != null ? lamina.laminaMarca : '-'}">-</td>
+                            <td th:text="${lamina.laminaCategoria != null ? lamina.laminaCategoria : 'SIN CATEGORIA'}">SIN CATEGORIA</td>
+                            <td th:text="${lamina.laminaContenedor != null ? lamina.laminaContenedor : '-'}">-</td>
+                            <td class="text-center font-weight-bold"
+                                th:classappend="${lamina.stockActual != null and lamina.stockActual > 0} ? 'text-success' : 'text-danger'"
+                                th:text="${lamina.stockActual != null ? lamina.stockActual : 0}">0</td>
+                            <td class="text-right" th:text="${lamina.precioVenta != null ? 'S/ ' + #numbers.formatDecimal(lamina.precioVenta, 1, 2) : 'S/ 0.50'}">S/ 0.50</td>
+                            <td class="text-center">
+                                <span th:if="${lamina.activo}" class="badge badge-success">ACTIVA</span>
+                                <span th:unless="${lamina.activo}" class="badge badge-secondary">INACTIVA</span>
+                            </td>
+                            <td class="text-center">
+                                <a th:href="@{/laminas/editar/{id}(id=${lamina.id})}" class="btn btn-warning btn-sm" title="Editar lamina">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form th:action="@{/laminas/toggle/{id}(id=${lamina.id})}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm"
+                                            th:classappend="${lamina.activo} ? 'btn-danger' : 'btn-success'"
+                                            th:title="${lamina.activo} ? 'Desactivar' : 'Activar'">
+                                        <i th:class="${lamina.activo} ? 'fas fa-ban' : 'fas fa-check'"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(function () {
+            // Retardo mínimo para permitir que AdminLTE inicialice la barra lateral primero
+            setTimeout(function() {
+                if ($.fn.DataTable) {
+                    $('#tablaLaminas').DataTable({
+                        order: [ [ 0, 'asc' ] ],
+                        pageLength: 25,
+                        responsive: true,
+                        autoWidth: false,
+                        language: {
+                            search: 'Buscar lamina:',
+                            zeroRecords: 'No se encontraron laminas'
+                        }
+                    });
+                }
+            }, 50);
+        });
+    </script>
+</th:block>
+</body>
+</html>

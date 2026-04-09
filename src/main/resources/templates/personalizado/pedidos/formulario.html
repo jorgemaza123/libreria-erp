@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_pedidos'">
+<head>
+    <title th:text="${dto.id != null ? 'Editar pedido personalizado' : 'Nuevo pedido personalizado'}">Pedido Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <div>
+                <h1 th:text="${dto.id != null ? 'Editar pedido personalizado' : 'Nuevo pedido personalizado'}">Pedido Personalizado</h1>
+                <small class="text-muted" th:text="${dto.id != null ? 'Edita el pedido y recalcula antes de cerrar la venta.' : 'Arma el pedido, calcula el precio y luego guardalo.'}">
+                    Flujo del pedido personalizado
+                </small>
+            </div>
+            <div class="text-right">
+                <a href="/personalizado/pedidos" class="btn btn-outline-secondary">Volver</a>
+                <a th:if="${dto.id != null}" th:href="@{'/personalizado/pedidos/detalle/' + ${dto.id}}" class="btn btn-outline-primary">Detalle</a>
+                <a th:if="${dto.id != null}" th:href="@{'/personalizado/api/pdf/' + ${dto.id}}" target="_blank" class="btn btn-outline-danger">PDF</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Cliente y canal</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label>Canal</label>
+                                    <select class="form-control" id="pedidoCanalOrigen">
+                                        <option value="TIENDA">TIENDA</option>
+                                        <option value="WEB">WEB</option>
+                                        <option value="WHATSAPP">WHATSAPP</option>
+                                        <option value="INSTAGRAM">INSTAGRAM</option>
+                                        <option value="FACEBOOK">FACEBOOK</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label>Estado</label>
+                                    <select class="form-control" id="pedidoEstado">
+                                        <option value="BORRADOR">BORRADOR</option>
+                                        <option value="COTIZADO">COTIZADO</option>
+                                        <option value="CONFIRMADO">CONFIRMADO</option>
+                                        <option value="EN_PRODUCCION">EN_PRODUCCION</option>
+                                        <option value="LISTO">LISTO</option>
+                                        <option value="ENTREGADO">ENTREGADO</option>
+                                        <option value="CANCELADO">CANCELADO</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <input type="text" class="form-control" id="pedidoClienteNombre" placeholder="Nombre del cliente">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label>Doc.</label>
+                                    <select class="form-control" id="pedidoClienteTipoDocumento">
+                                        <option value="">-</option>
+                                        <option value="D">DNI</option>
+                                        <option value="R">RUC</option>
+                                        <option value="C">CEX</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-8">
+                                    <label>Numero</label>
+                                    <input type="text" class="form-control" id="pedidoClienteNumeroDocumento" placeholder="Documento">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label>WhatsApp</label>
+                                    <input type="text" class="form-control" id="pedidoClienteWhatsapp" placeholder="999999999">
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label>Telefono</label>
+                                    <input type="text" class="form-control" id="pedidoClienteTelefono" placeholder="Opcional">
+                                </div>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label>Email</label>
+                                <input type="email" class="form-control" id="pedidoClienteEmail" placeholder="Opcional">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-info card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Entrega y datos del pedido</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Destinatario</label>
+                                <input type="text" class="form-control" id="pedidoNombreDestinatario" placeholder="Quien recibe">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefono destinatario</label>
+                                <input type="text" class="form-control" id="pedidoTelefonoDestinatario" placeholder="Opcional">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-8">
+                                    <label>Modo de entrega</label>
+                                    <select class="form-control" id="pedidoModoEntrega">
+                                        <option value="RECOJO_TIENDA">RECOJO_TIENDA</option>
+                                        <option value="DELIVERY_LOCAL">DELIVERY_LOCAL</option>
+                                        <option value="ENVIO_AGENCIA">ENVIO_AGENCIA</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>&nbsp;</label>
+                                    <div class="custom-control custom-switch pt-2">
+                                        <input type="checkbox" class="custom-control-input" id="pedidoEnvioGratis">
+                                        <label class="custom-control-label" for="pedidoEnvioGratis">Envio gratis</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Zona rapida</label>
+                                <div class="input-group">
+                                    <select class="form-control" id="pedidoZonaRapida">
+                                        <option value="">Selecciona una zona</option>
+                                        <option th:each="zona : ${zonasActivas}"
+                                                th:value="${zona.id}"
+                                                th:data-departamento="${zona.departamento}"
+                                                th:data-provincia="${zona.provincia}"
+                                                th:data-distrito="${zona.distrito}"
+                                                th:data-tarifa="${zona.tarifaBase}"
+                                                th:text="${zona.departamento + ' / ' + zona.provincia + ' / ' + zona.distrito}">
+                                            ZONA
+                                        </option>
+                                    </select>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-info" id="btnAplicarZona">Aplicar</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label>Costo envio</label>
+                                    <input type="number" step="0.01" class="form-control" id="pedidoCostoEnvio" value="0">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>Fecha entrega</label>
+                                    <input type="date" class="form-control" id="pedidoFechaEntregaSolicitada">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>Franja</label>
+                                    <input type="text" class="form-control" id="pedidoFranjaEntrega" placeholder="10am - 1pm">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label>Departamento</label>
+                                    <input type="text" class="form-control" id="pedidoDepartamento">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>Provincia</label>
+                                    <input type="text" class="form-control" id="pedidoProvincia">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>Distrito</label>
+                                    <input type="text" class="form-control" id="pedidoDistrito">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Direccion</label>
+                                <input type="text" class="form-control" id="pedidoDireccionEntrega" placeholder="Direccion de entrega">
+                            </div>
+                            <div class="form-group mb-0">
+                                <label>Referencia</label>
+                                <input type="text" class="form-control" id="pedidoReferenciaEntrega" placeholder="Referencia corta">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-secondary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Notas y cierre comercial</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Etiqueta / nombre</label>
+                                <input type="text" class="form-control" id="pedidoNombreEtiqueta" placeholder="Nombre en tarjeta o sticker">
+                            </div>
+                            <div class="form-group">
+                                <label>Dedicatoria</label>
+                                <textarea class="form-control" rows="2" id="pedidoDedicatoria" placeholder="Mensaje corto"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Notas de diseno</label>
+                                <textarea class="form-control" rows="2" id="pedidoNotasDiseno" placeholder="Cambios de diseno, color, idea, etc."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Observaciones del cliente</label>
+                                <textarea class="form-control" rows="2" id="pedidoObservacionesCliente"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label>Descuento</label>
+                                    <input type="number" step="0.01" class="form-control" id="pedidoDescuento" value="0">
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label>Adelanto</label>
+                                    <input type="number" step="0.01" class="form-control" id="pedidoAdelanto" value="0">
+                                </div>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label>Observaciones internas</label>
+                                <textarea class="form-control" rows="2" id="pedidoObservacionesInternas"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Agregar modelo o plantilla</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label>Buscar modelo</label>
+                                    <select class="form-control" id="selectorPlantilla">
+                                        <option value="">Selecciona un modelo</option>
+                                        <option th:each="plantilla : ${plantillasActivas}"
+                                                th:value="${plantilla.id}"
+                                                th:text="${plantilla.codigoModelo + ' - ' + plantilla.nombreComercial}">
+                                            MODELO
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Cantidad</label>
+                                    <input type="number" step="0.01" class="form-control" id="selectorCantidad" value="1">
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>&nbsp;</label>
+                                    <button type="button" class="btn btn-primary btn-block" id="btnAgregarModeloPedido">
+                                        <i class="fas fa-plus mr-1"></i>Agregar modelo
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="alert alert-light border mb-0">
+                                Busca por codigo de modelo o nombre comercial. Cada modelo agregado queda editable sin alterar la plantilla original.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-5">
+                            <div class="card card-info card-outline h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h3 class="card-title mb-0">Modelos del pedido</h3>
+                                    <span class="badge badge-info" id="pedidoCantidadModelos">0</span>
+                                </div>
+                                <div class="card-body p-2" id="listaModelosPedido"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-7">
+                            <div class="card card-success card-outline">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h3 class="card-title mb-0">Editor del modelo</h3>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnEliminarModeloActual">Quitar modelo</button>
+                                </div>
+                                <div class="card-body" id="editorModeloBody">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-magic fa-2x mb-3"></i>
+                                        <p class="mb-0">Agrega un modelo para empezar a personalizar el pedido.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-warning card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">Resumen del pedido</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Subtotal</small>
+                                        <strong id="resSubtotal">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Descuento</small>
+                                        <strong id="resDescuento">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Envio</small>
+                                        <strong id="resEnvio">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Total</small>
+                                        <strong id="resTotal">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Adelanto</small>
+                                        <strong id="resAdelanto">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <div class="border rounded p-3 bg-light h-100">
+                                        <small class="text-muted d-block">Saldo</small>
+                                        <strong id="resSaldo">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right mt-3">
+                                <a th:if="${dto.id != null}" th:href="@{'/personalizado/api/whatsapp/' + ${dto.id}}" target="_blank" class="btn btn-outline-success mr-2">
+                                    <i class="fab fa-whatsapp mr-1"></i>WhatsApp
+                                </a>
+                                <a th:if="${dto.id != null}" th:href="@{'/personalizado/api/pdf/' + ${dto.id}}" target="_blank" class="btn btn-outline-danger mr-2">
+                                    <i class="fas fa-file-pdf mr-1"></i>PDF
+                                </a>
+                                <button type="button" class="btn btn-outline-secondary mr-2" id="btnRecalcularPedido">
+                                    <i class="fas fa-sync-alt mr-1"></i>Recalcular
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnGuardarPedidoPersonalizado">
+                                    <i class="fas fa-save mr-1"></i>Guardar pedido
+                                </button>
+                            </div>
+                            <div class="text-right mt-2" th:if="${dto.id != null}">
+                                <a th:href="@{'/personalizado/pedidos/detalle/' + ${dto.id}}" class="btn btn-success">
+                                    <i class="fas fa-receipt mr-1"></i>Ir al detalle y cerrar venta
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        const pedidoInicialRaw = /*[[${pedidoJson}]]*/ '{}';
+        const pedidoInicial = JSON.parse(pedidoInicialRaw || '{}');
+        let pedidoState = normalizarPedido(pedidoInicial);
+        let currentItemIndex = pedidoState.items.length ? 0 : -1;
+
+        const plantillasIndex = {};
+        const insumosIndex = {};
+        const adicionalesIndex = {};
+
+        /*[# th:each="plantilla : ${plantillasActivas}"]*/
+        plantillasIndex[[${plantilla.id}]] = {
+            id: [[${plantilla.id}]],
+            codigoModelo: [[${plantilla.codigoModelo}]],
+            nombreComercial: [[${plantilla.nombreComercial}]],
+            categoria: [[${plantilla.categoria}]],
+            fotoPrincipal: [[${plantilla.fotoPrincipal}]]
+        };
+        /*[/]*/
+
+        /*[# th:each="insumo : ${insumosActivos}"]*/
+        insumosIndex[[${insumo.id}]] = {
+            id: [[${insumo.id}]],
+            nombre: [[${insumo.nombre}]],
+            categoria: [[${insumo.categoria}]],
+            costo: [[${insumo.producto != null and insumo.producto.precioCompra != null ? insumo.producto.precioCompra : 0}]]
+        };
+        /*[/]*/
+
+        /*[# th:each="adicional : ${adicionalesActivos}"]*/
+        adicionalesIndex[[${adicional.id}]] = {
+            id: [[${adicional.id}]],
+            nombre: [[${adicional.nombre}]],
+            categoria: [[${adicional.categoriaAdicional != null ? adicional.categoriaAdicional.nombre : 'ADICIONAL'}]],
+            costo: [[${adicional.costoManual != null ? adicional.costoManual : (adicional.insumoPersonalizado != null and adicional.insumoPersonalizado.producto != null and adicional.insumoPersonalizado.producto.precioCompra != null ? adicional.insumoPersonalizado.producto.precioCompra : 0)}]]
+        };
+        /*[/]*/
+
+        function normalizarPedido(payload) {
+            const dto = payload || {};
+            return {
+                id: dto.id || null,
+                canalOrigen: dto.canalOrigen || 'TIENDA',
+                estado: dto.estado || 'BORRADOR',
+                clienteId: dto.clienteId || null,
+                clienteNombre: dto.clienteNombre || '',
+                clienteTipoDocumento: dto.clienteTipoDocumento || '',
+                clienteNumeroDocumento: dto.clienteNumeroDocumento || '',
+                clienteWhatsapp: dto.clienteWhatsapp || '',
+                clienteTelefono: dto.clienteTelefono || '',
+                clienteEmail: dto.clienteEmail || '',
+                nombreDestinatario: dto.nombreDestinatario || '',
+                telefonoDestinatario: dto.telefonoDestinatario || '',
+                dedicatoria: dto.dedicatoria || '',
+                nombreEtiqueta: dto.nombreEtiqueta || '',
+                notasDiseno: dto.notasDiseno || '',
+                observacionesCliente: dto.observacionesCliente || '',
+                modoEntrega: dto.modoEntrega || 'RECOJO_TIENDA',
+                envioGratis: !!dto.envioGratis,
+                costoEnvio: toNumber(dto.costoEnvio),
+                departamento: dto.departamento || '',
+                provincia: dto.provincia || '',
+                distrito: dto.distrito || '',
+                direccionEntrega: dto.direccionEntrega || '',
+                referenciaEntrega: dto.referenciaEntrega || '',
+                fechaEntregaSolicitada: dto.fechaEntregaSolicitada || '',
+                franjaEntrega: dto.franjaEntrega || '',
+                descuento: toNumber(dto.descuento),
+                adelanto: toNumber(dto.adelanto),
+                observacionesInternas: dto.observacionesInternas || '',
+                tipoComprobante: dto.tipoComprobante || 'NOTA_VENTA',
+                formaPago: dto.formaPago || 'CONTADO',
+                metodoPago: dto.metodoPago || 'EFECTIVO',
+                items: (dto.items || []).map(normalizarItem)
+            };
+        }
+
+        function normalizarItem(item) {
+            const data = item || {};
+            return {
+                plantillaId: data.plantillaId || null,
+                codigoModeloSnapshot: data.codigoModeloSnapshot || '',
+                nombreComercialSnapshot: data.nombreComercialSnapshot || '',
+                fotoSnapshot: data.fotoSnapshot || '',
+                categoriaSnapshot: data.categoriaSnapshot || '',
+                cantidad: toNumber(data.cantidad, 1),
+                costoSnapshot: toNumber(data.costoSnapshot),
+                precioMinimoSnapshot: toNumber(data.precioMinimoSnapshot),
+                precioSugeridoSnapshot: toNumber(data.precioSugeridoSnapshot),
+                precioFinal: toNumber(data.precioFinal),
+                configuracionJson: data.configuracionJson || '',
+                componentes: (data.componentes || []).map(normalizarComponente)
+            };
+        }
+
+        function normalizarComponente(componente) {
+            const data = componente || {};
+            return {
+                categoria: data.categoria || 'GENERAL',
+                nombre: data.nombre || 'COMPONENTE',
+                tipoOrigen: data.tipoOrigen || 'MANUAL',
+                insumoPersonalizadoId: data.insumoPersonalizadoId || null,
+                adicionalPersonalizadoId: data.adicionalPersonalizadoId || null,
+                cantidad: toNumber(data.cantidad, 1),
+                costoUnitario: toNumber(data.costoUnitario),
+                costoTotal: toNumber(data.costoTotal),
+                incluido: data.incluido === undefined ? true : !!data.incluido,
+                eliminado: !!data.eliminado,
+                orden: data.orden || 0
+            };
+        }
+
+        function toNumber(value, fallback = 0) {
+            const parsed = parseFloat(value);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function money(value) {
+            return 'S/ ' + toNumber(value).toFixed(2);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value);
+        }
+
+        function setFieldValue(id, value) {
+            $(id).val(value == null ? '' : value);
+        }
+
+        function itemActual() {
+            if (currentItemIndex < 0 || currentItemIndex >= pedidoState.items.length) {
+                return null;
+            }
+            return pedidoState.items[currentItemIndex];
+        }
+
+        function cargarFormularioDesdeState() {
+            setFieldValue('#pedidoCanalOrigen', pedidoState.canalOrigen);
+            setFieldValue('#pedidoEstado', pedidoState.estado);
+            setFieldValue('#pedidoClienteNombre', pedidoState.clienteNombre);
+            setFieldValue('#pedidoClienteTipoDocumento', pedidoState.clienteTipoDocumento);
+            setFieldValue('#pedidoClienteNumeroDocumento', pedidoState.clienteNumeroDocumento);
+            setFieldValue('#pedidoClienteWhatsapp', pedidoState.clienteWhatsapp);
+            setFieldValue('#pedidoClienteTelefono', pedidoState.clienteTelefono);
+            setFieldValue('#pedidoClienteEmail', pedidoState.clienteEmail);
+            setFieldValue('#pedidoNombreDestinatario', pedidoState.nombreDestinatario);
+            setFieldValue('#pedidoTelefonoDestinatario', pedidoState.telefonoDestinatario);
+            setFieldValue('#pedidoDedicatoria', pedidoState.dedicatoria);
+            setFieldValue('#pedidoNombreEtiqueta', pedidoState.nombreEtiqueta);
+            setFieldValue('#pedidoNotasDiseno', pedidoState.notasDiseno);
+            setFieldValue('#pedidoObservacionesCliente', pedidoState.observacionesCliente);
+            setFieldValue('#pedidoModoEntrega', pedidoState.modoEntrega);
+            $('#pedidoEnvioGratis').prop('checked', !!pedidoState.envioGratis);
+            setFieldValue('#pedidoCostoEnvio', pedidoState.costoEnvio.toFixed(2));
+            setFieldValue('#pedidoDepartamento', pedidoState.departamento);
+            setFieldValue('#pedidoProvincia', pedidoState.provincia);
+            setFieldValue('#pedidoDistrito', pedidoState.distrito);
+            setFieldValue('#pedidoDireccionEntrega', pedidoState.direccionEntrega);
+            setFieldValue('#pedidoReferenciaEntrega', pedidoState.referenciaEntrega);
+            setFieldValue('#pedidoFechaEntregaSolicitada', pedidoState.fechaEntregaSolicitada);
+            setFieldValue('#pedidoFranjaEntrega', pedidoState.franjaEntrega);
+            setFieldValue('#pedidoDescuento', pedidoState.descuento.toFixed(2));
+            setFieldValue('#pedidoAdelanto', pedidoState.adelanto.toFixed(2));
+            setFieldValue('#pedidoObservacionesInternas', pedidoState.observacionesInternas);
+        }
+
+        function leerFormularioGenerico() {
+            pedidoState.canalOrigen = $('#pedidoCanalOrigen').val() || 'TIENDA';
+            pedidoState.estado = $('#pedidoEstado').val() || 'BORRADOR';
+            pedidoState.clienteNombre = ($('#pedidoClienteNombre').val() || '').trim();
+            pedidoState.clienteTipoDocumento = $('#pedidoClienteTipoDocumento').val() || '';
+            pedidoState.clienteNumeroDocumento = ($('#pedidoClienteNumeroDocumento').val() || '').trim();
+            pedidoState.clienteWhatsapp = ($('#pedidoClienteWhatsapp').val() || '').trim();
+            pedidoState.clienteTelefono = ($('#pedidoClienteTelefono').val() || '').trim();
+            pedidoState.clienteEmail = ($('#pedidoClienteEmail').val() || '').trim();
+            pedidoState.nombreDestinatario = ($('#pedidoNombreDestinatario').val() || '').trim();
+            pedidoState.telefonoDestinatario = ($('#pedidoTelefonoDestinatario').val() || '').trim();
+            pedidoState.dedicatoria = ($('#pedidoDedicatoria').val() || '').trim();
+            pedidoState.nombreEtiqueta = ($('#pedidoNombreEtiqueta').val() || '').trim();
+            pedidoState.notasDiseno = ($('#pedidoNotasDiseno').val() || '').trim();
+            pedidoState.observacionesCliente = ($('#pedidoObservacionesCliente').val() || '').trim();
+            pedidoState.modoEntrega = $('#pedidoModoEntrega').val() || 'RECOJO_TIENDA';
+            pedidoState.envioGratis = $('#pedidoEnvioGratis').is(':checked');
+            pedidoState.costoEnvio = toNumber($('#pedidoCostoEnvio').val());
+            pedidoState.departamento = ($('#pedidoDepartamento').val() || '').trim();
+            pedidoState.provincia = ($('#pedidoProvincia').val() || '').trim();
+            pedidoState.distrito = ($('#pedidoDistrito').val() || '').trim();
+            pedidoState.direccionEntrega = ($('#pedidoDireccionEntrega').val() || '').trim();
+            pedidoState.referenciaEntrega = ($('#pedidoReferenciaEntrega').val() || '').trim();
+            pedidoState.fechaEntregaSolicitada = $('#pedidoFechaEntregaSolicitada').val() || '';
+            pedidoState.franjaEntrega = ($('#pedidoFranjaEntrega').val() || '').trim();
+            pedidoState.descuento = toNumber($('#pedidoDescuento').val());
+            pedidoState.adelanto = toNumber($('#pedidoAdelanto').val());
+            pedidoState.observacionesInternas = ($('#pedidoObservacionesInternas').val() || '').trim();
+        }
+
+        function renderListaModelos() {
+            const contenedor = $('#listaModelosPedido');
+            $('#pedidoCantidadModelos').text(pedidoState.items.length);
+            if (!pedidoState.items.length) {
+                contenedor.html(`
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-box-open fa-2x mb-3"></i>
+                        <p class="mb-0">Aun no has agregado modelos al pedido.</p>
+                    </div>
+                `);
+                return;
+            }
+
+            contenedor.html(pedidoState.items.map((item, index) => `
+                <div class="border rounded p-3 mb-2 ${index === currentItemIndex ? 'border-primary bg-light' : ''}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="min-width:0;">
+                            <div class="font-weight-bold text-truncate">${escapeHtml(item.codigoModeloSnapshot || 'MODELO')}${item.nombreComercialSnapshot ? ' - ' + escapeHtml(item.nombreComercialSnapshot) : ''}</div>
+                            <small class="text-muted d-block">${escapeHtml(item.categoriaSnapshot || 'PERSONALIZADO')}</small>
+                            <small class="text-muted d-block">Cantidad: ${toNumber(item.cantidad, 1).toFixed(2)}</small>
+                        </div>
+                        <div class="text-right ml-2">
+                            <div class="font-weight-bold">${money(item.precioFinal)}</div>
+                            <div class="btn-group btn-group-sm mt-2">
+                                <button type="button" class="btn btn-outline-primary" onclick="seleccionarModelo(${index})">Editar</button>
+                                <button type="button" class="btn btn-outline-danger" onclick="eliminarModelo(${index})">Quitar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join(''));
+        }
+
+        function renderEditorModelo() {
+            const item = itemActual();
+            const body = $('#editorModeloBody');
+            if (!item) {
+                body.html(`
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-magic fa-2x mb-3"></i>
+                        <p class="mb-0">Agrega un modelo para empezar a personalizar el pedido.</p>
+                    </div>
+                `);
+                $('#btnEliminarModeloActual').prop('disabled', true);
+                return;
+            }
+            $('#btnEliminarModeloActual').prop('disabled', false);
+            const foto = item.fotoSnapshot ? `/uploads/${item.fotoSnapshot}` : '';
+            body.html(`
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="border rounded bg-light d-flex align-items-center justify-content-center" style="min-height:210px;">
+                            ${foto ? `<img src="${foto}" alt="modelo" style="width:100%;max-height:210px;object-fit:cover;border-radius:10px;">`
+                                   : `<div class="text-center text-muted px-3"><i class="fas fa-image fa-2x mb-2"></i><div>Sin foto</div></div>`}
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Codigo modelo</label>
+                                <input type="text" class="form-control" id="editorCodigoModelo" readonly value="${escapeAttr(item.codigoModeloSnapshot || '')}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Categoria</label>
+                                <input type="text" class="form-control" id="editorCategoriaModelo" readonly value="${escapeAttr(item.categoriaSnapshot || '')}">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre comercial</label>
+                            <input type="text" class="form-control" id="editorNombreModelo" value="${escapeAttr(item.nombreComercialSnapshot || '')}">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label>Cantidad</label>
+                                <input type="number" step="0.01" class="form-control editor-item-control" id="editorCantidadModelo" value="${toNumber(item.cantidad, 1)}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>Precio minimo</label>
+                                <input type="text" class="form-control" id="editorPrecioMinimo" readonly value="${money(item.precioMinimoSnapshot)}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>Precio sugerido</label>
+                                <input type="text" class="form-control" id="editorPrecioSugerido" readonly value="${money(item.precioSugeridoSnapshot)}">
+                            </div>
+                        </div>
+                        <div class="form-row mb-0">
+                            <div class="form-group col-md-6 mb-0">
+                                <label>Precio final</label>
+                                <input type="number" step="0.01" class="form-control editor-item-control" id="editorPrecioFinal" value="${toNumber(item.precioFinal)}">
+                            </div>
+                            <div class="form-group col-md-6 mb-0">
+                                <label>Costo total</label>
+                                <input type="text" class="form-control" id="editorCostoModelo" readonly value="${money(item.costoSnapshot)}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="border rounded p-3 bg-light mb-3">
+                    <div class="form-row">
+                        <div class="form-group col-md-2">
+                            <label>Origen</label>
+                            <select class="form-control" id="nuevoComponenteTipoOrigen">
+                                <option value="INSUMO">INSUMO</option>
+                                <option value="ADICIONAL">ADICIONAL</option>
+                                <option value="MANUAL">MANUAL</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Insumo</label>
+                            <select class="form-control" id="nuevoComponenteInsumo">
+                                <option value="">-</option>
+                                ${Object.values(insumosIndex).map(insumo => `<option value="${insumo.id}">${escapeHtml(insumo.nombre)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Adicional</label>
+                            <select class="form-control" id="nuevoComponenteAdicional">
+                                <option value="">-</option>
+                                ${Object.values(adicionalesIndex).map(adicional => `<option value="${adicional.id}">${escapeHtml(adicional.nombre)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>Cantidad</label>
+                            <input type="number" step="0.01" class="form-control" id="nuevoComponenteCantidad" value="1">
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>Costo unit.</label>
+                            <input type="number" step="0.01" class="form-control" id="nuevoComponenteCosto" value="0">
+                        </div>
+                    </div>
+                    <div class="form-row mb-0">
+                        <div class="form-group col-md-4 mb-0">
+                            <label>Descripcion manual</label>
+                            <input type="text" class="form-control" id="nuevoComponenteNombre" placeholder="Caja kraft premium">
+                        </div>
+                        <div class="form-group col-md-3 mb-0">
+                            <label>Categoria</label>
+                            <input type="text" class="form-control" id="nuevoComponenteCategoria" placeholder="ENVOLTURA">
+                        </div>
+                        <div class="form-group col-md-2 mb-0">
+                            <label>&nbsp;</label>
+                            <div class="custom-control custom-switch pt-2">
+                                <input type="checkbox" class="custom-control-input" id="nuevoComponenteIncluido" checked>
+                                <label class="custom-control-label" for="nuevoComponenteIncluido">Incluido</label>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-3 mb-0 text-right">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-outline-primary btn-block" id="btnAgregarComponentePedido">Agregar componente</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Nombre</th>
+                            <th class="text-center">Incluido</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-right">Costo unit.</th>
+                            <th class="text-right">Costo total</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tablaComponentesPedidoActual"></tbody>
+                    </table>
+                </div>
+            `);
+            renderTablaComponentesActual();
+        }
+
+        function renderTablaComponentesActual() {
+            const item = itemActual();
+            const tbody = $('#tablaComponentesPedidoActual');
+            if (!item || !tbody.length) {
+                return;
+            }
+            const componentes = item.componentes || [];
+            if (!componentes.length) {
+                tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">Este modelo aun no tiene componentes.</td></tr>');
+                return;
+            }
+            tbody.html(componentes.map((componente, index) => `
+                <tr>
+                    <td>${escapeHtml(componente.categoria || 'GENERAL')}</td>
+                    <td>${escapeHtml(componente.nombre || 'COMPONENTE')}</td>
+                    <td class="text-center">
+                        <input type="checkbox" ${componente.incluido ? 'checked' : ''} onchange="toggleComponenteIncluido(${index}, this.checked)">
+                    </td>
+                    <td class="text-center">
+                        <input type="number" step="0.01" class="form-control form-control-sm text-center" style="min-width:90px;"
+                               value="${toNumber(componente.cantidad, 1)}" onchange="actualizarCantidadComponente(${index}, this.value)">
+                    </td>
+                    <td class="text-right">${money(componente.costoUnitario)}</td>
+                    <td class="text-right">${money((toNumber(componente.costoUnitario) * toNumber(componente.cantidad, 1)))}</td>
+                    <td class="text-right">
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="quitarComponenteActual(${index})">Quitar</button>
+                    </td>
+                </tr>
+            `).join(''));
+        }
+
+        function parseJsonSafe(raw, fallback) {
+            if (!raw) return fallback;
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function plantillaPorId(id) {
+            return new Promise((resolve, reject) => {
+                $.getJSON('/personalizado/api/plantillas/' + id)
+                    .done(resolve)
+                    .fail(function (xhr) {
+                        reject(xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'No se pudo cargar la plantilla.');
+                    });
+            });
+        }
+
+        function construirComponentesDesdePlantilla(data) {
+            return parseJsonSafe(data.componentesJson, []).map(function (item) {
+                const tipoOrigen = item.tipoOrigen || 'MANUAL';
+                const insumo = item.insumoPersonalizadoId ? insumosIndex[item.insumoPersonalizadoId] : null;
+                const adicional = item.adicionalPersonalizadoId ? adicionalesIndex[item.adicionalPersonalizadoId] : null;
+                return normalizarComponente({
+                    categoria: adicional ? adicional.categoria : (insumo ? (insumo.categoria || 'INSUMO') : (item.tipoComponente || 'GENERAL')),
+                    nombre: insumo ? insumo.nombre : (adicional ? adicional.nombre : (item.descripcionManual || 'COMPONENTE')),
+                    tipoOrigen: tipoOrigen,
+                    insumoPersonalizadoId: item.insumoPersonalizadoId || null,
+                    adicionalPersonalizadoId: item.adicionalPersonalizadoId || null,
+                    cantidad: toNumber(item.cantidadBase, 1),
+                    costoUnitario: insumo ? insumo.costo : (adicional ? adicional.costo : 0),
+                    incluido: item.incluidoPorDefecto === undefined ? true : !!item.incluidoPorDefecto,
+                    eliminado: false,
+                    orden: item.orden || 0
+                });
+            });
+        }
+
+        async function agregarModeloDesdeSelector() {
+            const plantillaId = parseInt($('#selectorPlantilla').val(), 10);
+            if (!plantillaId) {
+                Swal.fire('Aviso', 'Selecciona un modelo para agregar al pedido.', 'warning');
+                return;
+            }
+            const cantidad = toNumber($('#selectorCantidad').val(), 1);
+            if (cantidad <= 0) {
+                Swal.fire('Aviso', 'La cantidad debe ser mayor a cero.', 'warning');
+                return;
+            }
+            try {
+                const data = await plantillaPorId(plantillaId);
+                pedidoState.items.push(normalizarItem({
+                    plantillaId: data.id,
+                    codigoModeloSnapshot: data.codigoModelo,
+                    nombreComercialSnapshot: data.nombreComercial,
+                    fotoSnapshot: data.fotoPrincipal || '',
+                    categoriaSnapshot: data.categoria || 'PERSONALIZADO',
+                    cantidad: cantidad,
+                    precioFinal: 0,
+                    componentes: construirComponentesDesdePlantilla(data)
+                }));
+                currentItemIndex = pedidoState.items.length - 1;
+                renderListaModelos();
+                renderEditorModelo();
+                recalcularPedido();
+                $('#selectorPlantilla').val('').trigger('change');
+                $('#selectorCantidad').val('1');
+            } catch (error) {
+                Swal.fire('Error', error, 'error');
+            }
+        }
+
+        function seleccionarModelo(index) {
+            currentItemIndex = index;
+            renderListaModelos();
+            renderEditorModelo();
+            recalcularPedido();
+        }
+
+        function eliminarModelo(index) {
+            pedidoState.items.splice(index, 1);
+            if (!pedidoState.items.length) {
+                currentItemIndex = -1;
+            } else if (currentItemIndex >= pedidoState.items.length) {
+                currentItemIndex = pedidoState.items.length - 1;
+            }
+            renderListaModelos();
+            renderEditorModelo();
+            recalcularPedido();
+        }
+
+        function quitarComponenteActual(index) {
+            const item = itemActual();
+            if (!item) return;
+            item.componentes.splice(index, 1);
+            renderTablaComponentesActual();
+            recalcularPedido();
+        }
+
+        function toggleComponenteIncluido(index, checked) {
+            const item = itemActual();
+            if (!item || !item.componentes[index]) return;
+            item.componentes[index].incluido = checked;
+            recalcularPedido();
+        }
+
+        function actualizarCantidadComponente(index, value) {
+            const item = itemActual();
+            if (!item || !item.componentes[index]) return;
+            item.componentes[index].cantidad = toNumber(value, 1);
+            renderTablaComponentesActual();
+            recalcularPedido();
+        }
+
+        function syncEditorItem() {
+            const item = itemActual();
+            if (!item) return;
+            item.nombreComercialSnapshot = ($('#editorNombreModelo').val() || '').trim();
+            item.cantidad = toNumber($('#editorCantidadModelo').val(), 1);
+            item.precioFinal = toNumber($('#editorPrecioFinal').val());
+            renderListaModelos();
+            recalcularPedido();
+        }
+
+        function sugerirDatosComponentePorOrigen() {
+            const tipo = $('#nuevoComponenteTipoOrigen').val();
+            if (tipo === 'INSUMO') {
+                const id = parseInt($('#nuevoComponenteInsumo').val(), 10);
+                const insumo = insumosIndex[id];
+                if (insumo) {
+                    $('#nuevoComponenteNombre').val(insumo.nombre);
+                    $('#nuevoComponenteCategoria').val(insumo.categoria || 'INSUMO');
+                    $('#nuevoComponenteCosto').val(toNumber(insumo.costo).toFixed(2));
+                }
+            } else if (tipo === 'ADICIONAL') {
+                const id = parseInt($('#nuevoComponenteAdicional').val(), 10);
+                const adicional = adicionalesIndex[id];
+                if (adicional) {
+                    $('#nuevoComponenteNombre').val(adicional.nombre);
+                    $('#nuevoComponenteCategoria').val(adicional.categoria || 'ADICIONAL');
+                    $('#nuevoComponenteCosto').val(toNumber(adicional.costo).toFixed(2));
+                }
+            }
+        }
+
+        function agregarComponenteAlModelo() {
+            const item = itemActual();
+            if (!item) {
+                Swal.fire('Aviso', 'Primero agrega un modelo al pedido.', 'warning');
+                return;
+            }
+            const tipoOrigen = $('#nuevoComponenteTipoOrigen').val() || 'MANUAL';
+            const insumoId = parseInt($('#nuevoComponenteInsumo').val(), 10);
+            const adicionalId = parseInt($('#nuevoComponenteAdicional').val(), 10);
+            let nombre = ($('#nuevoComponenteNombre').val() || '').trim();
+            let categoria = ($('#nuevoComponenteCategoria').val() || '').trim();
+            let costo = toNumber($('#nuevoComponenteCosto').val());
+
+            if (tipoOrigen === 'INSUMO') {
+                if (!insumoId) {
+                    Swal.fire('Aviso', 'Selecciona un insumo.', 'warning');
+                    return;
+                }
+                const insumo = insumosIndex[insumoId];
+                nombre = nombre || (insumo ? insumo.nombre : 'INSUMO');
+                categoria = categoria || (insumo ? (insumo.categoria || 'INSUMO') : 'INSUMO');
+                costo = costo > 0 ? costo : (insumo ? toNumber(insumo.costo) : 0);
+            } else if (tipoOrigen === 'ADICIONAL') {
+                if (!adicionalId) {
+                    Swal.fire('Aviso', 'Selecciona un adicional.', 'warning');
+                    return;
+                }
+                const adicional = adicionalesIndex[adicionalId];
+                nombre = nombre || (adicional ? adicional.nombre : 'ADICIONAL');
+                categoria = categoria || (adicional ? (adicional.categoria || 'ADICIONAL') : 'ADICIONAL');
+                costo = costo > 0 ? costo : (adicional ? toNumber(adicional.costo) : 0);
+            } else if (!nombre) {
+                Swal.fire('Aviso', 'Escribe el nombre del componente manual.', 'warning');
+                return;
+            }
+
+            item.componentes.push(normalizarComponente({
+                categoria: categoria || 'GENERAL',
+                nombre: nombre,
+                tipoOrigen: tipoOrigen,
+                insumoPersonalizadoId: Number.isFinite(insumoId) ? insumoId : null,
+                adicionalPersonalizadoId: Number.isFinite(adicionalId) ? adicionalId : null,
+                cantidad: toNumber($('#nuevoComponenteCantidad').val(), 1),
+                costoUnitario: costo,
+                incluido: $('#nuevoComponenteIncluido').is(':checked'),
+                eliminado: false,
+                orden: item.componentes.length
+            }));
+
+            $('#nuevoComponenteNombre').val('');
+            $('#nuevoComponenteCategoria').val('');
+            $('#nuevoComponenteCantidad').val('1');
+            $('#nuevoComponenteCosto').val('0');
+            $('#nuevoComponenteInsumo').val('');
+            $('#nuevoComponenteAdicional').val('');
+            $('#nuevoComponenteIncluido').prop('checked', true);
+            renderTablaComponentesActual();
+            recalcularPedido();
+        }
+
+        function buildPayload() {
+            leerFormularioGenerico();
+            return {
+                id: pedidoState.id,
+                canalOrigen: pedidoState.canalOrigen,
+                estado: pedidoState.estado,
+                clienteId: pedidoState.clienteId,
+                clienteNombre: pedidoState.clienteNombre,
+                clienteTipoDocumento: pedidoState.clienteTipoDocumento,
+                clienteNumeroDocumento: pedidoState.clienteNumeroDocumento,
+                clienteWhatsapp: pedidoState.clienteWhatsapp,
+                clienteTelefono: pedidoState.clienteTelefono,
+                clienteEmail: pedidoState.clienteEmail,
+                nombreDestinatario: pedidoState.nombreDestinatario,
+                telefonoDestinatario: pedidoState.telefonoDestinatario,
+                dedicatoria: pedidoState.dedicatoria,
+                nombreEtiqueta: pedidoState.nombreEtiqueta,
+                notasDiseno: pedidoState.notasDiseno,
+                observacionesCliente: pedidoState.observacionesCliente,
+                modoEntrega: pedidoState.modoEntrega,
+                envioGratis: pedidoState.envioGratis,
+                costoEnvio: pedidoState.costoEnvio,
+                departamento: pedidoState.departamento,
+                provincia: pedidoState.provincia,
+                distrito: pedidoState.distrito,
+                direccionEntrega: pedidoState.direccionEntrega,
+                referenciaEntrega: pedidoState.referenciaEntrega,
+                fechaEntregaSolicitada: pedidoState.fechaEntregaSolicitada,
+                franjaEntrega: pedidoState.franjaEntrega,
+                descuento: pedidoState.descuento,
+                adelanto: pedidoState.adelanto,
+                observacionesInternas: pedidoState.observacionesInternas,
+                tipoComprobante: pedidoState.tipoComprobante,
+                formaPago: pedidoState.formaPago,
+                metodoPago: pedidoState.metodoPago,
+                items: pedidoState.items.map(function (item) {
+                    return {
+                        plantillaId: item.plantillaId,
+                        codigoModeloSnapshot: item.codigoModeloSnapshot,
+                        nombreComercialSnapshot: item.nombreComercialSnapshot,
+                        fotoSnapshot: item.fotoSnapshot,
+                        categoriaSnapshot: item.categoriaSnapshot,
+                        cantidad: toNumber(item.cantidad, 1),
+                        costoSnapshot: toNumber(item.costoSnapshot),
+                        precioMinimoSnapshot: toNumber(item.precioMinimoSnapshot),
+                        precioSugeridoSnapshot: toNumber(item.precioSugeridoSnapshot),
+                        precioFinal: toNumber(item.precioFinal),
+                        configuracionJson: item.configuracionJson || '',
+                        componentes: (item.componentes || []).map(function (componente) {
+                            return {
+                                categoria: componente.categoria || 'GENERAL',
+                                nombre: componente.nombre || 'COMPONENTE',
+                                tipoOrigen: componente.tipoOrigen || 'MANUAL',
+                                insumoPersonalizadoId: componente.insumoPersonalizadoId || null,
+                                adicionalPersonalizadoId: componente.adicionalPersonalizadoId || null,
+                                cantidad: toNumber(componente.cantidad, 1),
+                                costoUnitario: toNumber(componente.costoUnitario),
+                                costoTotal: toNumber(componente.costoTotal),
+                                incluido: componente.incluido !== false,
+                                eliminado: !!componente.eliminado,
+                                orden: componente.orden || 0
+                            };
+                        })
+                    };
+                })
+            };
+        }
+
+        function aplicarCalculo(resp) {
+            $('#resSubtotal').text(money(resp.subtotal));
+            $('#resDescuento').text(money(resp.descuento));
+            $('#resEnvio').text(toNumber(resp.costoEnvio) > 0 ? money(resp.costoEnvio) : ($('#pedidoEnvioGratis').is(':checked') ? 'GRATIS' : money(0)));
+            $('#resTotal').text(money(resp.total));
+            $('#resAdelanto').text(money(resp.adelanto));
+            $('#resSaldo').text(money(resp.saldo));
+
+            (resp.items || []).forEach(function (calc, index) {
+                if (!pedidoState.items[index]) return;
+                pedidoState.items[index].costoSnapshot = toNumber(calc.costo);
+                pedidoState.items[index].precioMinimoSnapshot = toNumber(calc.precioMinimo);
+                pedidoState.items[index].precioSugeridoSnapshot = toNumber(calc.precioSugerido);
+                if (!pedidoState.items[index].precioFinal || pedidoState.items[index].precioFinal <= 0) {
+                    pedidoState.items[index].precioFinal = toNumber(calc.precioFinal);
+                }
+            });
+
+            const item = itemActual();
+            if (item && $('#editorPrecioMinimo').length) {
+                $('#editorPrecioMinimo').val(money(item.precioMinimoSnapshot));
+                $('#editorPrecioSugerido').val(money(item.precioSugeridoSnapshot));
+                $('#editorCostoModelo').val(money(item.costoSnapshot));
+                $('#editorPrecioFinal').val(toNumber(item.precioFinal).toFixed(2));
+            }
+
+            renderListaModelos();
+        }
+
+        function recalcularPedido() {
+            if (!pedidoState.items.length) {
+                $('#resSubtotal').text(money(0));
+                $('#resDescuento').text(money(toNumber($('#pedidoDescuento').val())));
+                $('#resEnvio').text($('#pedidoEnvioGratis').is(':checked') ? 'GRATIS' : money(toNumber($('#pedidoCostoEnvio').val())));
+                $('#resTotal').text(money(0));
+                $('#resAdelanto').text(money(toNumber($('#pedidoAdelanto').val())));
+                $('#resSaldo').text(money(0));
+                renderListaModelos();
+                return;
+            }
+            $.ajax({
+                url: '/personalizado/api/calcular-pedido',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(buildPayload()),
+                success: aplicarCalculo,
+                error: function (xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'No se pudo recalcular el pedido.';
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        }
+
+        function guardarPedido() {
+            if (!pedidoState.items.length) {
+                Swal.fire('Aviso', 'Agrega al menos un modelo antes de guardar.', 'warning');
+                return;
+            }
+            const btn = $('#btnGuardarPedidoPersonalizado').prop('disabled', true);
+            $.ajax({
+                url: '/personalizado/pedidos/api/guardar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(buildPayload()),
+                success: function (resp) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Pedido guardado',
+                        text: resp.message || 'Pedido guardado correctamente.'
+                    }).then(function () {
+                        window.location.href = '/personalizado/pedidos/detalle/' + resp.id;
+                    });
+                },
+                error: function (xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'No se pudo guardar el pedido.';
+                    Swal.fire('Error', msg, 'error');
+                },
+                complete: function () {
+                    btn.prop('disabled', false);
+                }
+            });
+        }
+
+        $(function () {
+            cargarFormularioDesdeState();
+            $('#selectorPlantilla').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Selecciona un modelo'
+            });
+
+            renderListaModelos();
+            renderEditorModelo();
+            recalcularPedido();
+
+            $('#btnAgregarModeloPedido').on('click', agregarModeloDesdeSelector);
+            $('#btnRecalcularPedido').on('click', recalcularPedido);
+            $('#btnGuardarPedidoPersonalizado').on('click', guardarPedido);
+            $('#btnEliminarModeloActual').on('click', function () {
+                if (currentItemIndex >= 0) {
+                    eliminarModelo(currentItemIndex);
+                }
+            });
+
+            $(document).on('change input', '.editor-item-control', syncEditorItem);
+            $(document).on('change', '#nuevoComponenteTipoOrigen, #nuevoComponenteInsumo, #nuevoComponenteAdicional', sugerirDatosComponentePorOrigen);
+            $(document).on('click', '#btnAgregarComponentePedido', agregarComponenteAlModelo);
+
+            $('#btnAplicarZona').on('click', function () {
+                const option = $('#pedidoZonaRapida').find(':selected');
+                if (!option.val()) {
+                    Swal.fire('Aviso', 'Selecciona una zona para aplicarla.', 'warning');
+                    return;
+                }
+                $('#pedidoDepartamento').val(option.data('departamento') || '');
+                $('#pedidoProvincia').val(option.data('provincia') || '');
+                $('#pedidoDistrito').val(option.data('distrito') || '');
+                if (!$('#pedidoEnvioGratis').is(':checked')) {
+                    $('#pedidoCostoEnvio').val(toNumber(option.data('tarifa')).toFixed(2));
+                }
+                recalcularPedido();
+            });
+
+            $('#pedidoCanalOrigen, #pedidoEstado, #pedidoClienteNombre, #pedidoClienteTipoDocumento, #pedidoClienteNumeroDocumento, #pedidoClienteWhatsapp, #pedidoClienteTelefono, #pedidoClienteEmail, #pedidoNombreDestinatario, #pedidoTelefonoDestinatario, #pedidoDedicatoria, #pedidoNombreEtiqueta, #pedidoNotasDiseno, #pedidoObservacionesCliente, #pedidoModoEntrega, #pedidoCostoEnvio, #pedidoDepartamento, #pedidoProvincia, #pedidoDistrito, #pedidoDireccionEntrega, #pedidoReferenciaEntrega, #pedidoFechaEntregaSolicitada, #pedidoFranjaEntrega, #pedidoDescuento, #pedidoAdelanto, #pedidoObservacionesInternas')
+                .on('change input', recalcularPedido);
+
+            $('#pedidoEnvioGratis').on('change', function () {
+                if ($(this).is(':checked')) {
+                    $('#pedidoCostoEnvio').val('0.00');
+                }
+                recalcularPedido();
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

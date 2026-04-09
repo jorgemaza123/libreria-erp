@@ -2,6 +2,7 @@ package com.libreria.sistema.model.dto;
 
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -11,6 +12,13 @@ public class CotizacionDTO {
     private String clienteDocumento;
     private String clienteNombre;
     private String clienteTelefono;
+    private String clienteEmail;
+    private String clienteDireccion;
+
+    // Servicio / proyecto
+    private String tipoServicioContrato;
+    private String tituloProyectoServicio;
+    private LocalDate fechaEntregaComprometida;
 
     // Textos
     private String observaciones;

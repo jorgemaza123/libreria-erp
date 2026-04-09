@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='laminas'">
+<head>
+    <title>Categorias de Laminas</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Categorias de Laminas</h1>
+                    <small class="text-muted">Administra cursos o grupos escolares para organizar las bolsas de laminas.</small>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/productos}">Productos</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/laminas}">Laminas</a></li>
+                        <li class="breadcrumb-item active">Categorias</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-times-circle mr-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card card-primary card-outline h-100">
+                        <div class="card-header">
+                            <h3 class="card-title font-weight-bold mb-0">Nueva categoria</h3>
+                        </div>
+                        <form th:action="@{/laminas/categorias/guardar}" method="post">
+                            <div class="card-body">
+                                <div class="form-group mb-0">
+                                    <label for="nombreCategoria">Nombre</label>
+                                    <input id="nombreCategoria"
+                                           type="text"
+                                           name="nombre"
+                                           class="form-control"
+                                           placeholder="Ej: BIOLOGIA"
+                                           required
+                                           autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="card-footer d-flex justify-content-between">
+                                <a th:href="@{/laminas}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left mr-1"></i>Volver
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save mr-1"></i>Guardar categoria
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card card-secondary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title font-weight-bold mb-0">Categorias registradas</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Categoria</th>
+                                        <th style="width: 120px;" class="text-center">Estado</th>
+                                        <th style="width: 140px;" class="text-center">Accion</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:if="${#lists.isEmpty(categorias)}">
+                                        <td colspan="3" class="text-center text-muted py-4">Todavia no hay categorias registradas.</td>
+                                    </tr>
+                                    <tr th:each="categoria : ${categorias}">
+                                        <td th:text="${categoria.nombre}">BIOLOGIA</td>
+                                        <td class="text-center align-middle">
+                                            <span th:if="${categoria.activo}" class="badge badge-success">ACTIVA</span>
+                                            <span th:unless="${categoria.activo}" class="badge badge-secondary">INACTIVA</span>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <form th:action="@{/laminas/categorias/toggle/{id}(id=${categoria.id})}" method="post" class="d-inline">
+                                                <button type="submit"
+                                                        class="btn btn-sm"
+                                                        th:classappend="${categoria.activo} ? 'btn-danger' : 'btn-success'">
+                                                    <i th:class="${categoria.activo} ? 'fas fa-ban mr-1' : 'fas fa-check mr-1'"></i>
+                                                    <span th:text="${categoria.activo} ? 'Desactivar' : 'Activar'">Accion</span>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

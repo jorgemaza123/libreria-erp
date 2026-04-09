@@ -17,5 +17,10 @@ public class CompraDTO {
         private Long productoId;
         private Integer cantidad;
         private BigDecimal costo;
+        private String tipoCatalogo;
+        private String presentacionNombre;
+        private BigDecimal cantidadPresentacion;
+        private BigDecimal factorPresentacion;
+        private BigDecimal precioPorPresentacion;
     }
 }

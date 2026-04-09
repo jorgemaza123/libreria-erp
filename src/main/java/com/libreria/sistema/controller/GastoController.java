@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
@@ -37,10 +38,12 @@ public class GastoController {
                         Model model) {
         LocalDate fin = (fechaFin != null && !fechaFin.isBlank()) ? LocalDate.parse(fechaFin) : LocalDate.now();
         LocalDate inicio = (fechaInicio != null && !fechaInicio.isBlank()) ? LocalDate.parse(fechaInicio) : fin.minusDays(30);
+        LocalDateTime inicioRango = inicio.atStartOfDay();
+        LocalDateTime finRango = fin.atTime(23, 59, 59);
 
         // FIX ERROR-12 + U-2: filtrar por categoría GASTO_OPERATIVO y rango de fechas en BD
-        List<MovimientoCaja> gastos = cajaRepository.findByCategoriaMovimientoAndFechas(
-                CategoriaMovimiento.GASTO_OPERATIVO, inicio, fin);
+        List<MovimientoCaja> gastos = cajaRepository.findByCategoriaMovimientoAndRango(
+                CategoriaMovimiento.GASTO_OPERATIVO, inicioRango, finRango);
         model.addAttribute("gastos", gastos);
         model.addAttribute("fechaInicio", inicio);
         model.addAttribute("fechaFin", fin);
@@ -53,6 +56,12 @@ public class GastoController {
                                  @RequestParam BigDecimal monto, 
                                  RedirectAttributes attr) {
         try {
+            String conceptoLimpio = concepto != null ? concepto.trim() : "";
+            if (conceptoLimpio.isBlank()) {
+                attr.addFlashAttribute("error", "El concepto es obligatorio.");
+                return "redirect:/gastos";
+            }
+
             // Validamos que el monto sea positivo
             if (monto.compareTo(BigDecimal.ZERO) <= 0) {
                 attr.addFlashAttribute("error", "El monto debe ser mayor a 0.");
@@ -60,7 +69,7 @@ public class GastoController {
             }
 
             // Registramos usando el Service para que descuente de la CAJA ABIERTA
-            cajaService.registrarMovimiento("EGRESO", "GASTO OP: " + concepto.toUpperCase(), monto,
+            cajaService.registrarMovimiento("EGRESO", "GASTO OP: " + conceptoLimpio.toUpperCase(), monto,
                     com.libreria.sistema.model.CategoriaMovimiento.GASTO_OPERATIVO);
             
             attr.addFlashAttribute("success", "Gasto registrado correctamente.");

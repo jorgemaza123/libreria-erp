@@ -23,6 +23,9 @@ public class OrdenServicio {
     private String clienteNombre;
     private String clienteTelefono;
     private String clienteDocumento;
+    private String clienteEmail;
+    private String clienteDireccion;
+    private Long cotizacionId;
 
     private LocalDateTime fechaRecepcion;
     private LocalDate fechaEntregaEstimada;

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_compras'">
+<head>
+    <title>Compra Personalizada</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1>Nueva compra para Personalizado</h1>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header"><h3 class="card-title">Cabecera de compra</h3></div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Proveedor</label>
+                                <select class="form-control" id="compProveedor">
+                                    <option value="">Seleccione proveedor</option>
+                                    <option th:each="proveedor : ${proveedores}" th:value="${proveedor.id}" th:text="${proveedor.ruc + ' - ' + proveedor.razonSocial}"></option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label>Tipo</label>
+                                    <select class="form-control" id="compTipoComprobante">
+                                        <option value="FACTURA">FACTURA</option>
+                                        <option value="BOLETA">BOLETA</option>
+                                        <option value="GUIA">GUIA</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-8">
+                                    <label>Número</label>
+                                    <input type="text" class="form-control" id="compNumeroComprobante" placeholder="F001-12345">
+                                </div>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label>Observaciones</label>
+                                <textarea class="form-control" rows="2" id="compObservaciones"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card card-info card-outline">
+                        <div class="card-header"><h3 class="card-title">Detalle de insumos</h3></div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <div class="form-group col-md-5">
+                                    <label>Buscar insumo</label>
+                                    <select class="form-control" id="compInsumo"></select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Presentación</label>
+                                    <select class="form-control" id="compPresentacion">
+                                        <option value="">Seleccione</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label>Cant. presentación</label>
+                                    <input type="number" step="0.01" class="form-control" id="compCantidadPresentacion" value="1">
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label>Total pagado</label>
+                                    <input type="number" step="0.01" class="form-control" id="compTotalPagado" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="alert alert-light border" id="resumenLineaCompra">
+                                Selecciona un insumo y su presentación para ver el costo unitario base calculado.
+                            </div>
+                            <button type="button" class="btn btn-info mb-3" id="btnAgregarLineaCompra">Agregar línea</button>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                    <tr>
+                                        <th>Insumo</th>
+                                        <th>Presentación</th>
+                                        <th>Cantidad base</th>
+                                        <th>Total</th>
+                                        <th>Costo base</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="tablaLineasCompraPersonalizada"></tbody>
+                                    <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-right">TOTAL</th>
+                                        <th id="compTotalCompra">S/ 0.00</th>
+                                        <th colspan="2"></th>
+                                    </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer text-right">
+                            <a href="/personalizado/compras" class="btn btn-outline-secondary">Cancelar</a>
+                            <button type="button" class="btn btn-primary" id="btnGuardarCompraPersonalizada">Registrar compra</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        let compraItems = [];
+        let insumoSeleccionado = null;
+
+        function renderLineasCompra() {
+            const tbody = $('#tablaLineasCompraPersonalizada');
+            const total = compraItems.reduce((acc, item) => acc + item.totalPagado, 0);
+            $('#compTotalCompra').text('S/ ' + total.toFixed(2));
+            if (!compraItems.length) {
+                tbody.html('<tr><td colspan="6" class="text-center text-muted py-3">Aún no hay líneas cargadas.</td></tr>');
+                return;
+            }
+            tbody.html(compraItems.map((item, index) => `
+                <tr>
+                    <td>${item.insumoNombre}</td>
+                    <td>${item.presentacionNombre}</td>
+                    <td>${item.cantidadBase.toFixed(2)}</td>
+                    <td>S/ ${item.totalPagado.toFixed(2)}</td>
+                    <td>S/ ${item.costoUnitarioBase.toFixed(4)}</td>
+                    <td class="text-right"><button type="button" class="btn btn-sm btn-outline-danger" onclick="quitarLineaCompra(${index})">Quitar</button></td>
+                </tr>
+            `).join(''));
+        }
+
+        function quitarLineaCompra(index) {
+            compraItems.splice(index, 1);
+            renderLineasCompra();
+        }
+
+        function actualizarResumenLinea() {
+            const presentacion = $('#compPresentacion').find(':selected').data('presentacion');
+            const cantidadPresentacion = parseFloat($('#compCantidadPresentacion').val() || '0');
+            const totalPagado = parseFloat($('#compTotalPagado').val() || '0');
+            if (!presentacion || !cantidadPresentacion || !totalPagado) {
+                $('#resumenLineaCompra').text('Selecciona un insumo y su presentación para ver el costo unitario base calculado.');
+                return;
+            }
+            const factor = parseFloat(presentacion.factorBase || 1);
+            const cantidadBase = cantidadPresentacion * factor;
+            const costoBase = totalPagado / cantidadBase;
+            $('#resumenLineaCompra').html(
+                `Ingresarán <strong>${cantidadBase.toFixed(2)}</strong> ${insumoSeleccionado ? (insumoSeleccionado.unidadBase || 'UNIDAD') : 'UNIDAD'} base. ` +
+                `Costo unitario base calculado: <strong>S/ ${costoBase.toFixed(4)}</strong>.`
+            );
+        }
+
+        function cargarPresentacionesInsumo(data) {
+            const select = $('#compPresentacion');
+            select.empty().append(new Option('Seleccione', ''));
+            (data.presentaciones || []).forEach(function (presentacion) {
+                const option = new Option(presentacion.nombre + ' (' + presentacion.factorBase + ' ' + presentacion.unidadMedida + ')', presentacion.id);
+                $(option).data('presentacion', presentacion);
+                select.append(option);
+            });
+        }
+
+        $('#btnAgregarLineaCompra').on('click', function () {
+            const presentacion = $('#compPresentacion').find(':selected').data('presentacion');
+            const cantidadPresentacion = parseFloat($('#compCantidadPresentacion').val() || '0');
+            const totalPagado = parseFloat($('#compTotalPagado').val() || '0');
+            if (!insumoSeleccionado || !presentacion || !cantidadPresentacion || cantidadPresentacion <= 0 || !totalPagado || totalPagado <= 0) {
+                Swal.fire('Aviso', 'Completa insumo, presentación, cantidad y total pagado.', 'warning');
+                return;
+            }
+            const factor = parseFloat(presentacion.factorBase || 1);
+            const cantidadBase = cantidadPresentacion * factor;
+            const costoUnitarioBase = totalPagado / cantidadBase;
+            compraItems.push({
+                insumoId: insumoSeleccionado.id,
+                insumoNombre: insumoSeleccionado.codigo + ' - ' + insumoSeleccionado.nombre,
+                presentacionId: presentacion.id,
+                presentacionNombre: presentacion.nombre,
+                cantidadPresentacion: cantidadPresentacion,
+                totalPagado: totalPagado,
+                cantidadBase: cantidadBase,
+                costoUnitarioBase: costoUnitarioBase
+            });
+            renderLineasCompra();
+            $('#compPresentacion').empty().append(new Option('Seleccione', ''));
+            $('#compCantidadPresentacion').val('1');
+            $('#compTotalPagado').val('');
+            $('#compInsumo').val(null).trigger('change');
+            insumoSeleccionado = null;
+            $('#resumenLineaCompra').text('Selecciona un insumo y su presentación para ver el costo unitario base calculado.');
+        });
+
+        $('#btnGuardarCompraPersonalizada').on('click', function () {
+            if (!$('#compProveedor').val()) {
+                Swal.fire('Aviso', 'Selecciona un proveedor.', 'warning');
+                return;
+            }
+            if (!compraItems.length) {
+                Swal.fire('Aviso', 'Agrega al menos una línea.', 'warning');
+                return;
+            }
+            const payload = {
+                proveedorId: parseInt($('#compProveedor').val(), 10),
+                tipoComprobante: $('#compTipoComprobante').val(),
+                numeroComprobante: $('#compNumeroComprobante').val(),
+                observaciones: $('#compObservaciones').val(),
+                items: compraItems.map(item => ({
+                    insumoId: item.insumoId,
+                    presentacionId: item.presentacionId,
+                    cantidadPresentacion: item.cantidadPresentacion,
+                    totalPagado: item.totalPagado
+                }))
+            };
+            $.ajax({
+                url: '/personalizado/compras/api/guardar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (resp) {
+                    Swal.fire('Compra registrada', resp.message || 'Compra personalizada registrada correctamente.', 'success')
+                        .then(() => window.location.href = '/personalizado/compras');
+                },
+                error: function (xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'No se pudo registrar la compra.';
+                    Swal.fire('Error', msg, 'error');
+                }
+            });
+        });
+
+        $(function () {
+            $('#compInsumo').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Buscar insumo por código o nombre',
+                ajax: {
+                    url: '/personalizado/api/buscar-insumos',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { term: params.term || '' };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.map(function (item) {
+                                return {
+                                    id: item.id,
+                                    text: item.codigo + ' - ' + item.nombre + ' (Stock: ' + item.stock + ')',
+                                    data: item
+                                };
+                            })
+                        };
+                    }
+                }
+            }).on('select2:select', function (e) {
+                insumoSeleccionado = e.params.data.data;
+                cargarPresentacionesInsumo(insumoSeleccionado);
+                actualizarResumenLinea();
+            }).on('select2:clear', function () {
+                insumoSeleccionado = null;
+                $('#compPresentacion').empty().append(new Option('Seleccione', ''));
+            });
+
+            $('#compPresentacion, #compCantidadPresentacion, #compTotalPagado').on('change input', actualizarResumenLinea);
+            renderLineasCompra();
+        });
+    </script>
+</th:block>
+</body>
+</html>

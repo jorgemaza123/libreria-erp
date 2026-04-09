@@ -26,4 +26,19 @@ public class DetalleCompra {
     private Integer cantidad;
     private BigDecimal precioUnitario; // Costo al que compramos
     private BigDecimal subtotal;
+
+    @Column(length = 40)
+    private String tipoCatalogo;
+
+    @Column(length = 80)
+    private String presentacionNombre;
+
+    @Column(precision = 12, scale = 3)
+    private BigDecimal cantidadPresentacion;
+
+    @Column(precision = 12, scale = 3)
+    private BigDecimal factorPresentacion;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioPorPresentacion;
 }

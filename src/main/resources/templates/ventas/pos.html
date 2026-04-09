@@ -668,6 +668,38 @@
         background: #f1f5f9;
     }
 
+    .lamina-result-card {
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+        padding: 10px 12px;
+        background: #fff;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .lamina-result-card:hover {
+        border-color: var(--pos-primary);
+        box-shadow: var(--pos-shadow-sm);
+    }
+
+    .lamina-location {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        padding: 2px 8px;
+    }
+
+    .lamina-selected-item {
+        border: 1px dashed #cbd5e1;
+        border-radius: var(--pos-radius-sm);
+        padding: 8px 10px;
+        background: #f8fafc;
+    }
+
     /* === SECCIÓN CRÉDITO === */
     .div-credito {
         background: #fef3c7;
@@ -954,6 +986,11 @@
                                         <span class="mx-1">|</span>
                                         <span class="kbd" style="transform: scale(0.85);">ESC</span> cancelar
                                     </small>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-outline-info btn-sm" onclick="abrirModalLaminas()">
+                                            <i class="fas fa-layer-group mr-1"></i> Abrir buscador de laminas
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1016,6 +1053,9 @@
                                     <a class="btn btn-app" href="javascript:void(0)" onclick="window.abrirModalServicioRapido && window.abrirModalServicioRapido()">
                                         <i class="fas fa-magic"></i> Personalizado <span class="badge">F9</span>
                                     </a>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="abrirModalLaminas()">
+                                        <i class="fas fa-layer-group"></i> Laminas <span class="badge">BUSCAR</span>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -1036,6 +1076,10 @@
                             <span class="shortcut-item">
                                 <span class="kbd kbd-warning">F9</span>
                                 <span class="shortcut-action">Servicio rapido</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-primary">LAM</span>
+                                <span class="shortcut-action">Boton Laminas</span>
                             </span>
                             <span class="shortcut-divider"></span>
                             <span class="shortcut-item">
@@ -1275,6 +1319,10 @@
                                 <span>COBRAR</span>
                                 <span class="kbd kbd-dark">F2</span>
                             </button>
+                            <button type="button" class="btn btn-outline-danger btn-block mb-2" onclick="exportarCotizacionPos()" id="btnExportarCotizacionPos">
+                                <i class="fas fa-file-pdf mr-1"></i>
+                                <span>Exportar cotizacion</span>
+                            </button>
                             <button class="btn-limpiar" onclick="limpiarConConfirmacion()">
                                 <i class="fas fa-eraser"></i>
                                 <span>Limpiar Venta</span>
@@ -1290,12 +1338,165 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalBuscarLaminas" tabindex="-1" role="dialog" aria-labelledby="modalBuscarLaminasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalBuscarLaminasLabel">
+                    <i class="fas fa-layer-group mr-2"></i>Buscador de Laminas
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-7">
+                        <div class="form-group">
+                            <label for="inputBuscarLaminas" class="font-weight-bold mb-2">Buscar por numero, titulo, marca o categoria</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control form-control-lg" id="inputBuscarLaminas" placeholder="Ej: 1083, celula animal, biologia">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-info" onclick="buscarLaminasPOS(true)">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">Solo busca en laminas escolares y muestra su ubicacion exacta.</small>
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    th:if="${#authorization.expression('hasPermission(null, ''INVENTARIO_CREAR'') or hasPermission(null, ''VENTAS_CREAR'')')}"
+                                    id="btnToggleNuevaLaminaPos" onclick="togglePanelNuevaLaminaPos()">
+                                <i class="fas fa-plus mr-1"></i>Nueva lamina
+                            </button>
+                        </div>
+                        <div class="card card-outline card-primary mb-3 d-none" id="panelNuevaLaminaPos">
+                            <div class="card-header py-2">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <i class="fas fa-layer-group mr-1"></i>Alta rapida de lamina
+                                </h6>
+                            </div>
+                            <div class="card-body pb-2">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Numero</label>
+                                            <input type="text" class="form-control" id="laminaRapidaNumero" placeholder="1083">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="form-group">
+                                            <label>Titulo</label>
+                                            <input type="text" class="form-control" id="laminaRapidaTitulo" placeholder="CELULA ANIMAL">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Marca</label>
+                                            <input type="text" class="form-control" id="laminaRapidaMarca" placeholder="ALFA">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Categoria</label>
+                                            <select class="form-control" id="laminaRapidaCategoria">
+                                                <option value="">Selecciona una categoria</option>
+                                                <option th:each="categoria : ${laminaCategoriasPos}"
+                                                        th:value="${categoria.nombre}"
+                                                        th:text="${categoria.nombre}"></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Stock inicial</label>
+                                            <input type="number" min="1" class="form-control" id="laminaRapidaStock" value="1">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Bolsa / contenedor</label>
+                                            <input type="text" class="form-control" id="laminaRapidaContenedor" placeholder="BOLSA 1">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Precio venta</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                                <input type="number" step="0.01" min="0" class="form-control" id="laminaRapidaPrecio" th:value="${laminaPrecioVentaDefault}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="mb-2">Cantidad rapida</label>
+                                        <div class="d-flex flex-wrap" style="gap:6px;">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="1">1</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="2">2</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="3">3</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="5">5</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="10">10</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm stock-chip-lamina-pos" data-stock="20">20</button>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">Registro corto: numero, titulo, marca, categoria, bolsa y stock.</small>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="togglePanelNuevaLaminaPos(false)">Cancelar</button>
+                                    <button type="button" class="btn btn-primary btn-sm" id="btnGuardarLaminaRapidaPos" onclick="guardarLaminaRapidaDesdePos()">
+                                        <i class="fas fa-save mr-1"></i>Guardar y agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="estadoBusquedaLaminas" class="text-muted small mb-2">
+                            Escribe para buscar solo en el catalogo de laminas.
+                        </div>
+                        <div id="resultadosLaminas" style="max-height: 420px; overflow-y: auto;">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <div>Busca una lamina para verla con stock y ubicacion.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="font-weight-bold mb-0">Seleccionadas</h6>
+                            <span class="badge badge-primary" id="contadorLaminasSeleccionadas">0</span>
+                        </div>
+                        <div id="listaLaminasSeleccionadas" style="max-height: 420px; overflow-y: auto;">
+                            <div class="text-center text-muted py-5 border rounded">
+                                <i class="fas fa-shopping-basket fa-2x mb-2"></i>
+                                <div>Agrega una o varias laminas antes de pasarlas al POS.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small class="text-muted">Las laminas sin stock se muestran, pero no se pueden agregar.</small>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-success" id="btnPasarLaminasPos" onclick="pasarLaminasAlPos()" disabled>
+                        <i class="fas fa-arrow-right mr-1"></i>Pasar al POS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div th:replace="~{fragments/layout :: servicioRapidoWidget}"></div>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script th:inline="javascript">
     let carrito = [];
     let productoActual = null;
     let totalVenta = 0;
+    let exportandoCotizacionPos = false;
+    let resultadosLaminasActuales = [];
+    let laminasSeleccionadas = [];
+    let temporizadorBusquedaLaminas = null;
 
     // CONTROL DE PRECIOS: Determina si el usuario puede editar precios
     // Solo ADMIN puede modificar precios en el POS
@@ -1306,6 +1507,7 @@
 
     // URL del servidor para conexión móvil
     const serverUrlPOS = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+    const puedeCrearLaminasPos = /*[[${#authorization.expression('hasPermission(null, ''INVENTARIO_CREAR'') or hasPermission(null, ''VENTAS_CREAR'')')}]]*/ false;
 
     const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tk88L3RleHQ+PC9zdmc+";
 
@@ -1394,6 +1596,12 @@
                 return;
             }
 
+            if (e.key === 'Escape' && $('#modalBuscarLaminas').hasClass('show')) {
+                e.preventDefault();
+                $('#modalBuscarLaminas').modal('hide');
+                return;
+            }
+
             // F2: Preparar cobro INMEDIATAMENTE (no pregunta, no navega)
             if (e.key === 'F2') {
                 e.preventDefault();
@@ -1428,7 +1636,314 @@
         // Sombra visual cuando el total está pegado arriba
         // =============================================
         initStickyObserver();
+
+        $('#modalBuscarLaminas').on('shown.bs.modal', function() {
+            $('#inputBuscarLaminas').trigger('focus').select();
+        });
+
+        $('#modalBuscarLaminas').on('hidden.bs.modal', function() {
+            togglePanelNuevaLaminaPos(false);
+            abrirBuscadorConFoco();
+        });
+
+        $('#inputBuscarLaminas').on('input', function() {
+            clearTimeout(temporizadorBusquedaLaminas);
+            temporizadorBusquedaLaminas = setTimeout(function() {
+                buscarLaminasPOS(false);
+            }, 180);
+        });
+
+        $('#inputBuscarLaminas').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarLaminasPOS(true);
+            }
+        });
+
+        $(document).on('click', '.stock-chip-lamina-pos', function() {
+            $('#laminaRapidaStock').val($(this).data('stock'));
+        });
     });
+
+    function abrirModalLaminas() {
+        $('#modalBuscarLaminas').modal('show');
+        if (laminasSeleccionadas.length === 0) {
+            limpiarBusquedaLaminasVisual();
+        } else {
+            renderizarLaminasSeleccionadas();
+        }
+    }
+
+    function togglePanelNuevaLaminaPos(forceOpen) {
+        const abrir = typeof forceOpen === 'boolean' ? forceOpen : $('#panelNuevaLaminaPos').hasClass('d-none');
+        $('#panelNuevaLaminaPos').toggleClass('d-none', !abrir);
+        if (abrir) {
+            $('#laminaRapidaNumero').trigger('focus');
+        } else {
+            limpiarFormularioLaminaRapida();
+        }
+    }
+
+    function limpiarFormularioLaminaRapida() {
+        $('#laminaRapidaNumero, #laminaRapidaTitulo, #laminaRapidaMarca, #laminaRapidaContenedor').val('');
+        $('#laminaRapidaCategoria').val('');
+        $('#laminaRapidaStock').val('1');
+        $('#laminaRapidaPrecio').val('0.50');
+        $('#btnGuardarLaminaRapidaPos').prop('disabled', false);
+    }
+
+    function guardarLaminaRapidaDesdePos() {
+        if (!puedeCrearLaminasPos) {
+            Swal.fire('Acceso denegado', 'No tienes permisos para crear laminas desde esta ventana.', 'error');
+            return;
+        }
+
+        const payload = {
+            laminaNumero: ($('#laminaRapidaNumero').val() || '').trim(),
+            laminaTitulo: ($('#laminaRapidaTitulo').val() || '').trim(),
+            laminaMarca: ($('#laminaRapidaMarca').val() || '').trim(),
+            laminaCategoria: ($('#laminaRapidaCategoria').val() || '').trim(),
+            laminaContenedor: ($('#laminaRapidaContenedor').val() || '').trim(),
+            stockActual: parseInt($('#laminaRapidaStock').val() || '0', 10),
+            precioVenta: parseFloat($('#laminaRapidaPrecio').val() || '0')
+        };
+
+        if (!payload.laminaNumero || !payload.laminaTitulo) {
+            Swal.fire('Aviso', 'Escribe el numero y el titulo de la lamina.', 'warning');
+            return;
+        }
+
+        if (!payload.laminaCategoria) {
+            Swal.fire('Aviso', 'Selecciona una categoria para la lamina.', 'warning');
+            return;
+        }
+
+        if (!payload.laminaContenedor) {
+            Swal.fire('Aviso', 'Escribe la bolsa o contenedor donde guardaras la lamina.', 'warning');
+            return;
+        }
+
+        const btn = $('#btnGuardarLaminaRapidaPos').prop('disabled', true);
+        fetch('/laminas/api/guardar-rapido', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudo guardar la lamina.');
+                }
+                return data;
+            })
+            .then(data => {
+                resultadosLaminasActuales = [data, ...resultadosLaminasActuales.filter(item => String(item.id) !== String(data.id))];
+                if (!laminasSeleccionadas.some(item => String(item.id) === String(data.id))) {
+                    laminasSeleccionadas.push({...data});
+                }
+                renderizarResultadosLaminas();
+                renderizarLaminasSeleccionadas();
+                $('#inputBuscarLaminas').val(data.laminaNumero || data.laminaTitulo || data.nombre || '');
+                togglePanelNuevaLaminaPos(false);
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Lamina creada y lista para pasar al POS',
+                    showConfirmButton: false,
+                    timer: 1800
+                });
+            })
+            .catch(error => {
+                Swal.fire('Error', error.message || 'No se pudo guardar la lamina.', 'error');
+            })
+            .finally(() => {
+                btn.prop('disabled', false);
+            });
+    }
+
+    function limpiarBusquedaLaminasVisual() {
+        $('#inputBuscarLaminas').val('');
+        $('#estadoBusquedaLaminas').text('Escribe para buscar solo en el catalogo de laminas.');
+        $('#resultadosLaminas').html(`
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-search fa-2x mb-2"></i>
+                <div>Busca una lamina para verla con stock y ubicacion.</div>
+            </div>
+        `);
+        resultadosLaminasActuales = [];
+        renderizarLaminasSeleccionadas();
+    }
+
+    function buscarLaminasPOS(mostrarSinTermino) {
+        const termino = ($('#inputBuscarLaminas').val() || '').trim();
+        if (!termino) {
+            if (mostrarSinTermino) {
+                $('#estadoBusquedaLaminas').text('Escribe un numero, titulo, marca o proveedor para buscar laminas.');
+            }
+            $('#resultadosLaminas').html(`
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-search fa-2x mb-2"></i>
+                    <div>Busca una lamina para verla con stock y ubicacion.</div>
+                </div>
+            `);
+            resultadosLaminasActuales = [];
+            return;
+        }
+
+        $('#estadoBusquedaLaminas').text('Buscando laminas...');
+        $('#resultadosLaminas').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i> Buscando...</div>');
+
+        fetch('/ventas/api/buscar-laminas?term=' + encodeURIComponent(termino))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('No se pudo consultar laminas');
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultadosLaminasActuales = Array.isArray(data) ? data : [];
+                renderizarResultadosLaminas();
+            })
+            .catch(error => {
+                console.error(error);
+                $('#estadoBusquedaLaminas').text('No se pudo buscar laminas en este momento.');
+                $('#resultadosLaminas').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i> Error al buscar laminas.</div>');
+            });
+    }
+
+    function renderizarResultadosLaminas() {
+        if (!resultadosLaminasActuales.length) {
+            $('#estadoBusquedaLaminas').text('No se encontraron laminas con esa busqueda.');
+            $('#resultadosLaminas').html('<div class="text-center text-muted py-5"><i class="fas fa-folder-open fa-2x mb-2"></i><div>No hay coincidencias.</div></div>');
+            return;
+        }
+
+        $('#estadoBusquedaLaminas').text('Se encontraron ' + resultadosLaminasActuales.length + ' laminas.');
+
+        const html = resultadosLaminasActuales.map(prod => {
+            const stock = parseInt(prod.stock || '0', 10);
+            const stockClase = stock > 0 ? 'badge-success' : 'badge-danger';
+            const stockTexto = stock > 0 ? ('Stock: ' + stock) : 'Sin stock';
+            const yaAgregada = laminasSeleccionadas.some(item => String(item.id) === String(prod.id));
+            const ubicacion = escapeHtml(prod.ubicacionTexto || prod.ubicacion || 'Sin ubicar');
+            const titulo = escapeHtml(prod.laminaTitulo || prod.nombre || 'LAMINA');
+            const numero = escapeHtml(prod.laminaNumero || '-');
+            const marca = escapeHtml(prod.laminaMarca || prod.marca || '-');
+            const categoria = escapeHtml(prod.laminaCategoria || 'SIN CATEGORIA');
+            const precio = parseFloat(prod.precio || 0).toFixed(2);
+
+            return `
+                <div class="lamina-result-card mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="pr-3">
+                            <div class="font-weight-bold">#${numero} - ${titulo}</div>
+                            <div class="small text-muted mb-2">Marca: ${marca} | Categoria: ${categoria}</div>
+                            <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                                <span class="badge ${stockClase}">${stockTexto}</span>
+                                <span class="badge badge-light">S/ ${precio}</span>
+                                <span class="lamina-location"><i class="fas fa-map-marker-alt"></i> ${ubicacion}</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm ${stock > 0 ? 'btn-primary' : 'btn-outline-secondary'}"
+                                ${stock > 0 && !yaAgregada ? '' : 'disabled'}
+                                onclick="agregarLaminaSeleccionada('${prod.id}')">
+                            <i class="fas ${yaAgregada ? 'fa-check' : (stock > 0 ? 'fa-plus' : 'fa-ban')} mr-1"></i>
+                            ${yaAgregada ? 'Agregada' : (stock > 0 ? 'Agregar' : 'No disponible')}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        $('#resultadosLaminas').html(html);
+    }
+
+    function agregarLaminaSeleccionada(id) {
+        const prod = resultadosLaminasActuales.find(item => String(item.id) === String(id));
+        if (!prod) {
+            return;
+        }
+
+        const stock = parseInt(prod.stock || '0', 10);
+        if (stock <= 0) {
+            Swal.fire('Sin stock', 'La lamina seleccionada no tiene stock disponible.', 'warning');
+            return;
+        }
+
+        if (laminasSeleccionadas.some(item => String(item.id) === String(prod.id))) {
+            return;
+        }
+
+        laminasSeleccionadas.push({...prod});
+        renderizarLaminasSeleccionadas();
+        renderizarResultadosLaminas();
+    }
+
+    function quitarLaminaSeleccionada(id) {
+        laminasSeleccionadas = laminasSeleccionadas.filter(item => String(item.id) !== String(id));
+        renderizarLaminasSeleccionadas();
+        renderizarResultadosLaminas();
+    }
+
+    function renderizarLaminasSeleccionadas() {
+        $('#contadorLaminasSeleccionadas').text(laminasSeleccionadas.length);
+        $('#btnPasarLaminasPos').prop('disabled', laminasSeleccionadas.length === 0);
+
+        if (!laminasSeleccionadas.length) {
+            $('#listaLaminasSeleccionadas').html(`
+                <div class="text-center text-muted py-5 border rounded">
+                    <i class="fas fa-shopping-basket fa-2x mb-2"></i>
+                    <div>Agrega una o varias laminas antes de pasarlas al POS.</div>
+                </div>
+            `);
+            return;
+        }
+
+        const html = laminasSeleccionadas.map(prod => `
+            <div class="lamina-selected-item mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="pr-2">
+                        <div class="font-weight-bold">#${escapeHtml(prod.laminaNumero || '-')} - ${escapeHtml(prod.laminaTitulo || prod.nombre || 'LAMINA')}</div>
+                        <div class="small text-muted">Categoria: ${escapeHtml(prod.laminaCategoria || 'SIN CATEGORIA')}</div>
+                        <div class="small text-muted">Ubicacion: ${escapeHtml(prod.ubicacionTexto || prod.ubicacion || 'Sin ubicar')}</div>
+                    </div>
+                    <button type="button" class="btn btn-link text-danger btn-sm p-0" onclick="quitarLaminaSeleccionada('${prod.id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        $('#listaLaminasSeleccionadas').html(html);
+    }
+
+    function pasarLaminasAlPos() {
+        if (!laminasSeleccionadas.length) {
+            Swal.fire('Sin seleccion', 'Agrega al menos una lamina antes de pasarla al POS.', 'info');
+            return;
+        }
+
+        laminasSeleccionadas.forEach(prod => agregarAlCarrito(prod));
+        const primeraLamina = laminasSeleccionadas[0];
+        if (primeraLamina) {
+            cargarVisor(primeraLamina);
+        }
+
+        const cantidad = laminasSeleccionadas.length;
+        laminasSeleccionadas = [];
+        $('#modalBuscarLaminas').modal('hide');
+        limpiarBusquedaLaminasVisual();
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: cantidad + ' lamina(s) agregada(s) al POS',
+            showConfirmButton: false,
+            timer: 1600
+        });
+    }
 
     // --- FUNCIONES DEL VISOR MEJORADO ---
 
@@ -1460,7 +1975,7 @@
         $("#visorStockLabel").text('Stock mínimo: ' + stockMinimo);
 
         // Ubicación
-        $("#visorUbicacion").text(data.ubicacion || '-');
+        $("#visorUbicacion").text(data.ubicacionTexto || data.ubicacion || '-');
 
         // Imagen
         if (data.imagen) {
@@ -2348,6 +2863,97 @@ function agregarRapido(codigoBusqueda) {
             colapsarFormCliente();
             // Autofocus enterprise
             abrirBuscadorConFoco();
+        }
+    }
+
+    function construirPayloadCotizacionPos() {
+        return {
+            clienteNombre: ($("#cliente").val() || $("#clienteBadgeNombre").text() || 'CLIENTE VARIOS').trim(),
+            clienteDocumento: ($("#clienteDoc").val() || '00000000').trim(),
+            clienteTelefono: ($("#clienteTelefono").val() || clienteTelefonoActual || '').trim(),
+            formaPago: $("#formaPago").val() || 'CONTADO',
+            metodoPago: $("#metodoPago").val() || 'EFECTIVO',
+            descuento: 0,
+            observaciones: 'Cotizacion generada desde el POS sin registrar venta.',
+            items: carrito.map(i => ({
+                productoId: i.id,
+                descripcion: i.nombre,
+                cantidad: parseFloat(i.cantidad),
+                precioVenta: parseFloat(i.precio)
+            }))
+        };
+    }
+
+    async function exportarCotizacionPos() {
+        if (carrito.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Carrito vacio',
+                text: 'Agregue productos antes de exportar la cotizacion.',
+                timer: 1600,
+                showConfirmButton: false
+            });
+            abrirBuscadorConFoco();
+            return;
+        }
+
+        if (exportandoCotizacionPos) {
+            return;
+        }
+
+        exportandoCotizacionPos = true;
+        $('#btnExportarCotizacionPos').prop('disabled', true);
+
+        Swal.fire({
+            title: 'Generando cotizacion...',
+            text: 'Estamos preparando el PDF con los productos del POS.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch('/ventas/api/proforma-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(construirPayloadCotizacionPos())
+            });
+
+            if (!response.ok) {
+                const contentType = response.headers.get('content-type') || '';
+                let mensaje = 'No se pudo generar la cotizacion.';
+
+                if (contentType.includes('application/json')) {
+                    const data = await response.json().catch(() => ({}));
+                    mensaje = data.error || mensaje;
+                } else {
+                    const texto = await response.text().catch(() => '');
+                    if (texto) {
+                        mensaje = texto;
+                    }
+                }
+
+                throw new Error(mensaje);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Cotizacion generada correctamente',
+                showConfirmButton: false,
+                timer: 1800
+            });
+        } catch (error) {
+            Swal.fire('Error', error.message || 'No se pudo generar la cotizacion PDF.', 'error');
+        } finally {
+            exportandoCotizacionPos = false;
+            $('#btnExportarCotizacionPos').prop('disabled', false);
         }
     }
 

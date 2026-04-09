@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_configuracion'">
+<head>
+    <title>Configuración Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1>Configuración del módulo Personalizado</h1>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header"><h3 class="card-title">Zona de entrega</h3></div>
+                        <form action="/personalizado/configuracion/zonas/guardar" method="post">
+                            <div class="card-body">
+                                <input type="hidden" name="id" id="zonaId">
+                                <div class="form-group">
+                                    <label>Departamento</label>
+                                    <input type="text" class="form-control" name="departamento" id="zonaDepartamento" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Provincia</label>
+                                    <input type="text" class="form-control" name="provincia" id="zonaProvincia" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Distrito</label>
+                                    <input type="text" class="form-control" name="distrito" id="zonaDistrito" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label>Tarifa base</label>
+                                        <input type="number" step="0.01" class="form-control" name="tarifaBase" id="zonaTarifa" value="0">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label>Plazo estimado (días)</label>
+                                        <input type="number" class="form-control" name="plazoEstimadoDias" id="zonaPlazo" value="1">
+                                    </div>
+                                </div>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="zonaActiva" name="activo" checked>
+                                    <label class="custom-control-label" for="zonaActiva">Zona activa</label>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <button type="button" class="btn btn-outline-secondary" id="btnLimpiarZona">Limpiar</button>
+                                <button type="submit" class="btn btn-primary">Guardar zona</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header"><h3 class="card-title">Zonas registradas</h3></div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Zona</th>
+                                    <th>Tarifa</th>
+                                    <th>Plazo</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="zona : ${zonas}">
+                                    <td th:text="${zona.departamento + ' / ' + zona.provincia + ' / ' + zona.distrito}">Zona</td>
+                                    <td th:text="${'S/ ' + #numbers.formatDecimal(zona.tarifaBase,1,2)}">S/ 0.00</td>
+                                    <td th:text="${zona.plazoEstimadoDias + ' día(s)'}">1</td>
+                                    <td th:text="${zona.activo ? 'Activa' : 'Inactiva'}">Activa</td>
+                                    <td class="text-right">
+                                        <button type="button" class="btn btn-outline-primary btn-sm btn-editar-zona"
+                                                th:attr="data-id=${zona.id},data-departamento=${zona.departamento},data-provincia=${zona.provincia},data-distrito=${zona.distrito},data-tarifa=${zona.tarifaBase},data-plazo=${zona.plazoEstimadoDias},data-activo=${zona.activo}">
+                                            Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card card-outline card-info">
+                        <div class="card-header"><h3 class="card-title">Presentaciones globales activas</h3></div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-2" th:each="presentacion : ${presentacionesGlobales}">
+                                    <div class="border rounded px-3 py-2 h-100">
+                                        <div class="font-weight-bold" th:text="${presentacion.nombrePresentacion}">DOCENA</div>
+                                        <div class="small text-muted">
+                                            Factor:
+                                            <span th:text="${presentacion.factorBase}">12</span>
+                                            <span th:text="${presentacion.unidadMedidaPresentacion}">UNIDAD</span>
+                                        </div>
+                                        <div class="small text-muted" th:text="${presentacion.predeterminada ? 'Predeterminada' : 'Disponible'}">Disponible</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted">Estas presentaciones sirven como base para compras rápidas del módulo Personalizado. Si un insumo necesita una regla distinta, se configura directamente en su ficha.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        function limpiarZona() {
+            $('#zonaId, #zonaDepartamento, #zonaProvincia, #zonaDistrito').val('');
+            $('#zonaTarifa').val('0');
+            $('#zonaPlazo').val('1');
+            $('#zonaActiva').prop('checked', true);
+        }
+
+        $(function () {
+            $('#btnLimpiarZona').on('click', limpiarZona);
+            $('.btn-editar-zona').on('click', function () {
+                $('#zonaId').val($(this).data('id'));
+                $('#zonaDepartamento').val($(this).data('departamento'));
+                $('#zonaProvincia').val($(this).data('provincia'));
+                $('#zonaDistrito').val($(this).data('distrito'));
+                $('#zonaTarifa').val($(this).data('tarifa'));
+                $('#zonaPlazo').val($(this).data('plazo'));
+                $('#zonaActiva').prop('checked', String($(this).data('activo')) === 'true');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

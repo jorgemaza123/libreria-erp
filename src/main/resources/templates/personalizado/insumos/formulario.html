@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_insumos'">
+<head>
+    <title>Formulario de Insumo Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1 th:text="${dto.id != null ? 'Editar insumo' : 'Nuevo insumo'}">Nuevo insumo</h1>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <form th:action="@{/personalizado/insumos/guardar}" method="post" enctype="multipart/form-data" id="formInsumoPersonalizado">
+                <input type="hidden" name="id" th:value="${dto.id}">
+                <input type="hidden" name="fotoActual" th:value="${dto.fotoActual}">
+                <input type="hidden" name="presentacionesJson" id="presentacionesJson" th:value="${dto.presentacionesJson}">
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card card-primary card-outline">
+                            <div class="card-header"><h3 class="card-title">Datos base</h3></div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label>Código</label>
+                                        <input type="text" class="form-control" name="codigo" th:value="${dto.codigo}" required>
+                                    </div>
+                                    <div class="form-group col-md-5">
+                                        <label>Nombre</label>
+                                        <input type="text" class="form-control" name="nombre" th:value="${dto.nombre}" required>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Slug de búsqueda</label>
+                                        <input type="text" class="form-control" name="slugBusqueda" th:value="${dto.slugBusqueda}">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>Categoría</label>
+                                        <input type="text" class="form-control" name="categoria" th:value="${dto.categoria}">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Subcategoría</label>
+                                        <input type="text" class="form-control" name="subcategoria" th:value="${dto.subcategoria}">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Unidad base</label>
+                                        <select class="form-control" name="unidadBase">
+                                            <option value="UNIDAD" th:selected="${dto.unidadBase == 'UNIDAD'}">UNIDAD</option>
+                                            <option value="GR" th:selected="${dto.unidadBase == 'GR'}">GR</option>
+                                            <option value="KG" th:selected="${dto.unidadBase == 'KG'}">KG</option>
+                                            <option value="ML" th:selected="${dto.unidadBase == 'ML'}">ML</option>
+                                            <option value="L" th:selected="${dto.unidadBase == 'L'}">L</option>
+                                            <option value="CM" th:selected="${dto.unidadBase == 'CM'}">CM</option>
+                                            <option value="M" th:selected="${dto.unidadBase == 'M'}">M</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descripción</label>
+                                    <textarea class="form-control" rows="3" name="descripcion" th:text="${dto.descripcion}"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tags</label>
+                                    <input type="text" class="form-control" name="tags" th:value="${dto.tags}" placeholder="taza, sublimación, madre, caja, rosa">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-info card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title">Presentaciones de compra</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>Nombre presentación</label>
+                                        <input type="text" class="form-control" id="ppNombre" placeholder="DOCENA">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Unidad</label>
+                                        <input type="text" class="form-control" id="ppUnidad" placeholder="UNIDAD">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Factor base</label>
+                                        <input type="number" step="0.0001" class="form-control" id="ppFactor" placeholder="12">
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>Orden</label>
+                                        <input type="number" class="form-control" id="ppOrden" value="0">
+                                    </div>
+                                    <div class="form-group col-md-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-info btn-block" id="btnAgregarPresentacion">Agregar</button>
+                                    </div>
+                                </div>
+                                <div class="form-row mb-2">
+                                    <div class="col-md-3">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="ppDecimal">
+                                            <label class="custom-control-label" for="ppDecimal">Permite decimal</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="ppPredeterminada">
+                                            <label class="custom-control-label" for="ppPredeterminada">Predeterminada</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="ppActiva" checked>
+                                            <label class="custom-control-label" for="ppActiva">Activa</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                        <tr>
+                                            <th>Presentación</th>
+                                            <th>Unidad</th>
+                                            <th>Factor</th>
+                                            <th>Flags</th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="tablaPresentacionesInsumo"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="card card-secondary card-outline">
+                            <div class="card-header"><h3 class="card-title">Estado y foto</h3></div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Foto</label>
+                                    <input type="file" class="form-control-file" name="fotoFile" accept="image/*">
+                                    <div class="mt-3" th:if="${dto.fotoActual}">
+                                        <img th:src="@{'/uploads/' + ${dto.fotoActual}}" alt="foto"
+                                             style="width:100%;max-height:280px;object-fit:cover;border-radius:16px;">
+                                    </div>
+                                </div>
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="controlaStock" name="controlaStock" th:checked="${dto.controlaStock == null || dto.controlaStock}">
+                                    <label class="custom-control-label" for="controlaStock">Controla stock</label>
+                                </div>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="activo" name="activo" th:checked="${dto.activo == null || dto.activo}">
+                                    <label class="custom-control-label" for="activo">Activo</label>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <a href="/personalizado/insumos" class="btn btn-outline-secondary">Cancelar</a>
+                                <button type="submit" class="btn btn-primary">Guardar insumo</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        let presentaciones = [];
+
+        function renderPresentaciones() {
+            const tbody = $('#tablaPresentacionesInsumo');
+            if (!presentaciones.length) {
+                tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">Aún no hay presentaciones cargadas.</td></tr>');
+                return;
+            }
+            tbody.html(presentaciones.map((item, index) => `
+                <tr>
+                    <td>${item.nombrePresentacion}</td>
+                    <td>${item.unidadMedidaPresentacion}</td>
+                    <td>${item.factorBase}</td>
+                    <td>
+                        ${item.permiteDecimal ? '<span class="badge badge-info mr-1">Decimal</span>' : ''}
+                        ${item.predeterminada ? '<span class="badge badge-success mr-1">Predeterminada</span>' : ''}
+                        ${item.activa ? '<span class="badge badge-primary">Activa</span>' : '<span class="badge badge-secondary">Inactiva</span>'}
+                    </td>
+                    <td class="text-right">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarPresentacion(${index})">Quitar</button>
+                    </td>
+                </tr>
+            `).join(''));
+        }
+
+        function syncPresentaciones() {
+            $('#presentacionesJson').val(JSON.stringify(presentaciones));
+        }
+
+        function eliminarPresentacion(index) {
+            presentaciones.splice(index, 1);
+            syncPresentaciones();
+            renderPresentaciones();
+        }
+
+        $('#btnAgregarPresentacion').on('click', function () {
+            const nombre = ($('#ppNombre').val() || '').trim();
+            const unidad = ($('#ppUnidad').val() || '').trim() || 'UNIDAD';
+            const factor = parseFloat($('#ppFactor').val());
+            if (!nombre || !factor || factor <= 0) {
+                Swal.fire('Aviso', 'Completa nombre y factor base válido.', 'warning');
+                return;
+            }
+            if ($('#ppPredeterminada').is(':checked')) {
+                presentaciones.forEach(item => item.predeterminada = false);
+            }
+            presentaciones.push({
+                nombrePresentacion: nombre.toUpperCase(),
+                unidadMedidaPresentacion: unidad.toUpperCase(),
+                factorBase: factor,
+                permiteDecimal: $('#ppDecimal').is(':checked'),
+                predeterminada: $('#ppPredeterminada').is(':checked'),
+                activa: $('#ppActiva').is(':checked'),
+                orden: parseInt($('#ppOrden').val() || '0', 10)
+            });
+            $('#ppNombre, #ppUnidad, #ppFactor').val('');
+            $('#ppOrden').val('0');
+            $('#ppDecimal, #ppPredeterminada').prop('checked', false);
+            $('#ppActiva').prop('checked', true);
+            syncPresentaciones();
+            renderPresentaciones();
+        });
+
+        $(function () {
+            try {
+                presentaciones = JSON.parse($('#presentacionesJson').val() || '[]');
+            } catch (e) {
+                presentaciones = [];
+            }
+            renderPresentaciones();
+            $('#formInsumoPersonalizado').on('submit', function () {
+                syncPresentaciones();
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

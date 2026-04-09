@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_insumos'">
+<head>
+    <title>Insumos Personalizados</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h1>Insumos de Personalización</h1>
+            <a href="/personalizado/insumos/nuevo" class="btn btn-primary">
+                <i class="fas fa-plus mr-1"></i>Nuevo insumo
+            </a>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Unidad</th>
+                                <th>Stock</th>
+                                <th>Costo prom.</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(insumos)}">
+                                <td colspan="9" class="text-center text-muted py-4">Aún no hay insumos registrados.</td>
+                            </tr>
+                            <tr th:each="insumo : ${insumos}">
+                                <td>
+                                    <img th:if="${insumo.foto}" th:src="@{'/uploads/' + ${insumo.foto}}" alt="foto"
+                                         style="width:48px;height:48px;object-fit:cover;border-radius:10px;">
+                                    <div th:unless="${insumo.foto}" class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                         style="width:48px;height:48px;">
+                                        <i class="fas fa-image text-muted"></i>
+                                    </div>
+                                </td>
+                                <td th:text="${insumo.codigo}">INS-001</td>
+                                <td>
+                                    <div class="font-weight-bold" th:text="${insumo.nombre}">TAZA BLANCA</div>
+                                    <small class="text-muted" th:text="${insumo.subcategoria ?: '-'}">Sub</small>
+                                </td>
+                                <td th:text="${insumo.categoria ?: '-'}">TAZAS</td>
+                                <td th:text="${insumo.unidadBase}">UNIDAD</td>
+                                <td th:text="${insumo.producto != null ? insumo.producto.stockActual : 0}">0</td>
+                                <td th:text="${'S/ ' + #numbers.formatDecimal(insumo.producto != null ? insumo.producto.precioCompra : 0, 1, 2)}">S/ 0.00</td>
+                                <td>
+                                    <span class="badge" th:classappend="${insumo.activo ? 'badge-success' : 'badge-secondary'}"
+                                          th:text="${insumo.activo ? 'Activo' : 'Inactivo'}">Activo</span>
+                                </td>
+                                <td class="text-right">
+                                    <a th:href="@{'/personalizado/insumos/detalle/' + ${insumo.id}}" class="btn btn-outline-primary btn-sm">Ver</a>
+                                    <a th:href="@{'/personalizado/insumos/editar/' + ${insumo.id}}" class="btn btn-outline-secondary btn-sm">Editar</a>
+                                    <form th:action="@{'/personalizado/insumos/toggle/' + ${insumo.id}}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-warning btn-sm" th:text="${insumo.activo ? 'Desactivar' : 'Activar'}">Estado</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

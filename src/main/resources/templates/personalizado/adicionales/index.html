@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_adicionales'">
+<head>
+    <title>Adicionales Personalizados</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1>Adicionales y categorías</h1>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+            <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header"><h3 class="card-title">Nueva categoría</h3></div>
+                        <form action="/personalizado/adicionales/categorias/guardar" method="post">
+                            <div class="card-body">
+                                <input type="hidden" name="id" id="categoriaId">
+                                <div class="form-group">
+                                    <label>Código</label>
+                                    <input type="text" class="form-control" name="codigo" id="categoriaCodigo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre</label>
+                                    <input type="text" class="form-control" name="nombre" id="categoriaNombre" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descripción</label>
+                                    <textarea class="form-control" rows="2" name="descripcion" id="categoriaDescripcion"></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label>Orden</label>
+                                        <input type="number" class="form-control" name="orden" id="categoriaOrden" value="0">
+                                    </div>
+                                    <div class="form-group col-md-6 d-flex align-items-center">
+                                        <div class="custom-control custom-switch mt-4">
+                                            <input type="checkbox" class="custom-control-input" id="categoriaActiva" name="activo" checked>
+                                            <label class="custom-control-label" for="categoriaActiva">Activa</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <button type="button" class="btn btn-outline-secondary" id="btnLimpiarCategoria">Limpiar</button>
+                                <button type="submit" class="btn btn-primary">Guardar categoría</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header"><h3 class="card-title">Categorías registradas</h3></div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Orden</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="categoria : ${categorias}">
+                                    <td th:text="${categoria.codigo}">CAT</td>
+                                    <td th:text="${categoria.nombre}">Categoría</td>
+                                    <td th:text="${categoria.orden}">0</td>
+                                    <td th:text="${categoria.activo ? 'Activa' : 'Inactiva'}">Activa</td>
+                                    <td class="text-right">
+                                        <button type="button" class="btn btn-outline-primary btn-sm btn-editar-categoria"
+                                                th:attr="data-id=${categoria.id},data-codigo=${categoria.codigo},data-nombre=${categoria.nombre},data-descripcion=${categoria.descripcion},data-orden=${categoria.orden},data-activo=${categoria.activo}">
+                                            Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-lg-5">
+                    <div class="card card-outline card-success">
+                        <div class="card-header"><h3 class="card-title">Nuevo adicional</h3></div>
+                        <form action="/personalizado/adicionales/guardar" method="post">
+                            <div class="card-body">
+                                <input type="hidden" name="id" id="adicionalId">
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>Código</label>
+                                        <input type="text" class="form-control" name="codigo" id="adicionalCodigo" required>
+                                    </div>
+                                    <div class="form-group col-md-8">
+                                        <label>Nombre</label>
+                                        <input type="text" class="form-control" name="nombre" id="adicionalNombre" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label>Categoría</label>
+                                        <select class="form-control" name="categoriaId" id="adicionalCategoriaId">
+                                            <option value="">Sin categoría</option>
+                                            <option th:each="categoria : ${categorias}" th:value="${categoria.id}" th:text="${categoria.nombre}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label>Tipo origen</label>
+                                        <select class="form-control" name="tipoOrigen" id="adicionalTipoOrigen">
+                                            <option value="MANUAL">MANUAL</option>
+                                            <option value="INSUMO">INSUMO</option>
+                                            <option value="SERVICIO">SERVICIO</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Insumo relacionado</label>
+                                    <select class="form-control" name="insumoId" id="adicionalInsumoId">
+                                        <option value="">No aplica</option>
+                                        <option th:each="insumo : ${insumosActivos}" th:value="${insumo.id}" th:text="${insumo.codigo + ' - ' + insumo.nombre}"></option>
+                                    </select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>Costo manual</label>
+                                        <input type="number" step="0.01" class="form-control" name="costoManual" id="adicionalCostoManual" value="0">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Precio base</label>
+                                        <input type="number" step="0.01" class="form-control" name="precioBase" id="adicionalPrecioBase" value="0">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label>Descripción</label>
+                                        <input type="text" class="form-control" name="descripcion" id="adicionalDescripcion">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="col-md-4">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="adicionalEditablePrecio" name="editablePrecio" checked>
+                                            <label class="custom-control-label" for="adicionalEditablePrecio">Precio editable</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="adicionalEditableCantidad" name="editableCantidad" checked>
+                                            <label class="custom-control-label" for="adicionalEditableCantidad">Cantidad editable</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="adicionalActivo" name="activo" checked>
+                                            <label class="custom-control-label" for="adicionalActivo">Activo</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-right">
+                                <button type="button" class="btn btn-outline-secondary" id="btnLimpiarAdicional">Limpiar</button>
+                                <button type="submit" class="btn btn-success">Guardar adicional</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="card card-outline card-dark">
+                        <div class="card-header"><h3 class="card-title">Adicionales registrados</h3></div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Tipo</th>
+                                    <th>Precio</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="adicional : ${adicionales}">
+                                    <td th:text="${adicional.codigo}">ADI</td>
+                                    <td th:text="${adicional.nombre}">Adicional</td>
+                                    <td th:text="${adicional.categoriaAdicional != null ? adicional.categoriaAdicional.nombre : '-'}">-</td>
+                                    <td th:text="${adicional.tipoOrigen}">MANUAL</td>
+                                    <td th:text="${'S/ ' + #numbers.formatDecimal(adicional.precioBase,1,2)}">S/ 0.00</td>
+                                    <td class="text-right">
+                                        <button type="button" class="btn btn-outline-primary btn-sm btn-editar-adicional"
+                                                th:attr="data-id=${adicional.id},data-codigo=${adicional.codigo},data-nombre=${adicional.nombre},data-categoria=${adicional.categoriaAdicional != null ? adicional.categoriaAdicional.id : ''},data-tipo=${adicional.tipoOrigen},data-insumo=${adicional.insumoPersonalizado != null ? adicional.insumoPersonalizado.id : ''},data-costo=${adicional.costoManual},data-precio=${adicional.precioBase},data-editableprecio=${adicional.editablePrecio},data-editablecantidad=${adicional.editableCantidad},data-activo=${adicional.activo},data-descripcion=${adicional.descripcion}">
+                                            Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        function limpiarCategoria() {
+            $('#categoriaId, #categoriaCodigo, #categoriaNombre, #categoriaDescripcion').val('');
+            $('#categoriaOrden').val('0');
+            $('#categoriaActiva').prop('checked', true);
+        }
+
+        function limpiarAdicional() {
+            $('#adicionalId, #adicionalCodigo, #adicionalNombre, #adicionalDescripcion').val('');
+            $('#adicionalCategoriaId, #adicionalInsumoId').val('');
+            $('#adicionalTipoOrigen').val('MANUAL');
+            $('#adicionalCostoManual, #adicionalPrecioBase').val('0');
+            $('#adicionalEditablePrecio, #adicionalEditableCantidad, #adicionalActivo').prop('checked', true);
+        }
+
+        $(function () {
+            $('#btnLimpiarCategoria').on('click', limpiarCategoria);
+            $('#btnLimpiarAdicional').on('click', limpiarAdicional);
+
+            $('.btn-editar-categoria').on('click', function () {
+                $('#categoriaId').val($(this).data('id'));
+                $('#categoriaCodigo').val($(this).data('codigo'));
+                $('#categoriaNombre').val($(this).data('nombre'));
+                $('#categoriaDescripcion').val($(this).data('descripcion'));
+                $('#categoriaOrden').val($(this).data('orden'));
+                $('#categoriaActiva').prop('checked', String($(this).data('activo')) === 'true');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            $('.btn-editar-adicional').on('click', function () {
+                $('#adicionalId').val($(this).data('id'));
+                $('#adicionalCodigo').val($(this).data('codigo'));
+                $('#adicionalNombre').val($(this).data('nombre'));
+                $('#adicionalCategoriaId').val($(this).data('categoria'));
+                $('#adicionalTipoOrigen').val($(this).data('tipo'));
+                $('#adicionalInsumoId').val($(this).data('insumo'));
+                $('#adicionalCostoManual').val($(this).data('costo'));
+                $('#adicionalPrecioBase').val($(this).data('precio'));
+                $('#adicionalDescripcion').val($(this).data('descripcion'));
+                $('#adicionalEditablePrecio').prop('checked', String($(this).data('editableprecio')) === 'true');
+                $('#adicionalEditableCantidad').prop('checked', String($(this).data('editablecantidad')) === 'true');
+                $('#adicionalActivo').prop('checked', String($(this).data('activo')) === 'true');
+                window.scrollTo({ top: document.body.scrollHeight / 3, behavior: 'smooth' });
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

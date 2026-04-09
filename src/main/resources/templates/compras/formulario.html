@@ -37,7 +37,12 @@
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label>Proveedor</label>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="mb-1">Proveedor</label>
+                                            <button type="button" class="btn btn-link btn-sm p-0" id="btnAbrirClonarCompra">
+                                                <i class="fas fa-copy mr-1"></i>Clonar compra anterior
+                                            </button>
+                                        </div>
                                         <div class="input-group">
                                             <select class="form-control select2" id="proveedor" required>
                                                 <option value="">Seleccione...</option>
@@ -45,10 +50,13 @@
                                                     th:text="${p.ruc + ' - ' + p.razonSocial}"></option>
                                             </select>
                                             <div class="input-group-append">
-                                                <a th:href="@{/proveedores/nuevo}" class="btn btn-success"
-                                                    title="Nuevo Proveedor"><i class="fas fa-plus"></i></a>
+                                                <button type="button" class="btn btn-success" id="btnProveedorRapido"
+                                                    title="Proveedor rapido">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
                                             </div>
                                         </div>
+                                        <small class="text-muted">Crea el proveedor sin salir y clona compras repetidas del mismo proveedor.</small>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -80,7 +88,17 @@
 
                     <div class="card card-navy card-outline">
                         <div class="card-header">
-                            <h3 class="card-title">Detalle de Productos</h3>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                                <h3 class="card-title mb-0">Detalle de Productos</h3>
+                                <div class="btn-group btn-group-sm mt-2 mt-md-0">
+                                    <button type="button" class="btn btn-outline-primary" id="btnAbrirPegadoMasivo">
+                                        <i class="fas fa-paste mr-1"></i>Pegar varias lineas
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="btnAbrirImportarProductos">
+                                        <i class="fas fa-file-import mr-1"></i>Importar productos
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="row mb-2 align-items-end">
@@ -92,7 +110,11 @@
                                             <option th:each="prod : ${productos}" th:value="${prod.id}"
                                                 th:data-costo="${prod.precioCompra}"
                                                 th:data-precio-venta="${prod.precioVenta}"
-                                                th:text="${prod.codigoBarra + ' - ' + prod.nombre}"></option>
+                                                th:data-clasificacion="${prod.clasificacion}"
+                                                th:data-codigo-barra="${prod.codigoBarra}"
+                                                th:data-codigo-interno="${prod.codigoInterno}"
+                                                th:data-nombre="${prod.nombre}"
+                                                th:text="${((prod.codigoBarra != null and !#strings.isEmpty(prod.codigoBarra)) ? prod.codigoBarra + ' - ' : ((prod.codigoInterno != null and !#strings.isEmpty(prod.codigoInterno)) ? prod.codigoInterno + ' - ' : '')) + prod.nombre}"></option>
                                         </select>
                                         <div class="input-group-append">
                                             <button type="button" class="btn btn-outline-success" id="btnNuevoProducto"
@@ -264,6 +286,202 @@
             </div>
         </section>
 
+        <div class="modal fade" id="modalProveedorRapido" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-md modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-truck-loading mr-1"></i>Proveedor rapido</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>RUC</label>
+                            <input type="text" class="form-control" id="pr_ruc" maxlength="11" placeholder="11 digitos">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label>Razon social</label>
+                            <input type="text" class="form-control" id="pr_razonSocial" placeholder="Nombre del proveedor">
+                        </div>
+                        <div id="pr_error" class="alert alert-danger py-2 small mt-3 mb-0 d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btnGuardarProveedorRapido">
+                            <i class="fas fa-save mr-1"></i>Guardar proveedor
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalClonarCompra" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title"><i class="fas fa-copy mr-1"></i>Clonar compra anterior</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2">
+                            Selecciona una compra reciente del proveedor actual. Se copiaran solo los productos y costos; el numero de comprobante quedara libre para la nueva compra.
+                        </div>
+                        <div id="contenedorClonarCompra" class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Documento</th>
+                                        <th class="text-right">Total</th>
+                                        <th class="text-center">Items</th>
+                                        <th class="text-center"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaComprasClonables">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">Selecciona un proveedor para ver compras recientes.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalPegadoMasivo" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="fas fa-paste mr-1"></i>Pegar varias lineas</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-lg-7">
+                                <div class="form-group mb-2">
+                                    <label>Pega una linea por producto</label>
+                                    <textarea class="form-control" id="pegadoMasivoTexto" rows="12"
+                                        placeholder="codigo|cantidad|total&#10;LAPICERO AZUL|12|0.85&#10;SKU-00015|4|10.40"></textarea>
+                                </div>
+                                <small class="text-muted d-block">
+                                    Separadores admitidos: tabulacion, <code>|</code> o <code>;</code>.
+                                </small>
+                            </div>
+                            <div class="col-lg-5">
+                                <div class="form-group">
+                                    <label>Interpretar tercera columna como</label>
+                                    <select class="form-control" id="pegadoMasivoModo">
+                                        <option value="total">Total pagado</option>
+                                        <option value="costo">Costo unitario</option>
+                                    </select>
+                                </div>
+                                <div class="alert alert-light border">
+                                    <div class="font-weight-bold mb-2">Formatos utiles</div>
+                                    <div class="small mb-1"><code>codigo | cantidad | total</code></div>
+                                    <div class="small mb-1"><code>nombre | cantidad | costo</code></div>
+                                    <div class="small mb-0">Las lineas no encontradas quedaran listas para crear productos faltantes en lote.</div>
+                                </div>
+                                <div id="resultadoPegadoMasivo" class="alert alert-secondary small d-none mb-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" id="btnAbrirFaltantesDesdePegado">
+                            <i class="fas fa-layer-group mr-1"></i>Revisar faltantes
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary" id="btnProcesarPegadoMasivo">
+                                <i class="fas fa-magic mr-1"></i>Procesar lineas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalFaltantesLote" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title"><i class="fas fa-boxes mr-1"></i>Crear productos faltantes en lote</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning py-2">
+                            Completa al menos el nombre. Si marcas un faltante como insumo, el precio de venta deja de ser obligatorio y el producto no aparecerá en ventas.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Referencia</th>
+                                        <th>Nombre nuevo</th>
+                                        <th>Clasificación</th>
+                                        <th>Categoria</th>
+                                        <th>Precio venta</th>
+                                        <th>Codigo opc.</th>
+                                        <th class="text-right">Cant.</th>
+                                        <th class="text-right">Costo compra</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaFaltantesLote">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">Aun no hay productos faltantes detectados.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="faltantesLoteError" class="alert alert-danger py-2 small mt-3 mb-0 d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-warning" id="btnCrearFaltantesLote">
+                            <i class="fas fa-save mr-1"></i>Crear y agregar al carrito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalImportarProductos" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-file-import mr-1"></i>Importar productos antes de comprar</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2">
+                            Usa esta importacion para cargar o actualizar el catalogo sin salir de compras. Si solo vas a preparar el catalogo, deja el stock en cero en tu Excel.
+                        </div>
+                        <div class="form-group">
+                            <label>Archivo Excel</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="ip_archivo" accept=".xlsx,.xls">
+                                <label class="custom-file-label" for="ip_archivo">Seleccionar archivo...</label>
+                            </div>
+                            <small class="text-muted">Puedes descargar la plantilla oficial desde <a href="/productos/plantilla-excel" target="_blank">aqui</a>. La columna <code>CLASIFICACION</code> acepta <code>MERCADERIA</code> o <code>INSUMO</code>.</small>
+                        </div>
+                        <div class="custom-control custom-checkbox mb-3">
+                            <input type="checkbox" class="custom-control-input" id="ip_actualizarExistentes">
+                            <label class="custom-control-label" for="ip_actualizarExistentes">Actualizar productos existentes</label>
+                        </div>
+                        <div id="ip_resultado" class="alert alert-secondary small d-none mb-0"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-success" id="btnImportarProductosCompra">
+                            <i class="fas fa-upload mr-1"></i>Importar catalogo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== MODAL: Calculadora de Despiece ===== -->
         <div class="modal fade" id="modalCalculadora" tabindex="-1">
             <div class="modal-dialog modal-md">
@@ -400,6 +618,10 @@
                         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body pb-2">
+                        <div class="alert alert-info py-2 d-none" id="np_alertaInsumo">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            El insumo se compra con stock y costo, pero no se mostrará en ventas ni requiere ubicación o precio de venta.
+                        </div>
                         <!-- Fila 1: Identificación -->
                         <div class="row">
                             <div class="col-md-4">
@@ -441,6 +663,15 @@
                             </div>
                             <div class="col-md-2">
                                 <div class="form-group mb-2">
+                                    <label class="small font-weight-bold">Clasificación</label>
+                                    <select id="np_clasificacion" class="form-control form-control-sm">
+                                        <option value="MERCADERIA">Mercadería</option>
+                                        <option value="INSUMO">Insumo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 js-np-insumo-oculto">
+                                <div class="form-group mb-2">
                                     <label class="small">Descripción</label>
                                     <input type="text" id="np_descripcion" class="form-control form-control-sm"
                                         placeholder="Opcional">
@@ -448,7 +679,7 @@
                             </div>
                         </div>
                         <!-- Fila 2: Especificaciones -->
-                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2">
+                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2 js-np-insumo-oculto">
                             <div class="col-md-2">
                                 <div class="form-group mb-1">
                                     <label class="small">Marca</label>
@@ -503,7 +734,7 @@
                             </div>
                         </div>
                         <!-- Fila 2.5: Ubicación Física -->
-                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2">
+                        <div class="row bg-light rounded px-2 py-2 mx-0 mb-2 js-np-insumo-oculto">
                             <div class="col-md-2">
                                 <div class="form-group mb-1">
                                     <label class="small text-muted">Estante</label>
@@ -538,7 +769,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-np-insumo-oculto">
                                 <div class="form-group mb-2">
                                     <label class="small text-success font-weight-bold">Precio Venta (Público) <span
                                             class="text-danger">*</span></label>
@@ -550,7 +781,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-np-insumo-oculto">
                                 <div class="form-group mb-2">
                                     <label class="small text-primary">Precio Mayorista (S/)</label>
                                     <div class="input-group input-group-sm">
@@ -560,7 +791,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-np-insumo-oculto">
                                 <div class="form-group mb-2">
                                     <label class="small text-danger">Stock Mínimo</label>
                                     <input type="number" id="np_stockMinimo" class="form-control form-control-sm"
@@ -646,7 +877,10 @@
                                                     <option value="">Seleccionar producto...</option>
                                                     <option th:each="prod : ${productos}" th:value="${prod.id}"
                                                         th:data-costo="${prod.precioCompra}"
-                                                        th:text="${prod.codigoBarra != null ? prod.codigoBarra + ' - ' : ''} + ${prod.nombre}">
+                                                        th:data-codigo-barra="${prod.codigoBarra}"
+                                                        th:data-codigo-interno="${prod.codigoInterno}"
+                                                        th:data-nombre="${prod.nombre}"
+                                                        th:text="${((prod.codigoBarra != null and !#strings.isEmpty(prod.codigoBarra)) ? prod.codigoBarra + ' - ' : ((prod.codigoInterno != null and !#strings.isEmpty(prod.codigoInterno)) ? prod.codigoInterno + ' - ' : '')) + prod.nombre}">
                                                     </option>
                                                 </select>
                                                 <div class="input-group-append">
@@ -696,6 +930,7 @@
             let costoCalculado = 0;
             let salidaPermitida = false;
             let guardandoCompra = false;
+            let faltantesLote = [];
 
             function inicializarSelect2Compras() {
                 $('#proveedor, #productoSelect').each(function () {
@@ -730,7 +965,17 @@
                         || parseFloat($('#np_precioCompra').val() || '0') > 0
                         || parseFloat($('#np_precioVenta').val() || '0') > 0
                     );
-                return carrito.length > 0 || hayDatosCabecera || hayDetalleEnEdicion || hayProductoNuevoEnEdicion;
+                let hayProveedorRapidoEnEdicion = $('#modalProveedorRapido').hasClass('show')
+                    && (
+                        $.trim($('#pr_ruc').val() || '') !== ''
+                        || $.trim($('#pr_razonSocial').val() || '') !== ''
+                    );
+                let hayPegadoMasivoEnEdicion = $('#modalPegadoMasivo').hasClass('show')
+                    && $.trim($('#pegadoMasivoTexto').val() || '') !== '';
+                let hayImportacionEnEdicion = $('#modalImportarProductos').hasClass('show')
+                    && ($('#ip_archivo').val() || '') !== '';
+                return carrito.length > 0 || hayDatosCabecera || hayDetalleEnEdicion || hayProductoNuevoEnEdicion
+                    || hayProveedorRapidoEnEdicion || hayPegadoMasivoEnEdicion || hayImportacionEnEdicion;
             }
 
             function debeAdvertirSalidaCompra() {
@@ -851,11 +1096,15 @@
             // ── PANEL DE PRECIO (COMPLETAMENTE LIBRE) ────────────────
             function mostrarPanelPrecio(costoUnit) {
                 if (!costoUnit || costoUnit <= 0) { $('#panelPrecio').addClass('d-none'); return; }
+                let selectedOption = $('#productoSelect option:selected');
+                if ((selectedOption.data('clasificacion') || 'MERCADERIA') === 'INSUMO') {
+                    $('#panelPrecio').addClass('d-none');
+                    return;
+                }
                 const costoUnitF = parseFloat(costoUnit);
                 $('#ppCostoUnit').text(costoUnitF.toFixed(4));
 
                 // Si el producto ya tiene precio de venta, mostrar margen actual
-                let selectedOption = $('#productoSelect option:selected');
                 let precioVentaActual = parseFloat(selectedOption.data('precio-venta') || 0);
                 if (precioVentaActual > 0 && costoUnitF > 0) {
                     let margenActual = ((precioVentaActual - costoUnitF) / costoUnitF * 100);
@@ -1075,17 +1324,34 @@
 
             // ── MODAL: NUEVO PRODUCTO RÁPIDO ────────────────────────────────
             // Limpiar modal al abrir
+            function compraQuickActualizarFormularioProductoRapido() {
+                let esInsumo = ($('#np_clasificacion').val() || 'MERCADERIA') === 'INSUMO';
+                $('.js-np-insumo-oculto').toggleClass('d-none', esInsumo);
+                $('#np_alertaInsumo').toggleClass('d-none', !esInsumo);
+                $('#np_precioVenta').prop('required', !esInsumo);
+
+                if (esInsumo) {
+                    $('#np_precioVenta').val($('#np_precioVenta').val() || '0');
+                    $('#np_precioMayorista').val($('#np_precioMayorista').val() || '0');
+                    $('#np_stockMinimo').val('0');
+                    $('#np_tipo').val('ESTANDAR');
+                    $('#np_ubicacionEstante,#np_ubicacionFila,#np_ubicacionColumna').val('');
+                }
+            }
+
             $('#modalNuevoProducto').on('show.bs.modal', function () {
                 $('#np_nombre,#np_codigoBarra,#np_codigoInterno,#np_categoria,#np_descripcion').val('');
                 $('#np_marca,#np_modelo,#np_color,#np_precioCompra,#np_precioVenta,#np_precioMayorista').val('');
                 $('#np_ubicacionEstante,#np_ubicacionFila,#np_ubicacionColumna').val('');
                 $('#np_stockActual').val(parseInt($('#cantInput').val(), 10) > 0 ? parseInt($('#cantInput').val(), 10) : 0);
                 $('#np_stockMinimo').val(0);
+                $('#np_clasificacion').val('MERCADERIA');
                 $('#np_tipo').val('ESTANDAR');
                 $('#np_unidadMedida').val('UNIDAD');
                 $('#np_tipoAfectacionIgv').val('GRAVADO');
                 $('#np_error').addClass('d-none').text('');
                 $('#btnGuardarNuevoProducto').prop('disabled', false);
+                compraQuickActualizarFormularioProductoRapido();
 
                 // Autogenerar SKU
                 $('#np_codigoInterno').val('Cargando...');
@@ -1104,8 +1370,11 @@
             $('#btnGuardarNuevoProducto').on('click', function () {
                 let nombre = $('#np_nombre').val().trim();
                 let sku = $('#np_codigoInterno').val().trim();
-                let precioVenta = $('#np_precioVenta').val();
+                let clasificacion = ($('#np_clasificacion').val() || 'MERCADERIA').trim().toUpperCase();
+                let esInsumo = clasificacion === 'INSUMO';
+                let precioVenta = esInsumo ? ($('#np_precioVenta').val() || '1') : $('#np_precioVenta').val();
                 let stockActual = parseInt($('#np_stockActual').val(), 10);
+                let precioVentaFinal = esInsumo ? '0' : precioVenta;
 
                 if (!nombre) { $('#np_error').removeClass('d-none').text('El nombre es obligatorio.'); return; }
                 if (!sku) { $('#np_error').removeClass('d-none').text('El SKU / Código Interno es obligatorio.'); return; }
@@ -1118,21 +1387,22 @@
                     nombre: nombre.toUpperCase(),
                     codigoBarra: $('#np_codigoBarra').val().trim(),
                     codigoInterno: sku,
+                    clasificacion: clasificacion,
                     categoria: $('#np_categoria').val().trim(),
-                    descripcion: $('#np_descripcion').val().trim(),
-                    marca: $('#np_marca').val().trim(),
-                    modelo: $('#np_modelo').val().trim(),
-                    color: $('#np_color').val().trim(),
-                    ubicacionEstante: $('#np_ubicacionEstante').val().trim(),
-                    ubicacionFila: $('#np_ubicacionFila').val().trim(),
-                    ubicacionColumna: $('#np_ubicacionColumna').val().trim(),
-                    tipo: $('#np_tipo').val(),
+                    descripcion: esInsumo ? '' : $('#np_descripcion').val().trim(),
+                    marca: esInsumo ? '' : $('#np_marca').val().trim(),
+                    modelo: esInsumo ? '' : $('#np_modelo').val().trim(),
+                    color: esInsumo ? '' : $('#np_color').val().trim(),
+                    ubicacionEstante: esInsumo ? '' : $('#np_ubicacionEstante').val().trim(),
+                    ubicacionFila: esInsumo ? '' : $('#np_ubicacionFila').val().trim(),
+                    ubicacionColumna: esInsumo ? '' : $('#np_ubicacionColumna').val().trim(),
+                    tipo: esInsumo ? 'ESTANDAR' : $('#np_tipo').val(),
                     unidadMedida: $('#np_unidadMedida').val(),
                     tipoAfectacionIgv: $('#np_tipoAfectacionIgv').val(),
                     precioCompra: $('#np_precioCompra').val() || '0',
-                    precioVenta: precioVenta,
-                    precioMayorista: $('#np_precioMayorista').val() || '0',
-                    stockMinimo: $('#np_stockMinimo').val() || '0'
+                    precioVenta: precioVentaFinal,
+                    precioMayorista: esInsumo ? '0' : ($('#np_precioMayorista').val() || '0'),
+                    stockMinimo: esInsumo ? '0' : ($('#np_stockMinimo').val() || '0')
                 };
 
                 $.ajax({
@@ -1146,6 +1416,10 @@
                         let newOption = new Option(label, prod.id, true, true);
                         $(newOption).attr('data-costo', prod.precioCompra);
                         $(newOption).attr('data-precio-venta', prod.precioVenta);
+                        $(newOption).attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                        $(newOption).attr('data-codigo-barra', prod.codigoBarra || '');
+                        $(newOption).attr('data-codigo-interno', prod.codigoInterno || '');
+                        $(newOption).attr('data-nombre', prod.nombre || '');
                         $('#productoSelect').append(newOption).trigger('change');
 
                         if (stockActual > 0) {
@@ -1161,7 +1435,16 @@
                         // Al mismo tiempo, actualizar dp_productoDestino
                         let dupOption = new Option(label, prod.id, false, false);
                         $(dupOption).attr('data-costo', prod.precioCompra);
-                        $('#dp_productoDestino').append(dupOption).trigger('change.select2');
+                        $(dupOption).attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                        $(dupOption).attr('data-codigo-barra', prod.codigoBarra || '');
+                        $(dupOption).attr('data-codigo-interno', prod.codigoInterno || '');
+                        $(dupOption).attr('data-nombre', prod.nombre || '');
+                        $('#dp_productoDestino').append(dupOption);
+                        if (_reabrirDespieceTrasNuevoProducto) {
+                            _despieceProductoDestinoPendiente = String(prod.id);
+                        } else {
+                            $('#dp_productoDestino').val(String(prod.id)).trigger('change');
+                        }
 
                         $('#modalNuevoProducto').modal('hide');
                         Swal.fire({
@@ -1183,6 +1466,9 @@
             // ── MODAL: DESPIECE / FRACCIONAMIENTO ────────────────────────────
             let _despieceIndex = -1; // índice del item del carrito que se está fraccionando
 
+            let _reabrirDespieceTrasNuevoProducto = false;
+            let _despieceProductoDestinoPendiente = '';
+
             function abrirDespiece(index) {
                 _despieceIndex = index;
                 let item = carrito[index];
@@ -1194,6 +1480,10 @@
                 $('#dp_productoDestino').val('').trigger('change');
                 $('#dp_resultado').addClass('d-none');
                 $('#btnConfirmarDespiece').prop('disabled', true);
+                if (_despieceProductoDestinoPendiente && $('#dp_productoDestino').find(`option[value="${_despieceProductoDestinoPendiente}"]`).length) {
+                    $('#dp_productoDestino').val(String(_despieceProductoDestinoPendiente)).trigger('change');
+                    _despieceProductoDestinoPendiente = '';
+                }
                 $('#modalDespiece').modal('show');
             }
 
@@ -1202,8 +1492,10 @@
                 let costo = $(this).find(':selected').data('costo');
                 if (costo && parseFloat(costo) > 0) {
                     $('#dp_costoDestino').val(parseFloat(costo).toFixed(4));
-                    calcularDespiece2();
+                } else if (!$('#dp_costoDestino').val()) {
+                    $('#dp_costoDestino').val('');
                 }
+                calcularDespiece2();
             });
 
             function calcularDespiece2() {
@@ -1211,14 +1503,15 @@
                 let ratio = parseFloat($('#dp_ratio').val()) || 0;
                 let costo = parseFloat($('#dp_costoDestino').val()) || 0;
                 let maxCant = _despieceIndex >= 0 ? carrito[_despieceIndex].cantidad : 0;
+                let productoOriginal = _despieceIndex >= 0 ? String(carrito[_despieceIndex].productoId) : '';
 
                 if (frac > 0 && ratio > 0) {
                     let cantResultado = frac * ratio;
                     $('#dp_cantResultado').text(cantResultado);
                     $('#dp_costoResultado').text(costo > 0 ? costo.toFixed(4) : 'por definir');
                     $('#dp_resultado').removeClass('d-none');
-                    let destino = $('#dp_productoDestino').val();
-                    let valid = destino && frac <= maxCant && ratio > 0;
+                    let destino = String($('#dp_productoDestino').val() || '');
+                    let valid = destino && destino !== productoOriginal && frac <= maxCant && ratio > 0 && costo > 0;
                     $('#btnConfirmarDespiece').prop('disabled', !valid);
                 } else {
                     $('#dp_resultado').addClass('d-none');
@@ -1230,10 +1523,36 @@
                 let frac = parseFloat($('#dp_cantFraccionar').val()) || 0;
                 let ratio = parseFloat($('#dp_ratio').val()) || 0;
                 let costo = parseFloat($('#dp_costoDestino').val()) || 0;
-                let destinoId = $('#dp_productoDestino').val();
+                let destinoId = String($('#dp_productoDestino').val() || '');
                 let destinoNombre = $('#dp_productoDestino option:selected').text();
                 let cantResultado = frac * ratio;
                 let totalPag = +(cantResultado * costo).toFixed(2);
+                let original = _despieceIndex >= 0 ? carrito[_despieceIndex] : null;
+
+                if (!original) {
+                    Swal.fire('Error', 'No se encontro el producto original para fraccionar.', 'error');
+                    return;
+                }
+                if (destinoId === String(original.productoId)) {
+                    Swal.fire('Aviso', 'El producto destino debe ser diferente al producto original.', 'warning');
+                    return;
+                }
+                if (frac > original.cantidad) {
+                    Swal.fire('Aviso', 'La cantidad a fraccionar no puede superar la cantidad del producto original.', 'warning');
+                    return;
+                }
+                if (costo <= 0) {
+                    Swal.fire('Aviso', 'Ingresa un costo unitario valido para el producto destino.', 'warning');
+                    return;
+                }
+
+                let costoOriginal = parseFloat(original.costo) || 0;
+                original.cantidad = +(original.cantidad - frac);
+                if (original.cantidad <= 0) {
+                    carrito.splice(_despieceIndex, 1);
+                } else {
+                    original.totalPagado = +(original.cantidad * costoOriginal).toFixed(2);
+                }
 
                 // Agregar producto destino al carrito
                 let existe = carrito.find(i => i.productoId == destinoId);
@@ -1252,25 +1571,29 @@
                 $('#modalDespiece').modal('hide');
                 Swal.fire({
                     icon: 'success', title: 'Despiece agregado',
-                    html: `<strong>${cantResultado}</strong> unidades de <strong>${destinoNombre}</strong> agregadas al carrito.`,
+                    html: `<strong>${cantResultado}</strong> unidades de <strong>${destinoNombre}</strong> agregadas al carrito y se desconto el producto original.`,
                     timer: 2500, showConfirmButton: false
                 });
             });
 
             // Abrir modal de nuevo producto desde el modal de despiece
             function abrirNuevoProductoDesdeDespiece() {
+                _reabrirDespieceTrasNuevoProducto = true;
                 $('#modalDespiece').modal('hide');
                 // Pequeño delay para que el primer modal cierre antes de abrir el segundo
                 setTimeout(function () {
                     $('#modalNuevoProducto').modal('show');
-                    // Al guardar el nuevo producto, volver al despiece
-                    $('#modalNuevoProducto').one('hidden.bs.modal', function () {
-                        setTimeout(function () { abrirDespiece(_despieceIndex); }, 200);
-                    });
                 }, 300);
             }
 
             // ── GUARDAR COMPRA ───────────────────────────────────────────
+            $('#modalNuevoProducto').on('hidden.bs.modal', function () {
+                if (_reabrirDespieceTrasNuevoProducto && _despieceIndex >= 0) {
+                    _reabrirDespieceTrasNuevoProducto = false;
+                    setTimeout(function () { abrirDespiece(_despieceIndex); }, 200);
+                }
+            });
+
             $('#formCompra').submit(function (e) {
                 e.preventDefault();
 
@@ -1381,6 +1704,581 @@
             $('#modalAlertaPrecios').on('hidden.bs.modal', function () {
                 salidaPermitida = true;
                 window.location.href = '/compras/lista';
+            });
+        </script>
+        <script>
+            function compraQuickNormalizar(texto) {
+                return (texto || '')
+                    .toString()
+                    .trim()
+                    .toUpperCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            }
+
+            function compraQuickConstruirEtiqueta(producto) {
+                if (producto.codigoBarra) return producto.codigoBarra + ' - ' + producto.nombre;
+                if (producto.codigoInterno) return producto.codigoInterno + ' - ' + producto.nombre;
+                return producto.nombre;
+            }
+
+            function compraQuickAgregarCarrito(item) {
+                let id = String(item.productoId || '');
+                let cantidad = parseInt(item.cantidad, 10);
+                let costo = parseFloat(item.costo);
+                let totalPagado = parseFloat(item.totalPagado);
+                if (!id || !cantidad || !costo) return;
+                if (!totalPagado || totalPagado <= 0) totalPagado = +(cantidad * costo).toFixed(2);
+
+                let existente = carrito.find(function (entry) {
+                    return String(entry.productoId) === id;
+                });
+
+                if (existente) {
+                    existente.cantidad += cantidad;
+                    existente.costo = costo;
+                    existente.totalPagado = +(existente.cantidad * costo).toFixed(2);
+                } else {
+                    carrito.push({
+                        productoId: id,
+                        nombre: item.nombre,
+                        cantidad: cantidad,
+                        costo: costo,
+                        totalPagado: totalPagado
+                    });
+                }
+            }
+
+            function compraQuickAgregarCatalogo(prod, seleccionar, silencioso) {
+                let label = compraQuickConstruirEtiqueta(prod);
+                ['#productoSelect', '#dp_productoDestino'].forEach(function (selector) {
+                    let select = $(selector);
+                    let option = select.find(`option[value="${prod.id}"]`);
+                    if (option.length) {
+                        option.text(label);
+                    } else {
+                        option = $(new Option(label, prod.id, false, false));
+                        select.append(option);
+                    }
+                    option.attr('data-costo', prod.precioCompra || 0);
+                    option.attr('data-precio-venta', prod.precioVenta || 0);
+                    option.attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                    option.attr('data-codigo-barra', prod.codigoBarra || '');
+                    option.attr('data-codigo-interno', prod.codigoInterno || '');
+                    option.attr('data-nombre', prod.nombre || '');
+                });
+
+                if (silencioso) {
+                    return;
+                }
+
+                if (seleccionar) {
+                    $('#productoSelect').val(String(prod.id)).trigger('change');
+                } else {
+                    $('#productoSelect, #dp_productoDestino').trigger('change');
+                }
+            }
+
+            function compraQuickActualizarBotonClonar() {
+                $('#btnAbrirClonarCompra').prop('disabled', !$('#proveedor').val());
+            }
+
+            function compraQuickAbrirProveedor() {
+                $('#pr_ruc,#pr_razonSocial').val('');
+                $('#pr_error').addClass('d-none').text('');
+                $('#modalProveedorRapido').modal('show');
+                setTimeout(function () { $('#pr_ruc').focus(); }, 250);
+            }
+
+            function compraQuickGuardarProveedor() {
+                let ruc = ($('#pr_ruc').val() || '').replace(/\D/g, '');
+                let razonSocial = ($('#pr_razonSocial').val() || '').trim();
+                if (!ruc) {
+                    $('#pr_error').removeClass('d-none').text('El RUC es obligatorio.');
+                    return;
+                }
+                if (ruc.length !== 11) {
+                    $('#pr_error').removeClass('d-none').text('El RUC debe tener 11 digitos.');
+                    return;
+                }
+                if (!razonSocial) {
+                    $('#pr_error').removeClass('d-none').text('La razon social es obligatoria.');
+                    return;
+                }
+
+                let btn = $('#btnGuardarProveedorRapido').prop('disabled', true);
+                $.ajax({
+                    url: '/compras/api/crear-proveedor',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ ruc: ruc, razonSocial: razonSocial }),
+                    success: function (resp) {
+                        let label = resp.ruc + ' - ' + resp.razonSocial;
+                        if ($('#proveedor').find(`option[value="${resp.id}"]`).length === 0) {
+                            $('#proveedor').append(new Option(label, resp.id, false, false));
+                        }
+                        $('#proveedor').val(String(resp.id)).trigger('change');
+                        compraQuickActualizarBotonClonar();
+                        $('#modalProveedorRapido').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: resp.existente ? 'Proveedor existente' : 'Proveedor guardado',
+                            text: resp.existente ? 'Se selecciono el proveedor ya registrado.' : 'Proveedor agregado a la compra actual.',
+                            timer: 1800,
+                            showConfirmButton: false
+                        });
+                    },
+                    error: function (xhr) {
+                        let msg = xhr.responseJSON ? xhr.responseJSON.error : 'No se pudo guardar el proveedor.';
+                        $('#pr_error').removeClass('d-none').text(msg);
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false);
+                    }
+                });
+            }
+
+            function compraQuickCargarClonables() {
+                let proveedorId = $('#proveedor').val();
+                if (!proveedorId) {
+                    $('#tablaComprasClonables').html('<tr><td colspan="5" class="text-center text-muted py-4">Selecciona un proveedor para ver compras recientes.</td></tr>');
+                    return;
+                }
+
+                $('#tablaComprasClonables').html('<tr><td colspan="5" class="text-center py-4"><span class="spinner-border spinner-border-sm mr-2"></span>Cargando compras recientes...</td></tr>');
+                $.get(`/compras/api/proveedor/${proveedorId}/compras-recientes`, function (compras) {
+                    if (!compras || compras.length === 0) {
+                        $('#tablaComprasClonables').html('<tr><td colspan="5" class="text-center text-muted py-4">Este proveedor aun no tiene compras registradas.</td></tr>');
+                        return;
+                    }
+
+                    let html = compras.map(function (compra) {
+                        let fecha = (compra.fecha || '').replace('T', ' ').substring(0, 16);
+                        return `<tr>
+                            <td>${fecha}</td>
+                            <td>${compra.tipoComprobante || ''} ${compra.numeroComprobante || ''}</td>
+                            <td class="text-right">S/ ${parseFloat(compra.total || 0).toFixed(2)}</td>
+                            <td class="text-center">${compra.items || 0}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-info btn-sm" onclick="compraQuickUsarCompraClonada(${compra.id})">
+                                    <i class="fas fa-copy mr-1"></i>Usar
+                                </button>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                    $('#tablaComprasClonables').html(html);
+                }).fail(function (xhr) {
+                    let msg = xhr.responseJSON ? xhr.responseJSON.error : 'No se pudieron cargar las compras.';
+                    $('#tablaComprasClonables').html(`<tr><td colspan="5" class="text-center text-danger py-4">${msg}</td></tr>`);
+                });
+            }
+
+            function compraQuickAplicarClon(data, reemplazar) {
+                if (reemplazar) carrito = [];
+                (data.items || []).forEach(function (item) {
+                    compraQuickAgregarCarrito(item);
+                });
+                if (data.tipoComprobante) $('#tipoDoc').val(data.tipoComprobante);
+                $('#nroDoc').val('');
+                if (!$('#obs').val().trim()) {
+                    $('#obs').val('Base: ' + (data.tipoComprobante || '') + ' ' + (data.numeroComprobante || ''));
+                }
+                renderizarTabla();
+                $('#modalClonarCompra').modal('hide');
+            }
+
+            function compraQuickUsarCompraClonada(compraId) {
+                $.get(`/compras/api/clonar-compra/${compraId}`, function (data) {
+                    if (carrito.length === 0) {
+                        compraQuickAplicarClon(data, true);
+                        Swal.fire('Compra clonada', 'Se copiaron los productos y costos al carrito.', 'success');
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Ya hay productos en el carrito',
+                        text: 'Quieres reemplazarlos o sumar la compra clonada?',
+                        showDenyButton: true,
+                        showCancelButton: true,
+                        confirmButtonText: 'Reemplazar',
+                        denyButtonText: 'Sumar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            compraQuickAplicarClon(data, true);
+                            Swal.fire('Compra clonada', 'Se reemplazo el carrito con la compra seleccionada.', 'success');
+                        } else if (result.isDenied) {
+                            compraQuickAplicarClon(data, false);
+                            Swal.fire('Compra sumada', 'Se agregaron los productos de la compra seleccionada.', 'success');
+                        }
+                    });
+                }).fail(function (xhr) {
+                    let msg = xhr.responseJSON ? xhr.responseJSON.error : 'No se pudo clonar la compra.';
+                    Swal.fire('Error', msg, 'error');
+                });
+            }
+
+            function compraQuickDividirLinea(linea) {
+                if (linea.includes('\t')) return linea.split(/\t+/).map(function (i) { return i.trim(); }).filter(Boolean);
+                if (linea.includes('|')) return linea.split('|').map(function (i) { return i.trim(); }).filter(Boolean);
+                if (linea.includes(';')) return linea.split(';').map(function (i) { return i.trim(); }).filter(Boolean);
+                return linea.split(/\s{2,}/).map(function (i) { return i.trim(); }).filter(Boolean);
+            }
+
+            function compraQuickResolverReferencia(referencia) {
+                let referenciaNormalizada = compraQuickNormalizar(referencia);
+                let catalogo = $('#productoSelect option').filter(function () {
+                    return !!$(this).val();
+                }).map(function () {
+                    return {
+                        id: $(this).val(),
+                        nombre: ($(this).data('nombre') || $(this).text() || '').toString(),
+                        codigoBarra: ($(this).data('codigo-barra') || '').toString(),
+                        codigoInterno: ($(this).data('codigo-interno') || '').toString(),
+                        label: $(this).text()
+                    };
+                }).get();
+
+                let exactoCodigo = catalogo.find(function (prod) {
+                    return compraQuickNormalizar(prod.codigoBarra) === referenciaNormalizada
+                        || compraQuickNormalizar(prod.codigoInterno) === referenciaNormalizada;
+                });
+                if (exactoCodigo) return { producto: exactoCodigo };
+
+                let exactoNombre = catalogo.find(function (prod) {
+                    return compraQuickNormalizar(prod.nombre) === referenciaNormalizada;
+                });
+                if (exactoNombre) return { producto: exactoNombre };
+
+                let similares = catalogo.filter(function (prod) {
+                    return compraQuickNormalizar(prod.nombre).includes(referenciaNormalizada);
+                });
+                if (similares.length === 1) return { producto: similares[0] };
+                return { error: similares.length > 1 ? 'Coincidencias multiples' : 'No encontrado' };
+            }
+
+            function compraQuickRenderFaltantes() {
+                if (!faltantesLote.length) {
+                    $('#tablaFaltantesLote').html('<tr><td colspan="8" class="text-center text-muted py-4">Aun no hay productos faltantes detectados.</td></tr>');
+                    return;
+                }
+
+                let html = faltantesLote.map(function (item, index) {
+                    return `<tr data-index="${index}">
+                        <td>${item.referencia || ''}</td>
+                        <td><input type="text" class="form-control form-control-sm faltante-nombre" value="${item.nombreOriginal || item.referencia || ''}"></td>
+                        <td>
+                            <select class="form-control form-control-sm faltante-clasificacion">
+                                <option value="MERCADERIA" ${item.clasificacion === 'INSUMO' ? '' : 'selected'}>Mercadería</option>
+                                <option value="INSUMO" ${item.clasificacion === 'INSUMO' ? 'selected' : ''}>Insumo</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="form-control form-control-sm faltante-categoria" value="${item.categoria || ''}" placeholder="Opcional"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm faltante-precio-venta" value="${item.precioVenta || ''}" placeholder="Solo mercadería"></td>
+                        <td><input type="text" class="form-control form-control-sm faltante-codigo" value="${item.codigoOpcional || ''}" placeholder="Opcional"></td>
+                        <td class="text-right align-middle">${item.cantidadCompra}</td>
+                        <td class="text-right align-middle">S/ ${parseFloat(item.costoCompra || 0).toFixed(4)}</td>
+                    </tr>`;
+                }).join('');
+                $('#tablaFaltantesLote').html(html);
+            }
+
+            function compraQuickProcesarPegado() {
+                let texto = ($('#pegadoMasivoTexto').val() || '').trim();
+                if (!texto) {
+                    Swal.fire('Aviso', 'Pega al menos una linea.', 'warning');
+                    return;
+                }
+
+                let modo = $('#pegadoMasivoModo').val();
+                let lineas = texto.split(/\r?\n/).map(function (linea) { return linea.trim(); }).filter(Boolean);
+                let agregados = 0;
+                let errores = [];
+                faltantesLote = [];
+
+                lineas.forEach(function (linea, index) {
+                    let columnas = compraQuickDividirLinea(linea);
+                    if (columnas.length < 3) {
+                        errores.push('Linea ' + (index + 1) + ': formato incompleto.');
+                        return;
+                    }
+
+                    let referencia = columnas[0];
+                    let cantidad = parseInt(columnas[1], 10);
+                    let tercero = parseFloat((columnas[2] || '').replace(',', '.'));
+                    if (!cantidad || cantidad <= 0 || !tercero || tercero <= 0) {
+                        errores.push('Linea ' + (index + 1) + ': cantidad o monto invalido.');
+                        return;
+                    }
+
+                    let costo = modo === 'total' ? tercero / cantidad : tercero;
+                    let totalCompra = modo === 'total' ? tercero : +(cantidad * costo).toFixed(2);
+                    let encontrado = compraQuickResolverReferencia(referencia);
+
+                    if (encontrado.producto) {
+                        compraQuickAgregarCarrito({
+                            productoId: encontrado.producto.id,
+                            nombre: encontrado.producto.label,
+                            cantidad: cantidad,
+                            costo: costo,
+                            totalPagado: totalCompra
+                        });
+                        agregados++;
+                    } else {
+                        faltantesLote.push({
+                            referencia: referencia,
+                            nombreOriginal: referencia,
+                            cantidadCompra: cantidad,
+                            costoCompra: +costo.toFixed(4),
+                            totalCompra: +totalCompra.toFixed(2),
+                            categoria: '',
+                            precioVenta: '',
+                            clasificacion: 'MERCADERIA',
+                            codigoOpcional: referencia
+                        });
+                    }
+                });
+
+                renderizarTabla();
+                compraQuickRenderFaltantes();
+                $('#btnAbrirFaltantesDesdePegado').prop('disabled', faltantesLote.length === 0);
+
+                let resumen = `${agregados} linea(s) agregadas al carrito.`;
+                if (faltantesLote.length > 0) resumen += ` ${faltantesLote.length} faltante(s) listos para crear.`;
+                if (errores.length > 0) resumen += ` ${errores.length} linea(s) con error.`;
+
+                $('#resultadoPegadoMasivo')
+                    .removeClass('d-none alert-secondary alert-danger')
+                    .addClass(errores.length ? 'alert-danger' : 'alert-secondary')
+                    .html(resumen + (errores.length ? '<hr class="my-2"><div>' + errores.slice(0, 5).join('<br>') + '</div>' : ''));
+
+                if (faltantesLote.length > 0) {
+                    $('#modalFaltantesLote').modal('show');
+                } else if (agregados > 0) {
+                    Swal.fire('Pegado procesado', resumen, 'success');
+                }
+            }
+
+            function compraQuickClasificarCodigo(codigo) {
+                let limpio = (codigo || '').trim();
+                if (!limpio) return {};
+                if (/^\d{8,}$/.test(limpio)) return { codigoBarra: limpio };
+                return { codigoInterno: limpio };
+            }
+
+            function compraQuickCrearFaltantes() {
+                if (!faltantesLote.length) {
+                    Swal.fire('Aviso', 'No hay productos faltantes para crear.', 'warning');
+                    return;
+                }
+
+                let payload = [];
+                let errores = [];
+                $('#tablaFaltantesLote tr[data-index]').each(function () {
+                    let index = parseInt($(this).data('index'), 10);
+                    let origen = faltantesLote[index];
+                    let nombre = $(this).find('.faltante-nombre').val().trim();
+                    let clasificacion = ($(this).find('.faltante-clasificacion').val() || 'MERCADERIA').trim().toUpperCase();
+                    let categoria = $(this).find('.faltante-categoria').val().trim();
+                    let precioVenta = $(this).find('.faltante-precio-venta').val().trim();
+                    let codigoOpcional = $(this).find('.faltante-codigo').val().trim();
+
+                    if (!nombre) {
+                        errores.push('Completa el nombre del faltante ' + (origen.referencia || (index + 1)) + '.');
+                        return;
+                    }
+                    if (clasificacion !== 'INSUMO' && (!precioVenta || parseFloat(precioVenta) <= 0)) {
+                        errores.push('Ingresa un precio de venta valido para ' + nombre + '.');
+                        return;
+                    }
+
+                    payload.push(Object.assign({
+                        referencia: origen.referencia,
+                        nombreOriginal: origen.nombreOriginal,
+                        nombre: nombre.toUpperCase(),
+                        clasificacion: clasificacion,
+                        categoria: categoria.toUpperCase(),
+                        precioVenta: clasificacion === 'INSUMO' ? '0' : precioVenta,
+                        precioCompra: origen.costoCompra,
+                        cantidadCompra: origen.cantidadCompra,
+                        costoCompra: origen.costoCompra,
+                        totalCompra: origen.totalCompra,
+                        stockMinimo: 0,
+                        tipo: 'ESTANDAR',
+                        unidadMedida: 'UNIDAD',
+                        tipoAfectacionIgv: 'GRAVADO'
+                    }, compraQuickClasificarCodigo(codigoOpcional)));
+                });
+
+                if (errores.length) {
+                    $('#faltantesLoteError').removeClass('d-none').html(errores.join('<br>'));
+                    return;
+                }
+
+                $('#faltantesLoteError').addClass('d-none').text('');
+                let btn = $('#btnCrearFaltantesLote').prop('disabled', true);
+                $.ajax({
+                    url: '/compras/api/crear-productos-lote',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function (resp) {
+                        (resp.creados || []).forEach(function (producto) {
+                            compraQuickAgregarCatalogo(producto, false);
+                            compraQuickAgregarCarrito({
+                                productoId: producto.id,
+                                nombre: compraQuickConstruirEtiqueta(producto),
+                                cantidad: producto.cantidadCompra,
+                                costo: producto.costoCompra,
+                                totalPagado: producto.totalCompra
+                            });
+                        });
+                        renderizarTabla();
+
+                        if (resp.errores && resp.errores.length) {
+                            let errorIndices = new Set(resp.errores.map(function (item) { return item.indice; }));
+                            faltantesLote = payload.filter(function (_, index) { return errorIndices.has(index); }).map(function (item) {
+                                return {
+                                    referencia: item.referencia,
+                                    nombreOriginal: item.nombre,
+                                    cantidadCompra: item.cantidadCompra,
+                                    costoCompra: item.costoCompra,
+                                    totalCompra: item.totalCompra,
+                                    clasificacion: item.clasificacion,
+                                    categoria: item.categoria,
+                                    precioVenta: item.precioVenta,
+                                    codigoOpcional: item.codigoBarra || item.codigoInterno || ''
+                                };
+                            });
+                            compraQuickRenderFaltantes();
+                            $('#faltantesLoteError').removeClass('d-none').html(resp.errores.map(function (item) {
+                                return (item.nombre || 'Producto') + ': ' + item.error;
+                            }).join('<br>'));
+                        } else {
+                            faltantesLote = [];
+                            compraQuickRenderFaltantes();
+                            $('#modalFaltantesLote').modal('hide');
+                            Swal.fire('Faltantes creados', 'Los productos nuevos ya estan en el carrito.', 'success');
+                        }
+
+                        $('#btnAbrirFaltantesDesdePegado').prop('disabled', faltantesLote.length === 0);
+                    },
+                    error: function (xhr) {
+                        let msg = xhr.responseJSON ? xhr.responseJSON.error : 'No se pudieron crear los productos faltantes.';
+                        $('#faltantesLoteError').removeClass('d-none').text(msg);
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false);
+                    }
+                });
+            }
+
+            function compraQuickRecargarCatalogo() {
+                let productoActual = $('#productoSelect').val();
+                let destinoActual = $('#dp_productoDestino').val();
+
+                $.get('/compras/api/productos-catalogo', function (productos) {
+                    if ($('#productoSelect').hasClass('select2-hidden-accessible')) {
+                        $('#productoSelect').select2('destroy');
+                    }
+                    if ($('#dp_productoDestino').hasClass('select2-hidden-accessible')) {
+                        $('#dp_productoDestino').select2('destroy');
+                    }
+                    $('#productoSelect').empty().append(new Option('Buscar por nombre o codigo...', ''));
+                    $('#dp_productoDestino').empty().append(new Option('Seleccionar producto...', ''));
+
+                    productos.forEach(function (prod) {
+                        compraQuickAgregarCatalogo(prod, false, true);
+                    });
+
+                    if (productoActual && $('#productoSelect').find(`option[value="${productoActual}"]`).length) {
+                        $('#productoSelect').val(String(productoActual));
+                    }
+                    if (destinoActual && $('#dp_productoDestino').find(`option[value="${destinoActual}"]`).length) {
+                        $('#dp_productoDestino').val(String(destinoActual));
+                    }
+                    inicializarSelect2Compras();
+                });
+            }
+
+            function compraQuickImportarCatalogo() {
+                let archivo = $('#ip_archivo')[0].files[0];
+                if (!archivo) {
+                    Swal.fire('Aviso', 'Selecciona un archivo Excel.', 'warning');
+                    return;
+                }
+
+                let formData = new FormData();
+                formData.append('archivo', archivo);
+                formData.append('actualizarExistentes', $('#ip_actualizarExistentes').is(':checked'));
+
+                let btn = $('#btnImportarProductosCompra').prop('disabled', true);
+                $('#ip_resultado').removeClass('d-none alert-danger').addClass('alert-secondary').text('Importando catalogo...');
+
+                $.ajax({
+                    url: '/compras/api/importar-productos',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (resp) {
+                        compraQuickRecargarCatalogo();
+                        let bloques = [resp.message || 'Importacion completada.'];
+                        if (resp.advertencias && resp.advertencias.length) {
+                            bloques.push('Advertencias: ' + resp.advertencias.slice(0, 4).join(' | '));
+                        }
+                        if (resp.errores && resp.errores.length) {
+                            bloques.push('Errores: ' + resp.errores.slice(0, 4).join(' | '));
+                        }
+                        $('#ip_resultado').removeClass('alert-danger').addClass('alert-secondary').removeClass('d-none').html(bloques.join('<br>'));
+                        Swal.fire('Catalogo actualizado', resp.message || 'Los productos fueron importados.', 'success');
+                    },
+                    error: function (xhr) {
+                        let msg = xhr.responseJSON ? xhr.responseJSON.error : 'No se pudo importar el archivo.';
+                        $('#ip_resultado').removeClass('alert-secondary').addClass('alert-danger').removeClass('d-none').text(msg);
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false);
+                    }
+                });
+            }
+
+            $(document).ready(function () {
+                compraQuickActualizarBotonClonar();
+                $('#btnAbrirFaltantesDesdePegado').prop('disabled', true);
+                $('#np_clasificacion').on('change', compraQuickActualizarFormularioProductoRapido);
+
+                $('#proveedor').on('change', compraQuickActualizarBotonClonar);
+                $('#btnProveedorRapido').on('click', compraQuickAbrirProveedor);
+                $('#btnGuardarProveedorRapido').on('click', compraQuickGuardarProveedor);
+                $('#btnAbrirClonarCompra').on('click', function () {
+                    if (!$('#proveedor').val()) {
+                        Swal.fire('Aviso', 'Selecciona primero un proveedor.', 'warning');
+                        return;
+                    }
+                    compraQuickCargarClonables();
+                    $('#modalClonarCompra').modal('show');
+                });
+                $('#btnAbrirPegadoMasivo').on('click', function () {
+                    $('#modalPegadoMasivo').modal('show');
+                    setTimeout(function () { $('#pegadoMasivoTexto').focus(); }, 250);
+                });
+                $('#btnProcesarPegadoMasivo').on('click', compraQuickProcesarPegado);
+                $('#btnAbrirFaltantesDesdePegado').on('click', function () {
+                    compraQuickRenderFaltantes();
+                    $('#modalFaltantesLote').modal('show');
+                });
+                $('#btnCrearFaltantesLote').on('click', compraQuickCrearFaltantes);
+                $('#btnAbrirImportarProductos').on('click', function () {
+                    $('#ip_resultado').addClass('d-none').text('');
+                    $('#modalImportarProductos').modal('show');
+                });
+                $('#btnImportarProductosCompra').on('click', compraQuickImportarCatalogo);
+                $('#ip_archivo').on('change', function () {
+                    let fileName = $(this).val().split('\\').pop();
+                    $(this).next('.custom-file-label').html(fileName || 'Seleccionar archivo...');
+                });
             });
         </script>
     </th:block>

@@ -1,5 +1,6 @@
 package com.libreria.sistema.controller;
 
+import com.libreria.sistema.model.CategoriaMovimiento;
 import com.libreria.sistema.model.Configuracion;
 import com.libreria.sistema.model.OrdenItem;
 import com.libreria.sistema.model.OrdenServicio;
@@ -7,21 +8,40 @@ import com.libreria.sistema.model.dto.OrdenDTO;
 import com.libreria.sistema.repository.OrdenServicioRepository;
 import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.ConfiguracionService;
-
-import com.lowagie.text.*;
-import com.lowagie.text.pdf.*;
+import com.lowagie.text.Chunk;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.awt.Color;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Map;
 
 @Controller
@@ -44,11 +64,10 @@ public class OrdenServicioController {
 
     @GetMapping("/nueva")
     @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR')")
-public String nuevaOrden(Model model) {
-    // ESTA LÍNEA ES VITAL PARA QUE EL DATALIST FUNCIONE
-    model.addAttribute("tipos", ordenRepository.findTiposServicio()); 
-    return "ordenes/formulario"; 
-}
+    public String nuevaOrden(Model model) {
+        model.addAttribute("tipos", ordenRepository.findTiposServicio());
+        return "ordenes/formulario";
+    }
 
     @GetMapping("/lista")
     public String listaOrdenes(Model model) {
@@ -56,60 +75,103 @@ public String nuevaOrden(Model model) {
         return "ordenes/lista";
     }
 
-    // API GUARDAR
     @PostMapping("/api/guardar")
-    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR')")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR') or hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
     public ResponseEntity<?> guardarOrden(@RequestBody OrdenDTO dto) {
         try {
-            OrdenServicio orden = new OrdenServicio();
+            boolean esEdicion = dto.getId() != null;
+            OrdenServicio orden;
+            if (dto.getId() != null) {
+                orden = ordenRepository.findById(dto.getId()).orElse(new OrdenServicio());
+                // Si es edición, limpiamos los items actuales para reemplazarlos con los nuevos
+                if (orden.getId() != null) {
+                    orden.getItems().clear();
+                }
+            } else {
+                orden = new OrdenServicio();
+            }
+
             orden.setTipoServicio(dto.getTipoServicio());
             orden.setTituloTrabajo(dto.getTituloTrabajo());
             orden.setClienteNombre(dto.getClienteNombre());
             orden.setClienteTelefono(dto.getClienteTelefono());
             orden.setClienteDocumento(dto.getClienteDocumento());
+            orden.setClienteEmail(dto.getClienteEmail());
+            orden.setClienteDireccion(dto.getClienteDireccion());
             orden.setFechaEntregaEstimada(dto.getFechaEntrega());
             orden.setObservaciones(dto.getObservaciones());
-            orden.setACuenta(dto.getACuenta() != null ? dto.getACuenta() : BigDecimal.ZERO);
-            orden.setEstado("PENDIENTE");
+            
+            // Aseguramos que aCuenta no sea null
+            BigDecimal aCuentaDTO = dto.getACuenta() != null ? dto.getACuenta() : BigDecimal.ZERO;
+            orden.setACuenta(aCuentaDTO);
+            
+            if (orden.getEstado() == null) {
+                orden.setEstado("PENDIENTE");
+            }
 
             BigDecimal total = BigDecimal.ZERO;
             if (dto.getItems() != null) {
                 for (OrdenDTO.ItemDTO itemDto : dto.getItems()) {
                     OrdenItem item = new OrdenItem();
                     item.setDescripcion(itemDto.getDescripcion());
-                    item.setCosto(itemDto.getCosto());
+                    item.setCosto(itemDto.getCosto() != null ? itemDto.getCosto() : BigDecimal.ZERO);
                     item.setOrden(orden);
                     orden.getItems().add(item);
-                    total = total.add(itemDto.getCosto());
+                    total = total.add(item.getCosto());
                 }
             }
             orden.setTotal(total);
-            orden.setSaldo(total.subtract(orden.getACuenta()));
+
+            // Validar que el adelanto no supere al total
+            BigDecimal adelanto = orden.getACuenta();
+            if (adelanto.compareTo(total) > 0) {
+                adelanto = total;
+                orden.setACuenta(total);
+            }
+            orden.setSaldo(total.subtract(adelanto));
 
             OrdenServicio guardada = ordenRepository.save(orden);
+            log.info("Orden servicio {} guardada. total={}, adelanto={}, saldo={}, edicion={}",
+                    guardada.getId(), guardada.getTotal(), guardada.getACuenta(), guardada.getSaldo(), esEdicion);
 
-            if (orden.getACuenta().compareTo(BigDecimal.ZERO) > 0) {
-                cajaService.registrarMovimiento("INGRESO", "ADELANTO SERV #" + guardada.getId(), orden.getACuenta(),
-                        com.libreria.sistema.model.CategoriaMovimiento.VENTA);
+            if (!esEdicion && adelanto.compareTo(BigDecimal.ZERO) > 0) {
+                cajaService.registrarMovimiento(
+                        "INGRESO",
+                        "ADELANTO SERV #" + guardada.getId(),
+                        adelanto,
+                        CategoriaMovimiento.VENTA
+                );
             }
-            return ResponseEntity.ok(Map.of("message", "Orden registrada", "id", guardada.getId()));
+
+            return ResponseEntity.ok(Map.of(
+                    "message", esEdicion ? "Orden actualizada" : "Orden registrada",
+                    "id", guardada.getId(),
+                    "total", guardada.getTotal(),
+                    "abonado", guardada.getACuenta(),
+                    "saldo", guardada.getSaldo()
+            ));
         } catch (Exception e) {
             log.error("Error al guardar orden de servicio", e);
             return ResponseEntity.badRequest().body("Error al procesar la orden. Por favor intente nuevamente.");
         }
     }
 
-    // API FINALIZAR
     @PostMapping("/api/finalizar/{id}")
     @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
     public ResponseEntity<?> finalizarOrden(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean cobrarSaldo) {
         try {
             return ordenRepository.findById(id).map(orden -> {
                 try {
-                    if (cobrarSaldo && orden.getSaldo().compareTo(BigDecimal.ZERO) > 0) {
-                        cajaService.registrarMovimiento("INGRESO", "SALDO FINAL SERV #" + orden.getId(), orden.getSaldo(),
-                                com.libreria.sistema.model.CategoriaMovimiento.VENTA);
-                        orden.setACuenta(orden.getTotal());
+                    if (cobrarSaldo && valorMonetario(orden.getSaldo()).compareTo(BigDecimal.ZERO) > 0) {
+                        cajaService.registrarMovimiento(
+                                "INGRESO",
+                                "SALDO FINAL SERV #" + orden.getId(),
+                                orden.getSaldo(),
+                                CategoriaMovimiento.VENTA
+                        );
+                        orden.setACuenta(valorMonetario(orden.getTotal()));
                         orden.setSaldo(BigDecimal.ZERO);
                     }
                     orden.setEstado("ENTREGADO");
@@ -121,180 +183,360 @@ public String nuevaOrden(Model model) {
                 }
             }).orElse(ResponseEntity.badRequest().body("Orden no encontrada"));
         } catch (Exception e) {
-            log.error("Error al procesar finalización de orden", e);
+            log.error("Error al procesar finalizacion de orden", e);
             return ResponseEntity.badRequest().body("Error al procesar la solicitud");
         }
     }
 
-    // ==========================================
-    //        GENERADOR PDF (CON LOGO)
-    // ==========================================
     @GetMapping("/pdf/{id}")
     public void descargarPdf(@PathVariable Long id, HttpServletResponse response) throws IOException, DocumentException {
         OrdenServicio orden = ordenRepository.findById(id).orElse(null);
-        if(orden == null) return;
+        if (orden == null) {
+            response.sendError(404, "Orden no encontrada");
+            return;
+        }
 
-        Configuracion config = configuracionService.obtenerConfiguracion(); // DATOS EMPRESA
-
+        Configuracion config = configuracionService.obtenerConfiguracion();
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "inline; filename=Orden_" + id + ".pdf");
+        response.setHeader("Content-Disposition", "inline; filename=Contrato_" + id + ".pdf");
 
-        Document document = new Document(PageSize.A4, 30, 30, 30, 30);
+        // Documento con márgenes reducidos
+        Document document = new Document(PageSize.A4, 25, 25, 25, 25);
         PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
-        // 1. CABECERA
-        PdfPTable headerTable = new PdfPTable(3);
+        // COLORES CHROMA BLUE
+        Color colorPrimario = parseColor(config.getColorPrimario(), new Color(7, 77, 140));
+        Color colorBanner = new Color(0, 51, 102); // Azul más profundo para contraste
+        Color colorZebra = new Color(225, 240, 255); // Celeste muy claro para Zebra
+        Color colorWhite = Color.WHITE;
+        
+        Font fontCompany = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, colorPrimario);
+        Font fontContractTitle = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, colorWhite);
+        Font fontLabelBlue = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorPrimario);
+        Font fontValue = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
+        Font fontSmallBlue = FontFactory.getFont(FontFactory.HELVETICA, 8, colorPrimario);
+        Font fontHeaderTable = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorWhite);
+        Font fontTerms = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(100, 100, 100));
+        
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter fmtDateTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        
+        BigDecimal totalOrden = valorMonetario(orden.getTotal());
+        BigDecimal saldoPendiente = resolverSaldoOrden(orden);
+        BigDecimal abonado = totalOrden.subtract(saldoPendiente);
+        if (abonado.compareTo(BigDecimal.ZERO) < 0) abonado = BigDecimal.ZERO;
+
+        // BANNER CABECERA (TÍTULO CONTRACTUAL)
+        PdfPTable banner = new PdfPTable(1);
+        banner.setWidthPercentage(100);
+        PdfPCell bannerCell = new PdfPCell(new Phrase("CONTRATO DE SERVICIO - PROYECTO CONFIRMADO", fontContractTitle));
+        bannerCell.setBackgroundColor(colorBanner);
+        bannerCell.setPadding(10f);
+        bannerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        bannerCell.setBorder(Rectangle.NO_BORDER);
+        banner.addCell(bannerCell);
+        document.add(banner);
+        document.add(new Paragraph(" ", fontSmallBlue));
+
+        // CABECERA EMPRESA
+        PdfPTable headerTable = new PdfPTable(2);
         headerTable.setWidthPercentage(100);
-        headerTable.setWidths(new float[]{5, 1, 3});
-
-        // Logo y Datos Empresa
-        PdfPCell cellEmpresa = new PdfPCell();
-        cellEmpresa.setBorder(Rectangle.NO_BORDER);
+        headerTable.setWidths(new float[]{1.5f, 3.5f});
         
-        // Intentar poner logo si existe
-        if (config.getLogoBase64() != null && !config.getLogoBase64().isEmpty()) {
-            try {
-                byte[] imageBytes = java.util.Base64.getDecoder().decode(config.getLogoBase64());
-                Image logo = Image.getInstance(imageBytes);
-                logo.scaleToFit(120, 60);
-                logo.setAlignment(Element.ALIGN_LEFT);
-                cellEmpresa.addElement(logo);
-            } catch (Exception e) { /* Ignorar error de logo */ }
-        }
-
-        Font fontEmpresa = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
-        cellEmpresa.addElement(new Paragraph(config.getNombreEmpresa(), fontEmpresa));
-        cellEmpresa.addElement(new Paragraph(config.getDireccion(), FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        cellEmpresa.addElement(new Paragraph("Telf: " + config.getTelefono(), FontFactory.getFont(FontFactory.HELVETICA, 9)));
-        headerTable.addCell(cellEmpresa);
-
-        // Espacio
-        PdfPCell cellVacia = new PdfPCell();
-        cellVacia.setBorder(Rectangle.NO_BORDER);
-        headerTable.addCell(cellVacia);
-
-        // Cuadro RUC
-        PdfPCell cellRuc = new PdfPCell();
-        cellRuc.setBorder(Rectangle.BOX);
-        cellRuc.setBorderWidth(1.5f);
-        cellRuc.setPadding(8);
+        headerTable.addCell(crearCeldaLogo(config));
         
-        Paragraph pRuc = new Paragraph("R.U.C. " + config.getRuc(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12));
-        pRuc.setAlignment(Element.ALIGN_CENTER);
-        cellRuc.addElement(pRuc);
-        
-        Paragraph pTipo = new Paragraph("ORDEN DE SERVICIO", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10));
-        pTipo.setAlignment(Element.ALIGN_CENTER);
-        pTipo.setSpacingBefore(5);
-        cellRuc.addElement(pTipo);
-
-        Paragraph pNum = new Paragraph("Nº " + String.format("%06d", orden.getId()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.RED));
-        pNum.setAlignment(Element.ALIGN_CENTER);
-        cellRuc.addElement(pNum);
-        
-        headerTable.addCell(cellRuc);
+        PdfPCell infoEmpresa = new PdfPCell();
+        infoEmpresa.setBorder(Rectangle.NO_BORDER);
+        infoEmpresa.setPaddingLeft(15f);
+        infoEmpresa.addElement(new Paragraph("CHROMA MULTISERVICIOS", fontCompany));
+        infoEmpresa.addElement(new Paragraph("Soluciones Profesionales | RUC: " + valor(config.getRuc(), "20000000001"), fontSmallBlue));
+        infoEmpresa.addElement(new Paragraph("OS Ref: - " + String.format("%06d", orden.getId()), fontLabelBlue));
+        headerTable.addCell(infoEmpresa);
         document.add(headerTable);
+        
+        document.add(new Paragraph(" ", fontSmallBlue));
 
-        document.add(new Paragraph(" "));
+        // BLOQUE DE DATOS AZUL (CLIENTE Y PROYECTO)
+        PdfPTable mainData = new PdfPTable(2);
+        mainData.setWidthPercentage(100);
+        mainData.setWidths(new float[]{1f, 1f});
 
-        // 2. DATOS CLIENTE
-        PdfPTable infoTable = new PdfPTable(2);
-        infoTable.setWidthPercentage(100);
-        infoTable.setWidths(new float[]{1, 1});
+        // Lado Cliente
+        PdfPCell leftCol = new PdfPCell();
+        leftCol.setBorderColor(colorZebra);
+        leftCol.setBorderWidth(1f);
+        leftCol.setPadding(12f);
+        agregarSeccionInfo(leftCol, "CLIENTE / CONTRATANTE", colorPrimario, fontHeaderTable);
+        agregarDato(leftCol, "TITULAR:", valor(orden.getClienteNombre(), "-"), fontLabelBlue, fontValue);
+        agregarDato(leftCol, "IDENTIFICACIÓN:", valor(orden.getClienteDocumento(), "-"), fontLabelBlue, fontValue);
+        agregarDato(leftCol, "UBICACIÓN:", valor(orden.getClienteDireccion(), "-"), fontLabelBlue, fontValue);
+        mainData.addCell(leftCol);
 
-        PdfPCell cellInfoIzq = new PdfPCell();
-        cellInfoIzq.setBorder(Rectangle.NO_BORDER);
-        cellInfoIzq.addElement(new Paragraph("CLIENTE: " + orden.getClienteNombre(), FontFactory.getFont(FontFactory.HELVETICA, 10)));
-        cellInfoIzq.addElement(new Paragraph("DOC: " + (orden.getClienteDocumento() != null ? orden.getClienteDocumento() : "-"), FontFactory.getFont(FontFactory.HELVETICA, 10)));
-        cellInfoIzq.addElement(new Paragraph("TELF: " + orden.getClienteTelefono(), FontFactory.getFont(FontFactory.HELVETICA, 10)));
-        infoTable.addCell(cellInfoIzq);
+        // Lado Proyecto
+        PdfPCell rightCol = new PdfPCell();
+        rightCol.setBorderColor(colorZebra);
+        rightCol.setBorderWidth(1f);
+        rightCol.setPadding(12f);
+        agregarSeccionInfo(rightCol, "ALCANCE DEL PROYECTO", colorPrimario, fontHeaderTable);
+        agregarDato(rightCol, "TRABAJO:", valor(orden.getTituloTrabajo(), "-").toUpperCase(), fontLabelBlue, fontValue);
+        agregarDato(rightCol, "FECHA INICIO:", (orden.getFechaRecepcion() != null ? orden.getFechaRecepcion().format(fmtDateTime) : "-"), fontLabelBlue, fontValue);
+        agregarDato(rightCol, "FECHA ENTREGA:", formatearFecha(orden.getFechaEntregaEstimada(), fmt), fontLabelBlue, fontValue);
+        mainData.addCell(rightCol);
 
-        PdfPCell cellInfoDer = new PdfPCell();
-        cellInfoDer.setBorder(Rectangle.NO_BORDER);
-        cellInfoDer.addElement(new Paragraph("FECHA: " + orden.getFechaRecepcion().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), FontFactory.getFont(FontFactory.HELVETICA, 10)));
-        cellInfoDer.addElement(new Paragraph("ENTREGA EST.: " + (orden.getFechaEntregaEstimada() != null ? orden.getFechaEntregaEstimada().toString() : "-"), FontFactory.getFont(FontFactory.HELVETICA, 10)));
-        cellInfoDer.addElement(new Paragraph("TIPO: " + orden.getTipoServicio(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
-        infoTable.addCell(cellInfoDer);
+        document.add(mainData);
+        document.add(new Paragraph(" ", fontSmallBlue));
 
-        document.add(infoTable);
-        document.add(new Paragraph("TRABAJO: " + orden.getTituloTrabajo(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11)));
-        document.add(new Paragraph(" "));
-
-        // 3. TABLA ITEMS
-        PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[]{4, 1});
-
-        Font fontHeader = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
-        PdfPCell c1 = new PdfPCell(new Phrase("DESCRIPCIÓN / SERVICIO / FALLA", fontHeader));
-        c1.setBackgroundColor(Color.DARK_GRAY);
-        c1.setHorizontalAlignment(Element.ALIGN_CENTER);
-        c1.setPadding(5);
-        table.addCell(c1);
-
-        PdfPCell c2 = new PdfPCell(new Phrase("IMPORTE", fontHeader));
-        c2.setBackgroundColor(Color.DARK_GRAY);
-        c2.setHorizontalAlignment(Element.ALIGN_CENTER);
-        c2.setPadding(5);
-        table.addCell(c2);
-
-        Font fontData = FontFactory.getFont(FontFactory.HELVETICA, 10);
-        for(OrdenItem item : orden.getItems()) {
-            PdfPCell cellDesc = new PdfPCell(new Phrase(item.getDescripcion(), fontData));
-            cellDesc.setPadding(5);
-            table.addCell(cellDesc);
-
-            PdfPCell cellMonto = new PdfPCell(new Phrase(config.getFormatoMoneda() + " " + item.getCosto(), fontData));
-            cellMonto.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            cellMonto.setPadding(5);
-            table.addCell(cellMonto);
+        // DETALLE DE REQUERIMIENTOS (ZEBRA BLUE)
+        PdfPTable tableItems = new PdfPTable(3);
+        tableItems.setWidthPercentage(100);
+        tableItems.setWidths(new float[]{0.5f, 4.5f, 1.2f});
+        
+        String[] headers = {"#", "REQUERIMIENTO TÉCNICO / SERVICIO", "PRECIO ACORDADO"};
+        for(String h : headers) {
+            PdfPCell c = new PdfPCell(new Phrase(h, fontHeaderTable));
+            c.setBackgroundColor(colorPrimario);
+            c.setPadding(8f);
+            c.setBorder(Rectangle.NO_BORDER);
+            c.setHorizontalAlignment(h.contains("PRECIO") ? Element.ALIGN_RIGHT : (h.equals("#") ? Element.ALIGN_CENTER : Element.ALIGN_LEFT));
+            tableItems.addCell(c);
         }
-        document.add(table);
 
-        // 4. TOTALES
-        document.add(new Paragraph(" "));
-        PdfPTable totalTable = new PdfPTable(2);
-        totalTable.setWidthPercentage(40);
-        totalTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        
-        agregarFilaTotal(totalTable, "TOTAL:", orden.getTotal(), true, config.getFormatoMoneda());
-        agregarFilaTotal(totalTable, "A CUENTA:", orden.getACuenta(), false, config.getFormatoMoneda());
-        agregarFilaTotal(totalTable, "SALDO:", orden.getSaldo(), true, config.getFormatoMoneda());
-        
-        document.add(totalTable);
+        int i = 1;
+        for (OrdenItem item : orden.getItems()) {
+            Color rowColor = (i % 2 == 0) ? colorZebra : colorWhite;
+            tableItems.addCell(celdaModerna(String.valueOf(i++), fontValue, Element.ALIGN_CENTER, rowColor));
+            tableItems.addCell(celdaModerna(valor(item.getDescripcion(), "-"), fontValue, Element.ALIGN_LEFT, rowColor));
+            tableItems.addCell(celdaModerna("S/ " + formatMoney(item.getCosto()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorPrimario), Element.ALIGN_RIGHT, rowColor));
+        }
+        document.add(tableItems);
 
-        document.add(new Paragraph(" "));
-        document.add(new Paragraph("OBSERVACIONES: " + (orden.getObservaciones() != null ? orden.getObservaciones() : "Ninguna"), FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9)));
-        document.add(new Paragraph("---------------------------------------------------------------------------------------------------"));
-        document.add(new Paragraph("Nota: Pasados 30 días no nos responsabilizamos por equipos olvidados.", FontFactory.getFont(FontFactory.HELVETICA, 8)));
+        document.add(new Paragraph(" ", fontSmallBlue));
+
+        // TÉRMINOS Y TOTALES
+        PdfPTable finalBlock = new PdfPTable(2);
+        finalBlock.setWidthPercentage(100);
+        finalBlock.setWidths(new float[]{2.3f, 1.7f});
+
+        // Wording Contractual
+        PdfPCell termsCell = new PdfPCell();
+        termsCell.setBorder(Rectangle.NO_BORDER);
+        termsCell.setPaddingRight(20f);
+        
+        Paragraph termTitle = new Paragraph("ACUERDO DE CONFORMIDAD Y SERVICIO:", fontLabelBlue);
+        termTitle.setSpacingAfter(5f);
+        termsCell.addElement(termTitle);
+        
+        termsCell.addElement(new Paragraph("1. El presente documento confirma la recepción y el inicio de los trabajos detallados.\n" +
+                "2. El cliente se compromete a cancelar el saldo pendiente el día de la entrega final del proyecto.\n" +
+                "3. Cualquier modificación en el alcance puede variar el presupuesto final.\n" +
+                "4. CHROMA MULTISERVICIOS garantiza la calidad y compromiso en los tiempos establecidos.", fontTerms));
+        
+        if (orden.getObservaciones() != null && !orden.getObservaciones().isBlank()) {
+            termsCell.addElement(new Paragraph("\nNOTAS TÉCNICAS:", fontLabelBlue));
+            termsCell.addElement(new Paragraph(orden.getObservaciones(), fontTerms));
+        }
+        finalBlock.addCell(termsCell);
+
+        // Totales Azulados
+        PdfPCell totalsCell = new PdfPCell();
+        totalsCell.setBorder(Rectangle.NO_BORDER);
+        PdfPTable subtotTable = new PdfPTable(2);
+        subtotTable.setWidthPercentage(100);
+        
+        addTotalRow(subtotTable, "PRECIO TOTAL PROYECTO:", "S/ " + formatMoney(totalOrden), fontLabelBlue, fontValue, false);
+        addTotalRow(subtotTable, "ANTICIPO / ADELANTO:", "S/ " + formatMoney(abonado), fontLabelBlue, fontValue, false);
+        
+        PdfPCell labelSaldo = new PdfPCell(new Phrase("NETO A CANCELAR:", fontHeaderTable));
+        labelSaldo.setBackgroundColor(colorPrimario);
+        labelSaldo.setPadding(8f);
+        labelSaldo.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        labelSaldo.setBorder(Rectangle.NO_BORDER);
+        subtotTable.addCell(labelSaldo);
+
+        PdfPCell valSaldo = new PdfPCell(new Phrase("S/ " + formatMoney(saldoPendiente), fontHeaderTable));
+        valSaldo.setBackgroundColor(colorPrimario);
+        valSaldo.setPadding(8f);
+        valSaldo.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        valSaldo.setBorder(Rectangle.NO_BORDER);
+        subtotTable.addCell(valSaldo);
+        
+        totalsCell.addElement(subtotTable);
+        finalBlock.addCell(totalsCell);
+        document.add(finalBlock);
+
+        // PIE DE PÁGINA PROFESIONAL
+        document.add(new Paragraph("\n\n", fontSmallBlue));
+        Paragraph finalMsg = new Paragraph("PROYECTO CONFIRMADO DIGITALMENTE - CHROMA MULTISERVICIOS\n" +
+                "WhatsApp: " + valor(config.getTelefono(), "902843481") + " | " + valor(config.getDireccion(), "Calle Real 123"), fontSmallBlue);
+        finalMsg.setAlignment(Element.ALIGN_CENTER);
+        document.add(finalMsg);
 
         document.close();
     }
 
-    private void agregarFilaTotal(PdfPTable table, String label, BigDecimal valor, boolean bold, String moneda) {
-        Font f = bold ? FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10) : FontFactory.getFont(FontFactory.HELVETICA, 10);
-        PdfPCell cLabel = new PdfPCell(new Phrase(label, f));
-        cLabel.setBorder(Rectangle.NO_BORDER);
-        cLabel.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        table.addCell(cLabel);
-
-        PdfPCell cVal = new PdfPCell(new Phrase(moneda + " " + valor, f));
-        cVal.setBorder(Rectangle.BOX);
-        cVal.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        table.addCell(cVal);
-    }
-
-
     @GetMapping("/editar/{id}")
     @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
-public String editarOrden(@PathVariable Long id, Model model) {
-    OrdenServicio orden = ordenRepository.findById(id).orElse(null);
-    if(orden == null) return "redirect:/ordenes/lista";
-    
-    model.addAttribute("ordenEdicion", orden);
-    // AQUÍ TAMBIÉN:
-    model.addAttribute("tipos", ordenRepository.findTiposServicio()); 
-    return "ordenes/formulario";
-}
+    public String editarOrden(@PathVariable Long id, Model model) {
+        OrdenServicio orden = ordenRepository.findById(id).orElse(null);
+        if (orden == null) {
+            return "redirect:/ordenes/lista";
+        }
+
+        model.addAttribute("ordenEdicion", orden);
+        model.addAttribute("tipos", ordenRepository.findTiposServicio());
+        return "ordenes/formulario";
+    }
+
+    private PdfPCell crearCeldaLogo(Configuracion config) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        if (config.getLogoBase64() != null && !config.getLogoBase64().isBlank()) {
+            try {
+                byte[] logoBytes = Base64.getDecoder().decode(config.getLogoBase64());
+                Image logo = Image.getInstance(logoBytes);
+                logo.scaleToFit(70, 70);
+                cell.addElement(logo);
+                return cell;
+            } catch (Exception e) {
+                log.warn("No se pudo cargar el logo para orden PDF", e);
+            }
+        }
+        cell.addElement(new Paragraph(" "));
+        return cell;
+    }
+
+    private PdfPCell celdaBloque(String titulo, String[] lineas, Font tituloFont, Font textoFont, Color color) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBorderColor(color);
+        cell.setPadding(7);
+        Paragraph pTitulo = new Paragraph(titulo, tituloFont);
+        pTitulo.setSpacingAfter(4f);
+        cell.addElement(pTitulo);
+        for (String linea : lineas) {
+            cell.addElement(new Paragraph(linea, textoFont));
+        }
+        return cell;
+    }
+
+    private void agregarHeader(PdfPTable table, String[] textos, Font font) {
+        for (String texto : textos) {
+            PdfPCell cell = new PdfPCell(new Phrase(texto, font));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setBackgroundColor(new Color(45, 45, 45));
+            cell.setPadding(6f);
+            table.addCell(cell);
+        }
+    }
+
+    private void agregarSeccionInfo(PdfPCell container, String titulo, Color color, Font font) {
+        PdfPCell titleCell = new PdfPCell(new Phrase(titulo, font));
+        titleCell.setBackgroundColor(color);
+        titleCell.setPadding(4f);
+        titleCell.setBorder(Rectangle.NO_BORDER);
+        
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingAfter(6f);
+        table.addCell(titleCell);
+        container.addElement(table);
+    }
+
+    private void agregarDato(PdfPCell container, String label, String value, Font fLabel, Font fValue) {
+        Paragraph p = new Paragraph();
+        p.add(new Chunk(label + " ", fLabel));
+        p.add(new Chunk(value, fValue));
+        p.setSpacingAfter(3f);
+        container.addElement(p);
+    }
+
+    private PdfPCell celdaModerna(String texto, Font font, int align, Color bgColor) {
+        PdfPCell cell = new PdfPCell(new Phrase(texto, font));
+        cell.setBackgroundColor(bgColor);
+        cell.setPadding(6f);
+        cell.setBorder(Rectangle.BOTTOM);
+        cell.setBorderColor(new Color(230, 230, 230));
+        cell.setHorizontalAlignment(align);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        return cell;
+    }
+
+    private void addTotalRow(PdfPTable table, String label, String value, Font fLabel, Font fValue, boolean highlight) {
+        PdfPCell lCell = new PdfPCell(new Phrase(label, fLabel));
+        lCell.setBorder(Rectangle.NO_BORDER);
+        lCell.setPadding(6f);
+        lCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        if(highlight) lCell.setBackgroundColor(new Color(245, 245, 245));
+        table.addCell(lCell);
+
+        PdfPCell vCell = new PdfPCell(new Phrase(value, fValue));
+        vCell.setBorder(Rectangle.NO_BORDER);
+        vCell.setPadding(6f);
+        vCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        if(highlight) vCell.setBackgroundColor(new Color(245, 245, 245));
+        table.addCell(vCell);
+    }
+
+    private Paragraph parrafoCentrado(String texto, Font font) {
+        Paragraph paragraph = new Paragraph(texto, font);
+        paragraph.setAlignment(Element.ALIGN_CENTER);
+        return paragraph;
+    }
+
+    private String valor(String valor, String fallback) {
+        return valor != null && !valor.isBlank() ? valor : fallback;
+    }
+
+    private String formatearFecha(LocalDate fecha, DateTimeFormatter formatter) {
+        return fecha != null ? fecha.format(formatter) : "POR DEFINIR";
+    }
+
+    private BigDecimal valorMonetario(BigDecimal valor) {
+        return valor != null ? valor : BigDecimal.ZERO;
+    }
+
+    private BigDecimal resolverSaldoOrden(OrdenServicio orden) {
+        BigDecimal total = valorMonetario(orden.getTotal());
+        BigDecimal saldo = orden.getSaldo();
+        if (saldo == null) {
+            BigDecimal adelanto = valorMonetario(orden.getACuenta());
+            saldo = total.subtract(adelanto);
+        }
+        if (saldo.compareTo(BigDecimal.ZERO) < 0) {
+            return BigDecimal.ZERO;
+        }
+        if (saldo.compareTo(total) > 0) {
+            return total;
+        }
+        return saldo;
+    }
+
+    private BigDecimal resolverAbonadoOrden(OrdenServicio orden) {
+        BigDecimal abonado = valorMonetario(orden.getACuenta());
+        if (abonado.compareTo(BigDecimal.ZERO) > 0) {
+            return abonado;
+        }
+        BigDecimal total = valorMonetario(orden.getTotal());
+        BigDecimal saldo = resolverSaldoOrden(orden);
+        BigDecimal calculado = total.subtract(saldo);
+        return calculado.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : calculado;
+    }
+
+    private String formatMoney(BigDecimal value) {
+        return String.format("%,.2f", valorMonetario(value));
+    }
+
+    private Color parseColor(String hex, Color fallback) {
+        if (hex == null || hex.isBlank()) {
+            return fallback;
+        }
+        try {
+            String clean = hex.startsWith("#") ? hex.substring(1) : hex;
+            return new Color(Integer.parseInt(clean, 16));
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
 }

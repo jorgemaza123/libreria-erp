@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='personalizado_insumos'">
+<head>
+    <title>Detalle Insumo Personalizado</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <div>
+                <h1 th:text="${insumo.nombre}">Detalle insumo</h1>
+                <small class="text-muted" th:text="${insumo.codigo + ' · ' + (insumo.categoria ?: 'SIN CATEGORIA')}">INS-001</small>
+            </div>
+            <div>
+                <a th:href="@{'/personalizado/insumos/editar/' + ${insumo.id}}" class="btn btn-primary">Editar</a>
+                <a href="/personalizado/insumos" class="btn btn-outline-secondary">Volver</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <img th:if="${insumo.foto}" th:src="@{'/uploads/' + ${insumo.foto}}" alt="foto"
+                                 style="width:220px;height:220px;object-fit:cover;border-radius:16px;">
+                            <div th:unless="${insumo.foto}" class="mx-auto bg-light border rounded d-flex align-items-center justify-content-center"
+                                 style="width:220px;height:220px;">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                            <div class="mt-3">
+                                <span class="badge badge-info mr-1" th:text="${insumo.unidadBase}">UNIDAD</span>
+                                <span class="badge" th:classappend="${insumo.activo ? 'badge-success' : 'badge-secondary'}"
+                                      th:text="${insumo.activo ? 'Activo' : 'Inactivo'}">Activo</span>
+                            </div>
+                            <p class="text-muted mt-3 mb-0" th:text="${insumo.descripcion ?: 'Sin descripción.'}">Descripción</p>
+                        </div>
+                    </div>
+                    <div class="card card-outline card-info">
+                        <div class="card-header"><h3 class="card-title">Inventario sombra</h3></div>
+                        <div class="card-body">
+                            <p><strong>Producto interno:</strong> <span th:text="${insumo.producto != null ? insumo.producto.nombre : '-'}">-</span></p>
+                            <p><strong>Stock actual:</strong> <span th:text="${insumo.producto != null ? insumo.producto.stockActual : 0}">0</span></p>
+                            <p><strong>Costo promedio:</strong> <span th:text="${'S/ ' + #numbers.formatDecimal(insumo.producto != null ? insumo.producto.precioCompra : 0, 1, 2)}">S/ 0.00</span></p>
+                            <p class="mb-0"><strong>Tags:</strong> <span th:text="${insumo.tags ?: '-'}">-</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header"><h3 class="card-title">Presentaciones de compra</h3></div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-2" th:each="presentacion : ${presentaciones}">
+                                    <div class="border rounded px-3 py-2 h-100">
+                                        <div class="font-weight-bold" th:text="${presentacion.nombre}">DOCENA</div>
+                                        <div class="small text-muted">
+                                            Factor base:
+                                            <span th:text="${presentacion.factorBase}">12</span>
+                                            <span th:text="${presentacion.unidadMedida}">UNIDAD</span>
+                                        </div>
+                                        <div class="small text-muted" th:text="${presentacion.predeterminada ? 'Predeterminada' : 'Disponible'}">Disponible</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header"><h3 class="card-title">Compras relacionadas</h3></div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Proveedor</th>
+                                    <th>Documento</th>
+                                    <th>Total</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:if="${#lists.isEmpty(comprasRelacionadas)}">
+                                    <td colspan="4" class="text-center text-muted py-3">Aún no hay compras relacionadas.</td>
+                                </tr>
+                                <tr th:each="compra : ${comprasRelacionadas}">
+                                    <td th:text="${compra.fecha != null ? #temporals.format(compra.fecha, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                    <td th:text="${compra.proveedor != null ? compra.proveedor.razonSocial : '-'}">Proveedor</td>
+                                    <td th:text="${compra.tipoComprobante + ' ' + compra.numeroComprobante}">Factura</td>
+                                    <td th:text="${'S/ ' + #numbers.formatDecimal(compra.total, 1, 2)}">S/ 0.00</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>
