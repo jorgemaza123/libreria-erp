@@ -30,6 +30,8 @@ public class Amortizacion {
 
     @PrePersist
     protected void onCreate() {
-        this.fechaPago = LocalDateTime.now();
+        if (this.fechaPago == null) {
+            this.fechaPago = LocalDateTime.now();
+        }
     }
 }

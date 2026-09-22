@@ -81,7 +81,7 @@ public class ReporteProblemaService {
      * Obtiene todos los reportes paginados
      */
     public Page<ReporteProblema> listarTodos(Pageable pageable) {
-        return reporteRepository.findAll(pageable);
+        return reporteRepository.findAllWithDetails(pageable);
     }
 
     /**

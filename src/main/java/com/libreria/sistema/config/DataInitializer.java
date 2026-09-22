@@ -195,15 +195,19 @@ public class DataInitializer {
                 log.info(">>> Inicializando Servicios Rápidos del POS...");
                 
                 // Servicios Intangibles (Sin control de stock)
-                crearProductoSiNoExiste(productoRepo, "FOTOCOPIA_BN", "Fotocopia B/N", new BigDecimal("0.10"), "SERVICIO");
-                crearProductoSiNoExiste(productoRepo, "IMPRESION_A4", "Impresión A4", new BigDecimal("0.50"), "SERVICIO");
-                crearProductoSiNoExiste(productoRepo, "ANILLADO", "Anillado", new BigDecimal("3.50"), "SERVICIO");
-                crearProductoSiNoExiste(productoRepo, "SCANNER", "Escaneo Documento", new BigDecimal("1.00"), "SERVICIO");
-                crearProductoSiNoExiste(productoRepo, "INTERNET", "Alquiler Internet (Hora)", new BigDecimal("2.00"), "SERVICIO");
+                crearOActualizarProductoRapido(productoRepo, "FOTOCOPIA_BN", "Fotocopia B/N S/0.10", new BigDecimal("0.10"), "SERVICIO", 1, "Fotocopia B/N");
+                crearOActualizarProductoRapido(productoRepo, "FOTOCOPIA_BN_02", "Fotocopia B/N S/0.20", new BigDecimal("0.20"), "SERVICIO", 2, "Fotocopia B/N");
+                crearOActualizarProductoRapido(productoRepo, "IMPRESION_COLOR", "Impresion a color", new BigDecimal("0.70"), "SERVICIO", 3);
+                crearOActualizarProductoRapido(productoRepo, "IMPRESION_BN", "Impresion B/N", new BigDecimal("0.40"), "SERVICIO", 4);
+                crearProductoSiNoExiste(productoRepo, "FOTO_ESTANDAR", "Foto estandar", new BigDecimal("3.00"), "SERVICIO", 5, false);
+                crearProductoSiNoExiste(productoRepo, "IMPRESION_HOJA_COLOR", "Hoja completa a color", new BigDecimal("5.00"), "SERVICIO", 6, false);
+                crearProductoSiNoExiste(productoRepo, "ANILLADO", "Anillado", new BigDecimal("3.50"), "SERVICIO", 5);
+                crearProductoSiNoExiste(productoRepo, "SCANNER", "Escaneo Documento", new BigDecimal("1.00"), "SERVICIO", 6);
+                crearProductoSiNoExiste(productoRepo, "INTERNET", "Alquiler Internet (Hora)", new BigDecimal("2.00"), "SERVICIO", 7);
 
                 // Productos Rápidos Físicos (Con control de stock)
-                crearProductoSiNoExiste(productoRepo, "BOLSA_PLASTICA", "Bolsa Plástica", new BigDecimal("0.10"), "PRODUCTO");
-                crearProductoSiNoExiste(productoRepo, "LAPICERO_AZUL", "Lapicero Azul Std", new BigDecimal("1.00"), "PRODUCTO");
+                crearProductoSiNoExiste(productoRepo, "BOLSA_PLASTICA", "Bolsa Plástica", new BigDecimal("0.10"), "PRODUCTO", 8);
+                crearProductoSiNoExiste(productoRepo, "LAPICERO_AZUL", "Lapicero Azul Std", new BigDecimal("1.00"), "PRODUCTO", 9);
 
                 // 4.2 Migración CRM: clientes existentes sin tipo -> CLIENTE
                 int clientesMigrados = entityManager
@@ -269,7 +273,70 @@ public class DataInitializer {
         }
     }
 
-    private void crearProductoSiNoExiste(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo) {
+    private void crearOActualizarProductoRapido(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo, int orden,
+                                                String... nombresActualizables) {
+        Optional<Producto> existente = repo.findByCodigoInterno(codigoInterno);
+
+        if (existente.isEmpty()) {
+            crearProductoSiNoExiste(repo, codigoInterno, nombre, precio, tipo, orden);
+            return;
+        }
+
+        Producto p = existente.get();
+        boolean actualizado = false;
+
+        if (p.getNombre() == null || p.getNombre().isBlank() || esNombreSemillaActualizable(p.getNombre(), nombresActualizables)) {
+            p.setNombre(nombre);
+            actualizado = true;
+        }
+        if (p.getPrecioVenta() == null || p.getPrecioVenta().compareTo(BigDecimal.ZERO) <= 0) {
+            p.setPrecioVenta(precio);
+            actualizado = true;
+        }
+        if (p.getPrecioMayorista() == null || p.getPrecioMayorista().compareTo(BigDecimal.ZERO) <= 0) {
+            p.setPrecioMayorista(precio);
+            actualizado = true;
+        }
+        if (p.getTipo() == null || p.getTipo().isBlank()) {
+            p.setTipo(tipo);
+            actualizado = true;
+        }
+        if (!p.isActivo()) {
+            p.setActivo(true);
+            actualizado = true;
+        }
+        if (p.getPosRapido() == null) {
+            p.setPosRapido(true);
+            actualizado = true;
+        }
+        if (p.getPosRapidoOrden() == null && Boolean.TRUE.equals(p.getPosRapido())) {
+            p.setPosRapidoOrden(orden);
+            actualizado = true;
+        }
+
+        if (actualizado) {
+            repo.save(p);
+            log.info(" > Actualizado item POS: {} [{}]", nombre, tipo);
+        }
+    }
+
+    private boolean esNombreSemillaActualizable(String nombreActual, String... nombresActualizables) {
+        if (nombreActual == null || nombresActualizables == null) {
+            return false;
+        }
+        for (String nombre : nombresActualizables) {
+            if (nombre != null && nombreActual.trim().equalsIgnoreCase(nombre.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void crearProductoSiNoExiste(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo, int orden) {
+        crearProductoSiNoExiste(repo, codigoInterno, nombre, precio, tipo, orden, true);
+    }
+
+    private void crearProductoSiNoExiste(ProductoRepository repo, String codigoInterno, String nombre, BigDecimal precio, String tipo, int orden, boolean posRapido) {
         Optional<Producto> existente = repo.findByCodigoInterno(codigoInterno);
 
         if (existente.isEmpty()) {
@@ -287,13 +354,27 @@ public class DataInitializer {
             p.setTipoAfectacionIgv("GRAVADO");
             p.setStockActual(tipo.equals("SERVICIO") ? 99999 : 100); 
             p.setStockMinimo(5);
+            p.setPosRapido(posRapido);
+            p.setPosRapidoOrden(posRapido ? orden : null);
 
             repo.save(p);
             log.info(" > Creado item POS: {} [{}]", nombre, tipo);
         } else {
             Producto p = existente.get();
+            boolean actualizado = false;
             if (p.getTipo() == null || !p.getTipo().equals(tipo)) {
                 p.setTipo(tipo);
+                actualizado = true;
+            }
+            if (p.getPosRapido() == null) {
+                p.setPosRapido(posRapido);
+                actualizado = true;
+            }
+            if (p.getPosRapidoOrden() == null && Boolean.TRUE.equals(p.getPosRapido())) {
+                p.setPosRapidoOrden(orden);
+                actualizado = true;
+            }
+            if (actualizado) {
                 repo.save(p);
                 log.info(" > Actualizado tipo de item: {} a {}", nombre, tipo);
             }

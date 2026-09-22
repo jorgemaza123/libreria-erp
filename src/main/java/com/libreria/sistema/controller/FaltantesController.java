@@ -24,12 +24,12 @@ public class FaltantesController {
     }
 
     @GetMapping
-    public String vista(Model model, @RequestParam(defaultValue = "listas") String tab) {
+    public String vista(Model model, @RequestParam(defaultValue = "solicitudes") String tab) {
         model.addAttribute("faltantes", listaService.obtenerProductosFaltantes());
         model.addAttribute("cotizadosProveedor", listaService.obtenerCotizadosProveedor());
         model.addAttribute("estadisticas", listaService.obtenerEstadisticasFaltantes());
         model.addAttribute("solicitudes", solicitudRepository.findByEstadoOrderByContadorDesc("PENDIENTE"));
-        model.addAttribute("activeTab", tab);
+        model.addAttribute("activeTab", "listas".equals(tab) ? "listas" : "solicitudes");
         return "faltantes/index";
     }
 }

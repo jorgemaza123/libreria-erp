@@ -66,6 +66,17 @@
                                 th:classappend="${periodo == 'personalizado'} ? 'd-none' : 'btn btn-outline-secondary btn-sm'">
                                 <i class="fas fa-calendar-alt"></i> Personalizado
                             </a>
+                            <div class="btn-group btn-group-sm ml-auto mt-2 mt-md-0" role="group"
+                                aria-label="Exportar cierre mensual">
+                                <a class="btn btn-success"
+                                    th:href="@{/mi-negocio/cierre-mensual/excel(inicio=${inicioIso},fin=${finIso})}">
+                                    <i class="fas fa-file-excel"></i> Cierre contador
+                                </a>
+                                <a class="btn btn-outline-danger"
+                                    th:href="@{/mi-negocio/cierre-mensual/pdf(inicio=${inicioIso},fin=${finIso})}">
+                                    <i class="fas fa-file-pdf"></i> PDF contador
+                                </a>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -74,89 +85,101 @@
                 <div class="row">
 
                     <!-- Vendí -->
-                    <div class="col-lg-3 col-md-6 col-sm-6">
-                        <div class="info-box shadow-sm">
+                    <div class="col-lg col-md-4 col-sm-6 mb-3">
+                        <div class="info-box shadow-sm h-100 mb-0">
                             <span class="info-box-icon bg-teal"><i class="fas fa-arrow-circle-up"></i></span>
                             <div class="info-box-content">
-                                <span class="info-box-text">Vendí</span>
-                                <span class="info-box-number"
+                                <span class="info-box-text text-muted font-weight-bold">Vendí (Ventas)</span>
+                                <span class="info-box-number text-navy"
                                     th:text="'S/ ' + ${#numbers.formatDecimal(vendido, 1, 2)}">S/ 0.00</span>
-                                <div class="progress mt-1" style="height:4px">
+                                <div class="progress mt-1" style="height:3px">
                                     <div class="progress-bar bg-teal" style="width:100%"></div>
                                 </div>
-                                <span class="progress-description">
+                                <span class="progress-description text-muted small">
                                     <span th:text="${numVentas}">0</span> ventas ·
                                     <span th:classappend="${varVendido >= 0} ? 'text-success' : 'text-danger'"
-                                        th:text="(${varVendido >= 0} ? '+' : '') + ${#numbers.formatDecimal(varVendido, 1, 1)} + '% vs período ant.'"></span>
+                                        th:text="(${varVendido >= 0} ? '+' : '') + ${#numbers.formatDecimal(varVendido, 1, 1)} + '% vs ant.'"></span>
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Invertí -->
-                    <div class="col-lg-3 col-md-6 col-sm-6">
-                        <div class="info-box shadow-sm">
+                    <!-- Invertí en compras -->
+                    <div class="col-lg col-md-4 col-sm-6 mb-3">
+                        <div class="info-box shadow-sm h-100 mb-0">
                             <span class="info-box-icon bg-maroon"><i class="fas fa-arrow-circle-down"></i></span>
                             <div class="info-box-content">
-                                <span class="info-box-text">Invertí en compras</span>
-                                <span class="info-box-number"
+                                <span class="info-box-text text-muted font-weight-bold">Invertí en Compras</span>
+                                <span class="info-box-number text-maroon"
                                     th:text="'S/ ' + ${#numbers.formatDecimal(invertido, 1, 2)}">S/ 0.00</span>
-                                <div class="progress mt-1" style="height:4px">
+                                <div class="progress mt-1" style="height:3px">
                                     <div class="progress-bar bg-maroon" style="width:100%"></div>
                                 </div>
-                                <span class="progress-description text-muted"
-                                    th:text="'Período ant: S/ ' + ${#numbers.formatDecimal(invertidoAnt, 1, 2)}"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gané -->
-                    <div class="col-lg-3 col-md-6 col-sm-6">
-                        <div class="info-box shadow-sm" th:classappend="${ganancia >= 0} ? '' : 'border border-danger'">
-                            <span class="info-box-icon" th:classappend="${ganancia >= 0} ? 'bg-green' : 'bg-danger'">
-                                <i class="fas"
-                                    th:classappend="${ganancia >= 0} ? 'fa-coins' : 'fa-exclamation-circle'"></i>
-                            </span>
-                            <div class="info-box-content">
-                                <span class="info-box-text">Gané (utilidad bruta)</span>
-                                <span class="info-box-number"
-                                    th:classappend="${ganancia >= 0} ? 'text-success' : 'text-danger'"
-                                    th:text="'S/ ' + ${#numbers.formatDecimal(ganancia, 1, 2)}">S/ 0.00</span>
-                                <div class="progress mt-1" style="height:4px">
-                                    <div class="progress-bar"
-                                        th:classappend="${ganancia >= 0} ? 'bg-green' : 'bg-danger'" style="width:100%">
-                                    </div>
-                                </div>
-                                <span class="progress-description">
-                                    Margen:
-                                    <strong
-                                        th:classappend="${margenPct >= 20} ? 'text-success' : (${margenPct >= 10} ? 'text-warning' : 'text-danger')"
-                                        th:text="${#numbers.formatDecimal(margenPct, 1, 1)} + '%'">0%</strong>
-                                    ·
-                                    <span th:classappend="${varGanancia >= 0} ? 'text-success' : 'text-danger'"
-                                        th:text="(${varGanancia >= 0} ? '+' : '') + ${#numbers.formatDecimal(varGanancia, 1, 1)} + '% vs ant.'"></span>
+                                <span class="progress-description text-muted small">
+                                    Mercadería comprada ·
+                                    <span th:classappend="${varInvertido >= 0} ? 'text-danger' : 'text-success'"
+                                        th:text="(${varInvertido >= 0} ? '+' : '') + ${#numbers.formatDecimal(varInvertido, 1, 1)} + '% vs ant.'"></span>
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Flujo de caja del período -->
-                    <div class="col-lg-3 col-md-6 col-sm-6">
-                        <div class="info-box shadow-sm">
-                            <span class="info-box-icon" th:classappend="${flujoCaja >= 0} ? 'bg-blue' : 'bg-orange'">
-                                <i class="fas fa-exchange-alt"></i>
-                            </span>
+                    <!-- Gastos del Local -->
+                    <div class="col-lg col-md-4 col-sm-6 mb-3">
+                        <div class="info-box shadow-sm h-100 mb-0">
+                            <span class="info-box-icon bg-orange"><i class="fas fa-file-invoice-dollar text-white"></i></span>
                             <div class="info-box-content">
-                                <span class="info-box-text">Flujo de caja del período</span>
-                                <span class="info-box-number"
-                                    th:classappend="${flujoCaja >= 0} ? 'text-primary' : 'text-warning'"
-                                    th:text="'S/ ' + ${#numbers.formatDecimal(flujoCaja, 1, 2)}">S/ 0.00</span>
-                                <div class="progress mt-1" style="height:4px">
-                                    <div class="progress-bar bg-blue" style="width:100%"></div>
+                                <span class="info-box-text text-muted font-weight-bold">Gastos de Local</span>
+                                <span class="info-box-number text-orange"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(gastosOperativos, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:3px">
+                                    <div class="progress-bar bg-orange" style="width:100%"></div>
                                 </div>
                                 <span class="progress-description text-muted small">
-                                    ↑ <span th:text="'S/ ' + ${#numbers.formatDecimal(ingresosCaja, 1, 2)}"></span>
-                                    ↓ <span th:text="'S/ ' + ${#numbers.formatDecimal(egresosCaja, 1, 2)}"></span>
+                                    Servicios, local, etc. ·
+                                    <span th:classappend="${varGastosOperativos >= 0} ? 'text-danger' : 'text-success'"
+                                        th:text="(${varGastosOperativos >= 0} ? '+' : '') + ${#numbers.formatDecimal(varGastosOperativos, 1, 1)} + '% vs ant.'"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ganancia Real -->
+                    <div class="col-lg col-md-4 col-sm-6 mb-3">
+                        <div class="info-box shadow-sm h-100 mb-0" th:classappend="${utilidadNeta >= 0} ? '' : 'border border-danger'">
+                            <span class="info-box-icon" th:classappend="${utilidadNeta >= 0} ? 'bg-green' : 'bg-danger'">
+                                <i class="fas" th:classappend="${utilidadNeta >= 0} ? 'fa-coins' : 'fa-exclamation-circle'"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text text-muted font-weight-bold">Ganancia Real</span>
+                                <span class="info-box-number font-weight-bold"
+                                    th:classappend="${utilidadNeta >= 0} ? 'text-success' : 'text-danger'"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(utilidadNeta, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:3px">
+                                    <div class="progress-bar" th:classappend="${utilidadNeta >= 0} ? 'bg-green' : 'bg-danger'" style="width:100%"></div>
+                                </div>
+                                <span class="progress-description text-muted small">
+                                    Utilidad neta ·
+                                    <span th:classappend="${varUtilidadNeta >= 0} ? 'text-success' : 'text-danger'"
+                                        th:text="(${varUtilidadNeta >= 0} ? '+' : '') + ${#numbers.formatDecimal(varUtilidadNeta, 1, 1)} + '% vs ant.'"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mis Retiros -->
+                    <div class="col-lg col-md-4 col-sm-6 mb-3">
+                        <div class="info-box shadow-sm h-100 mb-0">
+                            <span class="info-box-icon bg-navy"><i class="fas fa-wallet"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text text-muted font-weight-bold">Mis Retiros (Sueldo)</span>
+                                <span class="info-box-number text-navy"
+                                    th:text="'S/ ' + ${#numbers.formatDecimal(retiroDueno, 1, 2)}">S/ 0.00</span>
+                                <div class="progress mt-1" style="height:3px">
+                                    <div class="progress-bar bg-navy" style="width:100%"></div>
+                                </div>
+                                <span class="progress-description text-muted small" th:title="'Saldo para reinversión: S/ ' + ${#numbers.formatDecimal(saldoReinversion, 1, 2)}">
+                                    Quedan para reinvertir: <strong th:classappend="${saldoReinversion >= 0} ? 'text-success' : 'text-danger'" th:text="'S/ ' + ${#numbers.formatDecimal(saldoReinversion, 1, 2)}">S/ 0.00</strong>
                                 </span>
                             </div>
                         </div>
@@ -164,10 +187,285 @@
 
                 </div>
 
+                <!-- ── TABLERO PROFESIONAL SIMPLE ─────────────────── -->
+                <div class="card card-outline card-primary shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-pie text-primary"></i> Lectura financiera del negocio
+                        </h5>
+                        <div class="card-tools">
+                            <span class="badge"
+                                th:classappend="${estadoNegocio == 'SALUDABLE'} ? 'badge-success' : (${estadoNegocio == 'AJUSTADO'} ? 'badge-warning' : 'badge-danger')"
+                                th:text="${estadoNegocio}">ESTADO</span>
+                        </div>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="alert mb-3"
+                             th:classappend="${estadoNegocio == 'SALUDABLE'} ? 'alert-success' : (${estadoNegocio == 'AJUSTADO'} ? 'alert-warning' : 'alert-danger')">
+                            <div class="d-flex align-items-center">
+                                <i class="fas mr-2"
+                                   th:classappend="${estadoNegocio == 'SALUDABLE'} ? 'fa-check-circle' : (${estadoNegocio == 'AJUSTADO'} ? 'fa-exclamation-circle' : 'fa-exclamation-triangle')"></i>
+                                <div>
+                                    <strong>Lectura simple:</strong>
+                                    <span th:text="${diagnosticoPrincipal}">Diagnostico del periodo.</span>
+                                    <small class="d-block text-muted">Usa ventas, costos, caja, cuentas fijas e inventario del sistema.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Ticket promedio</div>
+                                    <div class="h5 mb-0 text-primary"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(ticketPromedio, 1, 2)}">S/ 0.00</div>
+                                    <small class="text-muted">Promedio por venta</small>
+                                </div>
+                            </div>
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Margen bruto</div>
+                                    <div class="h5 mb-0"
+                                        th:classappend="${margenBrutoPct >= 20} ? 'text-success' : (${margenBrutoPct >= 10} ? 'text-warning' : 'text-danger')"
+                                        th:text="${#numbers.formatDecimal(margenBrutoPct, 1, 1)} + '%'">0%</div>
+                                    <small class="text-muted">Antes de gastos del local</small>
+                                </div>
+                            </div>
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Punto equilibrio</div>
+                                    <div class="h5 mb-0"
+                                        th:classappend="${vendido >= puntoEquilibrio} ? 'text-success' : 'text-warning'"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(puntoEquilibrio, 1, 2)}">S/ 0.00</div>
+                                    <small class="text-muted">
+                                        Falta <span th:text="'S/ ' + ${#numbers.formatDecimal(faltaParaEquilibrio, 1, 2)}">S/ 0.00</span>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Meta diaria</div>
+                                    <div class="h5 mb-0 text-info"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(metaDiaria, 1, 2)}">S/ 0.00</div>
+                                    <small class="text-muted">Venta minima para cubrir costos</small>
+                                </div>
+                            </div>
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Guardar reposicion</div>
+                                    <div class="h5 mb-0 text-maroon"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(dineroReposicionSugerido, 1, 2)}">S/ 0.00</div>
+                                    <small class="text-muted">Costo estimado de lo vendido</small>
+                                </div>
+                            </div>
+                            <div class="col-xl-2 col-lg-4 col-md-6 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold">Liquidez caja</div>
+                                    <div class="h5 mb-0"
+                                        th:classappend="${liquidezPeriodo >= 0} ? 'text-success' : 'text-danger'"
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(liquidezPeriodo, 1, 2)}">S/ 0.00</div>
+                                    <small class="text-muted">
+                                        <span th:text="${#numbers.formatDecimal(ratioLiquidez, 1, 2)} + 'x'">0.00x</span> ·
+                                        <span th:text="${#numbers.formatDecimal(liquidezDias, 1, 1)} + ' dias'">0 dias</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-lg-4 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold mb-1">Operacion simplificada</div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Ganancia bruta</span>
+                                        <strong class="text-success" th:text="'S/ ' + ${#numbers.formatDecimal(ganancia, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Costo mercaderia vendida</span>
+                                        <strong class="text-maroon" th:text="'S/ ' + ${#numbers.formatDecimal(costoMercaderiaVendida, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Utilidad operativa</span>
+                                        <strong th:classappend="${utilidadOperativa >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(utilidadOperativa, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Utilidad con fijos</span>
+                                        <strong th:classappend="${utilidadAdministrativa >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(utilidadAdministrativa, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Margen neto</span>
+                                        <strong th:classappend="${margenNetoPct >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="${#numbers.formatDecimal(margenNetoPct, 1, 1)} + '%'">0%</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Caja libre tras reponer</span>
+                                        <strong th:classappend="${cajaLibreTrasReposicion >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(cajaLibreTrasReposicion, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold mb-1">Costos fijos</div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Mensual configurado</span>
+                                        <strong th:text="'S/ ' + ${#numbers.formatDecimal(metaCostosFijos, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Costo por dia</span>
+                                        <strong th:text="'S/ ' + ${#numbers.formatDecimal(costoFijoDiario, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Costo por hora ref.</span>
+                                        <strong th:text="'S/ ' + ${#numbers.formatDecimal(costoFijoHora, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Prestamos/bancos</span>
+                                        <strong th:classappend="${prestamosBancosPeriodo > 0} ? 'text-danger' : 'text-muted'"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(prestamosBancosPeriodo, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Alquiler/local</span>
+                                        <strong th:text="'S/ ' + ${#numbers.formatDecimal(alquilerPeriodo, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Internet</span>
+                                        <strong th:text="'S/ ' + ${#numbers.formatDecimal(internetPeriodo, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <small class="text-muted">La hora usa referencia de <span th:text="${horasDiaReferencia}">10</span> h/dia.</small>
+                                </div>
+                            </div>
+                            <div class="col-lg-4 mb-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small font-weight-bold mb-1">Proyeccion 3 meses</div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Ventas si sigues igual</span>
+                                        <strong class="text-primary" th:text="'S/ ' + ${#numbers.formatDecimal(proyeccionVentas3Meses, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Ganancia bruta</span>
+                                        <strong class="text-success" th:text="'S/ ' + ${#numbers.formatDecimal(proyeccionGanancia3Meses, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Utilidad operativa</span>
+                                        <strong th:classappend="${proyeccionUtilidad3Meses >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(proyeccionUtilidad3Meses, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Flujo caja</span>
+                                        <strong th:classappend="${proyeccionFlujoCaja3Meses >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(proyeccionFlujoCaja3Meses, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small py-1">
+                                        <span>Meta diaria sana</span>
+                                        <strong class="text-info" th:text="'S/ ' + ${#numbers.formatDecimal(metaDiariaSana, 1, 2)}">S/ 0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── CONTROL DE CAJA, REPOSICION Y ALERTAS ───────── -->
+                <div class="row">
+                    <div class="col-lg-4 col-md-12 mb-3">
+                        <div class="card card-outline card-maroon shadow-sm h-100 mb-0">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-box-open text-maroon"></i> Reposicion y caja
+                                </h5>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-muted">Guardar para reponer</span>
+                                    <strong th:text="'S/ ' + ${#numbers.formatDecimal(dineroReposicionSugerido, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-muted">Caja libre tras reponer</span>
+                                    <strong th:classappend="${cajaLibreTrasReposicion >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(cajaLibreTrasReposicion, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-muted">Capital de trabajo min.</span>
+                                    <strong th:text="'S/ ' + ${#numbers.formatDecimal(capitalTrabajoSugerido, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="d-flex justify-content-between small">
+                                        <span>Reposicion cubierta</span>
+                                        <strong th:text="${#numbers.formatDecimal(reposicionCubiertaPct, 1, 1)} + '%'">0%</strong>
+                                    </div>
+                                    <div class="progress" style="height:10px;">
+                                        <div class="progress-bar"
+                                             th:classappend="${reposicionCubiertaPct >= 100} ? 'bg-success' : (${reposicionCubiertaPct >= 70} ? 'bg-warning' : 'bg-danger')"
+                                             th:style="'width: ' + ${reposicionCubiertaPct > 100 ? 100 : reposicionCubiertaPct} + '%'"></div>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">Si este numero queda en rojo, vendiste pero no quedo caja suficiente para reponer.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-12 mb-3">
+                        <div class="card card-outline card-success shadow-sm h-100 mb-0">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-exchange-alt text-success"></i> Flujo de caja
+                                </h5>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-success">Entradas</span>
+                                    <strong class="text-success" th:text="'S/ ' + ${#numbers.formatDecimal(ingresosCaja, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-danger">Salidas</span>
+                                    <strong class="text-danger" th:text="'S/ ' + ${#numbers.formatDecimal(egresosCaja, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-top">
+                                    <span class="font-weight-bold">Saldo caja</span>
+                                    <strong th:classappend="${flujoCaja >= 0} ? 'text-success' : 'text-danger'"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(flujoCaja, 1, 2)}">S/ 0.00</strong>
+                                </div>
+                                <hr class="my-2">
+                                <div class="small">
+                                    <div class="d-flex justify-content-between"><span>Ventas cobradas</span><span th:text="'S/ ' + ${#numbers.formatDecimal(ventasCobradasCaja, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Cobranzas/creditos</span><span th:text="'S/ ' + ${#numbers.formatDecimal(cobranzasCaja, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Anticipos trabajos</span><span th:text="'S/ ' + ${#numbers.formatDecimal(anticiposServicioCaja, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Compras mercaderia</span><span th:text="'S/ ' + ${#numbers.formatDecimal(comprasMercaderiaCaja, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Gastos local</span><span th:text="'S/ ' + ${#numbers.formatDecimal(gastosOperativos, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Gastos variables / otros</span><span th:text="'S/ ' + ${#numbers.formatDecimal(gastosVariables, 1, 2)}">S/ 0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Retiros</span><span th:text="'S/ ' + ${#numbers.formatDecimal(retiroDueno, 1, 2)}">S/ 0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-12 mb-3">
+                        <div class="card card-outline card-danger shadow-sm h-100 mb-0">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-clipboard-check text-danger"></i> Alertas administrativas
+                                </h5>
+                            </div>
+                            <div class="card-body py-2">
+                                <div th:each="a : ${alertasFinancieras}" class="callout py-2 mb-2"
+                                     th:classappend="${'callout-' + a.nivel}">
+                                    <div class="font-weight-bold">
+                                        <i class="fas mr-1" th:classappend="${a.icono}"></i>
+                                        <span th:text="${a.titulo}">Alerta</span>
+                                    </div>
+                                    <div class="small" th:text="${a.mensaje}">Mensaje</div>
+                                    <small class="text-muted" th:text="${a.accion}">Accion</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── FILA 2: INVENTARIO + ALERTA ───────────────────── -->
                 <div class="row">
-                    <div class="col-lg-4 col-md-6">
-                        <div class="card card-outline card-warning shadow-sm">
+                    <!-- Capital en Inventario -->
+                    <div class="col-lg-4 col-md-6 col-sm-12 mb-3">
+                        <div class="card card-outline card-warning shadow-sm h-100 mb-0">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
                                     <i class="fas fa-boxes text-warning"></i> Capital en Inventario
@@ -189,47 +487,122 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-8 col-md-6">
-                        <div class="card card-outline card-info shadow-sm">
+                    <!-- Rendimiento de Compras -->
+                    <div class="col-lg-4 col-md-6 col-sm-12 mb-3">
+                        <div class="card card-outline card-info shadow-sm h-100 mb-0">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
-                                    <i class="fas fa-lightbulb text-info"></i> Resumen del período
+                                    <i class="fas fa-chart-line text-info"></i> Rendimiento de Compras
                                 </h5>
                             </div>
-                            <div class="card-body">
-                                <div class="row text-center">
-                                    <div class="col-4 border-right">
-                                        <div class="text-muted small mb-1">Por cada S/ invertido recuperé</div>
-                                        <div class="h4 font-weight-bold"
-                                            th:text="${invertido > 0} ? 'S/ ' + ${#numbers.formatDecimal(vendido / invertido, 1, 2)} : '—'">
-                                            —</div>
-                                    </div>
-                                    <div class="col-4 border-right">
-                                        <div class="text-muted small mb-1">Ganancia por cada S/ invertido</div>
-                                        <div class="h4 font-weight-bold text-success"
-                                            th:text="${invertido > 0} ? 'S/ ' + ${#numbers.formatDecimal(ganancia / invertido, 1, 2)} : '—'">
-                                            —</div>
-                                    </div>
-                                    <div class="col-4">
-                                        <div class="text-muted small mb-1">Margen promedio del período</div>
-                                        <div class="h4 font-weight-bold"
-                                            th:classappend="${margenPct >= 20} ? 'text-success' : (${margenPct >= 10} ? 'text-warning' : 'text-danger')"
-                                            th:text="${#numbers.formatDecimal(margenPct, 1, 1)} + '%'">0%</div>
-                                    </div>
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small">Retorno por S/ invertido:</span>
+                                    <span class="font-weight-bold"
+                                        th:text="${invertido > 0 ? 'S/ ' + #numbers.formatDecimal(retornoPorSolInvertido, 1, 2) : '-'}">-</span>
                                 </div>
-                                <hr class="my-2">
-                                <div class="row text-center">
-                                    <div class="col-6">
-                                        <div class="text-muted small">Período anterior: vendí</div>
-                                        <div class="font-weight-bold"
-                                            th:text="'S/ ' + ${#numbers.formatDecimal(vendidoAnt, 1, 2)}">S/ 0.00</div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small">Ganancia por S/ invertido:</span>
+                                    <span class="font-weight-bold text-success"
+                                        th:text="${invertido > 0 ? 'S/ ' + #numbers.formatDecimal(gananciaPorSolInvertido, 1, 2) : '-'}">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small">Margen bruto prom.:</span>
+                                    <span class="font-weight-bold"
+                                        th:classappend="${margenPct >= 20} ? 'text-success' : (${margenPct >= 10} ? 'text-warning' : 'text-danger')"
+                                        th:text="${#numbers.formatDecimal(margenPct, 1, 1)} + '%'">0%</span>
+                                </div>
+                                <hr class="my-1">
+                                <div class="row text-center mt-2">
+                                    <div class="col-6 border-right">
+                                        <div class="text-muted" style="font-size: 0.75rem;">Vendí ant.</div>
+                                        <div class="font-weight-bold small text-muted" th:text="'S/ ' + ${#numbers.formatDecimal(vendidoAnt, 1, 2)}">S/ 0.00</div>
                                     </div>
                                     <div class="col-6">
-                                        <div class="text-muted small">Período anterior: gané</div>
-                                        <div class="font-weight-bold"
-                                            th:text="'S/ ' + ${#numbers.formatDecimal(gananciaAnt, 1, 2)}">S/ 0.00</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Gané ant.</div>
+                                        <div class="font-weight-bold small text-muted" th:text="'S/ ' + ${#numbers.formatDecimal(gananciaAnt, 1, 2)}">S/ 0.00</div>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="card-footer text-center py-2">
+                                <small class="text-muted">Desempeño financiero vs. período anterior</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meta de Costos Fijos -->
+                    <div class="col-lg-4 col-md-12 col-sm-12 mb-3"
+                         th:with="pctCostos=${metaCostosFijos.doubleValue() > 0 ? (gastosOperativos.doubleValue() / metaCostosFijos.doubleValue() * 100) : 0}">
+                        <div class="card card-outline shadow-sm h-100 mb-0"
+                             th:classappend="${metaCostosFijos == 0} ? 'card-secondary' : (${pctCostos > 100} ? 'card-danger' : (${pctCostos > 90} ? 'card-warning' : 'card-success'))">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-bullseye" th:classappend="${metaCostosFijos == 0} ? 'text-secondary' : (${pctCostos > 100} ? 'text-danger' : (${pctCostos > 90} ? 'text-warning' : 'text-success'))"></i> Meta de Costos Fijos
+                                </h5>
+                            </div>
+                            <div class="card-body py-2 d-flex flex-column justify-content-between">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-baseline mb-2">
+                                        <span class="text-muted small">Gastos de Local acumulados:</span>
+                                        <span class="h5 font-weight-bold mb-0 text-dark"
+                                              th:text="'S/ ' + ${#numbers.formatDecimal(gastosOperativos, 1, 2)}">S/ 0.00</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-baseline mb-2" th:if="${metaCostosFijos > 0}">
+                                        <span class="text-muted small">Presupuesto mensual:</span>
+                                        <span class="h6 font-weight-bold mb-0 text-muted"
+                                              th:text="'S/ ' + ${#numbers.formatDecimal(metaCostosFijos, 1, 2)}">S/ 0.00</span>
+                                    </div>
+
+                                    <!-- Progress Bar -->
+                                    <div th:if="${metaCostosFijos > 0}" class="my-2">
+                                        <div class="progress" style="height: 12px; border-radius: 6px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 th:classappend="${pctCostos > 100} ? 'bg-danger' : (${pctCostos > 90} ? 'bg-warning' : 'bg-success')"
+                                                 role="progressbar"
+                                                 th:style="'width: ' + ${pctCostos > 100 ? 100 : pctCostos} + '%'"
+                                                 th:aria-valuenow="${pctCostos}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <div class="text-right small mt-1">
+                                            <span class="font-weight-bold" th:text="${#numbers.formatDecimal(pctCostos, 1, 1)} + '%'">0.0%</span> consumido
+                                        </div>
+                                    </div>
+                                    <div class="border-top pt-2 mt-2" th:unless="${#lists.isEmpty(cuentasFijasResumen)}">
+                                        <div class="small text-muted font-weight-bold mb-1">Obligaciones configuradas</div>
+                                        <div th:each="c : ${cuentasFijasResumen}" class="d-flex justify-content-between align-items-center small py-1">
+                                            <span>
+                                                <i class="fas mr-1" th:classappend="${c.icono}"></i>
+                                                <span th:text="${c.nombre}">Grupo</span>
+                                                <span class="badge badge-light ml-1" th:text="${c.cantidad}">0</span>
+                                            </span>
+                                            <strong th:text="'S/ ' + ${#numbers.formatDecimal(c.periodo, 1, 2)}">S/ 0.00</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Mensaje interpretativo -->
+                                <div class="mt-2">
+                                    <!-- Si no hay meta configurada -->
+                                    <div th:if="${metaCostosFijos == 0}" class="alert alert-light border p-2 mb-0" style="font-size:0.85rem;">
+                                        <i class="fas fa-info-circle text-muted"></i> No has configurado tu meta mensual.
+                                        <a href="/configuracion/general#financiero" class="text-primary font-weight-bold">Configurar aquí</a>.
+                                    </div>
+
+                                    <!-- Si está dentro del presupuesto -->
+                                    <div th:if="${metaCostosFijos > 0 && gastosOperativos <= metaCostosFijos}" class="alert alert-success-light border border-success p-2 mb-0" style="font-size:0.85rem; background-color: #e2f0d9; color: #385723; border-radius: 4px;">
+                                        <i class="fas fa-check-circle mr-1"></i> Vas bien. Llevas consumido el <span class="font-weight-bold" th:text="${#numbers.formatDecimal(pctCostos, 1, 0)} + '%'"></span> del presupuesto.
+                                    </div>
+
+                                    <!-- Si se excedió -->
+                                    <div th:if="${metaCostosFijos > 0 && gastosOperativos > metaCostosFijos}" class="alert alert-danger-light border border-danger p-2 mb-0" style="font-size:0.85rem; background-color: #fce4d6; color: #c65911; border-radius: 4px;">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> ¡Atención! Has excedido el presupuesto mensual por <strong th:text="'S/ ' + ${#numbers.formatDecimal(gastosOperativos - metaCostosFijos, 1, 2)}">S/ 0.00</strong>.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-center py-2">
+                                <a href="/configuracion/general#financiero" class="small text-muted"><i class="fas fa-cog"></i> Configurar costos fijos</a>
                             </div>
                         </div>
                     </div>
@@ -256,7 +629,79 @@
                     </div>
                 </div>
 
-                <!-- ── FILA 4: TOP PRODUCTOS ─────────────────────────── -->
+                <!-- ── FILA 4: INVENTARIO ESTANCADO ─────────────────── -->
+                <div class="card card-outline card-info shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-hourglass-half text-info"></i> Inventario estancado
+                            <small class="text-muted ml-2" style="font-size:0.75em;"
+                                   th:text="${diasInventarioEstancado} + ' dias sin venta reciente'">60 dias sin venta reciente</small>
+                        </h5>
+                        <div class="card-tools">
+                            <span class="badge badge-info" th:text="${productosEstancados} + ' productos'">0 productos</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="row no-gutters border-bottom">
+                            <div class="col-md-4 p-3 border-right">
+                                <div class="text-muted small font-weight-bold">Capital estancado</div>
+                                <div class="h4 mb-0"
+                                     th:classappend="${capitalEstancado > 0} ? 'text-info' : 'text-muted'"
+                                     th:text="'S/ ' + ${#numbers.formatDecimal(capitalEstancado, 1, 2)}">S/ 0.00</div>
+                                <small class="text-muted">
+                                    <span th:text="${#numbers.formatDecimal(capitalEstancadoPct, 1, 1)} + '%'">0%</span>
+                                    del capital en inventario
+                                </small>
+                            </div>
+                            <div class="col-md-8 p-3">
+                                <div class="small text-muted">
+                                    Este bloque te ayuda a no recomprar productos que no se mueven. Si aparece mucho capital aqui,
+                                    conviene liquidar, mover de lugar o convertirlo en promocion de temporada.
+                                </div>
+                            </div>
+                        </div>
+                        <div th:if="${#lists.isEmpty(inventarioEstancado)}" class="text-center text-muted py-4">
+                            <i class="fas fa-check-circle fa-2x mb-2 d-block text-success"></i>
+                            No hay productos estancados importantes para mostrar.
+                        </div>
+                        <div class="table-responsive" th:unless="${#lists.isEmpty(inventarioEstancado)}">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-right">Costo unit.</th>
+                                        <th class="text-right">Capital quieto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="p : ${inventarioEstancado}">
+                                        <td>
+                                            <span th:text="${p.nombre}">Producto</span>
+                                            <small class="text-muted d-block">
+                                                <span th:text="${p.codigo ?: '-'}">COD</span>
+                                                <span th:if="${p.categoria != null}" th:text="' · ' + ${p.categoria}"></span>
+                                            </small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-secondary" th:text="${p.stock}">0</span>
+                                        </td>
+                                        <td class="text-right" th:text="'S/ ' + ${#numbers.formatDecimal(p.costoUnitario, 1, 2)}">S/ 0.00</td>
+                                        <td class="text-right font-weight-bold text-info"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(p.valorStock, 1, 2)}">S/ 0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer text-right">
+                        <a href="/stock?estado=SIN_MOVIMIENTO" class="text-info small">
+                            Ver dinero dormido en stock <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ── FILA 5: TOP PRODUCTOS ─────────────────────────── -->
                 <div class="card shadow-sm">
                     <div class="card-header">
                         <h5 class="card-title mb-0">

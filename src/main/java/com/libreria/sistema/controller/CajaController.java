@@ -2,6 +2,7 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.MovimientoCaja;
 import com.libreria.sistema.service.CajaService;
+import com.libreria.sistema.service.ConfiguracionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -23,9 +24,11 @@ import java.util.stream.Collectors;
 public class CajaController {
 
     private final CajaService cajaService;
+    private final ConfiguracionService configuracionService;
 
-    public CajaController(CajaService cajaService) {
+    public CajaController(CajaService cajaService, ConfiguracionService configuracionService) {
         this.cajaService = cajaService;
+        this.configuracionService = configuracionService;
     }
 
     @GetMapping
@@ -129,6 +132,7 @@ public class CajaController {
 
         datos.put("sesionActiva", true);
         datos.put("balance", cajaService.obtenerBalanceSesion());
+        datos.put("limiteEfectivoCaja", configuracionService.obtenerConfiguracion().getLimiteEfectivoCaja());
 
         // Convertir movimientos a formato JSON-friendly
         List<MovimientoCaja> movimientos = cajaService.listarMovimientosSesion();

@@ -59,6 +59,70 @@
         .ip-config-card {
             border-left: 4px solid #007bff;
         }
+        .qr-disabled {
+            width: 250px;
+            height: 250px;
+            margin: 0 auto;
+            border: 4px dashed #dee2e6;
+            border-radius: 15px;
+            background: #f8f9fa;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .qr-disabled i {
+            font-size: 2.4rem;
+            color: #dc3545;
+        }
+        .url-display.invalid {
+            color: #dc3545;
+            border-color: #f1b0b7;
+            background: #fff5f5;
+        }
+        .mobile-test-card {
+            border-left: 4px solid #17a2b8;
+        }
+        .mobile-test-url {
+            background: #eef7ff;
+            border: 1px solid #bee5eb;
+            border-radius: 10px;
+            color: #0f4c81;
+            font-family: monospace;
+            padding: 10px 12px;
+            word-break: break-all;
+        }
+        .command-box {
+            background: #111827;
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-family: Consolas, monospace;
+            font-size: 0.88rem;
+            padding: 10px 12px;
+            word-break: break-all;
+        }
+        .qr-test-mini {
+            width: 130px;
+            height: 130px;
+            border-radius: 12px;
+            border: 3px solid #f8f9fa;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+        }
+        .diagnostic-result-list {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .diagnostic-result-list li {
+            margin-bottom: 6px;
+        }
+        .http-diagnostic-box {
+            background: #fff8e6;
+            border: 1px solid #ffe0a3;
+            border-radius: 12px;
+            padding: 14px;
+        }
     </style>
 </head>
 <body>
@@ -96,31 +160,72 @@
                 </div>
             </div>
 
+            <div class="row justify-content-center mb-4" th:if="${ipMovilValida == false}">
+                <div class="col-lg-8">
+                    <div class="alert alert-danger shadow-sm">
+                        <h5 class="mb-2">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>El QR actual no es accesible desde el celular
+                        </h5>
+                        <p class="mb-2" th:text="${mensajeDiagnostico}">
+                            La IP guardada pertenece a Docker Desktop. En Windows debe configurar la IPv4 real de la computadora.
+                        </p>
+                        <div class="small mb-0">
+                            No escanee todavía. En Windows 11 abra CMD o PowerShell y ejecute <code>ipconfig</code>. Copie la
+                            <strong>Dirección IPv4</strong> de Ethernet/WiFi, por ejemplo <code>192.168.18.11</code>, guárdela abajo
+                            y recién vuelva a escanear el QR.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center mb-4" th:if="${dockerDetected == true && ipMovilValida == true}">
+                <div class="col-lg-8">
+                    <div class="alert alert-info shadow-sm mb-0">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span th:text="${mensajeDiagnostico}">La URL móvil apunta a una IP LAN válida.</span>
+                        <div class="small mt-1" th:text="${mensajePuerto}">
+                            Si el celular se queda cargando, revise Docker y Windows Firewall.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- QR + URL -->
             <div class="row justify-content-center mb-4">
                 <div class="col-lg-5">
                     <div class="qr-container">
                         <h5 class="text-muted mb-3">
-                            <i class="fas fa-qrcode mr-2"></i>Escanee para acceder
+                            <i class="fas fa-qrcode mr-2"></i>Escanee para probar y acceder
                         </h5>
 
                         <!-- QR -->
                         <div class="mb-3">
                             <img id="qrImage"
-                                 th:src="@{/conexion-movil/qr.png}"
+                                 th:if="${ipMovilValida}"
+                                 th:src="@{/conexion-movil/qr.png(v=${qrCacheKey})}"
                                  alt="Código QR"
                                  width="250" height="250"
                                  style="image-rendering: pixelated;">
+                            <div class="qr-disabled" th:unless="${ipMovilValida}">
+                                <i class="fas fa-ban"></i>
+                                <strong>QR pausado</strong>
+                                <span class="small px-3">Guarde una IP real para activar el acceso móvil</span>
+                            </div>
                         </div>
 
                         <!-- URL -->
-                        <div class="url-display mb-3" id="urlDisplay" th:text="${serverUrl}">
-                            https://192.168.1.100:8443
+                        <div class="url-display mb-3"
+                             id="urlDisplay"
+                             th:classappend="${ipMovilValida == false} ? ' invalid'"
+                             th:text="${ipMovilValida ? accesoMovilUrl : 'Configure una IP real para activar el QR'}">
+                            https://192.168.1.100:8443/conexion-movil/acceso
                         </div>
 
                         <!-- Botón Copiar -->
                         <div class="d-flex justify-content-center">
-                            <button class="btn btn-primary btn-copiar-url" onclick="copiarUrlMovil()">
+                            <button class="btn btn-primary btn-copiar-url"
+                                    onclick="copiarUrlMovil()"
+                                    th:disabled="${ipMovilValida == false}">
                                 <i class="fas fa-copy mr-1"></i> Copiar URL
                             </button>
                         </div>
@@ -140,6 +245,12 @@
                                 </span>
                             </div>
                             <small class="text-muted">Puerto: <strong th:text="${serverPort}">8443</strong></small>
+                            <div class="mt-2" th:if="${dockerDetected}">
+                                <span class="badge badge-info">Docker detectado</span>
+                            </div>
+                            <div class="mt-2" th:if="${httpDiagnosticoEnabled}">
+                                <span class="badge badge-warning">HTTP prueba: <span th:text="${httpDiagnosticoPort}">8081</span></span>
+                            </div>
                         </div>
                     </div>
 
@@ -165,6 +276,145 @@
                 </div>
             </div>
 
+            <!-- Prueba real de conexión -->
+            <div class="row justify-content-center mb-4" th:if="${ipMovilValida}">
+                <div class="col-lg-8">
+                    <div class="card mobile-test-card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-signal mr-2 text-info"></i>Prueba rápida desde celular
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <p class="mb-2">
+                                        Primero abra esta prueba. Si carga, el celular sí llega al sistema y luego puede entrar al login.
+                                    </p>
+                                    <div class="mobile-test-url mb-3" th:text="${pingUrl}">
+                                        https://192.168.18.10:8443/conexion-movil/ping
+                                    </div>
+                                    <div class="btn-group mb-3">
+                                        <a class="btn btn-outline-info" th:href="${pingUrl}" target="_blank">
+                                            <i class="fas fa-external-link-alt mr-1"></i>Abrir prueba
+                                        </a>
+                                        <button class="btn btn-outline-primary" onclick="copiarTexto(currentPingUrl)">
+                                            <i class="fas fa-copy mr-1"></i>Copiar prueba
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <img class="qr-test-mini"
+                                         th:src="@{/conexion-movil/qr-ping.png(v=${qrCacheKey})}"
+                                         alt="QR de prueba">
+                                    <div class="small text-muted mt-2">QR solo de prueba</div>
+                                </div>
+                            </div>
+
+                            <div class="http-diagnostic-box mb-3" th:if="${httpDiagnosticoEnabled}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6 class="mb-2 text-warning">
+                                            <i class="fas fa-plug mr-1"></i>Prueba de red sin certificado
+                                        </h6>
+                                        <p class="small mb-2">
+                                            Use esta prueba si el HTTPS se queda cargando. No sirve para vender ni usar camara;
+                                            solo confirma si el celular llega a Docker/Windows.
+                                        </p>
+                                        <div class="mobile-test-url mb-3" th:text="${httpDiagnosticoAccesoUrl}">
+                                            http://192.168.18.10:8081/conexion-movil/http-acceso
+                                        </div>
+                                        <div class="btn-group mb-2">
+                                            <a class="btn btn-outline-warning" th:href="${httpDiagnosticoAccesoUrl}" target="_blank">
+                                                <i class="fas fa-external-link-alt mr-1"></i>Abrir HTTP
+                                            </a>
+                                            <button class="btn btn-outline-primary" onclick="copiarTexto(currentHttpDiagnosticoUrl)">
+                                                <i class="fas fa-copy mr-1"></i>Copiar HTTP
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <img class="qr-test-mini"
+                                             th:src="@{/conexion-movil/qr-http-ping.png(v=${qrCacheKey})}"
+                                             alt="QR de prueba HTTP">
+                                        <div class="small text-muted mt-2">QR diagnostico HTTP</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-top pt-3">
+                                <p class="mb-2 small text-muted">
+                                    Importante: <strong>Test-NetConnection desde esta PC no prueba el celular</strong>; solo confirma que Windows puede llegar a su propio puerto.
+                                </p>
+                                <ul class="diagnostic-result-list small mb-3">
+                                    <li><strong>HTTP 8081 no abre:</strong> revise firewall, puertos Docker o aislamiento WiFi/Ethernet.</li>
+                                    <li><strong>HTTP 8081 abre pero HTTPS 8443 no:</strong> reinicie Docker para cargar el certificado HTTPS nuevo y acepte la advertencia del navegador.</li>
+                                    <li><strong>HTTPS 8443 abre:</strong> el celular ya llega al sistema; luego debe aparecer como ultimo acceso detectado.</li>
+                                </ul>
+                                <p class="mb-2 small">
+                                    En Windows PowerShell pruebe el puerto HTTPS:
+                                </p>
+                                <div class="command-box mb-2" th:text="${comandoPruebaPuerto}">
+                                    Test-NetConnection 192.168.18.10 -Port 8443
+                                </div>
+                                <p class="mb-2 small" th:if="${httpDiagnosticoEnabled}">
+                                    Y pruebe el puerto HTTP auxiliar:
+                                </p>
+                                <div class="command-box mb-2" th:if="${httpDiagnosticoEnabled}" th:text="${comandoPruebaPuertoHttp}">
+                                    Test-NetConnection 192.168.18.10 -Port 8081
+                                </div>
+                                <p class="mb-2 small">
+                                    Para revisar si la regla existe:
+                                </p>
+                                <div class="command-box mb-2" th:text="${comandoVerFirewallWindows}">
+                                    netsh advfirewall firewall show rule name="Sistema Libreria Movil"
+                                </div>
+                                <p class="mb-2 small">
+                                    Si falta la regla, abra CMD o PowerShell como administrador y ejecute:
+                                </p>
+                                <div class="command-box mb-2" th:text="${comandoFirewallWindows}">
+                                    netsh advfirewall firewall add rule name="Sistema Libreria Movil" dir=in action=allow protocol=TCP localport=8443,8081 profile=any
+                                </div>
+                                <p class="mb-2 small">
+                                    En Docker confirme que los puertos publicados incluyan <strong>0.0.0.0:8443</strong>
+                                    <span th:if="${httpDiagnosticoEnabled}">y <strong>0.0.0.0:8081</strong></span>:
+                                </p>
+                                <div class="command-box mb-2" th:text="${comandoDockerPuertos}">
+                                    docker ps --format "table {{.Names}}\t{{.Ports}}"
+                                </div>
+                                <p class="mb-2 small">
+                                    Si actualizó tambien el docker-compose.yml, recree el contenedor de la app:
+                                </p>
+                                <div class="command-box" th:text="${comandoDockerRecrear}">
+                                    docker compose up -d --force-recreate app
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center mb-4" th:if="${ipMovilValida}">
+                <div class="col-lg-8">
+                    <div class="card border-secondary shadow-sm">
+                        <div class="card-header bg-white">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-mobile-alt mr-2 text-secondary"></i>Último acceso detectado
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="ultimoAccesoMovil" class="alert alert-secondary mb-2">
+                                Todavía no llegó ninguna solicitud desde el celular.
+                            </div>
+                            <p class="small text-muted mb-0">
+                                Escanee el QR principal o el QR de prueba. Si esta sección no cambia, la solicitud no está llegando al sistema:
+                                revise firewall de Windows, red invitada o aislamiento entre WiFi y Ethernet del router.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Configuración de IP -->
             <div class="row justify-content-center mb-4">
                 <div class="col-lg-8">
@@ -178,7 +428,7 @@
                             <div class="row align-items-end">
                                 <!-- IP actual -->
                                 <div class="col-md-5 mb-3">
-                                    <label class="font-weight-bold">IP Configurada</label>
+                                    <label class="font-weight-bold">IP para el celular</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text"><i class="fas fa-globe"></i></span>
@@ -186,6 +436,12 @@
                                         <input type="text" id="inputIp" class="form-control form-control-lg"
                                                th:value="${serverIp}" placeholder="192.168.1.100">
                                     </div>
+                                    <small class="text-muted d-block mt-1" th:if="${ipGuardada != null && ipGuardada != serverIp}">
+                                        IP guardada anterior: <strong th:text="${ipGuardada}">192.168.65.254</strong>
+                                    </small>
+                                    <small class="text-muted d-block mt-1" th:if="${hostIpEnv != null && hostIpEnv != ''}">
+                                        HOST_IP activo: <strong th:text="${hostIpEnv}">192.168.18.11</strong>
+                                    </small>
                                 </div>
 
                                 <!-- Botones -->
@@ -205,6 +461,7 @@
                                 <i class="fas fa-info-circle mr-1"></i>
                                 La IP se detecta automáticamente la primera vez que se instala el sistema.
                                 Use <strong>"Detectar IP"</strong> si cambió de red, o escriba la IP manualmente si la detección no es correcta.
+                                En Docker Desktop para Windows, la IP correcta suele ser la IPv4 de Windows, no <strong>192.168.65.x</strong>.
                             </div>
                         </div>
                     </div>
@@ -217,7 +474,9 @@
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
-        const currentServerUrl = /*[[${serverUrl}]]*/ 'https://localhost:8443';
+        const currentServerUrl = /*[[${accesoMovilUrl}]]*/ 'https://localhost:8443/conexion-movil/acceso';
+        const currentPingUrl = /*[[${pingUrl}]]*/ 'https://localhost:8443/conexion-movil/ping';
+        const currentHttpDiagnosticoUrl = /*[[${httpDiagnosticoAccesoUrl}]]*/ 'http://localhost:8081/conexion-movil/http-acceso';
 
         function copiarUrlMovil() {
             copiarTexto(currentServerUrl);
@@ -256,19 +515,29 @@
             $.post('/conexion-movil/recalcular-ip', function(data) {
                 if (data.success) {
                     document.getElementById('inputIp').value = data.ip;
-                    actualizarVista(data.ip, data.url);
+                    var html = 'Nueva IP: <strong>' + data.ip + '</strong><br><small>Guardada en el sistema</small>';
+                    if (data.requiereReinicioHttps) {
+                        html += '<div class="alert alert-warning text-left mt-3 mb-0">La IP cambio. Reinicie Docker para que HTTPS use el certificado nuevo.</div>';
+                    }
                     Swal.fire({
-                        icon: 'success',
+                        icon: data.requiereReinicioHttps ? 'warning' : 'success',
                         title: 'IP Detectada',
-                        html: 'Nueva IP: <strong>' + data.ip + '</strong><br><small>Guardada en el sistema</small>',
-                        timer: 3000,
-                        showConfirmButton: false
+                        html: html,
+                        timer: data.requiereReinicioHttps ? undefined : 3000,
+                        showConfirmButton: !!data.requiereReinicioHttps,
+                        confirmButtonText: 'Entendido'
+                    }).then(function() {
+                        window.location.reload();
                     });
                 } else {
                     Swal.fire('Error', data.error || 'No se pudo detectar la IP', 'error');
                 }
-            }).fail(function() {
-                Swal.fire('Error', 'Error de conexión al servidor', 'error');
+            }).fail(function(xhr) {
+                var msg = 'Error de conexión al servidor';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    msg = xhr.responseJSON.error;
+                }
+                Swal.fire('No se pudo detectar una IP útil', msg, 'warning');
             });
         }
 
@@ -286,13 +555,19 @@
 
             $.post('/conexion-movil/guardar-ip', { ip: ip }, function(data) {
                 if (data.success) {
-                    actualizarVista(data.ip, data.url);
+                    var html = 'IP configurada: <strong>' + data.ip + '</strong>';
+                    if (data.requiereReinicioHttps) {
+                        html += '<div class="alert alert-warning text-left mt-3 mb-0">La IP cambio. Reinicie Docker para que HTTPS use el certificado nuevo.</div>';
+                    }
                     Swal.fire({
-                        icon: 'success',
+                        icon: data.requiereReinicioHttps ? 'warning' : 'success',
                         title: 'IP Guardada',
-                        html: 'IP configurada: <strong>' + data.ip + '</strong>',
-                        timer: 2500,
-                        showConfirmButton: false
+                        html: html,
+                        timer: data.requiereReinicioHttps ? undefined : 2500,
+                        showConfirmButton: !!data.requiereReinicioHttps,
+                        confirmButtonText: 'Entendido'
+                    }).then(function() {
+                        window.location.reload();
                     });
                 } else {
                     Swal.fire('Error', data.error || 'No se pudo guardar la IP', 'error');
@@ -313,6 +588,33 @@
             var qrImg = document.getElementById('qrImage');
             qrImg.src = '/conexion-movil/qr.png?t=' + Date.now();
         }
+
+        function cargarUltimoAccesoMovil() {
+            var target = document.getElementById('ultimoAccesoMovil');
+            if (!target) return;
+
+            fetch('/conexion-movil/api/ultimo-acceso', { cache: 'no-store' })
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    if (!data || !data.existe) {
+                        target.className = 'alert alert-secondary mb-2';
+                        target.textContent = data && data.mensaje ? data.mensaje : 'Todavía no llegó ninguna solicitud desde el celular.';
+                        return;
+                    }
+                    target.className = 'alert alert-success mb-2';
+                    target.innerHTML = '<strong>Celular detectado:</strong> ' + data.fecha
+                        + '<br><small>IP: ' + (data.ip || '-') + ' | Ruta: ' + (data.ruta || '-') + '</small>';
+                })
+                .catch(function() {
+                    target.className = 'alert alert-warning mb-2';
+                    target.textContent = 'No se pudo leer el último acceso móvil.';
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarUltimoAccesoMovil();
+            setInterval(cargarUltimoAccesoMovil, 3000);
+        });
     </script>
 </th:block>
 

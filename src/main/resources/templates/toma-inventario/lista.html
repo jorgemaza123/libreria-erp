@@ -17,6 +17,9 @@
                     <h1><i class="fas fa-clipboard-check"></i> Toma de Inventario</h1>
                 </div>
                 <div class="col-sm-6 text-right">
+                    <a href="/toma-inventario/rapida" class="btn btn-success">
+                        <i class="fas fa-barcode"></i> Regularizacion Rapida
+                    </a>
                     <a th:if="${!hayTomaAbierta}" href="/toma-inventario/nueva" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nueva Toma de Inventario
                     </a>
@@ -92,7 +95,7 @@
                                 </td>
                                 <td th:text="${toma.usuario?.nombreCompleto ?: toma.usuario?.username}">Admin</td>
                                 <td class="text-center">
-                                    <span class="badge badge-secondary" th:text="${toma.totalProductos}">0</span>
+                                    <span class="badge badge-secondary" th:text="${totalesProductosToma[toma.id] ?: 0}">0</span>
                                 </td>
                                 <td class="text-center">
                                     <span th:if="${toma.estado == 'ABIERTO'}" class="badge badge-warning">

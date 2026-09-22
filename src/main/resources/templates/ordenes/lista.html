@@ -4,22 +4,49 @@
       layout:decorate="~{fragments/layout}"
       th:with="active='servicios'">
 <head>
-    <title>Gestión de Servicios</title>
+    <title>Trabajos y Pedidos</title>
+    <style>
+        .ordenes-toolbar {
+            gap: .5rem;
+        }
+        .ordenes-toolbar .btn,
+        .ordenes-toolbar .form-control {
+            min-height: 38px;
+        }
+        .trabajo-titulo {
+            max-width: 360px;
+            white-space: normal;
+        }
+        .acciones-orden .btn,
+        .acciones-orden .btn-action {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 .45rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .25rem;
+        }
+        .recordatorio-linea {
+            max-width: 210px;
+            white-space: normal;
+        }
+    </style>
 </head>
 <body>
 
 <div layout:fragment="content">
     <section class="content-header">
         <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1>Gestión de Servicios y Proyectos</h1>
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <h1>Trabajos y Pedidos</h1>
+                    <p class="text-muted mb-0">Pendientes, adelantos, entregas y cierre a venta.</p>
                 </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a th:href="@{/}">Inicio</a></li>
-                        <li class="breadcrumb-item active">Servicios</li>
-                    </ol>
+                <div class="mt-2 mt-md-0">
+                    <a href="/ordenes/nueva" class="btn btn-primary">
+                        <i class="fas fa-plus mr-1"></i> Nuevo trabajo
+                    </a>
                 </div>
             </div>
         </div>
@@ -27,60 +54,203 @@
 
     <section class="content">
         <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg col-sm-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3 th:text="${totalPendientes}">0</h3>
+                            <p>Pendientes activos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-tasks"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg col-sm-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3 th:text="${totalListos}">0</h3>
+                            <p>Listos para entregar</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-clipboard-check"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg col-sm-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3 th:text="${totalVencidos}">0</h3>
+                            <p>Vencidos</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-calendar-times"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg col-sm-6">
+                    <div class="small-box bg-purple">
+                        <div class="inner">
+                            <h3 th:text="${totalRecordatorios}">0</h3>
+                            <p>Recordatorios de hoy</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-bell"></i></div>
+                    </div>
+                </div>
+                <div class="col-lg col-sm-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3 th:text="${'S/ ' + #numbers.formatDecimal(saldoPendiente != null ? saldoPendiente : 0, 1, 2)}">S/ 0.00</h3>
+                            <p>Saldo por cobrar</p>
+                        </div>
+                        <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
+                <div class="card-header">
+                    <div class="d-flex flex-wrap align-items-center ordenes-toolbar">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Filtro de estado">
+                            <button type="button" class="btn btn-outline-secondary active filtro-estado" data-estado="">Todos</button>
+                            <button type="button" class="btn btn-outline-warning filtro-estado" data-estado="PENDIENTE">Pendiente</button>
+                            <button type="button" class="btn btn-outline-primary filtro-estado" data-estado="EN_PROCESO">En proceso</button>
+                            <button type="button" class="btn btn-outline-success filtro-estado" data-estado="LISTO">Listo</button>
+                            <button type="button" class="btn btn-outline-dark filtro-estado" data-estado="ENTREGADO">Entregado</button>
+                        </div>
+                        <select id="filtroTipo" class="form-control form-control-sm" style="max-width: 260px;">
+                            <option value="">Todos los tipos</option>
+                            <option th:each="tipo : ${tipoNombres}" th:value="${tipo.value}" th:text="${tipo.value}"></option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="filtrarRecordatorios()" title="Ver recordatorios pendientes">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirTiposTrabajo()" title="Administrar tipos de trabajo">
+                            <i class="fas fa-tags"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarFiltros()" title="Limpiar filtros">
+                            <i class="fas fa-broom"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="card-body">
-                    <table id="tablaOrdenes" class="table table-bordered table-striped">
+                    <table id="tablaOrdenes" class="table table-bordered table-striped table-hover">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Cliente</th>
-                                <th>Trabajo</th>
-                                <th>Estado</th>
-                                <th>Total</th>
-                                <th>Abonado</th>
-                                <th>Saldo</th>
-                                <th>Acciones</th>
-                            </tr>
+                        <tr>
+                            <th>ID</th>
+                            <th>Entrega</th>
+                            <th>Estado</th>
+                            <th>Prioridad</th>
+                            <th>Cliente</th>
+                            <th>Trabajo</th>
+                            <th>Cobro</th>
+                            <th>Venta</th>
+                            <th>Acciones</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="o : ${ordenes}">
-                                <td th:text="${o.id}"></td>
-                                <td>
-                                    <div class="font-weight-bold" th:text="${o.clienteNombre}"></div>
-                                    <small class="d-block text-muted">
-                                        <i class="fas fa-id-card"></i> <span th:text="${o.clienteDocumento}"></span>
-                                    </small>
-                                    <small>
-                                        <i class="fas fa-phone"></i> <span th:text="${o.clienteTelefono}"></span>
-                                    </small>
-                                </td>
-                                <td>
-                                    <span class="badge badge-info" th:text="${o.tipoServicio}"></span><br>
-                                    <span th:text="${o.tituloTrabajo}"></span>
-                                </td>
-                                <td>
-                                    <span th:if="${o.estado == 'PENDIENTE'}" class="badge badge-warning">PENDIENTE</span>
-                                    <span th:if="${o.estado == 'ENTREGADO'}" class="badge badge-success">ENTREGADO</span>
-                                    <span th:if="${o.estado == 'ANULADO'}" class="badge badge-danger">ANULADO</span>
-                                </td>
-                                <td th:text="'S/ ' + ${#numbers.formatDecimal(o.total, 1, 2)}" class="font-weight-bold"></td>
-                                <td th:text="'S/ ' + ${#numbers.formatDecimal(o.aCuenta, 1, 2)}" class="text-info font-weight-bold"></td>
-                                <td th:text="'S/ ' + ${o.saldo}" th:class="${o.saldo > 0} ? 'text-danger font-weight-bold' : 'text-success'"></td>
-
-                                <td>
-                                    <button class="btn btn-sm btn-default" th:onclick="abrirPdf([[${o.id}]])" title="Imprimir"><i class="fas fa-print"></i></button>
-
-                                    <button class="btn btn-sm btn-success" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])"><i class="fab fa-whatsapp"></i></button>
-
-                                    <a th:if="${o.estado != 'ENTREGADO'}" th:href="@{/ordenes/editar/{id}(id=${o.id})}" class="btn btn-sm btn-warning" title="Editar / Ajustar Costos">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-
-                                    <button th:if="${o.estado != 'ENTREGADO'}" class="btn btn-sm btn-primary" th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo}]])" title="Finalizar y Cobrar">
-                                        <i class="fas fa-check-double"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                        <tr th:each="o : ${ordenes}"
+                            th:with="estado=${o.estado != null ? o.estado : 'PENDIENTE'},
+                                     prio=${o.prioridad != null ? o.prioridad : 'NORMAL'},
+                                     activa=${estado != 'ENTREGADO' and estado != 'ANULADO'},
+                                     vencida=${activa and o.fechaEntregaEstimada != null and o.fechaEntregaEstimada.isBefore(hoy)},
+                                     recordatorioVigente=${activa and o.recordatorioActivo == true and o.fechaRecordatorio != null and !o.fechaRecordatorio.isAfter(hoy)},
+                                     tipoNombre=${o.tipoServicio != null ? (tipoNombres[o.tipoServicio] ?: o.tipoServicio) : 'TRABAJO'}">
+                            <td class="align-middle font-weight-bold" th:text="${o.id}"></td>
+                            <td class="align-middle" th:attr="data-search=${(vencida ? 'VENCIDO ' : '') + (recordatorioVigente ? 'RECORDATORIO ' : '')}">
+                                <span th:if="${o.fechaEntregaEstimada != null}"
+                                      th:class="${vencida} ? 'badge badge-danger' : 'badge badge-light border text-dark'"
+                                      th:text="${#temporals.format(o.fechaEntregaEstimada, 'dd/MM/yyyy')}"></span>
+                                <span th:if="${o.fechaEntregaEstimada == null}" class="badge badge-secondary">SIN FECHA</span>
+                                <small th:if="${vencida}" class="d-block text-danger font-weight-bold mt-1">VENCIDO</small>
+                                <small th:if="${o.recordatorioActivo == true and o.fechaRecordatorio != null}"
+                                       th:class="${recordatorioVigente} ? 'd-block text-warning font-weight-bold mt-1 recordatorio-linea' : 'd-block text-muted mt-1 recordatorio-linea'">
+                                    <i class="fas fa-bell"></i>
+                                    <span th:text="${#temporals.format(o.fechaRecordatorio, 'dd/MM/yyyy')}"></span>
+                                    <span th:if="${recordatorioVigente}" class="d-none"> RECORDATORIO</span>
+                                </small>
+                            </td>
+                            <td class="align-middle" th:attr="data-search=${estado}">
+                                <span th:switch="${estado}">
+                                    <span th:case="'PENDIENTE'" class="badge badge-warning">PENDIENTE</span>
+                                    <span th:case="'EN_PROCESO'" class="badge badge-primary">EN PROCESO</span>
+                                    <span th:case="'LISTO'" class="badge badge-success">LISTO</span>
+                                    <span th:case="'ENTREGADO'" class="badge badge-dark">ENTREGADO</span>
+                                    <span th:case="'ANULADO'" class="badge badge-danger">ANULADO</span>
+                                    <span th:case="*" class="badge badge-secondary" th:text="${estado}">PENDIENTE</span>
+                                </span>
+                            </td>
+                            <td class="align-middle" th:attr="data-search=${prio}">
+                                <span class="badge"
+                                      th:classappend="${prio == 'URGENTE'} ? 'badge-danger' : (${prio == 'ALTA'} ? 'badge-warning' : (${prio == 'BAJA'} ? 'badge-secondary' : 'badge-info'))"
+                                      th:text="${prio}">NORMAL</span>
+                            </td>
+                            <td class="align-middle">
+                                <div class="font-weight-bold" th:text="${o.clienteNombre} ?: 'Cliente varios'"></div>
+                                <small class="d-block text-muted">
+                                    <i class="fas fa-id-card"></i> <span th:text="${o.clienteDocumento} ?: '-'"></span>
+                                </small>
+                                <small>
+                                    <i class="fas fa-phone"></i> <span th:text="${o.clienteTelefono} ?: '-'"></span>
+                                </small>
+                            </td>
+                            <td class="align-middle trabajo-titulo"
+                                th:attr="data-search=${(o.tipoServicio != null ? o.tipoServicio : '') + ' ' + tipoNombre + ' ' + (o.tituloTrabajo != null ? o.tituloTrabajo : '')}">
+                                <span class="badge badge-light border text-dark" th:text="${tipoNombre}">Trabajo</span>
+                                <div class="mt-1" th:text="${o.tituloTrabajo} ?: '-'"></div>
+                                <small th:if="${o.recordatorioActivo == true and o.recordatorioNota != null and !o.recordatorioNota.isBlank()}" class="text-warning d-block">
+                                    <i class="fas fa-bell"></i> <span th:text="${#strings.abbreviate(o.recordatorioNota, 70)}"></span>
+                                </small>
+                                <small th:if="${o.observaciones != null and !o.observaciones.isBlank()}" class="text-muted d-block">
+                                    <i class="fas fa-sticky-note"></i> <span th:text="${#strings.abbreviate(o.observaciones, 70)}"></span>
+                                </small>
+                            </td>
+                            <td class="align-middle">
+                                <div class="font-weight-bold" th:text="${'S/ ' + #numbers.formatDecimal(o.total != null ? o.total : 0, 1, 2)}"></div>
+                                <small class="d-block text-info" th:text="${'Abonado: S/ ' + #numbers.formatDecimal(o.aCuenta != null ? o.aCuenta : 0, 1, 2)}"></small>
+                                <small th:class="${o.saldo != null and o.saldo.compareTo(T(java.math.BigDecimal).ZERO) > 0} ? 'd-block text-danger font-weight-bold' : 'd-block text-success font-weight-bold'"
+                                       th:text="${'Saldo: S/ ' + #numbers.formatDecimal(o.saldo != null ? o.saldo : 0, 1, 2)}"></small>
+                            </td>
+                            <td class="align-middle text-center">
+                                <span th:if="${o.ventaId != null}" class="badge badge-success" th:text="${'VENTA #' + o.ventaId}"></span>
+                                <span th:if="${o.ventaId == null}" class="badge badge-secondary">PENDIENTE</span>
+                            </td>
+                            <td class="align-middle text-nowrap acciones-orden">
+                                <a th:href="@{/ordenes/pdf/{id}(id=${o.id})}"
+                                   th:attr="download=${'Trabajo-' + o.id + '.pdf'}"
+                                   class="btn btn-sm btn-default btn-action"
+                                   title="Descargar PDF">
+                                    <i class="fas fa-file-pdf"></i><span class="d-none d-xl-inline">PDF</span>
+                                </a>
+                                <button class="btn btn-sm btn-success" th:onclick="abrirWhatsapp([[${o.clienteTelefono}]], [[${o.clienteNombre}]], [[${o.tituloTrabajo}]])" title="WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
+                                <a th:href="@{/ordenes/editar/{id}(id=${o.id})}"
+                                   class="btn btn-sm btn-action"
+                                   th:classappend="${estado == 'ENTREGADO'} ? 'btn-outline-secondary' : 'btn-warning'"
+                                   th:title="${estado == 'ENTREGADO'} ? 'Ver trabajo cerrado' : 'Editar trabajo'">
+                                    <i class="fas fa-edit"></i><span class="d-none d-xl-inline" th:text="${estado == 'ENTREGADO'} ? 'Ver' : 'Editar'">Editar</span>
+                                </a>
+                                <button th:if="${activa}" class="btn btn-sm btn-secondary"
+                                        th:onclick="cambiarPrioridad([[${o.id}]], [[${prio}]])" title="Cambiar prioridad">
+                                    <i class="fas fa-flag"></i>
+                                </button>
+                                <button th:if="${o.ventaId == null and estado == 'PENDIENTE'}" class="btn btn-sm btn-primary"
+                                        th:onclick="actualizarEstado([[${o.id}]], 'EN_PROCESO')" title="Marcar en proceso">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button th:if="${o.ventaId == null and (estado == 'PENDIENTE' or estado == 'EN_PROCESO')}" class="btn btn-sm btn-success"
+                                        th:onclick="actualizarEstado([[${o.id}]], 'LISTO')" title="Marcar listo">
+                                    <i class="fas fa-clipboard-check"></i>
+                                </button>
+                                <button th:if="${o.ventaId == null and estado != 'PENDIENTE'}" class="btn btn-sm btn-outline-secondary"
+                                        th:onclick="actualizarEstado([[${o.id}]], 'PENDIENTE')" title="Volver a pendiente">
+                                    <i class="fas fa-undo-alt"></i>
+                                </button>
+                                <button th:if="${activa and o.saldo != null and o.saldo.compareTo(T(java.math.BigDecimal).ZERO) > 0}" class="btn btn-sm btn-info"
+                                        th:onclick="registrarAbono([[${o.id}]], [[${o.saldo}]])" title="Registrar abono">
+                                    <i class="fas fa-hand-holding-usd"></i>
+                                </button>
+                                <button th:if="${activa}" class="btn btn-sm btn-dark"
+                                        th:onclick="finalizarOrden([[${o.id}]], [[${o.saldo != null ? o.saldo : 0}]])" title="Entregar y cerrar venta">
+                                    <i class="fas fa-check-double"></i>
+                                </button>
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -90,15 +260,208 @@
 </div>
 
 <th:block layout:fragment="scripts">
-    <script th:inline="none">
+    <script>
+        let tablaOrdenes;
+        let tiposTrabajoActualizados = false;
+
         $(document).ready(function () {
-            $("#tablaOrdenes").DataTable({
-                "responsive": true,
-                "autoWidth": false,
-                "order": [[0, "desc"]],
-                "language": { "url": "/js/datatables-es.json" }
+            tablaOrdenes = $("#tablaOrdenes").DataTable({
+                responsive: true,
+                autoWidth: false,
+                order: [],
+                language: { url: "/js/datatables-es.json" }
+            });
+
+            $('.filtro-estado').on('click', function () {
+                $('.filtro-estado').removeClass('active');
+                $(this).addClass('active');
+                tablaOrdenes.column(2).search($(this).data('estado') || '').draw();
+            });
+
+            $('#filtroTipo').on('change', function () {
+                tablaOrdenes.column(5).search(this.value || '').draw();
             });
         });
+
+        function limpiarFiltros() {
+            $('#filtroTipo').val('');
+            $('.filtro-estado').removeClass('active');
+            $('.filtro-estado[data-estado=""]').addClass('active');
+            tablaOrdenes.search('').columns().search('').draw();
+        }
+
+        function filtrarRecordatorios() {
+            $('#filtroTipo').val('');
+            $('.filtro-estado').removeClass('active');
+            tablaOrdenes.search('').columns().search('').draw();
+            tablaOrdenes.column(1).search('RECORDATORIO').draw();
+        }
+
+        async function abrirTiposTrabajo() {
+            tiposTrabajoActualizados = false;
+            const html =
+                '<div class="text-left">' +
+                    '<input type="hidden" id="tipoTrabajoId">' +
+                    '<div class="row">' +
+                        '<div class="col-md-5 mb-2">' +
+                            '<label>Nombre</label>' +
+                            '<input id="tipoTrabajoNombre" class="form-control" placeholder="Ej: Arreglo floral">' +
+                        '</div>' +
+                        '<div class="col-md-4 mb-2">' +
+                            '<label>Descripcion</label>' +
+                            '<input id="tipoTrabajoDescripcion" class="form-control" placeholder="Uso interno">' +
+                        '</div>' +
+                        '<div class="col-md-2 mb-2">' +
+                            '<label>Orden</label>' +
+                            '<input id="tipoTrabajoOrden" type="number" class="form-control" value="0">' +
+                        '</div>' +
+                        '<div class="col-md-1 mb-2 d-flex align-items-end">' +
+                            '<button type="button" id="tipoTrabajoGuardar" class="btn btn-primary btn-block" title="Guardar tipo">' +
+                                '<i class="fas fa-save"></i>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox mb-3">' +
+                        '<input type="checkbox" class="custom-control-input" id="tipoTrabajoActivo" checked>' +
+                        '<label class="custom-control-label" for="tipoTrabajoActivo">Visible para nuevos trabajos</label>' +
+                    '</div>' +
+                    '<div id="tiposTrabajoLista" class="border rounded p-2" style="max-height: 360px; overflow:auto;"></div>' +
+                '</div>';
+
+            const modal = await Swal.fire({
+                title: 'Tipos de trabajo',
+                html: html,
+                width: 900,
+                showConfirmButton: false,
+                showCloseButton: true,
+                didOpen: function () {
+                    $('#tipoTrabajoGuardar').on('click', function () {
+                        guardarTipoTrabajoModal().then(actualizado => {
+                            if (actualizado) {
+                                tiposTrabajoActualizados = true;
+                                limpiarFormularioTipoTrabajo();
+                                cargarTiposTrabajoModal();
+                            }
+                        });
+                    });
+                    cargarTiposTrabajoModal();
+                },
+                willClose: function () {
+                    if (tiposTrabajoActualizados) {
+                        location.reload();
+                    }
+                }
+            });
+
+            return modal;
+        }
+
+        function cargarTiposTrabajoModal() {
+            const $lista = $('#tiposTrabajoLista');
+            $lista.html('<div class="text-center text-muted py-3">Cargando...</div>');
+            $.getJSON('/ordenes/api/tipos')
+                .done(function (tipos) {
+                    renderTiposTrabajo(tipos || []);
+                })
+                .fail(function () {
+                    $lista.html('<div class="text-danger py-3">No se pudieron cargar los tipos.</div>');
+                });
+        }
+
+        function renderTiposTrabajo(tipos) {
+            const $lista = $('#tiposTrabajoLista').empty();
+            if (!tipos.length) {
+                $lista.html('<div class="text-muted py-3">No hay tipos registrados.</div>');
+                return;
+            }
+
+            tipos.forEach(function (tipo) {
+                const $row = $('<div class="d-flex align-items-center justify-content-between border-bottom py-2"></div>');
+                const $info = $('<div class="pr-2"></div>');
+                const $titulo = $('<div class="font-weight-bold"></div>').text(tipo.nombre || tipo.codigo || 'Tipo');
+                const $detalle = $('<small class="text-muted d-block"></small>').text((tipo.codigo || '-') + (tipo.descripcion ? ' · ' + tipo.descripcion : ''));
+                const $badge = $('<span class="badge ml-2"></span>')
+                    .addClass(tipo.activa ? 'badge-success' : 'badge-secondary')
+                    .text(tipo.activa ? 'VISIBLE' : 'OCULTO');
+
+                $titulo.append($badge);
+                $info.append($titulo).append($detalle);
+
+                const $acciones = $('<div class="btn-group btn-group-sm"></div>');
+                const $editar = $('<button type="button" class="btn btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></button>');
+                const $activo = $('<button type="button" class="btn btn-outline-secondary" title="Mostrar u ocultar"><i class="fas fa-eye"></i></button>');
+
+                $editar.on('click', function () {
+                    $('#tipoTrabajoId').val(tipo.id || '');
+                    $('#tipoTrabajoNombre').val(tipo.nombre || '');
+                    $('#tipoTrabajoDescripcion').val(tipo.descripcion || '');
+                    $('#tipoTrabajoOrden').val(tipo.orden || 0);
+                    $('#tipoTrabajoActivo').prop('checked', !!tipo.activa);
+                    $('#tipoTrabajoNombre').trigger('focus');
+                });
+                $activo.on('click', function () {
+                    cambiarActivoTipoTrabajo(tipo.id, !tipo.activa);
+                });
+
+                $acciones.append($editar).append($activo);
+                $row.append($info).append($acciones);
+                $lista.append($row);
+            });
+        }
+
+        async function guardarTipoTrabajoModal() {
+            const nombre = ($('#tipoTrabajoNombre').val() || '').trim();
+            if (!nombre) {
+                $('#tipoTrabajoNombre').addClass('is-invalid').trigger('focus');
+                return false;
+            }
+            $('#tipoTrabajoNombre').removeClass('is-invalid');
+
+            try {
+                await $.ajax({
+                    url: '/ordenes/api/tipos',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        id: $('#tipoTrabajoId').val() ? parseInt($('#tipoTrabajoId').val(), 10) : null,
+                        nombre: nombre,
+                        descripcion: ($('#tipoTrabajoDescripcion').val() || '').trim(),
+                        orden: parseInt($('#tipoTrabajoOrden').val() || '0', 10),
+                        activa: $('#tipoTrabajoActivo').is(':checked')
+                    })
+                });
+                return true;
+            } catch (err) {
+                const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo guardar el tipo';
+                Swal.fire('Error', mensaje.toString(), 'error');
+                return false;
+            }
+        }
+
+        function cambiarActivoTipoTrabajo(id, activo) {
+            $.ajax({
+                url: `/ordenes/api/tipos/${id}/activo`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ activo }),
+                success: function () {
+                    tiposTrabajoActualizados = true;
+                    cargarTiposTrabajoModal();
+                },
+                error: function (err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo actualizar el tipo';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
+            });
+        }
+
+        function limpiarFormularioTipoTrabajo() {
+            $('#tipoTrabajoId').val('');
+            $('#tipoTrabajoNombre').val('');
+            $('#tipoTrabajoDescripcion').val('');
+            $('#tipoTrabajoOrden').val('0');
+            $('#tipoTrabajoActivo').prop('checked', true);
+        }
 
         function abrirPdf(id) {
             window.open('/ordenes/pdf/' + id, '_blank', 'height=600,width=800,scrollbars=yes,status=yes');
@@ -107,46 +470,194 @@
         async function abrirWhatsapp(telefono, nombre, trabajo) {
             const { value: nuevoNumero } = await Swal.fire({
                 title: 'Enviar WhatsApp',
-                text: 'Confirma el número:',
+                text: 'Confirma el numero:',
                 input: 'text',
                 inputValue: telefono || '',
                 showCancelButton: true,
-                confirmButtonText: 'Abrir Chat',
+                confirmButtonText: 'Abrir chat',
                 confirmButtonColor: '#25D366'
             });
             if (nuevoNumero) {
-                let mensaje = `Hola ${nombre}, su servicio de "${trabajo}" está en proceso/listo.`;
+                let mensaje = `Hola ${nombre || ''}, su trabajo "${trabajo || ''}" esta en proceso o listo para entrega.`;
                 window.open(`https://wa.me/51${nuevoNumero}?text=${encodeURIComponent(mensaje)}`, '_blank');
             }
         }
 
-        function finalizarOrden(id, saldo) {
-            let msg = "Esto marcará la orden como ENTREGADA.";
-            let inputCobro = false;
-            if (saldo > 0) {
-                msg += `<br><strong>Hay un saldo pendiente de S/ ${saldo}</strong>.<br>¿Desea registrar este ingreso en Caja?`;
-                inputCobro = true;
+        function actualizarEstado(id, estado) {
+            const textos = {
+                PENDIENTE: 'volver a pendiente',
+                EN_PROCESO: 'marcar en proceso',
+                LISTO: 'marcar como listo',
+                ENTREGADO: 'marcar como entregado',
+                ANULADO: 'anular'
+            };
+            const necesitaConfirmacion = estado === 'ANULADO';
+
+            const enviar = () => $.ajax({
+                url: `/ordenes/api/estado/${id}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ estado }),
+                success: function(resp) {
+                    Swal.fire('Listo', resp.message || 'Estado actualizado', 'success').then(() => location.reload());
+                },
+                error: function(err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo actualizar el estado';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
+            });
+
+            if (!necesitaConfirmacion) {
+                enviar();
+                return;
             }
+
             Swal.fire({
-                title: '¿Finalizar Servicio?',
-                html: msg,
-                icon: 'question',
+                title: 'Confirmar cambio',
+                text: `Vas a ${textos[estado] || 'actualizar'} este trabajo.`,
+                icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: inputCobro ? 'Sí, Cobrar y Finalizar' : 'Sí, Finalizar',
-                cancelButtonText: 'Cancelar',
-                showDenyButton: inputCobro,
-                denyButtonText: 'Finalizar SIN Cobrar'
-            }).then((result) => {
-                if (result.isConfirmed) enviarFinalizacion(id, true);
-                else if (result.isDenied) enviarFinalizacion(id, false);
+                confirmButtonText: 'Confirmar'
+            }).then(resp => {
+                if (resp.isConfirmed) {
+                    enviar();
+                }
             });
         }
 
-        function enviarFinalizacion(id, cobrar) {
-            $.post(`/ordenes/api/finalizar/${id}?cobrarSaldo=${cobrar}`, function(resp) {
-                Swal.fire('Listo', resp, 'success').then(() => location.reload());
-            }).fail(function() {
-                Swal.fire('Error', 'No se pudo actualizar', 'error');
+        async function cambiarPrioridad(id, prioridadActual) {
+            const { value: prioridad } = await Swal.fire({
+                title: 'Prioridad',
+                input: 'select',
+                inputOptions: {
+                    URGENTE: 'URGENTE',
+                    ALTA: 'ALTA',
+                    NORMAL: 'NORMAL',
+                    BAJA: 'BAJA'
+                },
+                inputValue: prioridadActual || 'NORMAL',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar'
+            });
+
+            if (!prioridad) return;
+
+            $.ajax({
+                url: `/ordenes/api/prioridad/${id}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ prioridad }),
+                success: function(resp) {
+                    Swal.fire('Listo', resp.message || 'Prioridad actualizada', 'success').then(() => location.reload());
+                },
+                error: function(err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo actualizar la prioridad';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
+            });
+        }
+
+        async function registrarAbono(id, saldo) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Registrar abono',
+                html:
+                    `<p class="text-muted mb-2">Saldo actual: <strong>S/ ${parseFloat(saldo || 0).toFixed(2)}</strong></p>` +
+                    '<input id="swal-abono-monto" class="swal2-input" type="number" min="0.01" step="0.01" placeholder="Monto">' +
+                    '<select id="swal-abono-metodo" class="swal2-select">' +
+                        '<option value="EFECTIVO">EFECTIVO</option>' +
+                        '<option value="YAPE">YAPE</option>' +
+                        '<option value="PLIN">PLIN</option>' +
+                        '<option value="TRANSFERENCIA">TRANSFERENCIA</option>' +
+                        '<option value="TARJETA">TARJETA</option>' +
+                    '</select>' +
+                    '<input id="swal-abono-concepto" class="swal2-input" placeholder="Concepto (opcional)">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar abono',
+                preConfirm: () => {
+                    const monto = parseFloat(document.getElementById('swal-abono-monto').value || 0);
+                    if (monto <= 0) {
+                        Swal.showValidationMessage('Ingresa un monto valido');
+                        return false;
+                    }
+                    return {
+                        monto: monto,
+                        metodoPago: document.getElementById('swal-abono-metodo').value || 'EFECTIVO',
+                        concepto: document.getElementById('swal-abono-concepto').value || ''
+                    };
+                }
+            });
+
+            if (!formValues) return;
+
+            $.ajax({
+                url: `/ordenes/api/abonos/${id}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formValues),
+                success: function(resp) {
+                    Swal.fire('Listo', resp.message || 'Abono registrado correctamente', 'success').then(() => location.reload());
+                },
+                error: function(err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo registrar el abono';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
+            });
+        }
+
+        async function finalizarOrden(id, saldo) {
+            const saldoNumber = parseFloat(saldo || 0);
+            let cobrarSaldo = false;
+            let metodoPagoSaldo = 'EFECTIVO';
+
+            if (saldoNumber > 0) {
+                const { value: valores } = await Swal.fire({
+                    title: 'Finalizar trabajo',
+                    html:
+                        `<p class="mb-2">La orden aun tiene un saldo pendiente de <strong>S/ ${saldoNumber.toFixed(2)}</strong>.</p>` +
+                        '<div class="custom-control custom-checkbox text-left mb-3">' +
+                            '<input type="checkbox" class="custom-control-input" id="swal-cobrar-saldo">' +
+                            '<label class="custom-control-label" for="swal-cobrar-saldo">Cobrar este saldo al finalizar</label>' +
+                        '</div>' +
+                        '<select id="swal-metodo-final" class="swal2-select">' +
+                            '<option value="EFECTIVO">EFECTIVO</option>' +
+                            '<option value="YAPE">YAPE</option>' +
+                            '<option value="PLIN">PLIN</option>' +
+                            '<option value="TRANSFERENCIA">TRANSFERENCIA</option>' +
+                            '<option value="TARJETA">TARJETA</option>' +
+                        '</select>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Finalizar',
+                    preConfirm: () => ({
+                        cobrarSaldo: document.getElementById('swal-cobrar-saldo').checked,
+                        metodoPagoSaldo: document.getElementById('swal-metodo-final').value || 'EFECTIVO'
+                    })
+                });
+
+                if (!valores) return;
+                cobrarSaldo = !!valores.cobrarSaldo;
+                metodoPagoSaldo = valores.metodoPagoSaldo;
+            } else {
+                const resp = await Swal.fire({
+                    title: 'Finalizar trabajo',
+                    text: 'Esto cerrara la orden y la convertira en venta comercial.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Finalizar'
+                });
+                if (!resp.isConfirmed) return;
+            }
+
+            $.ajax({
+                url: `/ordenes/api/finalizar/${id}?cobrarSaldo=${cobrarSaldo}&metodoPagoSaldo=${encodeURIComponent(metodoPagoSaldo)}`,
+                type: 'POST',
+                success: function(resp) {
+                    Swal.fire('Listo', resp.message || 'Orden finalizada correctamente', 'success').then(() => location.reload());
+                },
+                error: function(err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo finalizar la orden';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
             });
         }
     </script>

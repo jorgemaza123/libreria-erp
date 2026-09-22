@@ -6,12 +6,14 @@ import com.libreria.sistema.model.Producto;
 import com.libreria.sistema.model.Proveedor;
 import com.libreria.sistema.model.dto.CompraDTO;
 import com.libreria.sistema.repository.CompraRepository;
+import com.libreria.sistema.repository.DetalleVentaRepository;
 import com.libreria.sistema.repository.ProductoRepository;
 import com.libreria.sistema.repository.ProveedorRepository;
 import com.libreria.sistema.service.CompraService;
+import com.libreria.sistema.service.ConfiguracionService;
+import com.libreria.sistema.service.CosteoSugerenciaService;
 import com.libreria.sistema.service.ProductoExcelService;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.libreria.sistema.service.ReposicionPendienteService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -48,40 +50,52 @@ public class CompraController {
     private final CompraRepository compraRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductoRepository productoRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
     private final CompraService compraService;
     private final ProductoExcelService productoExcelService;
-
-    @PersistenceContext
-    private EntityManager em;
+    private final ConfiguracionService configuracionService;
+    private final CosteoSugerenciaService costeoSugerenciaService;
+    private final ReposicionPendienteService reposicionPendienteService;
 
     public CompraController(
             CompraRepository compraRepository,
             ProveedorRepository proveedorRepository,
             ProductoRepository productoRepository,
+            DetalleVentaRepository detalleVentaRepository,
             CompraService compraService,
-            ProductoExcelService productoExcelService) {
+            ProductoExcelService productoExcelService,
+            ConfiguracionService configuracionService,
+            CosteoSugerenciaService costeoSugerenciaService,
+            ReposicionPendienteService reposicionPendienteService) {
         this.compraRepository = compraRepository;
         this.proveedorRepository = proveedorRepository;
         this.productoRepository = productoRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
         this.compraService = compraService;
         this.productoExcelService = productoExcelService;
+        this.configuracionService = configuracionService;
+        this.costeoSugerenciaService = costeoSugerenciaService;
+        this.reposicionPendienteService = reposicionPendienteService;
     }
 
     @GetMapping("/lista")
     public String lista(Model model) {
-        model.addAttribute("compras", compraRepository.findAll());
+        model.addAttribute("compras", compraRepository.findAll(Sort.by(Sort.Direction.DESC, "fecha")));
         return "compras/lista";
     }
 
     @GetMapping("/nueva")
     @PreAuthorize("hasPermission(null, 'COMPRAS_CREAR')")
-    public String nueva(Model model) {
+    public String nueva(@RequestParam(required = false) List<Long> reposicionIds, Model model) {
         List<Proveedor> proveedores = proveedorRepository.findByActivoTrue().stream()
                 .sorted(Comparator.comparing(Proveedor::getRazonSocial, String.CASE_INSENSITIVE_ORDER))
                 .toList();
         List<Producto> productos = productoRepository.findCatalogoGeneralOrdenado();
         model.addAttribute("proveedores", proveedores);
         model.addAttribute("productos", productos);
+        model.addAttribute("configCosteo", configuracionService.obtenerConfiguracion());
+        model.addAttribute("factorIndirectoSugerido", costeoSugerenciaService.obtenerFactorSugeridoGlobal());
+        model.addAttribute("reposicionPrefill", reposicionPendienteService.prepararItemsParaCompra(reposicionIds));
         return "compras/formulario";
     }
 
@@ -172,11 +186,23 @@ public class CompraController {
                 .filter(det -> det.getProducto() != null)
                 .map(det -> {
                     Map<String, Object> item = new LinkedHashMap<>();
+                    BigDecimal costoBase = det.getCostoUnitarioBase() != null
+                            ? det.getCostoUnitarioBase()
+                            : det.getPrecioUnitario();
+                    BigDecimal totalBase = costoBase.multiply(BigDecimal.valueOf(det.getCantidad()))
+                            .setScale(2, RoundingMode.HALF_UP);
                     item.put("productoId", det.getProducto().getId());
                     item.put("nombre", construirEtiquetaProducto(det.getProducto()));
                     item.put("cantidad", det.getCantidad());
-                    item.put("costo", det.getPrecioUnitario());
-                    item.put("totalPagado", det.getSubtotal());
+                    item.put("costo", costoBase);
+                    item.put("totalPagado", totalBase);
+                    item.put("stockActual", det.getProducto().getStockActual() != null ? det.getProducto().getStockActual() : 0);
+                    item.put("costoAnterior", det.getProducto().getPrecioCompra() != null ? det.getProducto().getPrecioCompra() : BigDecimal.ZERO);
+                    item.put("precioVenta", det.getProducto().getPrecioVenta() != null ? det.getProducto().getPrecioVenta() : BigDecimal.ZERO);
+                    item.put("clasificacion", det.getProducto().getClasificacion() != null ? det.getProducto().getClasificacion() : Producto.CLASIFICACION_MERCADERIA);
+                    item.put("usarReglaManualPrecio", Boolean.TRUE.equals(det.getProducto().getUsarReglaManualPrecio()));
+                    item.put("gananciaObjetivoPct", det.getProducto().getGananciaObjetivoPct());
+                    item.put("gananciaMinimaPct", det.getProducto().getGananciaMinimaPct());
                     return item;
                 })
                 .toList());
@@ -245,7 +271,7 @@ public class CompraController {
     @GetMapping("/api/detalle/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerDetalle(@PathVariable Long id) {
-        return compraRepository.findById(id).map(compra -> ResponseEntity.ok(Map.of(
+        return compraRepository.findConDetallesById(id).map(compra -> ResponseEntity.ok(Map.of(
                 "proveedor", compra.getProveedor() != null ? compra.getProveedor().getRazonSocial() : "-",
                 "documento", compra.getTipoComprobante() + " " + compra.getNumeroComprobante(),
                 "fecha", compra.getFecha() != null ? compra.getFecha().toString() : "-",
@@ -261,7 +287,7 @@ public class CompraController {
     @GetMapping("/api/detalle-completo/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerDetalleCompleto(@PathVariable Long id) {
-        Optional<Compra> opt = compraRepository.findById(id);
+        Optional<Compra> opt = compraRepository.findConDetallesById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -276,6 +302,18 @@ public class CompraController {
         BigDecimal totalRecuperado = BigDecimal.ZERO;
 
         try {
+            List<Long> productoIds = compra.getDetalles().stream()
+                    .filter(det -> det.getProducto() != null && det.getProducto().getId() != null)
+                    .map(det -> det.getProducto().getId())
+                    .distinct()
+                    .toList();
+            Map<Long, Object[]> resumenVentasPorProducto = new HashMap<>();
+            if (!productoIds.isEmpty()) {
+                for (Object[] row : detalleVentaRepository.resumenVentasPorProductoDesde(productoIds, fechaCompra)) {
+                    resumenVentasPorProducto.put((Long) row[0], row);
+                }
+            }
+
             for (DetalleCompra det : compra.getDetalles()) {
                 if (det.getProducto() == null) {
                     continue;
@@ -285,29 +323,14 @@ public class CompraController {
                 BigDecimal costoUnit = det.getPrecioUnitario();
                 BigDecimal subtotal = det.getSubtotal();
 
-                Object vendidosObj = em.createQuery(
-                                "SELECT SUM(dv.cantidad) FROM DetalleVenta dv " +
-                                        "WHERE dv.producto.id = :pid " +
-                                        "AND dv.venta.fechaEmision >= :fecha " +
-                                        "AND dv.venta.estado IN ('EMITIDO','PAGADO_TOTAL','DEVUELTO_PARCIAL')")
-                        .setParameter("pid", prodId)
-                        .setParameter("fecha", fechaCompra)
-                        .getSingleResult();
-                BigDecimal vendidosBD = vendidosObj != null
-                        ? new BigDecimal(vendidosObj.toString()).setScale(0, RoundingMode.HALF_UP)
+                Object[] resumenVentas = resumenVentasPorProducto.get(prodId);
+                BigDecimal vendidosBD = resumenVentas != null
+                        ? toBigDecimal(resumenVentas[1]).setScale(0, RoundingMode.HALF_UP)
                         : BigDecimal.ZERO;
                 int vendidos = vendidosBD.intValue();
 
-                Object ingresoObj = em.createQuery(
-                                "SELECT SUM(dv.subtotal) FROM DetalleVenta dv " +
-                                        "WHERE dv.producto.id = :pid " +
-                                        "AND dv.venta.fechaEmision >= :fecha " +
-                                        "AND dv.venta.estado IN ('EMITIDO','PAGADO_TOTAL','DEVUELTO_PARCIAL')")
-                        .setParameter("pid", prodId)
-                        .setParameter("fecha", fechaCompra)
-                        .getSingleResult();
-                BigDecimal ingresoGenerado = ingresoObj != null
-                        ? new BigDecimal(ingresoObj.toString()).setScale(2, RoundingMode.HALF_UP)
+                BigDecimal ingresoGenerado = resumenVentas != null
+                        ? toBigDecimal(resumenVentas[2]).setScale(2, RoundingMode.HALF_UP)
                         : BigDecimal.ZERO;
 
                 int stockActual = det.getProducto().getStockActual() != null ? det.getProducto().getStockActual() : 0;
@@ -416,8 +439,22 @@ public class CompraController {
         result.put("precioCompra", prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO);
         result.put("precioVenta", prod.getPrecioVenta() != null ? prod.getPrecioVenta() : BigDecimal.ZERO);
         result.put("clasificacion", prod.getClasificacion() != null ? prod.getClasificacion() : Producto.CLASIFICACION_MERCADERIA);
+        result.put("stockActual", prod.getStockActual() != null ? prod.getStockActual() : 0);
+        result.put("usarReglaManualPrecio", Boolean.TRUE.equals(prod.getUsarReglaManualPrecio()));
+        result.put("gananciaObjetivoPct", prod.getGananciaObjetivoPct());
+        result.put("gananciaMinimaPct", prod.getGananciaMinimaPct());
         result.put("label", construirEtiquetaProducto(prod));
         return result;
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        return new BigDecimal(value.toString());
     }
 
     private String construirEtiquetaProducto(Producto prod) {

@@ -1,13 +1,16 @@
 package com.libreria.sistema.controller;
 
-import com.libreria.sistema.model.CategoriaMovimiento;
 import com.libreria.sistema.model.Configuracion;
 import com.libreria.sistema.model.OrdenItem;
 import com.libreria.sistema.model.OrdenServicio;
+import com.libreria.sistema.model.ServicioCategoria;
 import com.libreria.sistema.model.dto.OrdenDTO;
+import com.libreria.sistema.model.dto.OrdenServicioPagoDTO;
+import com.libreria.sistema.model.dto.ServicioCategoriaDTO;
 import com.libreria.sistema.repository.OrdenServicioRepository;
-import com.libreria.sistema.service.CajaService;
 import com.libreria.sistema.service.ConfiguracionService;
+import com.libreria.sistema.service.OrdenServicioVentaService;
+import com.libreria.sistema.service.ServicioCategoriaService;
 import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
@@ -41,7 +44,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -51,28 +56,108 @@ import java.util.Map;
 public class OrdenServicioController {
 
     private final OrdenServicioRepository ordenRepository;
-    private final CajaService cajaService;
     private final ConfiguracionService configuracionService;
+    private final OrdenServicioVentaService ordenServicioVentaService;
+    private final ServicioCategoriaService servicioCategoriaService;
 
     public OrdenServicioController(OrdenServicioRepository ordenRepository,
-                                   CajaService cajaService,
-                                   ConfiguracionService configuracionService) {
+                                   ConfiguracionService configuracionService,
+                                   OrdenServicioVentaService ordenServicioVentaService,
+                                   ServicioCategoriaService servicioCategoriaService) {
         this.ordenRepository = ordenRepository;
-        this.cajaService = cajaService;
         this.configuracionService = configuracionService;
+        this.ordenServicioVentaService = ordenServicioVentaService;
+        this.servicioCategoriaService = servicioCategoriaService;
+    }
+
+    @GetMapping
+    public String index() {
+        return "redirect:/ordenes/lista";
     }
 
     @GetMapping("/nueva")
     @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_CREAR')")
     public String nuevaOrden(Model model) {
-        model.addAttribute("tipos", ordenRepository.findTiposServicio());
+        cargarTiposTrabajo(model);
         return "ordenes/formulario";
     }
 
     @GetMapping("/lista")
     public String listaOrdenes(Model model) {
-        model.addAttribute("ordenes", ordenRepository.findAll());
+        List<OrdenServicio> ordenes = ordenRepository.findAllOrdenadasPorMasReciente();
+        LocalDate hoy = LocalDate.now();
+
+        long pendientes = ordenes.stream().filter(this::esTrabajoActivo).count();
+        long listos = ordenes.stream().filter(o -> "LISTO".equalsIgnoreCase(valor(o.getEstado(), ""))).count();
+        long vencidos = ordenes.stream()
+                .filter(this::esTrabajoActivo)
+                .filter(o -> o.getFechaEntregaEstimada() != null && o.getFechaEntregaEstimada().isBefore(hoy))
+                .count();
+        long recordatorios = ordenes.stream()
+                .filter(o -> esRecordatorioPendiente(o, hoy))
+                .count();
+        BigDecimal saldoPendiente = ordenes.stream()
+                .filter(this::esTrabajoActivo)
+                .map(o -> valorMonetario(o.getSaldo()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        model.addAttribute("ordenes", ordenes);
+        cargarTiposTrabajo(model);
+        model.addAttribute("hoy", hoy);
+        model.addAttribute("totalPendientes", pendientes);
+        model.addAttribute("totalListos", listos);
+        model.addAttribute("totalVencidos", vencidos);
+        model.addAttribute("totalRecordatorios", recordatorios);
+        model.addAttribute("saldoPendiente", saldoPendiente);
         return "ordenes/lista";
+    }
+
+    @GetMapping("/editar/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    public String editarOrden(@PathVariable Long id, Model model) {
+        OrdenServicio orden = ordenRepository.findDetalleCompletoById(id).orElse(null);
+        if (orden == null) {
+            return "redirect:/ordenes/lista";
+        }
+
+        model.addAttribute("ordenEdicion", orden);
+        cargarTiposTrabajo(model);
+        return "ordenes/formulario";
+    }
+
+    @GetMapping("/api/tipos")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_VER')")
+    public ResponseEntity<?> listarTipos() {
+        return ResponseEntity.ok(servicioCategoriaService.listarTodasOrdenadas().stream()
+                .map(this::categoriaPayload)
+                .toList());
+    }
+
+    @PostMapping("/api/tipos")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
+    public ResponseEntity<?> guardarTipo(@RequestBody ServicioCategoriaDTO dto) {
+        try {
+            ServicioCategoria categoria = servicioCategoriaService.guardarTipo(dto);
+            return ResponseEntity.ok(categoriaPayload(categoria));
+        } catch (Exception e) {
+            log.error("Error al guardar tipo de trabajo", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/tipos/{id}/activo")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
+    public ResponseEntity<?> cambiarActivoTipo(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        try {
+            boolean activo = Boolean.TRUE.equals(body.get("activo"));
+            ServicioCategoria categoria = servicioCategoriaService.cambiarActivo(id, activo);
+            return ResponseEntity.ok(categoriaPayload(categoria));
+        } catch (Exception e) {
+            log.error("Error al cambiar visibilidad del tipo de trabajo {}", id, e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/api/guardar")
@@ -81,116 +166,94 @@ public class OrdenServicioController {
     public ResponseEntity<?> guardarOrden(@RequestBody OrdenDTO dto) {
         try {
             boolean esEdicion = dto.getId() != null;
-            OrdenServicio orden;
-            if (dto.getId() != null) {
-                orden = ordenRepository.findById(dto.getId()).orElse(new OrdenServicio());
-                // Si es edición, limpiamos los items actuales para reemplazarlos con los nuevos
-                if (orden.getId() != null) {
-                    orden.getItems().clear();
-                }
-            } else {
-                orden = new OrdenServicio();
-            }
-
-            orden.setTipoServicio(dto.getTipoServicio());
-            orden.setTituloTrabajo(dto.getTituloTrabajo());
-            orden.setClienteNombre(dto.getClienteNombre());
-            orden.setClienteTelefono(dto.getClienteTelefono());
-            orden.setClienteDocumento(dto.getClienteDocumento());
-            orden.setClienteEmail(dto.getClienteEmail());
-            orden.setClienteDireccion(dto.getClienteDireccion());
-            orden.setFechaEntregaEstimada(dto.getFechaEntrega());
-            orden.setObservaciones(dto.getObservaciones());
-            
-            // Aseguramos que aCuenta no sea null
-            BigDecimal aCuentaDTO = dto.getACuenta() != null ? dto.getACuenta() : BigDecimal.ZERO;
-            orden.setACuenta(aCuentaDTO);
-            
-            if (orden.getEstado() == null) {
-                orden.setEstado("PENDIENTE");
-            }
-
-            BigDecimal total = BigDecimal.ZERO;
-            if (dto.getItems() != null) {
-                for (OrdenDTO.ItemDTO itemDto : dto.getItems()) {
-                    OrdenItem item = new OrdenItem();
-                    item.setDescripcion(itemDto.getDescripcion());
-                    item.setCosto(itemDto.getCosto() != null ? itemDto.getCosto() : BigDecimal.ZERO);
-                    item.setOrden(orden);
-                    orden.getItems().add(item);
-                    total = total.add(item.getCosto());
-                }
-            }
-            orden.setTotal(total);
-
-            // Validar que el adelanto no supere al total
-            BigDecimal adelanto = orden.getACuenta();
-            if (adelanto.compareTo(total) > 0) {
-                adelanto = total;
-                orden.setACuenta(total);
-            }
-            orden.setSaldo(total.subtract(adelanto));
-
-            OrdenServicio guardada = ordenRepository.save(orden);
-            log.info("Orden servicio {} guardada. total={}, adelanto={}, saldo={}, edicion={}",
-                    guardada.getId(), guardada.getTotal(), guardada.getACuenta(), guardada.getSaldo(), esEdicion);
-
-            if (!esEdicion && adelanto.compareTo(BigDecimal.ZERO) > 0) {
-                cajaService.registrarMovimiento(
-                        "INGRESO",
-                        "ADELANTO SERV #" + guardada.getId(),
-                        adelanto,
-                        CategoriaMovimiento.VENTA
-                );
-            }
-
+            OrdenServicio guardada = ordenServicioVentaService.guardarOrden(dto);
             return ResponseEntity.ok(Map.of(
                     "message", esEdicion ? "Orden actualizada" : "Orden registrada",
                     "id", guardada.getId(),
-                    "total", guardada.getTotal(),
-                    "abonado", guardada.getACuenta(),
-                    "saldo", guardada.getSaldo()
+                    "estado", guardada.getEstado(),
+                    "prioridad", guardada.getPrioridad(),
+                    "total", valorMonetario(guardada.getTotal()),
+                    "abonado", valorMonetario(guardada.getACuenta()),
+                    "saldo", valorMonetario(guardada.getSaldo())
             ));
         } catch (Exception e) {
             log.error("Error al guardar orden de servicio", e);
-            return ResponseEntity.badRequest().body("Error al procesar la orden. Por favor intente nuevamente.");
+            return ResponseEntity.badRequest().body("Error al procesar la orden: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/estado/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
+    public ResponseEntity<?> actualizarEstado(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            OrdenServicio orden = ordenServicioVentaService.actualizarEstadoTrabajo(id, body.get("estado"));
+            return ResponseEntity.ok(Map.of(
+                    "message", "Estado actualizado",
+                    "id", orden.getId(),
+                    "estado", orden.getEstado()
+            ));
+        } catch (Exception e) {
+            log.error("Error al actualizar estado de orden {}", id, e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/prioridad/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
+    public ResponseEntity<?> actualizarPrioridad(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            OrdenServicio orden = ordenServicioVentaService.actualizarPrioridadTrabajo(id, body.get("prioridad"));
+            return ResponseEntity.ok(Map.of(
+                    "message", "Prioridad actualizada",
+                    "id", orden.getId(),
+                    "prioridad", orden.getPrioridad()
+            ));
+        } catch (Exception e) {
+            log.error("Error al actualizar prioridad de orden {}", id, e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/abonos/{id}")
+    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
+    @Transactional
+    public ResponseEntity<?> registrarAbono(@PathVariable Long id, @RequestBody OrdenServicioPagoDTO dto) {
+        try {
+            var pago = ordenServicioVentaService.registrarAbono(id, dto);
+            OrdenServicio orden = ordenRepository.findDetalleCompletoById(id)
+                    .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
+            return ResponseEntity.ok(Map.of(
+                    "message", "Abono registrado correctamente",
+                    "pagoId", pago.getId(),
+                    "monto", valorMonetario(pago.getMonto()),
+                    "abonado", valorMonetario(orden.getACuenta()),
+                    "saldo", valorMonetario(orden.getSaldo())
+            ));
+        } catch (Exception e) {
+            log.error("Error al registrar abono de orden {}", id, e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PostMapping("/api/finalizar/{id}")
     @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
     @Transactional
-    public ResponseEntity<?> finalizarOrden(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean cobrarSaldo) {
+    public ResponseEntity<?> finalizarOrden(@PathVariable Long id,
+                                            @RequestParam(defaultValue = "false") boolean cobrarSaldo,
+                                            @RequestParam(defaultValue = "EFECTIVO") String metodoPagoSaldo) {
         try {
-            return ordenRepository.findById(id).map(orden -> {
-                try {
-                    if (cobrarSaldo && valorMonetario(orden.getSaldo()).compareTo(BigDecimal.ZERO) > 0) {
-                        cajaService.registrarMovimiento(
-                                "INGRESO",
-                                "SALDO FINAL SERV #" + orden.getId(),
-                                orden.getSaldo(),
-                                CategoriaMovimiento.VENTA
-                        );
-                        orden.setACuenta(valorMonetario(orden.getTotal()));
-                        orden.setSaldo(BigDecimal.ZERO);
-                    }
-                    orden.setEstado("ENTREGADO");
-                    ordenRepository.save(orden);
-                    return ResponseEntity.ok("Orden finalizada");
-                } catch (Exception e) {
-                    log.error("Error al finalizar orden", e);
-                    return ResponseEntity.badRequest().body("Error al finalizar: " + e.getMessage());
-                }
-            }).orElse(ResponseEntity.badRequest().body("Orden no encontrada"));
+            return ResponseEntity.ok(ordenServicioVentaService.finalizarOrden(id, cobrarSaldo, metodoPagoSaldo));
         } catch (Exception e) {
-            log.error("Error al procesar finalizacion de orden", e);
-            return ResponseEntity.badRequest().body("Error al procesar la solicitud");
+            log.error("Error al procesar finalizacion de orden {}", id, e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @GetMapping("/pdf/{id}")
     public void descargarPdf(@PathVariable Long id, HttpServletResponse response) throws IOException, DocumentException {
-        OrdenServicio orden = ordenRepository.findById(id).orElse(null);
+        OrdenServicio orden = ordenRepository.findDetalleCompletoById(id).orElse(null);
         if (orden == null) {
             response.sendError(404, "Orden no encontrada");
             return;
@@ -200,17 +263,15 @@ public class OrdenServicioController {
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "inline; filename=Contrato_" + id + ".pdf");
 
-        // Documento con márgenes reducidos
         Document document = new Document(PageSize.A4, 25, 25, 25, 25);
         PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
-        // COLORES CHROMA BLUE
         Color colorPrimario = parseColor(config.getColorPrimario(), new Color(7, 77, 140));
-        Color colorBanner = new Color(0, 51, 102); // Azul más profundo para contraste
-        Color colorZebra = new Color(225, 240, 255); // Celeste muy claro para Zebra
+        Color colorBanner = new Color(0, 51, 102);
+        Color colorZebra = new Color(225, 240, 255);
         Color colorWhite = Color.WHITE;
-        
+
         Font fontCompany = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, colorPrimario);
         Font fontContractTitle = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, colorWhite);
         Font fontLabelBlue = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorPrimario);
@@ -218,16 +279,14 @@ public class OrdenServicioController {
         Font fontSmallBlue = FontFactory.getFont(FontFactory.HELVETICA, 8, colorPrimario);
         Font fontHeaderTable = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorWhite);
         Font fontTerms = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(100, 100, 100));
-        
+
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         DateTimeFormatter fmtDateTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        
+
         BigDecimal totalOrden = valorMonetario(orden.getTotal());
         BigDecimal saldoPendiente = resolverSaldoOrden(orden);
-        BigDecimal abonado = totalOrden.subtract(saldoPendiente);
-        if (abonado.compareTo(BigDecimal.ZERO) < 0) abonado = BigDecimal.ZERO;
+        BigDecimal abonado = resolverAbonadoOrden(orden);
 
-        // BANNER CABECERA (TÍTULO CONTRACTUAL)
         PdfPTable banner = new PdfPTable(1);
         banner.setWidthPercentage(100);
         PdfPCell bannerCell = new PdfPCell(new Phrase("CONTRATO DE SERVICIO - PROYECTO CONFIRMADO", fontContractTitle));
@@ -239,13 +298,11 @@ public class OrdenServicioController {
         document.add(banner);
         document.add(new Paragraph(" ", fontSmallBlue));
 
-        // CABECERA EMPRESA
         PdfPTable headerTable = new PdfPTable(2);
         headerTable.setWidthPercentage(100);
         headerTable.setWidths(new float[]{1.5f, 3.5f});
-        
         headerTable.addCell(crearCeldaLogo(config));
-        
+
         PdfPCell infoEmpresa = new PdfPCell();
         infoEmpresa.setBorder(Rectangle.NO_BORDER);
         infoEmpresa.setPaddingLeft(15f);
@@ -254,46 +311,45 @@ public class OrdenServicioController {
         infoEmpresa.addElement(new Paragraph("OS Ref: - " + String.format("%06d", orden.getId()), fontLabelBlue));
         headerTable.addCell(infoEmpresa);
         document.add(headerTable);
-        
         document.add(new Paragraph(" ", fontSmallBlue));
 
-        // BLOQUE DE DATOS AZUL (CLIENTE Y PROYECTO)
         PdfPTable mainData = new PdfPTable(2);
         mainData.setWidthPercentage(100);
         mainData.setWidths(new float[]{1f, 1f});
 
-        // Lado Cliente
         PdfPCell leftCol = new PdfPCell();
         leftCol.setBorderColor(colorZebra);
         leftCol.setBorderWidth(1f);
         leftCol.setPadding(12f);
         agregarSeccionInfo(leftCol, "CLIENTE / CONTRATANTE", colorPrimario, fontHeaderTable);
         agregarDato(leftCol, "TITULAR:", valor(orden.getClienteNombre(), "-"), fontLabelBlue, fontValue);
-        agregarDato(leftCol, "IDENTIFICACIÓN:", valor(orden.getClienteDocumento(), "-"), fontLabelBlue, fontValue);
-        agregarDato(leftCol, "UBICACIÓN:", valor(orden.getClienteDireccion(), "-"), fontLabelBlue, fontValue);
+        agregarDato(leftCol, "IDENTIFICACION:", valor(orden.getClienteDocumento(), "-"), fontLabelBlue, fontValue);
+        agregarDato(leftCol, "UBICACION:", valor(orden.getClienteDireccion(), "-"), fontLabelBlue, fontValue);
         mainData.addCell(leftCol);
 
-        // Lado Proyecto
         PdfPCell rightCol = new PdfPCell();
         rightCol.setBorderColor(colorZebra);
         rightCol.setBorderWidth(1f);
         rightCol.setPadding(12f);
         agregarSeccionInfo(rightCol, "ALCANCE DEL PROYECTO", colorPrimario, fontHeaderTable);
+        agregarDato(rightCol, "TIPO:", nombreTipoOrden(orden), fontLabelBlue, fontValue);
         agregarDato(rightCol, "TRABAJO:", valor(orden.getTituloTrabajo(), "-").toUpperCase(), fontLabelBlue, fontValue);
         agregarDato(rightCol, "FECHA INICIO:", (orden.getFechaRecepcion() != null ? orden.getFechaRecepcion().format(fmtDateTime) : "-"), fontLabelBlue, fontValue);
         agregarDato(rightCol, "FECHA ENTREGA:", formatearFecha(orden.getFechaEntregaEstimada(), fmt), fontLabelBlue, fontValue);
+        if (Boolean.TRUE.equals(orden.getRecordatorioActivo()) && orden.getFechaRecordatorio() != null) {
+            agregarDato(rightCol, "RECORDATORIO:", orden.getFechaRecordatorio().format(fmt), fontLabelBlue, fontValue);
+        }
         mainData.addCell(rightCol);
 
         document.add(mainData);
         document.add(new Paragraph(" ", fontSmallBlue));
 
-        // DETALLE DE REQUERIMIENTOS (ZEBRA BLUE)
         PdfPTable tableItems = new PdfPTable(3);
         tableItems.setWidthPercentage(100);
         tableItems.setWidths(new float[]{0.5f, 4.5f, 1.2f});
-        
-        String[] headers = {"#", "REQUERIMIENTO TÉCNICO / SERVICIO", "PRECIO ACORDADO"};
-        for(String h : headers) {
+
+        String[] headers = {"#", "REQUERIMIENTO TECNICO / SERVICIO", "PRECIO ACORDADO"};
+        for (String h : headers) {
             PdfPCell c = new PdfPCell(new Phrase(h, fontHeaderTable));
             c.setBackgroundColor(colorPrimario);
             c.setPadding(8f);
@@ -302,51 +358,47 @@ public class OrdenServicioController {
             tableItems.addCell(c);
         }
 
-        int i = 1;
+        int index = 1;
         for (OrdenItem item : orden.getItems()) {
-            Color rowColor = (i % 2 == 0) ? colorZebra : colorWhite;
-            tableItems.addCell(celdaModerna(String.valueOf(i++), fontValue, Element.ALIGN_CENTER, rowColor));
+            Color rowColor = (index % 2 == 0) ? colorZebra : colorWhite;
+            tableItems.addCell(celdaModerna(String.valueOf(index++), fontValue, Element.ALIGN_CENTER, rowColor));
             tableItems.addCell(celdaModerna(valor(item.getDescripcion(), "-"), fontValue, Element.ALIGN_LEFT, rowColor));
             tableItems.addCell(celdaModerna("S/ " + formatMoney(item.getCosto()), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, colorPrimario), Element.ALIGN_RIGHT, rowColor));
         }
         document.add(tableItems);
-
         document.add(new Paragraph(" ", fontSmallBlue));
 
-        // TÉRMINOS Y TOTALES
         PdfPTable finalBlock = new PdfPTable(2);
         finalBlock.setWidthPercentage(100);
         finalBlock.setWidths(new float[]{2.3f, 1.7f});
 
-        // Wording Contractual
         PdfPCell termsCell = new PdfPCell();
         termsCell.setBorder(Rectangle.NO_BORDER);
         termsCell.setPaddingRight(20f);
-        
         Paragraph termTitle = new Paragraph("ACUERDO DE CONFORMIDAD Y SERVICIO:", fontLabelBlue);
         termTitle.setSpacingAfter(5f);
         termsCell.addElement(termTitle);
-        
-        termsCell.addElement(new Paragraph("1. El presente documento confirma la recepción y el inicio de los trabajos detallados.\n" +
-                "2. El cliente se compromete a cancelar el saldo pendiente el día de la entrega final del proyecto.\n" +
-                "3. Cualquier modificación en el alcance puede variar el presupuesto final.\n" +
-                "4. CHROMA MULTISERVICIOS garantiza la calidad y compromiso en los tiempos establecidos.", fontTerms));
-        
+        termsCell.addElement(new Paragraph(
+                "1. El presente documento confirma la recepcion y el inicio de los trabajos detallados.\n" +
+                        "2. El cliente se compromete a cancelar el saldo pendiente el dia de la entrega final del proyecto.\n" +
+                        "3. Cualquier modificacion en el alcance puede variar el presupuesto final.\n" +
+                        "4. CHROMA MULTISERVICIOS garantiza la calidad y compromiso en los tiempos establecidos.",
+                fontTerms));
+
         if (orden.getObservaciones() != null && !orden.getObservaciones().isBlank()) {
-            termsCell.addElement(new Paragraph("\nNOTAS TÉCNICAS:", fontLabelBlue));
+            termsCell.addElement(new Paragraph("\nNOTAS TECNICAS:", fontLabelBlue));
             termsCell.addElement(new Paragraph(orden.getObservaciones(), fontTerms));
         }
         finalBlock.addCell(termsCell);
 
-        // Totales Azulados
         PdfPCell totalsCell = new PdfPCell();
         totalsCell.setBorder(Rectangle.NO_BORDER);
         PdfPTable subtotTable = new PdfPTable(2);
         subtotTable.setWidthPercentage(100);
-        
+
         addTotalRow(subtotTable, "PRECIO TOTAL PROYECTO:", "S/ " + formatMoney(totalOrden), fontLabelBlue, fontValue, false);
         addTotalRow(subtotTable, "ANTICIPO / ADELANTO:", "S/ " + formatMoney(abonado), fontLabelBlue, fontValue, false);
-        
+
         PdfPCell labelSaldo = new PdfPCell(new Phrase("NETO A CANCELAR:", fontHeaderTable));
         labelSaldo.setBackgroundColor(colorPrimario);
         labelSaldo.setPadding(8f);
@@ -360,12 +412,11 @@ public class OrdenServicioController {
         valSaldo.setHorizontalAlignment(Element.ALIGN_RIGHT);
         valSaldo.setBorder(Rectangle.NO_BORDER);
         subtotTable.addCell(valSaldo);
-        
+
         totalsCell.addElement(subtotTable);
         finalBlock.addCell(totalsCell);
         document.add(finalBlock);
 
-        // PIE DE PÁGINA PROFESIONAL
         document.add(new Paragraph("\n\n", fontSmallBlue));
         Paragraph finalMsg = new Paragraph("PROYECTO CONFIRMADO DIGITALMENTE - CHROMA MULTISERVICIOS\n" +
                 "WhatsApp: " + valor(config.getTelefono(), "902843481") + " | " + valor(config.getDireccion(), "Calle Real 123"), fontSmallBlue);
@@ -373,19 +424,6 @@ public class OrdenServicioController {
         document.add(finalMsg);
 
         document.close();
-    }
-
-    @GetMapping("/editar/{id}")
-    @PreAuthorize("hasPermission(null, 'ORDENES_SERVICIO_EDITAR')")
-    public String editarOrden(@PathVariable Long id, Model model) {
-        OrdenServicio orden = ordenRepository.findById(id).orElse(null);
-        if (orden == null) {
-            return "redirect:/ordenes/lista";
-        }
-
-        model.addAttribute("ordenEdicion", orden);
-        model.addAttribute("tipos", ordenRepository.findTiposServicio());
-        return "ordenes/formulario";
     }
 
     private PdfPCell crearCeldaLogo(Configuracion config) {
@@ -408,35 +446,12 @@ public class OrdenServicioController {
         return cell;
     }
 
-    private PdfPCell celdaBloque(String titulo, String[] lineas, Font tituloFont, Font textoFont, Color color) {
-        PdfPCell cell = new PdfPCell();
-        cell.setBorderColor(color);
-        cell.setPadding(7);
-        Paragraph pTitulo = new Paragraph(titulo, tituloFont);
-        pTitulo.setSpacingAfter(4f);
-        cell.addElement(pTitulo);
-        for (String linea : lineas) {
-            cell.addElement(new Paragraph(linea, textoFont));
-        }
-        return cell;
-    }
-
-    private void agregarHeader(PdfPTable table, String[] textos, Font font) {
-        for (String texto : textos) {
-            PdfPCell cell = new PdfPCell(new Phrase(texto, font));
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setBackgroundColor(new Color(45, 45, 45));
-            cell.setPadding(6f);
-            table.addCell(cell);
-        }
-    }
-
     private void agregarSeccionInfo(PdfPCell container, String titulo, Color color, Font font) {
         PdfPCell titleCell = new PdfPCell(new Phrase(titulo, font));
         titleCell.setBackgroundColor(color);
         titleCell.setPadding(4f);
         titleCell.setBorder(Rectangle.NO_BORDER);
-        
+
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100);
         table.setSpacingAfter(6f);
@@ -468,25 +483,58 @@ public class OrdenServicioController {
         lCell.setBorder(Rectangle.NO_BORDER);
         lCell.setPadding(6f);
         lCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        if(highlight) lCell.setBackgroundColor(new Color(245, 245, 245));
+        if (highlight) lCell.setBackgroundColor(new Color(245, 245, 245));
         table.addCell(lCell);
 
         PdfPCell vCell = new PdfPCell(new Phrase(value, fValue));
         vCell.setBorder(Rectangle.NO_BORDER);
         vCell.setPadding(6f);
         vCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        if(highlight) vCell.setBackgroundColor(new Color(245, 245, 245));
+        if (highlight) vCell.setBackgroundColor(new Color(245, 245, 245));
         table.addCell(vCell);
-    }
-
-    private Paragraph parrafoCentrado(String texto, Font font) {
-        Paragraph paragraph = new Paragraph(texto, font);
-        paragraph.setAlignment(Element.ALIGN_CENTER);
-        return paragraph;
     }
 
     private String valor(String valor, String fallback) {
         return valor != null && !valor.isBlank() ? valor : fallback;
+    }
+
+    private boolean esTrabajoActivo(OrdenServicio orden) {
+        String estado = valor(orden.getEstado(), "PENDIENTE");
+        return !"ENTREGADO".equalsIgnoreCase(estado) && !"ANULADO".equalsIgnoreCase(estado);
+    }
+
+    private boolean esRecordatorioPendiente(OrdenServicio orden, LocalDate hoy) {
+        return esTrabajoActivo(orden)
+                && Boolean.TRUE.equals(orden.getRecordatorioActivo())
+                && orden.getFechaRecordatorio() != null
+                && !orden.getFechaRecordatorio().isAfter(hoy);
+    }
+
+    private void cargarTiposTrabajo(Model model) {
+        List<String> tiposUsados = ordenRepository.findTiposServicio();
+        model.addAttribute("categoriasServicio", servicioCategoriaService.listarActivas());
+        model.addAttribute("tipoNombres", servicioCategoriaService.construirMapaNombres(tiposUsados));
+        model.addAttribute("tipos", tiposUsados);
+    }
+
+    private Map<String, Object> categoriaPayload(ServicioCategoria categoria) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", categoria.getId());
+        payload.put("codigo", categoria.getCodigo());
+        payload.put("nombre", categoria.getNombre());
+        payload.put("descripcion", categoria.getDescripcion());
+        payload.put("icono", categoria.getIcono());
+        payload.put("activa", Boolean.TRUE.equals(categoria.getActiva()));
+        payload.put("orden", categoria.getOrden());
+        return payload;
+    }
+
+    private String nombreTipoOrden(OrdenServicio orden) {
+        if (orden == null || orden.getTipoServicio() == null) {
+            return "Trabajo";
+        }
+        return servicioCategoriaService.construirMapaNombres(List.of(orden.getTipoServicio()))
+                .getOrDefault(orden.getTipoServicio(), orden.getTipoServicio());
     }
 
     private String formatearFecha(LocalDate fecha, DateTimeFormatter formatter) {
@@ -501,8 +549,8 @@ public class OrdenServicioController {
         BigDecimal total = valorMonetario(orden.getTotal());
         BigDecimal saldo = orden.getSaldo();
         if (saldo == null) {
-            BigDecimal adelanto = valorMonetario(orden.getACuenta());
-            saldo = total.subtract(adelanto);
+            BigDecimal abonado = resolverAbonadoOrden(orden);
+            saldo = total.subtract(abonado);
         }
         if (saldo.compareTo(BigDecimal.ZERO) < 0) {
             return BigDecimal.ZERO;
@@ -514,6 +562,12 @@ public class OrdenServicioController {
     }
 
     private BigDecimal resolverAbonadoOrden(OrdenServicio orden) {
+        if (orden.getPagos() != null && !orden.getPagos().isEmpty()) {
+            BigDecimal totalPagado = orden.getPagos().stream()
+                    .map(p -> valorMonetario(p.getMonto()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            return totalPagado.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : totalPagado;
+        }
         BigDecimal abonado = valorMonetario(orden.getACuenta());
         if (abonado.compareTo(BigDecimal.ZERO) > 0) {
             return abonado;

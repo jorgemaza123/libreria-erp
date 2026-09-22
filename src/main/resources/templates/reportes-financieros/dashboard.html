@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
@@ -12,6 +12,9 @@
         .summary-chip .label { color: #6b7280; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
         .summary-chip .value { font-size: 1.2rem; font-weight: 700; color: #111827; }
         .section-note { color: #6b7280; font-size: .92rem; }
+        .control-card { border-radius: 1rem; border: 1px solid #e5e7eb; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
+        .control-pill { border-radius: 999px; padding: .35rem .8rem; font-size: .85rem; font-weight: 600; }
+        .money-grid .info-box { border-radius: 1rem; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
     </style>
 </head>
 <body>
@@ -38,7 +41,7 @@
         <div class="container-fluid">
             <div class="row fin-card">
                 <div class="col-lg-3 col-6">
-                    <div class="small-box bg-info">
+                    <div class="small-box bg-info" data-toggle="tooltip" data-placement="bottom" title="Suma total de lo vendido en el mes, sin contar devoluciones ni ventas anuladas.">
                         <div class="inner">
                             <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardVentasMes">0.00</span></h3>
                             <p>Ventas Netas del Mes</p>
@@ -47,19 +50,19 @@
                     </div>
                 </div>
                 <div class="col-lg-3 col-6">
-                    <div class="small-box bg-warning">
+                    <div class="small-box bg-warning" data-toggle="tooltip" data-placement="bottom" title="Suma de todo el dinero que salió del negocio este mes (compras de productos, gastos fijos, tu sueldo/retiros y devoluciones).">
                         <div class="inner">
                             <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardSalidasMes">0.00</span></h3>
-                            <p>Salidas del Mes</p>
+                            <p>Total Salidas (Egresos)</p>
                         </div>
                         <div class="icon"><i class="fas fa-arrow-circle-down"></i></div>
                     </div>
                 </div>
                 <div class="col-lg-3 col-6">
-                    <div class="small-box bg-success">
+                    <div class="small-box bg-success" data-toggle="tooltip" data-placement="bottom" title="Es la ganancia de las ventas del mes (Ventas totales menos el costo de compra de esos productos).">
                         <div class="inner">
                             <h3><span th:text="${config.formatoMoneda}">S/</span> <span id="cardResultadoMes">0.00</span></h3>
-                            <p>Resultado del Mes</p>
+                            <p>Mi Ganancia de Ventas</p>
                         </div>
                         <div class="icon"><i class="fas fa-chart-pie"></i></div>
                     </div>
@@ -102,6 +105,108 @@
                 </div>
             </div>
 
+            <div class="card control-card mb-4">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h3 class="card-title font-weight-bold">
+                        <i class="fas fa-coins text-success mr-2"></i>Centro de control del negocio
+                    </h3>
+                    <p class="section-note mb-0">Una lectura simple para saber cuanto dinero entro, cuanto salio y si ya alcanza para cubrir tus cuentas del mes.</p>
+                </div>
+                <div class="card-body">
+                    <div class="row money-grid">
+                        <div class="col-md-3 mb-3">
+                            <div class="info-box bg-white" data-toggle="tooltip" title="Dinero en efectivo y cobros digitales reales que tienes físicamente en tu caja ahora mismo.">
+                                <span class="info-box-icon bg-success"><i class="fas fa-wallet"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Hay en caja</span>
+                                    <span class="info-box-number" id="ccCajaActual">S/ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="info-box bg-white" data-toggle="tooltip" title="Todo el dinero que ingresó a caja hoy (por ventas cobradas, cobranzas de créditos, etc.).">
+                                <span class="info-box-icon bg-info"><i class="fas fa-arrow-circle-up"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Hoy entro</span>
+                                    <span class="info-box-number" id="ccHoyEntro">S/ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="info-box bg-white" data-toggle="tooltip" title="Todo el dinero que salió de caja hoy (pagos a proveedores, gastos diarios, retiros, etc.).">
+                                <span class="info-box-icon bg-warning"><i class="fas fa-arrow-circle-down"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Hoy salio</span>
+                                    <span class="info-box-number" id="ccHoySalio">S/ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="info-box bg-white" data-toggle="tooltip" title="Dinero en caja que te queda libre después de restar lo que necesitas para pagar tus servicios y alquiler del mes.">
+                                <span class="info-box-icon bg-primary"><i class="fas fa-piggy-bank"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Libre para reinvertir</span>
+                                    <span class="info-box-number" id="ccReinvertir">S/ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-5 mb-3">
+                            <div class="border rounded p-3 h-100 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Lectura simple del mes</strong>
+                                    <span class="control-pill badge badge-secondary" id="ccAlcanzaPill">Calculando...</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1" data-toggle="tooltip" title="Estimación de tu ganancia restando el costo de compra de los productos vendidos a tus ventas totales del mes.">
+                                    <span>Mi Ganancia de Ventas (Estimada)</span>
+                                    <strong id="ccGananciaMes">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1" data-toggle="tooltip" title="La suma de todos tus gastos fijos obligatorios del mes (alquiler, luz, agua, internet, etc.).">
+                                    <span>Gastos Fijos del Local</span>
+                                    <strong id="ccCuentasFijas">S/ 0.00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between py-1" data-toggle="tooltip" title="Cuánto dinero falta ingresar a la caja actual para asegurar el pago de tus gastos fijos del mes.">
+                                    <span>Falta para cubrir Gastos Fijos</span>
+                                    <strong id="ccFaltante">S/ 0.00</strong>
+                                </div>
+                                <!-- Barómetro de Supervivencia -->
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between small font-weight-bold mb-1">
+                                        <span>Progreso de Gastos Fijos Cubiertos</span>
+                                        <span id="ccBarometroPorcentaje">0%</span>
+                                    </div>
+                                    <div class="progress progress-sm" style="border-radius: 4px; height: 10px;">
+                                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" id="ccBarometroProgreso" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 small text-muted" id="ccMensajeHumano">
+                                    El sistema te mostrara aqui si ya puedes cubrir alquiler, luz y otros gastos fijos sin sacar calculadora.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <strong class="d-block mb-3">De donde viene y a donde va el dinero</strong>
+                                <div class="d-flex justify-content-between py-1"><span>Ventas Cobradas (Efectivo/Tarjeta)</span><strong id="ccVentasCobradas">S/ 0.00</strong></div>
+                                <div class="d-flex justify-content-between py-1"><span>Cobros de Deudas (Créditos)</span><strong id="ccCobrosCredito">S/ 0.00</strong></div>
+                                <div class="d-flex justify-content-between py-1"><span>Adelantos por Servicios</span><strong id="ccAnticiposServicio">S/ 0.00</strong></div>
+                                <div class="d-flex justify-content-between py-1"><span>Inversión en Productos (Compras)</span><strong id="ccCompras">S/ 0.00</strong></div>
+                                <div class="d-flex justify-content-between py-1"><span>Gastos del Local (Día a Día)</span><strong id="ccGastos">S/ 0.00</strong></div>
+                                <div class="d-flex justify-content-between py-1"><span>Mi Sueldo (Retiros Personales)</span><strong id="ccRetiros">S/ 0.00</strong></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <strong class="d-block mb-3">Cuentas fijas activas</strong>
+                                <div id="ccListaFijas" class="small text-muted">Cargando cuentas fijas...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-md-8">
                     <div class="card card-primary card-outline">
@@ -126,7 +231,7 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="card card-warning card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-trophy text-warning"></i> Productos con Mayor Venta</h3>
@@ -136,7 +241,17 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="card card-danger card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-pie text-danger"></i> ¿A dónde se fue mi dinero?</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartDistribucionEgresos" style="min-height: 260px; height: 260px; max-height: 260px; max-width: 100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
                     <div class="card card-info card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-users text-info"></i> Clientes que Mas Compran</h3>
@@ -184,11 +299,16 @@
 
 <th:block layout:fragment="scripts">
     <script>
-        let chartVentasGastos, chartVendedores, chartTopProductos;
+        let chartVentasGastos, chartVendedores, chartTopProductos, chartDistribucionEgresos;
         const POLLING_INTERVAL = 30000;
         let pollingTimer = null;
 
         $(document).ready(function() {
+            // Inicializar Tooltips de Bootstrap
+            $('body').tooltip({
+                selector: '[data-toggle="tooltip"]',
+                trigger: 'hover'
+            });
             cargarDashboard();
             iniciarPolling();
         });
@@ -215,19 +335,21 @@
         });
 
         function cargarDashboard() {
-            $.ajax({
-                url: '/reportes/financieros/api/dashboard',
-                method: 'GET',
-                success: function(data) {
-                    actualizarCards(data);
-                    renderizarGraficoVentasGastos(data.ultimos12Meses || []);
-                    renderizarGraficoTopProductos(data.top5Productos || []);
-                    renderizarTopClientes(data.top5Clientes || []);
-                    renderizarGraficoVendedores(data.ventasPorVendedor || []);
-                },
-                error: function() {
-                    if (typeof toastr !== 'undefined') toastr.error('Error al cargar el dashboard financiero');
-                }
+            $.when(
+                $.get('/reportes/financieros/api/dashboard'),
+                $.get('/reportes/financieros/api/resumen-negocio')
+            ).done(function(dashboardResp, resumenResp) {
+                const dashboard = dashboardResp[0];
+                const resumen = resumenResp[0];
+                actualizarCards(dashboard);
+                actualizarCentroControl(resumen);
+                renderizarGraficoVentasGastos(dashboard.ultimos12Meses || []);
+                renderizarGraficoTopProductos(dashboard.top5Productos || []);
+                renderizarTopClientes(dashboard.top5Clientes || []);
+                renderizarGraficoVendedores(dashboard.ventasPorVendedor || []);
+                renderizarGraficoEgresos(resumen);
+            }).fail(function() {
+                if (typeof toastr !== 'undefined') toastr.error('Error al cargar el dashboard financiero');
             });
         }
 
@@ -253,6 +375,73 @@
             if (variacion > 0) cardVariacion.addClass('bg-success');
             else if (variacion < 0) cardVariacion.addClass('bg-danger');
             else cardVariacion.addClass('bg-secondary');
+        }
+
+        function actualizarCentroControl(data) {
+            $('#ccCajaActual').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.hayEnCaja));
+            $('#ccHoyEntro').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.hoyEntro));
+            $('#ccHoySalio').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.hoySalio));
+            $('#ccReinvertir').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.libreParaReinvertir));
+            $('#ccGananciaMes').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.gananciaEstimadaMes));
+            $('#ccCuentasFijas').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.cuentasFijasMes));
+            $('#ccFaltante').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.faltanteParaFijos));
+            $('#ccVentasCobradas').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.ventasCobradas));
+            $('#ccCobrosCredito').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.cobrosCredito));
+            $('#ccAnticiposServicio').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.anticiposServicio));
+            $('#ccCompras').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.compras));
+            $('#ccGastos').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.gastosOperativos));
+            $('#ccRetiros').text(APP_CONFIG.formatoMoneda + ' ' + formatearNumero(data.retiros));
+
+            // Barómetro de Supervivencia: progreso de cobertura de gastos fijos
+            const gananciaMes = parseFloat(data.gananciaEstimadaMes || 0);
+            const gastosFijos = parseFloat(data.cuentasFijasMes || 0);
+            let pct = 0;
+            if (gastosFijos > 0) {
+                pct = Math.round((gananciaMes / gastosFijos) * 100);
+            } else if (gananciaMes > 0) {
+                pct = 100;
+            }
+            const widthPct = Math.min(100, Math.max(0, pct));
+            $('#ccBarometroPorcentaje').text(pct + '%');
+            $('#ccBarometroProgreso')
+                .css('width', widthPct + '%')
+                .attr('aria-valuenow', widthPct);
+            
+            $('#ccBarometroProgreso').removeClass('bg-danger bg-warning bg-success');
+            if (pct >= 100) {
+                $('#ccBarometroProgreso').addClass('bg-success');
+            } else if (pct >= 50) {
+                $('#ccBarometroProgreso').addClass('bg-warning');
+            } else {
+                $('#ccBarometroProgreso').addClass('bg-danger');
+            }
+
+            const alcanza = !!data.teAlcanzaPagar;
+            const $pill = $('#ccAlcanzaPill');
+            $pill.removeClass('badge-success badge-danger badge-warning');
+            if (alcanza) {
+                $pill.addClass('badge-success').text('Si te alcanza');
+                $('#ccMensajeHumano').text('Con lo que hoy tienes en caja, ya puedes cubrir tus cuentas fijas del mes y aun te queda margen para reinvertir.');
+            } else {
+                $pill.addClass('badge-danger').text('Aun no alcanza');
+                $('#ccMensajeHumano').text('Todavia falta dinero para cubrir todas tus cuentas fijas del mes. El sistema te muestra cuanto falta para que tomes decisiones rapido.');
+            }
+
+            const cuentas = data.cuentasFijas || [];
+            const $lista = $('#ccListaFijas');
+            $lista.empty();
+            if (!cuentas.length) {
+                $lista.html('<div class="text-muted">No hay cuentas fijas configuradas todavia.</div>');
+                return;
+            }
+            cuentas.forEach(function(cuenta) {
+                $lista.append(
+                    `<div class="d-flex justify-content-between border-bottom py-2">
+                        <span>${cuenta.nombre || '-'}</span>
+                        <strong>${APP_CONFIG.formatoMoneda} ${formatearNumero(cuenta.montoMensual)}</strong>
+                    </div>`
+                );
+            });
         }
 
         function renderizarGraficoVentasGastos(datos) {
@@ -398,6 +587,74 @@
         function formatearNumero(num) {
             if (num == null || isNaN(num)) return '0.00';
             return parseFloat(num).toFixed(2);
+        }
+
+        function renderizarGraficoEgresos(resumen) {
+            const canvasElement = document.getElementById('chartDistribucionEgresos');
+            if (!canvasElement) return;
+            const ctx = canvasElement.getContext('2d');
+            if (chartDistribucionEgresos) chartDistribucionEgresos.destroy();
+            
+            const compras = parseFloat(resumen.compras || 0);
+            const gastos = parseFloat(resumen.gastosOperativos || 0);
+            const retiros = parseFloat(resumen.retiros || 0);
+            const devoluciones = parseFloat(resumen.devoluciones || 0);
+            const otros = parseFloat(resumen.otrosEgresos || 0);
+            
+            const total = compras + gastos + retiros + devoluciones + otros;
+            if (total === 0) {
+                chartDistribucionEgresos = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Sin gastos este mes'],
+                        datasets: [{
+                            data: [1],
+                            backgroundColor: ['#e5e7eb']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            chartDistribucionEgresos = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Inversión en Mercadería', 'Gastos del Local', 'Mi Sueldo (Retiros)', 'Devoluciones', 'Otros Gastos'],
+                    datasets: [{
+                        data: [compras, gastos, retiros, devoluciones, otros],
+                        backgroundColor: [
+                            APP_CONFIG.colorInfo,       // Azul/Teal para compras/inversión
+                            APP_CONFIG.colorAdvertencia, // Amarillo para gastos de local
+                            APP_CONFIG.colorExito,       // Verde para sueldo (retiros)
+                            APP_CONFIG.colorPeligro,     // Rojo para devoluciones
+                            '#6b7280'                    // Gris para otros egresos
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const valor = context.raw;
+                                    const porcentaje = ((valor / total) * 100).toFixed(1);
+                                    return context.label + ': ' + APP_CONFIG.formatoMoneda + ' ' + valor.toFixed(2) + ' (' + porcentaje + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
     </script>
 </th:block>

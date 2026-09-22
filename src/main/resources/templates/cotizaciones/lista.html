@@ -132,17 +132,12 @@
                                     </small>
                                 </td>
                                 <td>
-                                    <th:block th:with="tieneProductos=${false},tieneServicios=${false}">
-                                        <th:block th:each="item : ${c.items}">
-                                            <th:block th:if="${item.tipoItem == 'SERVICIO'}" th:with="tieneServicios=${true}"></th:block>
-                                        </th:block>
-                                    </th:block>
-                                    <small class="text-muted">
-                                        <span th:each="item,iter : ${c.items}" th:if="${iter.index < 2}">
-                                            <span th:if="${item.tipoItem == 'SERVICIO'}" class="badge badge-info badge-sm">S</span>
-                                            <span th:if="${item.tipoItem != 'SERVICIO'}" class="badge badge-secondary badge-sm">P</span>
+                                    <small class="text-muted" th:with="resumen=${resumenItemsCotizacion[c.id]}">
+                                        <span th:each="tipoItem,iter : ${resumen != null ? resumen.primerosTipos : T(java.util.Collections).emptyList()}">
+                                            <span th:if="${tipoItem == 'SERVICIO'}" class="badge badge-info badge-sm">S</span>
+                                            <span th:if="${tipoItem != 'SERVICIO'}" class="badge badge-secondary badge-sm">P</span>
                                         </span>
-                                        <span th:if="${c.items.size() > 2}" class="text-muted">+<span th:text="${c.items.size() - 2}"></span></span>
+                                        <span th:if="${resumen != null and resumen.total > 2}" class="text-muted">+<span th:text="${resumen.total - 2}"></span></span>
                                     </small>
                                 </td>
                                 <td class="text-right font-weight-bold" th:text="'S/ ' + ${#numbers.formatDecimal(c.total, 1, 2)}"></td>

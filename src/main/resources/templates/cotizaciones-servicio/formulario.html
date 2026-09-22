@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='cotizacion_servicio_nueva'">
+<head>
+    <title th:text="${cotizacionEdicion != null ? 'Editar Cotización de Servicio' : 'Cotización de Servicio'}">Cotización de Servicio</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <h1 th:text="${cotizacionEdicion != null ? 'Editar Cotización de Servicio' : 'Cotización de Servicio'}">Cotización de Servicio</h1>
+                    <p class="text-muted mb-0">Prepara una propuesta formal con alternativas separadas, sin adelantos ni orden confirmada.</p>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <a th:href="@{/cotizaciones-servicio/lista}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list mr-1"></i> Ver cotizaciones de servicio
+                    </a>
+                    <button th:if="${cotizacionEdicion != null}" type="button" class="btn btn-outline-primary ml-2"
+                            th:onclick="|window.open('/cotizaciones-servicio/pdf/${cotizacionEdicion.id}', '_blank')|">
+                        <i class="fas fa-file-pdf mr-1"></i> Ver PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <input type="hidden" id="cotizacionId" th:value="${cotizacionEdicion != null ? cotizacionEdicion.id : ''}">
+
+            <div th:if="${cotizacionEdicion != null}" class="alert alert-info">
+                <i class="fas fa-shield-alt mr-2"></i>
+                Código público para PDF:
+                <strong th:text="${cotizacionEdicion.codigoPublico}"></strong>
+                <span class="text-muted ml-2">El ID interno solo queda para control del sistema.</span>
+            </div>
+
+            <div class="card card-navy card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Datos de la propuesta</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label>Tipo de servicio</label>
+                            <input type="text" id="tipoServicio" class="form-control" placeholder="Ej: ESTAMPADOS"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.tipoServicio : ''}">
+                        </div>
+                        <div class="col-md-6">
+                            <label>Título de la propuesta</label>
+                            <input type="text" id="tituloTrabajo" class="form-control" placeholder="Ej: Propuesta de polos institucionales"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.tituloTrabajo : ''}">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Entrega estimada</label>
+                            <input type="date" id="fechaEntrega" class="form-control"
+                                   th:value="${cotizacionEdicion != null and cotizacionEdicion.fechaEntregaEstimada != null ? #temporals.format(cotizacionEdicion.fechaEntregaEstimada, 'yyyy-MM-dd') : ''}">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3 bg-light p-2 rounded">
+                        <div class="col-md-4">
+                            <label>Cliente / empresa</label>
+                            <input type="text" id="clienteNombre" class="form-control" placeholder="Razón social o nombre completo"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteNombre : ''}">
+                        </div>
+                        <div class="col-md-2">
+                            <label>DNI / RUC</label>
+                            <input type="text" id="clienteDoc" class="form-control" placeholder="Documento"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteDocumento : ''}">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Teléfono</label>
+                            <input type="text" id="clienteTel" class="form-control" placeholder="WhatsApp o llamada"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteTelefono : ''}">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Email corporativo</label>
+                            <input type="email" id="clienteEmail" class="form-control" placeholder="compras@empresa.com"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteEmail : ''}">
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-8">
+                            <label>Dirección / referencia</label>
+                            <input type="text" id="clienteDireccion" class="form-control" placeholder="Dirección o referencia"
+                                   th:value="${cotizacionEdicion != null ? cotizacionEdicion.clienteDireccion : ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Validez de la propuesta</label>
+                            <input type="date" id="fechaValidez" class="form-control"
+                                   th:value="${cotizacionEdicion != null and cotizacionEdicion.fechaValidez != null ? #temporals.format(cotizacionEdicion.fechaValidez, 'yyyy-MM-dd') : ''}">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                        <label class="mb-0">Secciones / alternativas cotizadas</label>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="agregarSeccion()">
+                            <i class="fas fa-layer-group mr-1"></i> Agregar sección
+                        </button>
+                    </div>
+
+                    <div id="contenedorSecciones">
+                        <th:block th:if="${cotizacionEdicion != null}">
+                            <div class="card card-outline card-info cotizacion-seccion" th:each="seccion, iter : ${cotizacionEdicion.secciones}">
+                                <div class="card-header py-2">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <input type="text" class="form-control form-control-sm seccion-titulo"
+                                                   th:value="${seccion.titulo}" placeholder="Título de sección / alternativa">
+                                        </div>
+                                        <div class="col-md-4 text-right mt-2 mt-md-0">
+                                            <strong class="text-primary mr-3">Subtotal: <span class="seccion-total">S/ 0.00</span></strong>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarSeccion(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body p-2">
+                                    <table class="table table-bordered table-sm mb-2">
+                                        <thead class="bg-navy">
+                                        <tr>
+                                            <th>Descripción del producto / servicio</th>
+                                            <th width="150">Costo (S/)</th>
+                                            <th width="50"></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody class="tbody-items">
+                                        <tr th:each="item : ${seccion.items}">
+                                            <td><input type="text" class="form-control item-desc" th:value="${item.descripcion}" placeholder="Ej: Diseño, materiales, estampado..."></td>
+                                            <td><input type="number" class="form-control item-costo" th:value="${item.costo}" step="0.10" oninput="calcularTotales()"></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="$(this).closest('tr').remove(); calcularTotales();">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="agregarItem(this)">
+                                        <i class="fas fa-plus mr-1"></i> Agregar item
+                                    </button>
+                                </div>
+                            </div>
+                        </th:block>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-7">
+                            <div class="form-group mb-lg-0">
+                                <label>Observaciones de la propuesta</label>
+                                <textarea id="observaciones" class="form-control" rows="4" placeholder="Condiciones, alcances, tiempos o notas comerciales..."
+                                          th:text="${cotizacionEdicion != null ? cotizacionEdicion.observaciones : ''}"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="card card-outline card-success mb-0">
+                                <div class="card-body">
+                                    <table class="table table-borderless mb-0">
+                                        <tr>
+                                            <th class="text-right">TOTAL REFERENCIAL:</th>
+                                            <td><input type="number" id="totalGeneral" class="form-control text-right font-weight-bold" readonly value="0.00"></td>
+                                        </tr>
+                                    </table>
+                                    <div class="alert alert-light border mb-0">
+                                        Esta pantalla solo emite una propuesta. No registra pagos, caja ni venta comercial.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer text-right">
+                    <a th:href="@{/cotizaciones-servicio/lista}" class="btn btn-default">Cancelar</a>
+                    <button type="button" class="btn btn-app bg-success" onclick="guardarCotizacion()">
+                        <i class="fas fa-file-signature"></i> Guardar y PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function() {
+            if ($('#contenedorSecciones .cotizacion-seccion').length === 0) {
+                agregarSeccion('Alternativa 1');
+            }
+            calcularTotales();
+        });
+
+        function agregarSeccion(titulo = '') {
+            const numero = $('#contenedorSecciones .cotizacion-seccion').length + 1;
+            const tituloFinal = titulo || ('Alternativa ' + numero);
+            const html = `
+                <div class="card card-outline card-info cotizacion-seccion">
+                    <div class="card-header py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control form-control-sm seccion-titulo" value="${escapeHtml(tituloFinal)}" placeholder="Título de sección / alternativa">
+                            </div>
+                            <div class="col-md-4 text-right mt-2 mt-md-0">
+                                <strong class="text-primary mr-3">Subtotal: <span class="seccion-total">S/ 0.00</span></strong>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarSeccion(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-2">
+                        <table class="table table-bordered table-sm mb-2">
+                            <thead class="bg-navy">
+                            <tr>
+                                <th>Descripción del producto / servicio</th>
+                                <th width="150">Costo (S/)</th>
+                                <th width="50"></th>
+                            </tr>
+                            </thead>
+                            <tbody class="tbody-items"></tbody>
+                        </table>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="agregarItem(this)">
+                            <i class="fas fa-plus mr-1"></i> Agregar item
+                        </button>
+                    </div>
+                </div>`;
+            $('#contenedorSecciones').append(html);
+            const nueva = $('#contenedorSecciones .cotizacion-seccion').last();
+            agregarItem(nueva.find('button.btn-outline-secondary')[0]);
+            calcularTotales();
+        }
+
+        function agregarItem(button, descripcion = '', costo = '0.00') {
+            const seccion = $(button).closest('.cotizacion-seccion');
+            const html = `
+                <tr>
+                    <td><input type="text" class="form-control item-desc" value="${escapeHtml(descripcion)}" placeholder="Ej: Diseño, materiales, estampado..."></td>
+                    <td><input type="number" class="form-control item-costo" value="${costo}" step="0.10" oninput="calcularTotales()"></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="$(this).closest('tr').remove(); calcularTotales();">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            seccion.find('.tbody-items').append(html);
+            calcularTotales();
+        }
+
+        function eliminarSeccion(button) {
+            if ($('#contenedorSecciones .cotizacion-seccion').length <= 1) {
+                Swal.fire('Atención', 'Debe existir al menos una sección.', 'warning');
+                return;
+            }
+            $(button).closest('.cotizacion-seccion').remove();
+            calcularTotales();
+        }
+
+        function calcularTotales() {
+            let totalGeneral = 0;
+            $('#contenedorSecciones .cotizacion-seccion').each(function() {
+                let subtotal = 0;
+                $(this).find('.item-costo').each(function() {
+                    subtotal += parseFloat($(this).val()) || 0;
+                });
+                $(this).find('.seccion-total').text('S/ ' + subtotal.toFixed(2));
+                totalGeneral += subtotal;
+            });
+            $('#totalGeneral').val(totalGeneral.toFixed(2));
+        }
+
+        function construirSecciones() {
+            const secciones = [];
+            $('#contenedorSecciones .cotizacion-seccion').each(function(index) {
+                const items = [];
+                $(this).find('.tbody-items tr').each(function() {
+                    const descripcion = ($(this).find('.item-desc').val() || '').trim();
+                    const costo = parseFloat($(this).find('.item-costo').val()) || 0;
+                    if (descripcion !== '') {
+                        items.push({ descripcion, costo });
+                    }
+                });
+                if (items.length > 0) {
+                    secciones.push({
+                        titulo: ($(this).find('.seccion-titulo').val() || ('Alternativa ' + (index + 1))).trim(),
+                        items
+                    });
+                }
+            });
+            return secciones;
+        }
+
+        function guardarCotizacion() {
+            const secciones = construirSecciones();
+            if (secciones.length === 0) {
+                return Swal.fire('Atención', 'Agrega al menos una sección con un ítem.', 'warning');
+            }
+
+            const dto = {
+                id: $('#cotizacionId').val() ? parseInt($('#cotizacionId').val(), 10) : null,
+                tipoServicio: $('#tipoServicio').val(),
+                tituloTrabajo: $('#tituloTrabajo').val(),
+                fechaEntrega: $('#fechaEntrega').val() || null,
+                fechaValidez: $('#fechaValidez').val() || null,
+                clienteNombre: $('#clienteNombre').val(),
+                clienteDocumento: $('#clienteDoc').val(),
+                clienteTelefono: $('#clienteTel').val(),
+                clienteEmail: $('#clienteEmail').val(),
+                clienteDireccion: $('#clienteDireccion').val(),
+                observaciones: $('#observaciones').val(),
+                secciones
+            };
+
+            $.ajax({
+                url: '/cotizaciones-servicio/api/guardar',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(dto),
+                success: function(resp) {
+                    Swal.fire('Guardado', `Cotización ${resp.codigoPublico} guardada correctamente.`, 'success').then(() => {
+                        window.open('/cotizaciones-servicio/pdf/' + resp.id, '_blank');
+                        window.location.href = '/cotizaciones-servicio/lista';
+                    });
+                },
+                error: function(err) {
+                    const mensaje = err.responseJSON?.error || err.responseText || 'No se pudo guardar la cotización';
+                    Swal.fire('Error', mensaje.toString(), 'error');
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

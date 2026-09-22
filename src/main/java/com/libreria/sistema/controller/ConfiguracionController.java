@@ -1,8 +1,10 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Configuracion;
+import com.libreria.sistema.model.dto.CuentaFijaDTO;
 import com.libreria.sistema.service.BackupService;
 import com.libreria.sistema.service.ConfiguracionService;
+import com.libreria.sistema.service.CuentaFijaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Controller
@@ -26,10 +29,14 @@ public class ConfiguracionController {
 
     private final ConfiguracionService configuracionService;
     private final BackupService backupService;
+    private final CuentaFijaService cuentaFijaService;
 
-    public ConfiguracionController(ConfiguracionService configuracionService, BackupService backupService) {
+    public ConfiguracionController(ConfiguracionService configuracionService,
+                                   BackupService backupService,
+                                   CuentaFijaService cuentaFijaService) {
         this.configuracionService = configuracionService;
         this.backupService = backupService;
+        this.cuentaFijaService = cuentaFijaService;
     }
 
     @GetMapping
@@ -40,7 +47,55 @@ public class ConfiguracionController {
     @GetMapping("/general")
     public String general(Model model) {
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
+        model.addAttribute("cuentasFijas", cuentaFijaService.listarTodas());
+        model.addAttribute("nuevaCuentaFija", new CuentaFijaDTO());
         return "configuracion/general";
+    }
+
+    @PostMapping("/cuentas-fijas/guardar")
+    @PreAuthorize("hasPermission(null, 'CONFIGURACION_EDITAR')")
+    public String guardarCuentaFija(@ModelAttribute("nuevaCuentaFija") CuentaFijaDTO dto,
+                                    RedirectAttributes attributes) {
+        try {
+            cuentaFijaService.guardar(dto);
+            attributes.addFlashAttribute("success", "Cuenta fija guardada correctamente");
+        } catch (Exception e) {
+            attributes.addFlashAttribute("error", "No se pudo guardar la cuenta fija: " + e.getMessage());
+        }
+        return "redirect:/configuracion/general#financiero";
+    }
+
+    @PostMapping("/cuentas-fijas/api/guardar")
+    @PreAuthorize("hasPermission(null, 'CONFIGURACION_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<?> guardarCuentaFijaApi(@RequestBody CuentaFijaDTO dto) {
+        try {
+            var cuenta = cuentaFijaService.guardar(dto);
+            Map<String, Object> respuesta = new LinkedHashMap<>();
+            respuesta.put("message", "Cuenta fija guardada correctamente");
+            respuesta.put("id", cuenta.getId());
+            respuesta.put("nombre", cuenta.getNombre());
+            respuesta.put("montoMensual", cuenta.getMontoMensual());
+            respuesta.put("categoria", cuenta.getCategoria());
+            respuesta.put("tipoCosto", cuenta.getTipoCosto());
+            respuesta.put("reglaReparto", cuenta.getReglaReparto());
+            respuesta.put("categoriaObjetivo", cuenta.getCategoriaObjetivo());
+            respuesta.put("baseMensual", cuenta.getBaseMensual());
+            respuesta.put("porcentajeUsoCosteo", cuenta.getPorcentajeUsoCosteo());
+            respuesta.put("incluirEnCosteo", cuenta.getIncluirEnCosteo());
+            respuesta.put("activa", cuenta.getActiva());
+            respuesta.put("orden", cuenta.getOrden());
+            return ResponseEntity.ok(respuesta);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/cuentas-fijas")
+    @PreAuthorize("hasPermission(null, 'CONFIGURACION_VER')")
+    @ResponseBody
+    public ResponseEntity<?> listarCuentasFijas() {
+        return ResponseEntity.ok(cuentaFijaService.listarTodas());
     }
 
     /**

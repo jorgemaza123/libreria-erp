@@ -27,7 +27,7 @@ import com.libreria.sistema.service.PersonalizadoPdfService;
 import com.libreria.sistema.service.PersonalizadoPedidoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -96,7 +96,7 @@ public class PersonalizadoController {
     @GetMapping
     public String index(Model model) {
         model.addAttribute("resumen", catalogoService.obtenerResumen());
-        model.addAttribute("pedidosRecientes", pedidoRepository.findAllByOrderByFechaCreacionDesc().stream().limit(8).toList());
+        model.addAttribute("pedidosRecientes", pedidoRepository.findRecientes(PageRequest.of(0, 8)));
         model.addAttribute("plantillasActivas", plantillaRepository.findByActivoTrueOrderByNombreComercialAsc().stream().limit(8).toList());
         return "personalizado/index";
     }
@@ -130,13 +130,10 @@ public class PersonalizadoController {
         }
         model.addAttribute("insumo", insumo);
         model.addAttribute("presentaciones", catalogoService.mapearPresentaciones(id));
-        model.addAttribute("comprasRelacionadas", listarComprasPersonalizadas().stream()
-                .filter(compra -> compra.getDetalles().stream().anyMatch(det ->
-                        det.getProducto() != null
-                                && insumo.getProducto() != null
-                                && det.getProducto().getId().equals(insumo.getProducto().getId())))
-                .limit(8)
-                .toList());
+        Long productoId = insumo.getProducto() != null ? insumo.getProducto().getId() : null;
+        model.addAttribute("comprasRelacionadas", productoId != null
+                ? compraRepository.findByDetalleProductoId(productoId).stream().limit(8).toList()
+                : List.of());
         return "personalizado/insumos/detalle";
     }
 
@@ -231,11 +228,7 @@ public class PersonalizadoController {
             return "redirect:/personalizado/plantillas";
         }
         model.addAttribute("plantilla", plantilla);
-        model.addAttribute("pedidosRelacionados", pedidoRepository.findAllByOrderByFechaCreacionDesc().stream()
-                .filter(pedido -> pedido.getItems().stream().anyMatch(item ->
-                        item.getPlantilla() != null && item.getPlantilla().getId().equals(id)))
-                .limit(8)
-                .toList());
+        model.addAttribute("pedidosRelacionados", pedidoRepository.findRecientesByPlantillaId(id, PageRequest.of(0, 8)));
         return "personalizado/plantillas/detalle";
     }
 
@@ -530,11 +523,7 @@ public class PersonalizadoController {
     }
 
     private List<Compra> listarComprasPersonalizadas() {
-        return compraRepository.findAll(Sort.by(Sort.Direction.DESC, "fecha")).stream()
-                .filter(compra -> compra.getDetalles() != null && compra.getDetalles().stream().anyMatch(det ->
-                        det.getProducto() != null
-                                && Producto.ORIGEN_CATALOGO_PERSONALIZADO.equalsIgnoreCase(det.getProducto().getOrigenCatalogo())))
-                .toList();
+        return compraRepository.findByDetalleProductoOrigenCatalogo(Producto.ORIGEN_CATALOGO_PERSONALIZADO);
     }
 
     private String serializar(Object value) {

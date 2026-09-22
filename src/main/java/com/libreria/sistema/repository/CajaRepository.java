@@ -30,13 +30,14 @@ public interface CajaRepository extends JpaRepository<MovimientoCaja, Long> {
      * Buscar movimientos por rango de fechas usando LocalDate
      * Convierte automáticamente a inicio y fin del día
      */
-    @Query("SELECT m FROM MovimientoCaja m WHERE CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC")
+    @Query("SELECT m FROM MovimientoCaja m LEFT JOIN FETCH m.usuario WHERE CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC")
     List<MovimientoCaja> findByFechaBetweenDates(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
      * Buscar movimientos por rango de fechas con paginación
      */
-    @Query("SELECT m FROM MovimientoCaja m WHERE CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC")
+    @Query(value = "SELECT m FROM MovimientoCaja m LEFT JOIN FETCH m.usuario WHERE CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin ORDER BY m.fecha DESC",
+           countQuery = "SELECT COUNT(m) FROM MovimientoCaja m WHERE CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin")
     Page<MovimientoCaja> findByFechaBetweenDatesPaginated(
             @Param("inicio") LocalDate inicio,
             @Param("fin") LocalDate fin,
@@ -72,6 +73,15 @@ public interface CajaRepository extends JpaRepository<MovimientoCaja, Long> {
      */
     @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'EGRESO' AND CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin")
     BigDecimal sumarEgresosPorFechas(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    /**
+     * Sumar egresos de una categoría específica en un rango de fechas
+     */
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m " +
+           "WHERE m.categoriaMovimiento = :categoria AND CAST(m.fecha AS LocalDate) BETWEEN :inicio AND :fin")
+    BigDecimal sumarPorCategoriaYFechas(@Param("categoria") String categoria,
+                                        @Param("inicio") LocalDate inicio,
+                                        @Param("fin") LocalDate fin);
 
     /**
      * Contar movimientos por rango de fechas

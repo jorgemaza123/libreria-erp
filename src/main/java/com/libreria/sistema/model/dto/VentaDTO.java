@@ -13,6 +13,8 @@ import java.util.List;
 @Data
 public class VentaDTO {
 
+    private static final int MAX_DESCRIPCION_DETALLE = 200;
+
     // =====================================================
     //  DATOS DEL CLIENTE
     // =====================================================
@@ -94,6 +96,18 @@ public class VentaDTO {
 
         @Size(max = 200, message = "La descripción no puede exceder 200 caracteres")
         private String descripcion;
+
+        public void setDescripcion(String descripcion) {
+            if (descripcion == null) {
+                this.descripcion = null;
+                return;
+            }
+
+            String valor = descripcion.trim();
+            this.descripcion = valor.length() > MAX_DESCRIPCION_DETALLE
+                    ? valor.substring(0, MAX_DESCRIPCION_DETALLE)
+                    : valor;
+        }
     }
 
     // =====================================================

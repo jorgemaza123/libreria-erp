@@ -2,6 +2,7 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.aspect.Auditable;
 import com.libreria.sistema.model.Producto;
+import com.libreria.sistema.model.dto.CosteoProductoDTO;
 import com.libreria.sistema.repository.ProductoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +15,12 @@ import java.util.Optional;
 public class ProductoService {
 
     private final ProductoRepository productoRepository;
+    private final CosteoEmpresarialService costeoEmpresarialService;
 
-    public ProductoService(ProductoRepository productoRepository) {
+    public ProductoService(ProductoRepository productoRepository,
+                           CosteoEmpresarialService costeoEmpresarialService) {
         this.productoRepository = productoRepository;
+        this.costeoEmpresarialService = costeoEmpresarialService;
     }
 
     public List<Producto> listarTodos() {
@@ -40,14 +44,13 @@ public class ProductoService {
 
         // 1. Autogenerar código interno si está vacío
         if (producto.getCodigoInterno() == null || producto.getCodigoInterno().trim().isEmpty()) {
-            long cantidad = productoRepository.count();
-            producto.setCodigoInterno("PROD-" + String.format("%04d", cantidad + 1));
+            producto.setCodigoInterno(generarCodigoInternoSecuencial());
         }
 
         // 2. NUEVO: Autogenerar código de barras si está vacío
         // Formato: INT-{timestamp} para productos sin código de barras asignado
         if (producto.getCodigoBarra() == null || producto.getCodigoBarra().trim().isEmpty()) {
-            String codigoGenerado = generarCodigoBarrasInterno();
+            String codigoGenerado = generarCodigoBarrasInternoUnico();
             producto.setCodigoBarra(codigoGenerado);
         }
 
@@ -65,15 +68,44 @@ public class ProductoService {
             }
         }
 
+        actualizarCosteoEmpresarial(producto);
         productoRepository.save(producto);
     }
 
-    private void normalizarProducto(Producto producto) {
-        if (producto.getClasificacion() == null || producto.getClasificacion().isBlank()) {
-            producto.setClasificacion(Producto.CLASIFICACION_MERCADERIA);
-        } else {
-            producto.setClasificacion(producto.getClasificacion().trim().toUpperCase());
+    @Transactional
+    public int asegurarCodigosParaEtiquetas(List<Long> productoIds) {
+        if (productoIds == null || productoIds.isEmpty()) {
+            return 0;
         }
+        int generados = 0;
+        for (Producto producto : productoRepository.findAllById(productoIds)) {
+            boolean cambio = false;
+            if (producto.getCodigoInterno() == null || producto.getCodigoInterno().trim().isEmpty()) {
+                producto.setCodigoInterno(generarCodigoInternoSecuencial());
+                cambio = true;
+            }
+            if (producto.getCodigoBarra() == null || producto.getCodigoBarra().trim().isEmpty()) {
+                producto.setCodigoBarra(generarCodigoBarrasInternoUnico());
+                cambio = true;
+            }
+            if (cambio) {
+                productoRepository.save(producto);
+                generados++;
+            }
+        }
+        return generados;
+    }
+
+    private void actualizarCosteoEmpresarial(Producto producto) {
+        CosteoProductoDTO analisis = costeoEmpresarialService.actualizarSnapshotProducto(producto);
+        producto.setCostoIndirectoEstimado(analisis.getCostoIndirectoUnitario());
+        producto.setCostoTotalEstimado(analisis.getCostoTotalUnitario());
+        producto.setPrecioMinimoEmpresarial(analisis.getPrecioMinimo());
+        producto.setPrecioSugeridoEmpresarial(analisis.getPrecioSugerido());
+    }
+
+    private void normalizarProducto(Producto producto) {
+        producto.setClasificacion(Producto.normalizarClasificacionInventario(producto.getClasificacion()));
 
         if (producto.getOrigenCatalogo() == null || producto.getOrigenCatalogo().isBlank()) {
             producto.setOrigenCatalogo(Producto.ORIGEN_CATALOGO_GENERAL);
@@ -107,7 +139,24 @@ public class ProductoService {
             producto.setLaminaPosicion(null);
         }
 
-        if (producto.esInsumo()) {
+        if (producto.esServicioInventario()) {
+            producto.setClasificacion(Producto.CLASIFICACION_SERVICIO);
+            producto.setTipo("SERVICIO");
+            producto.setStockActual(producto.getStockActual() != null ? producto.getStockActual() : 0);
+            producto.setStockMinimo(0);
+            producto.setStockMaximo(null);
+            if (producto.getUnidadMedida() == null || producto.getUnidadMedida().isBlank()) {
+                producto.setUnidadMedida("SERVICIO");
+            }
+            producto.setUbicacionEstante(null);
+            producto.setUbicacionFila(null);
+            producto.setUbicacionColumna(null);
+        } else if (producto.esInactivoInventario()) {
+            producto.setClasificacion(Producto.CLASIFICACION_INACTIVO);
+            producto.setActivo(false);
+            producto.setPosRapido(false);
+            producto.setTemporadaActiva(false);
+        } else if (producto.esInsumo()) {
             if (producto.getPrecioVenta() == null) {
                 producto.setPrecioVenta(BigDecimal.ZERO);
             }
@@ -151,6 +200,23 @@ public class ProductoService {
         long timestamp = System.currentTimeMillis();
         int random = (int) (Math.random() * 1000);
         return String.format("INT-%d%03d", timestamp % 10000000000L, random);
+    }
+
+    private String generarCodigoBarrasInternoUnico() {
+        String codigo;
+        do {
+            codigo = generarCodigoBarrasInterno();
+        } while (productoRepository.findByCodigoBarra(codigo).isPresent());
+        return codigo;
+    }
+
+    private String generarCodigoInternoSecuencial() {
+        long candidato = productoRepository.count() + 1;
+        String codigo;
+        do {
+            codigo = "PROD-" + String.format("%04d", candidato++);
+        } while (productoRepository.findByCodigoInterno(codigo).isPresent());
+        return codigo;
     }
 
     @Transactional

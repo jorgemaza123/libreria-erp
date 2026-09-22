@@ -2,6 +2,7 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.model.*;
 import com.libreria.sistema.model.dto.CotizacionDTO;
+import com.libreria.sistema.model.dto.CotizacionItemsResumenDTO;
 import com.libreria.sistema.repository.*;
 import com.libreria.sistema.util.Constants;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class CotizacionService {
     private final AmortizacionRepository amortizacionRepository;
     private final OrdenServicioRepository ordenServicioRepository;
     private final ServicioCategoriaRepository servicioCategoriaRepository;
+    private final DetalleCotizacionRepository detalleCotizacionRepository;
     private final CajaService cajaService;
     private final ConfiguracionService configuracionService;
 
@@ -52,6 +54,7 @@ public class CotizacionService {
                              AmortizacionRepository amortizacionRepository,
                              OrdenServicioRepository ordenServicioRepository,
                              ServicioCategoriaRepository servicioCategoriaRepository,
+                             DetalleCotizacionRepository detalleCotizacionRepository,
                              CajaService cajaService,
                              ConfiguracionService configuracionService) {
         this.cotizacionRepository = cotizacionRepository;
@@ -64,6 +67,7 @@ public class CotizacionService {
         this.amortizacionRepository = amortizacionRepository;
         this.ordenServicioRepository = ordenServicioRepository;
         this.servicioCategoriaRepository = servicioCategoriaRepository;
+        this.detalleCotizacionRepository = detalleCotizacionRepository;
         this.cajaService = cajaService;
         this.configuracionService = configuracionService;
     }
@@ -594,6 +598,39 @@ public class CotizacionService {
             }
         }
         return resultado;
+    }
+
+    public Map<Long, CotizacionItemsResumenDTO> obtenerResumenItemsPorCotizacion(List<Cotizacion> cotizaciones) {
+        if (cotizaciones == null || cotizaciones.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> ids = cotizaciones.stream()
+                .map(Cotizacion::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, Long> totales = new HashMap<>();
+        Map<Long, List<String>> primerosTipos = new HashMap<>();
+        for (Object[] row : detalleCotizacionRepository.findResumenTiposByCotizacionIds(ids)) {
+            Long cotizacionId = (Long) row[0];
+            String tipoItem = row[2] != null ? row[2].toString() : "PRODUCTO";
+            totales.merge(cotizacionId, 1L, Long::sum);
+            primerosTipos.computeIfAbsent(cotizacionId, k -> new ArrayList<>());
+            if (primerosTipos.get(cotizacionId).size() < 2) {
+                primerosTipos.get(cotizacionId).add(tipoItem);
+            }
+        }
+
+        Map<Long, CotizacionItemsResumenDTO> resumen = new HashMap<>();
+        for (Long id : ids) {
+            resumen.put(id, new CotizacionItemsResumenDTO(
+                    totales.getOrDefault(id, 0L),
+                    primerosTipos.getOrDefault(id, Collections.emptyList())));
+        }
+        return resumen;
     }
 
     // =====================================================

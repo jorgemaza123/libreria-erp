@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface SesionCajaRepository extends JpaRepository<SesionCaja, Long> {
     // Buscar si hay una caja abierta para un usuario (o global si quitas el usuario)
     Optional<SesionCaja> findByUsuarioAndEstado(Usuario usuario, String estado);
+
+    Optional<SesionCaja> findFirstByEstadoOrderByFechaInicioDesc(String estado);
 }

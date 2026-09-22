@@ -1,6 +1,7 @@
 package com.libreria.sistema.repository;
 
 import com.libreria.sistema.model.PedidoPersonalizado;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,16 @@ public interface PedidoPersonalizadoRepository extends JpaRepository<PedidoPerso
 
     @EntityGraph(attributePaths = {"items"})
     List<PedidoPersonalizado> findAllByOrderByFechaCreacionDesc();
+
+    @Query("SELECT p FROM PedidoPersonalizado p ORDER BY p.fechaCreacion DESC")
+    List<PedidoPersonalizado> findRecientes(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items"})
+    @Query("SELECT DISTINCT p FROM PedidoPersonalizado p " +
+           "JOIN p.items i " +
+           "WHERE i.plantilla.id = :plantillaId " +
+           "ORDER BY p.fechaCreacion DESC")
+    List<PedidoPersonalizado> findRecientesByPlantillaId(@Param("plantillaId") Long plantillaId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"items"})
     @Query("SELECT p FROM PedidoPersonalizado p WHERE (:estado IS NULL OR p.estado = :estado) AND (" +

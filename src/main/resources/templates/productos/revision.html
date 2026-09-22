@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='productos'">
+<head>
+    <title>Revision rapida - Productos</title>
+    <style>
+        .revision-page .content-wrapper {
+            background: #f4f6f8;
+        }
+
+        .revision-toolbar,
+        .revision-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .revision-card .card-header {
+            background: #fff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .revision-filter-label {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .revision-chip {
+            align-items: center;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 999px;
+            color: #3730a3;
+            display: inline-flex;
+            font-size: 0.78rem;
+            font-weight: 600;
+            gap: 6px;
+            margin: 0 6px 6px 0;
+            padding: 4px 9px;
+        }
+
+        .revision-chip button {
+            background: transparent;
+            border: 0;
+            color: inherit;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .revision-summary {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .revision-summary-item {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .revision-summary-value {
+            color: #0f172a;
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .revision-summary-label {
+            color: #64748b;
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .revision-table {
+            font-size: 0.82rem;
+            min-width: 1240px;
+        }
+
+        .revision-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.72rem;
+            letter-spacing: 0;
+            position: sticky;
+            text-transform: uppercase;
+            top: 0;
+            z-index: 2;
+        }
+
+        .revision-table td {
+            vertical-align: top;
+        }
+
+        .revision-table .form-control-sm {
+            font-size: 0.8rem;
+            min-height: 30px;
+        }
+
+        .revision-table textarea.form-control-sm {
+            min-height: 58px;
+            resize: vertical;
+        }
+
+        .revision-row-dirty {
+            background: #fff7ed;
+        }
+
+        .revision-row-saved {
+            animation: revisionSaved 1.4s ease;
+        }
+
+        .revision-filter-stack {
+            display: grid;
+            gap: 4px;
+            min-width: 88px;
+        }
+
+        .revision-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 190px;
+        }
+
+        .revision-empty {
+            color: #64748b;
+            padding: 36px 12px;
+            text-align: center;
+        }
+
+        .revision-loading {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .revision-switches {
+            display: grid;
+            gap: 8px;
+            min-width: 108px;
+        }
+
+        .revision-money {
+            min-width: 120px;
+        }
+
+        .revision-product {
+            min-width: 260px;
+        }
+
+        @keyframes revisionSaved {
+            from { background: #dcfce7; }
+            to { background: transparent; }
+        }
+
+        @media (max-width: 991.98px) {
+            .revision-summary {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .revision-summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div layout:fragment="content" class="revision-page">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2 align-items-center">
+                <div class="col-md-6">
+                    <h1 class="mb-0">Revision rapida</h1>
+                </div>
+                <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                    <a href="/productos" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Productos
+                    </a>
+                    <a href="/productos/nuevo" class="btn btn-primary ml-2">
+                        <i class="fas fa-plus"></i> Nuevo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div id="revisionAlert"></div>
+
+            <div class="row">
+                <div class="col-xl-3 col-lg-4">
+                    <div class="card revision-card">
+                        <div class="card-header">
+                            <h3 class="card-title mb-0"><i class="fas fa-filter mr-1"></i> Filtros</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="formFiltrosRevision">
+                                <div class="form-group">
+                                    <label class="revision-filter-label" for="filtroTermino">Texto</label>
+                                    <input type="text" class="form-control form-control-sm" id="filtroTermino" name="termino" placeholder="nombre, codigo, marca">
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-5">
+                                        <label class="revision-filter-label" for="filtroId">ID</label>
+                                        <input type="number" class="form-control form-control-sm" id="filtroId" name="id" min="1">
+                                    </div>
+                                    <div class="form-group col-7">
+                                        <label class="revision-filter-label" for="filtroEstado">Estado</label>
+                                        <select class="form-control form-control-sm" id="filtroEstado" name="estado">
+                                            <option value="">Todos</option>
+                                            <option value="POR_REVISAR">Por revisar</option>
+                                            <option value="ACTIVO">Activos</option>
+                                            <option value="INACTIVO">Inactivos</option>
+                                            <option value="SIN_CATEGORIA">Sin categoria</option>
+                                            <option value="SIN_PRECIO_VENTA">Sin precio</option>
+                                            <option value="SIN_COSTO">Sin costo</option>
+                                            <option value="SIN_CODIGO">Sin codigo</option>
+                                            <option value="SIN_STOCK">Sin stock</option>
+                                            <option value="CRITICO">Stock critico</option>
+                                            <option value="TEMPORADA">Temporada</option>
+                                            <option value="POS_RAPIDO">POS rapido</option>
+                                            <option value="INSUMO">Insumos</option>
+                                            <option value="SERVICIO">Servicios</option>
+                                            <option value="DESCONOCIDO">Desconocidos</option>
+                                            <option value="LAMINA">Laminas</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="revision-filter-label" for="filtroCategoria">Categoria</label>
+                                    <input type="text" class="form-control form-control-sm" id="filtroCategoria" name="categoria" list="categoriasRevisionList">
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="filtroClasificacion">Clase</label>
+                                        <select class="form-control form-control-sm" id="filtroClasificacion" name="clasificacion">
+                                            <option value="">Todas</option>
+                                            <option value="MERCADERIA">Mercaderia</option>
+                                            <option value="INSUMO">Insumo</option>
+                                            <option value="SERVICIO">Servicio</option>
+                                            <option value="INACTIVO">Inactivo</option>
+                                            <option value="DESCONOCIDO">Desconocido</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="filtroTipo">Tipo</label>
+                                        <input type="text" class="form-control form-control-sm" id="filtroTipo" name="tipo" list="tiposRevisionList">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="precioVentaDesde">Venta desde</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="precioVentaDesde" name="precioVentaDesde">
+                                    </div>
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="precioVentaHasta">Venta hasta</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="precioVentaHasta" name="precioVentaHasta">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="precioCompraDesde">Costo desde</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="precioCompraDesde" name="precioCompraDesde">
+                                    </div>
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="precioCompraHasta">Costo hasta</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="precioCompraHasta" name="precioCompraHasta">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="stockDesde">Stock desde</label>
+                                        <input type="number" class="form-control form-control-sm" id="stockDesde" name="stockDesde">
+                                    </div>
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="stockHasta">Stock hasta</label>
+                                        <input type="number" class="form-control form-control-sm" id="stockHasta" name="stockHasta">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="sizeRevision">Filas</label>
+                                        <select class="form-control form-control-sm" id="sizeRevision">
+                                            <option value="20" selected>20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-6">
+                                        <label class="revision-filter-label" for="sortRevision">Orden</label>
+                                        <select class="form-control form-control-sm" id="sortRevision">
+                                            <option value="nombre">Nombre</option>
+                                            <option value="id">ID</option>
+                                            <option value="categoria">Categoria</option>
+                                            <option value="precioVenta">Precio</option>
+                                            <option value="stockActual">Stock</option>
+                                            <option value="fechaActualizacion">Actualizado</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="btn-group btn-group-sm btn-block mb-3" role="group">
+                                    <button type="button" class="btn btn-outline-secondary" id="dirRevision" data-dir="asc" title="Cambiar orden">
+                                        <i class="fas fa-sort-alpha-down"></i>
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Aplicar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" id="btnLimpiarFiltros">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div class="btn-group-vertical btn-group-sm btn-block mb-3" role="group">
+                                    <button type="button" class="btn btn-outline-warning js-estado-rapido" data-estado="POR_REVISAR">
+                                        <i class="fas fa-clipboard-check mr-1"></i> Por revisar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary js-estado-rapido" data-estado="SIN_CATEGORIA">
+                                        <i class="fas fa-tags mr-1"></i> Sin categoria
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary js-estado-rapido" data-estado="SIN_PRECIO_VENTA">
+                                        <i class="fas fa-coins mr-1"></i> Sin precio
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary js-estado-rapido" data-estado="SIN_COSTO">
+                                        <i class="fas fa-receipt mr-1"></i> Sin costo
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div id="chipsFiltros" class="mb-3"></div>
+                            <div id="resumenRevision" class="revision-summary"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-9 col-lg-8">
+                    <div class="card revision-card">
+                        <div class="card-header revision-toolbar">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="card-title mb-0"><i class="fas fa-table mr-1"></i> Productos</h3>
+                                    <small class="text-muted" id="revisionResultadoTexto">Cargando...</small>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center mt-2 mt-md-0">
+                                    <button type="button" class="btn btn-success btn-sm mr-2" id="btnGuardarCambios" disabled>
+                                        <i class="fas fa-save"></i> Cambios (<span id="contadorCambios">0</span>)
+                                    </button>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="btnPaginaAnterior">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary disabled" id="revisionPaginaTexto">1 / 1</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="btnPaginaSiguiente">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="revisionTableWrap">
+                                <table class="table table-sm table-hover mb-0 revision-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Filtrar</th>
+                                        <th>Codigos</th>
+                                        <th>Producto</th>
+                                        <th>Categoria</th>
+                                        <th>Precios</th>
+                                        <th>Stock</th>
+                                        <th>Estado</th>
+                                        <th>Marcas</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="tablaRevisionBody">
+                                    <tr>
+                                        <td colspan="9" class="revision-empty">Cargando productos...</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <datalist id="categoriasRevisionList">
+        <option th:each="categoria : ${categoriasRevision}" th:value="${categoria}"></option>
+    </datalist>
+
+    <datalist id="tiposRevisionList">
+        <option th:each="tipo : ${tiposRevision}" th:value="${tipo}"></option>
+        <option value="ESTANDAR"></option>
+        <option value="SERVICIO"></option>
+    </datalist>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        (function() {
+            const state = {
+                page: 0,
+                size: 20,
+                sort: 'nombre',
+                dir: 'asc',
+                loading: false
+            };
+
+            const ALERT_LABELS = {
+                SIN_NOMBRE: 'sin nombre',
+                SIN_CATEGORIA: 'sin categoria',
+                SIN_CODIGO_INTERNO: 'sin codigo',
+                SIN_PRECIO_VENTA: 'sin precio',
+                SIN_COSTO: 'sin costo',
+                STOCK_NEGATIVO: 'stock negativo',
+                STOCK_CRITICO: 'stock critico',
+                INACTIVO: 'inactivo'
+            };
+
+            const FILTER_LABELS = {
+                termino: 'texto',
+                id: 'id',
+                categoria: 'categoria',
+                estado: 'estado',
+                tipo: 'tipo',
+                clasificacion: 'clase',
+                precioVentaDesde: 'venta desde',
+                precioVentaHasta: 'venta hasta',
+                precioCompraDesde: 'costo desde',
+                precioCompraHasta: 'costo hasta',
+                stockDesde: 'stock desde',
+                stockHasta: 'stock hasta'
+            };
+            const MENSAJE_CAMBIOS_PENDIENTES = 'Tienes cambios sin guardar. Si continuas se perderan.';
+
+            $(document).ready(function() {
+                cargarProductos();
+
+                $('#formFiltrosRevision').on('submit', function(e) {
+                    e.preventDefault();
+                    if (!confirmarCambiosPendientes()) return;
+                    state.page = 0;
+                    cargarProductos();
+                });
+
+                $('#btnLimpiarFiltros').on('click', function() {
+                    if (!confirmarCambiosPendientes()) return;
+                    $('#formFiltrosRevision')[0].reset();
+                    state.page = 0;
+                    state.size = 20;
+                    state.sort = 'nombre';
+                    state.dir = 'asc';
+                    $('#sizeRevision').val('20');
+                    $('#sortRevision').val('nombre');
+                    actualizarBotonDireccion();
+                    cargarProductos();
+                });
+
+                $('.js-estado-rapido').on('click', function() {
+                    if (!confirmarCambiosPendientes()) return;
+                    $('#filtroEstado').val(this.dataset.estado || '');
+                    state.page = 0;
+                    cargarProductos();
+                });
+
+                $('#sizeRevision').on('change', function() {
+                    const anterior = state.size;
+                    if (!confirmarCambiosPendientes()) {
+                        $(this).val(String(anterior));
+                        return;
+                    }
+                    state.size = parseInt(this.value, 10) || 20;
+                    state.page = 0;
+                    cargarProductos();
+                });
+
+                $('#sortRevision').on('change', function() {
+                    const anterior = state.sort;
+                    if (!confirmarCambiosPendientes()) {
+                        $(this).val(anterior);
+                        return;
+                    }
+                    state.sort = this.value || 'nombre';
+                    state.page = 0;
+                    cargarProductos();
+                });
+
+                $('#dirRevision').on('click', function() {
+                    if (!confirmarCambiosPendientes()) return;
+                    state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+                    actualizarBotonDireccion();
+                    cargarProductos();
+                });
+
+                $('#btnPaginaAnterior').on('click', function() {
+                    if (state.page > 0 && !state.loading) {
+                        if (!confirmarCambiosPendientes()) return;
+                        state.page -= 1;
+                        cargarProductos();
+                    }
+                });
+
+                $('#btnPaginaSiguiente').on('click', function() {
+                    if (!this.disabled && !state.loading) {
+                        if (!confirmarCambiosPendientes()) return;
+                        state.page += 1;
+                        cargarProductos();
+                    }
+                });
+
+                $('#tablaRevisionBody').on('input change', '.js-field', function() {
+                    $(this).closest('tr').addClass('revision-row-dirty');
+                    actualizarContadorCambios();
+                });
+
+                $('#tablaRevisionBody').on('click', '.js-guardar-producto', function() {
+                    guardarFila($(this).closest('tr'));
+                });
+
+                $('#tablaRevisionBody').on('click', '.js-row-filter', function() {
+                    aplicarFiltroDesdeFila(this);
+                });
+
+                $('#btnGuardarCambios').on('click', function() {
+                    guardarCambiosPendientes();
+                });
+
+                $('#chipsFiltros').on('click', '.js-quitar-filtro', function() {
+                    const campo = this.dataset.campo;
+                    if (campo) {
+                        if (!confirmarCambiosPendientes()) return;
+                        $('[name="' + campo + '"]').val('');
+                        state.page = 0;
+                        cargarProductos();
+                    }
+                });
+
+                $(document).on('click', 'a[href]', function(e) {
+                    const href = $(this).attr('href') || '';
+                    const target = ($(this).attr('target') || '').toLowerCase();
+                    if (!tieneCambiosPendientes() || href.startsWith('#') || href.startsWith('javascript:') || target === '_blank') {
+                        return;
+                    }
+                    if (!confirmarCambiosPendientes()) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                });
+
+                window.addEventListener('beforeunload', function(e) {
+                    if (!tieneCambiosPendientes()) {
+                        return undefined;
+                    }
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                });
+            });
+
+            function cargarProductos() {
+                state.loading = true;
+                $('#revisionTableWrap').addClass('revision-loading');
+                const params = obtenerParametros();
+                actualizarChips(params);
+
+                fetch('/productos/revision/api?' + params.toString())
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('No se pudo cargar la revision.');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        renderTabla(data.productos || []);
+                        renderResumen(data.resumen || {});
+                        renderPaginacion(data);
+                    })
+                    .catch(function(error) {
+                        mostrarMensaje('danger', error.message || 'Error cargando productos.');
+                    })
+                    .finally(function() {
+                        state.loading = false;
+                        $('#revisionTableWrap').removeClass('revision-loading');
+                    });
+            }
+
+            function obtenerParametros() {
+                const params = new URLSearchParams();
+                $('#formFiltrosRevision').serializeArray().forEach(function(item) {
+                    if (item.value !== null && String(item.value).trim() !== '') {
+                        params.set(item.name, String(item.value).trim());
+                    }
+                });
+                params.set('page', state.page);
+                params.set('size', state.size);
+                params.set('sort', state.sort);
+                params.set('dir', state.dir);
+                return params;
+            }
+
+            function renderTabla(productos) {
+                const tbody = $('#tablaRevisionBody');
+                if (!productos.length) {
+                    tbody.html('<tr><td colspan="9" class="revision-empty">No hay productos con esos filtros.</td></tr>');
+                    actualizarContadorCambios();
+                    return;
+                }
+                tbody.html(productos.map(renderFila).join(''));
+                actualizarContadorCambios();
+            }
+
+            function renderFila(p) {
+                const precioVenta = dineroValor(p.precioVenta);
+                const precioCompra = dineroValor(p.precioCompra);
+                const margen = p.margenPct !== null && p.margenPct !== undefined ? Number(p.margenPct).toFixed(2) + '%' : '-';
+                const alertas = (p.alertas || []).map(function(alerta) {
+                    return '<span class="badge badge-light border">' + escapeHtml(ALERT_LABELS[alerta] || alerta) + '</span>';
+                }).join('');
+                const chipsTipo = [
+                    p.esLamina ? '<span class="badge badge-info">lamina</span>' : '',
+                    p.tipo ? '<span class="badge badge-light border">' + escapeHtml(p.tipo) + '</span>' : '',
+                    p.clasificacion ? '<span class="badge badge-light border">' + escapeHtml(p.clasificacion) + '</span>' : ''
+                ].filter(Boolean).join(' ');
+
+                return `
+                    <tr data-id="${escapeAttr(p.id)}">
+                        <td>
+                            <div class="revision-filter-stack">
+                                <button type="button" class="btn btn-xs btn-outline-secondary js-row-filter" data-filter="id" data-value="${escapeAttr(p.id)}" title="Filtrar por ID">
+                                    <i class="fas fa-hashtag"></i> ID
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary js-row-filter" data-filter="similar" data-value="${escapeAttr(p.nombre || '')}" title="Nombre parecido">
+                                    <i class="fas fa-search"></i> Similar
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary js-row-filter" data-filter="categoria" data-value="${escapeAttr(p.categoria || '')}" title="Misma categoria">
+                                    <i class="fas fa-tags"></i> Cat
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary js-row-filter" data-filter="precio" data-value="${escapeAttr(precioVenta)}" title="Mismo precio">
+                                    <i class="fas fa-coins"></i> Precio
+                                </button>
+                            </div>
+                        </td>
+                        <td style="min-width: 170px;">
+                            <small class="text-muted d-block">ID ${escapeHtml(p.id)}</small>
+                            <input type="text" class="form-control form-control-sm mb-1 js-field" data-field="codigoInterno" value="${escapeAttr(p.codigoInterno || '')}" placeholder="codigo interno">
+                            <input type="text" class="form-control form-control-sm js-field" data-field="codigoBarra" value="${escapeAttr(p.codigoBarra || '')}" placeholder="codigo barra">
+                        </td>
+                        <td class="revision-product">
+                            <input type="text" class="form-control form-control-sm mb-1 js-field" data-field="nombre" value="${escapeAttr(p.nombre || '')}" placeholder="producto">
+                            <input type="text" class="form-control form-control-sm mb-1 js-field" data-field="tipo" value="${escapeAttr(p.tipo || 'ESTANDAR')}" list="tiposRevisionList" placeholder="tipo">
+                            <textarea class="form-control form-control-sm js-field" data-field="tags" placeholder="tags o sinonimos">${escapeHtml(p.tags || '')}</textarea>
+                            <div class="mt-1">${chipsTipo}</div>
+                        </td>
+                        <td style="min-width: 170px;">
+                            <input type="text" class="form-control form-control-sm js-field" data-field="categoria" value="${escapeAttr(p.categoria || '')}" list="categoriasRevisionList" placeholder="categoria">
+                            <small class="text-muted d-block mt-2">${escapeHtml(p.ubicacionResumen || '-')}</small>
+                        </td>
+                        <td class="revision-money">
+                            <label class="revision-filter-label mb-1">Costo</label>
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm mb-1 js-field" data-field="precioCompra" value="${escapeAttr(precioCompra)}">
+                            <label class="revision-filter-label mb-1">Venta</label>
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm js-field" data-field="precioVenta" value="${escapeAttr(precioVenta)}">
+                            <small class="text-muted d-block mt-1">Margen ${escapeHtml(margen)}</small>
+                        </td>
+                        <td style="min-width: 110px;">
+                            <label class="revision-filter-label mb-1">Actual</label>
+                            <input type="number" min="0" class="form-control form-control-sm mb-1 js-field" data-field="stockActual" value="${escapeAttr(p.stockActual || 0)}">
+                            <label class="revision-filter-label mb-1">Minimo</label>
+                            <input type="number" min="0" class="form-control form-control-sm js-field" data-field="stockMinimo" value="${escapeAttr(p.stockMinimo || 0)}">
+                        </td>
+                        <td style="min-width: 130px;">
+                            <span class="badge ${escapeAttr(p.badgeStock || 'badge-secondary')}">${escapeHtml(p.estadoStock || '-')}</span>
+                            <span class="badge ${p.estadoRevision === 'LISTO' ? 'badge-success' : 'badge-warning'}">${escapeHtml(p.estadoRevision || '-')}</span>
+                            <div class="revision-badges mt-2">${alertas || '<span class="text-muted">sin alertas</span>'}</div>
+                        </td>
+                        <td>
+                            <div class="revision-switches">
+                                ${renderSwitch(p, 'activo', 'activo', 'fa-toggle-on')}
+                                ${renderSwitch(p, 'posRapido', 'pos', 'fa-bolt')}
+                                ${renderSwitch(p, 'temporadaActiva', 'temp', 'fa-calendar-alt')}
+                                <select class="form-control form-control-sm js-field" data-field="clasificacion">
+                                    <option value="MERCADERIA" ${seleccionado(p.clasificacion, 'MERCADERIA')}>Mercaderia</option>
+                                    <option value="INSUMO" ${seleccionado(p.clasificacion, 'INSUMO')}>Insumo</option>
+                                    <option value="SERVICIO" ${seleccionado(p.clasificacion, 'SERVICIO')}>Servicio</option>
+                                    <option value="INACTIVO" ${seleccionado(p.clasificacion, 'INACTIVO')}>Inactivo</option>
+                                    <option value="DESCONOCIDO" ${seleccionado(p.clasificacion, 'DESCONOCIDO')}>Desconocido</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="text-right" style="min-width: 92px;">
+                            <button type="button" class="btn btn-success btn-sm js-guardar-producto" title="Guardar">
+                                <i class="fas fa-save"></i>
+                            </button>
+                            <a class="btn btn-outline-secondary btn-sm mt-1" href="/productos/editar/${escapeAttr(p.id)}" title="Editar completo">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            function renderSwitch(p, field, label, icon) {
+                const id = field + '-' + p.id;
+                return `
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input js-field" data-field="${field}" id="${id}" ${p[field] ? 'checked' : ''}>
+                        <label class="custom-control-label" for="${id}" title="${escapeAttr(label)}">
+                            <i class="fas ${escapeAttr(icon)} mr-1"></i>${escapeHtml(label)}
+                        </label>
+                    </div>
+                `;
+            }
+
+            function guardarFila(row) {
+                guardarFilaAsync(row, false);
+            }
+
+            function guardarFilaAsync(row, silencioso) {
+                const id = row.data('id');
+                const btn = row.find('.js-guardar-producto');
+                const original = btn.html();
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+                return fetch('/productos/revision/api/' + encodeURIComponent(id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recogerPayload(row))
+                })
+                    .then(function(response) {
+                        return response.json().then(function(body) {
+                            if (!response.ok) {
+                                throw new Error(body.message || 'No se pudo guardar.');
+                            }
+                            return body;
+                        });
+                    })
+                    .then(function(producto) {
+                        const nuevaFila = $(renderFila(producto));
+                        row.replaceWith(nuevaFila);
+                        nuevaFila.addClass('revision-row-saved');
+                        actualizarContadorCambios();
+                        if (!silencioso) {
+                            mostrarMensaje('success', 'Producto #' + producto.id + ' actualizado.');
+                        }
+                        return producto;
+                    })
+                    .catch(function(error) {
+                        mostrarMensaje('danger', error.message || 'Error guardando producto.');
+                        throw error;
+                    })
+                    .finally(function() {
+                        btn.prop('disabled', false).html(original);
+                    });
+            }
+
+            async function guardarCambiosPendientes() {
+                const filas = $('#tablaRevisionBody tr.revision-row-dirty').toArray();
+                if (!filas.length) return;
+
+                const boton = $('#btnGuardarCambios');
+                const original = boton.html();
+                boton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+                let guardados = 0;
+                try {
+                    for (const fila of filas) {
+                        await guardarFilaAsync($(fila), true);
+                        guardados += 1;
+                    }
+                    mostrarMensaje('success', guardados + ' producto(s) actualizados.');
+                } catch (error) {
+                    // El mensaje puntual ya queda mostrado por guardarFilaAsync.
+                } finally {
+                    boton.html(original);
+                    actualizarContadorCambios();
+                }
+            }
+
+            function recogerPayload(row) {
+                return {
+                    codigoInterno: valorCampo(row, 'codigoInterno'),
+                    codigoBarra: valorCampo(row, 'codigoBarra'),
+                    nombre: valorCampo(row, 'nombre'),
+                    categoria: valorCampo(row, 'categoria'),
+                    tipo: valorCampo(row, 'tipo'),
+                    tags: valorCampo(row, 'tags'),
+                    precioCompra: decimalCampo(row, 'precioCompra'),
+                    precioVenta: decimalCampo(row, 'precioVenta'),
+                    stockActual: enteroCampo(row, 'stockActual'),
+                    stockMinimo: enteroCampo(row, 'stockMinimo'),
+                    clasificacion: valorCampo(row, 'clasificacion') || 'MERCADERIA',
+                    activo: booleanCampo(row, 'activo'),
+                    posRapido: booleanCampo(row, 'posRapido'),
+                    temporadaActiva: booleanCampo(row, 'temporadaActiva')
+                };
+            }
+
+            function valorCampo(row, field) {
+                const el = row.find('[data-field="' + field + '"]')[0];
+                if (!el) return null;
+                const valor = el.value !== undefined ? String(el.value).trim() : '';
+                return valor === '' ? null : valor;
+            }
+
+            function decimalCampo(row, field) {
+                const valor = valorCampo(row, field);
+                if (valor === null) return null;
+                const numero = Number(String(valor).replace(',', '.'));
+                return Number.isFinite(numero) ? numero : null;
+            }
+
+            function enteroCampo(row, field) {
+                const valor = valorCampo(row, field);
+                if (valor === null) return 0;
+                const numero = parseInt(valor, 10);
+                return Number.isFinite(numero) ? numero : 0;
+            }
+
+            function booleanCampo(row, field) {
+                const el = row.find('[data-field="' + field + '"]')[0];
+                return !!(el && el.checked);
+            }
+
+            function aplicarFiltroDesdeFila(button) {
+                if (!confirmarCambiosPendientes()) return;
+                const tipo = button.dataset.filter;
+                const valor = button.dataset.value || '';
+                if (!valor) return;
+
+                if (tipo === 'id') {
+                    $('#filtroId').val(valor);
+                } else {
+                    $('#filtroId').val('');
+                }
+
+                if (tipo === 'similar') {
+                    $('#filtroTermino').val(extraerClaveNombre(valor));
+                }
+                if (tipo === 'categoria') {
+                    $('#filtroCategoria').val(valor);
+                }
+                if (tipo === 'precio') {
+                    $('#precioVentaDesde').val(valor);
+                    $('#precioVentaHasta').val(valor);
+                }
+
+                state.page = 0;
+                cargarProductos();
+            }
+
+            function extraerClaveNombre(nombre) {
+                const palabras = String(nombre || '')
+                    .toUpperCase()
+                    .split(/\s+/)
+                    .map(function(palabra) { return palabra.replace(/[^A-Z0-9]/g, ''); })
+                    .filter(function(palabra) {
+                        return palabra.length >= 3 && !['COLOR', 'PARA', 'CON', 'DEL', 'LOS', 'LAS'].includes(palabra);
+                    });
+                return palabras.slice(0, 2).join(' ') || nombre;
+            }
+
+            function renderResumen(resumen) {
+                const items = [
+                    ['Catalogo', resumen.totalCatalogo || 0],
+                    ['Filtrados', resumen.filtrados || 0],
+                    ['Por revisar', resumen.porRevisar || 0],
+                    ['Sin categoria', resumen.sinCategoria || 0],
+                    ['Sin precio', resumen.sinPrecioVenta || 0],
+                    ['Sin costo', resumen.sinCosto || 0]
+                ];
+                $('#resumenRevision').html(items.map(function(item) {
+                    return '<div class="revision-summary-item"><span class="revision-summary-value">'
+                        + escapeHtml(item[1]) + '</span><span class="revision-summary-label">'
+                        + escapeHtml(item[0]) + '</span></div>';
+                }).join(''));
+            }
+
+            function renderPaginacion(data) {
+                const page = (data.page || 0) + 1;
+                const totalPages = data.totalPages || 1;
+                $('#revisionPaginaTexto').text(page + ' / ' + totalPages);
+                $('#revisionResultadoTexto').text((data.filtered || 0) + ' encontrados de ' + (data.total || 0));
+                $('#btnPaginaAnterior').prop('disabled', !!data.first);
+                $('#btnPaginaSiguiente').prop('disabled', !!data.last || totalPages === 0);
+            }
+
+            function actualizarChips(params) {
+                const chips = [];
+                params.forEach(function(value, key) {
+                    if (['page', 'size', 'sort', 'dir'].includes(key)) return;
+                    chips.push('<span class="revision-chip">' + escapeHtml((FILTER_LABELS[key] || key) + ': ' + value)
+                        + '<button type="button" class="js-quitar-filtro" data-campo="' + escapeAttr(key) + '">&times;</button></span>');
+                });
+                $('#chipsFiltros').html(chips.join(''));
+            }
+
+            function actualizarBotonDireccion() {
+                $('#dirRevision')
+                    .attr('data-dir', state.dir)
+                    .html(state.dir === 'asc'
+                        ? '<i class="fas fa-sort-alpha-down"></i>'
+                        : '<i class="fas fa-sort-alpha-up-alt"></i>');
+            }
+
+            function actualizarContadorCambios() {
+                const total = $('#tablaRevisionBody tr.revision-row-dirty').length;
+                $('#contadorCambios').text(total);
+                $('#btnGuardarCambios').prop('disabled', total === 0);
+            }
+
+            function tieneCambiosPendientes() {
+                return $('#tablaRevisionBody tr.revision-row-dirty').length > 0;
+            }
+
+            function confirmarCambiosPendientes() {
+                if (!tieneCambiosPendientes()) {
+                    return true;
+                }
+                return window.confirm(MENSAJE_CAMBIOS_PENDIENTES);
+            }
+
+            function mostrarMensaje(tipo, texto) {
+                const icon = tipo === 'success' ? 'check-circle' : 'exclamation-triangle';
+                $('#revisionAlert').html(`
+                    <div class="alert alert-${tipo} alert-dismissible fade show">
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <i class="fas fa-${icon} mr-2"></i>${escapeHtml(texto)}
+                    </div>
+                `);
+            }
+
+            function dineroValor(valor) {
+                if (valor === null || valor === undefined || valor === '') return '';
+                const numero = Number(valor);
+                return Number.isFinite(numero) ? numero.toFixed(2) : '';
+            }
+
+            function seleccionado(actual, esperado) {
+                return String(actual || '').toUpperCase() === esperado ? 'selected' : '';
+            }
+
+            function escapeHtml(value) {
+                return String(value === null || value === undefined ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function escapeAttr(value) {
+                return escapeHtml(value);
+            }
+        })();
+    </script>
+</th:block>
+
+</body>
+</html>

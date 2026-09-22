@@ -68,7 +68,8 @@ public class ListaEscolarService {
                 .orElseGet(() -> correlativoRepository.save(new Correlativo("LISTA_ESCOLAR", SERIE_LISTA, 0)));
 
         int ultimoCorrelativo = correlativoLista.getUltimoNumero() != null ? correlativoLista.getUltimoNumero() : 0;
-        int maxEnDb = listaRepository.findMaxNumeroBySerie(SERIE_LISTA);
+        Integer maxNumeroEnDb = listaRepository.findMaxNumeroBySerie(SERIE_LISTA);
+        int maxEnDb = maxNumeroEnDb != null ? maxNumeroEnDb : 0;
 
         int nuevoNumero = Math.max(ultimoCorrelativo, maxEnDb) + 1;
 

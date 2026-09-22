@@ -38,7 +38,9 @@ public class RoleController {
     @GetMapping("/api/listar")
     @ResponseBody
     public List<Map<String, Object>> listarRoles() {
-        return rolePermissionService.obtenerTodosLosRoles().stream()
+        List<Role> roles = rolePermissionService.obtenerTodosLosRoles();
+        Map<Long, Long> usuariosPorRole = rolePermissionService.contarUsuariosPorRoles(roles);
+        return roles.stream()
                 .map(role -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", role.getId());
@@ -46,7 +48,7 @@ public class RoleController {
                     map.put("descripcion", role.getDescripcion());
                     map.put("activo", role.getActivo());
                     map.put("cantidadPermisos", role.getPermissions().size());
-                    map.put("cantidadUsuarios", role.getUsuarios().size());
+                    map.put("cantidadUsuarios", usuariosPorRole.getOrDefault(role.getId(), 0L));
                     map.put("fechaCreacion", role.getFechaCreacion());
                     return map;
                 })

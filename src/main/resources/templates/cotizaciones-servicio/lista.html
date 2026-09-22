@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='cotizacion_servicio_lista'">
+<head>
+    <title>Cotizaciones de Servicio</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Cotizaciones de Servicio</h1>
+                    <p class="text-muted mb-0">Propuestas comerciales previas a una orden confirmada.</p>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <a href="/cotizaciones-servicio/nueva" class="btn btn-primary">
+                        <i class="fas fa-plus mr-1"></i> Nueva cotización
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-body">
+                    <table id="tablaCotizacionesServicio" class="table table-bordered table-striped">
+                        <thead>
+                        <tr>
+                            <th>Interno</th>
+                            <th>Código PDF</th>
+                            <th>Cliente</th>
+                            <th>Propuesta</th>
+                            <th>Secciones</th>
+                            <th>Total</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${cotizaciones}">
+                            <td th:text="${c.id}"></td>
+                            <td><span class="badge badge-info" th:text="${c.codigoPublico}"></span></td>
+                            <td>
+                                <div class="font-weight-bold" th:text="${c.clienteNombre} ?: '-'"></div>
+                                <small class="d-block text-muted">
+                                    <i class="fas fa-id-card"></i> <span th:text="${c.clienteDocumento} ?: '-'"></span>
+                                </small>
+                                <small>
+                                    <i class="fas fa-phone"></i> <span th:text="${c.clienteTelefono} ?: '-'"></span>
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge badge-secondary" th:text="${c.tipoServicio} ?: 'SERVICIO'"></span><br>
+                                <span th:text="${c.tituloTrabajo} ?: '-'"></span>
+                            </td>
+                            <td class="text-center" th:text="${c.secciones != null ? c.secciones.size() : 0}"></td>
+                            <td class="font-weight-bold" th:text="${'S/ ' + #numbers.formatDecimal(c.total, 1, 2)}"></td>
+                            <td th:text="${c.fechaCreacion != null ? #temporals.format(c.fechaCreacion, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                            <td class="text-nowrap">
+                                <a th:href="@{/cotizaciones-servicio/pdf/{id}(id=${c.id})}" target="_blank" class="btn btn-sm btn-default" title="PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                                <a th:href="@{/cotizaciones-servicio/editar/{id}(id=${c.id})}" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function () {
+            $("#tablaCotizacionesServicio").DataTable({
+                responsive: true,
+                autoWidth: false,
+                order: [[0, "desc"]],
+                language: { url: "/js/datatables-es.json" }
+            });
+        });
+
+    </script>
+</th:block>
+
+</body>
+</html>

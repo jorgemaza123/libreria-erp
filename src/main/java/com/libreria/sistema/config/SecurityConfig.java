@@ -69,6 +69,7 @@ public class SecurityConfig {
                     "/clientes/**",
                     "/inventario/**",
                     "/cotizaciones/**",
+                    "/cotizaciones-servicio/**",
                     "/cobranzas/**",
                     "/devoluciones/**",
                     "/ordenes/**",
@@ -92,6 +93,7 @@ public class SecurityConfig {
                     "/auditoria/**",
                     "/notificaciones/**",
                     "/incidencias/**",
+                    "/conexion-movil/**",
                     // Endpoints API genericos
                     "/api/**"
                 )
@@ -118,6 +120,9 @@ public class SecurityConfig {
                 // Recursos estaticos publicos (incluye /images/** para logos y assets)
                 .requestMatchers("/css/**", "/js/**", "/img/**", "/images/**", "/plugins/**", "/dist/**", "/uploads/**", "/webjars/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
+
+                // Prueba liviana para confirmar desde el celular que Docker, firewall y HTTPS responden.
+                .requestMatchers("/conexion-movil/acceso", "/conexion-movil/ping", "/conexion-movil/ping.txt").permitAll()
 
                 // PWA (manifest, service worker, offline page)
                 .requestMatchers("/manifest.json", "/service-worker.js", "/offline.html").permitAll()
@@ -149,6 +154,7 @@ public class SecurityConfig {
                 .requestMatchers("/inventario/**").authenticated()
                 .requestMatchers("/kardex/**").authenticated()
                 .requestMatchers("/cotizaciones/**").authenticated()
+                .requestMatchers("/cotizaciones-servicio/**").authenticated()
                 .requestMatchers("/cobranzas/**").authenticated()
                 .requestMatchers("/devoluciones/**").authenticated()
                 .requestMatchers("/ordenes/**").authenticated()

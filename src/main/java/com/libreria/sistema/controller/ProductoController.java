@@ -1,9 +1,16 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.model.Producto;
+import com.libreria.sistema.model.dto.EtiquetaPdfOpcionesDTO;
+import com.libreria.sistema.model.dto.ProductoRevisionResultadoDTO;
+import com.libreria.sistema.model.dto.ProductoRevisionUpdateDTO;
 import com.libreria.sistema.repository.ProductoRepository;
+import com.libreria.sistema.service.ConfiguracionService;
+import com.libreria.sistema.service.CosteoSugerenciaService;
 import com.libreria.sistema.service.EtiquetaService;
+import com.libreria.sistema.service.ProductoCategorizacionService;
 import com.libreria.sistema.service.ProductoExcelService;
+import com.libreria.sistema.service.ProductoRevisionService;
 import com.libreria.sistema.service.ProductoService;
 import com.libreria.sistema.util.Constants;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,16 +47,27 @@ public class ProductoController {
     private final ProductoExcelService productoExcelService;
     private final ProductoRepository productoRepository;
     private final EtiquetaService etiquetaService;
+    private final ConfiguracionService configuracionService;
+    private final CosteoSugerenciaService costeoSugerenciaService;
+    private final ProductoCategorizacionService productoCategorizacionService;
+    private final ProductoRevisionService productoRevisionService;
 
     @Value("${app.upload-dir}")
     private String uploadDir;
 
     public ProductoController(ProductoService productoService, ProductoExcelService productoExcelService,
-                              ProductoRepository productoRepository, EtiquetaService etiquetaService) {
+                              ProductoRepository productoRepository, EtiquetaService etiquetaService,
+                              ConfiguracionService configuracionService, CosteoSugerenciaService costeoSugerenciaService,
+                              ProductoCategorizacionService productoCategorizacionService,
+                              ProductoRevisionService productoRevisionService) {
         this.productoService = productoService;
         this.productoExcelService = productoExcelService;
         this.productoRepository = productoRepository;
         this.etiquetaService = etiquetaService;
+        this.configuracionService = configuracionService;
+        this.costeoSugerenciaService = costeoSugerenciaService;
+        this.productoCategorizacionService = productoCategorizacionService;
+        this.productoRevisionService = productoRevisionService;
     }
 
     /**
@@ -86,6 +106,7 @@ public class ProductoController {
 
         model.addAttribute("producto", p);
         model.addAttribute("titulo", "Nuevo Producto");
+        agregarContextoCosteo(model);
         return "productos/formulario";
     }
 
@@ -99,6 +120,7 @@ public class ProductoController {
             }
             model.addAttribute("producto", producto);
             model.addAttribute("titulo", "Editar Producto");
+            agregarContextoCosteo(model);
             return "productos/formulario";
         }).orElseGet(() -> {
             attributes.addFlashAttribute("error", "Producto no encontrado");
@@ -283,6 +305,77 @@ public class ProductoController {
         return "productos/importar";
     }
 
+    @GetMapping("/categorias-masivo")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
+    public String categoriasMasivo(@RequestParam(value = "soloSinCategoria", defaultValue = "true") boolean soloSinCategoria,
+                                   Model model) {
+        model.addAttribute("productosCategoria", productoCategorizacionService.listarProductos(soloSinCategoria));
+        model.addAttribute("soloSinCategoria", soloSinCategoria);
+        model.addAttribute("categoriasSugeridas", productoRepository.findDistinctCategorias());
+        return "productos/categorias-masivo";
+    }
+
+    @PostMapping("/categorias-masivo/aplicar")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
+    public String aplicarCategoriaMasiva(@RequestParam("categoria") String categoria,
+                                         @RequestParam("productoIds") java.util.List<Long> productoIds,
+                                         RedirectAttributes attributes) {
+        int actualizados = productoCategorizacionService.aplicarCategoria(categoria, productoIds);
+        attributes.addFlashAttribute("success", "Categoria aplicada a " + actualizados + " productos.");
+        return "redirect:/productos/categorias-masivo";
+    }
+
+    @GetMapping("/revision")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
+    public String revisionRapida(Model model) {
+        model.addAttribute("categoriasRevision", productoRevisionService.obtenerCategorias());
+        model.addAttribute("tiposRevision", productoRevisionService.obtenerTipos());
+        return "productos/revision";
+    }
+
+    @GetMapping("/revision/api")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
+    @ResponseBody
+    public ProductoRevisionResultadoDTO buscarRevisionRapida(
+            @RequestParam(required = false) String termino,
+            @RequestParam(required = false) Long id,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) String clasificacion,
+            @RequestParam(required = false) BigDecimal precioVentaDesde,
+            @RequestParam(required = false) BigDecimal precioVentaHasta,
+            @RequestParam(required = false) BigDecimal precioCompraDesde,
+            @RequestParam(required = false) BigDecimal precioCompraHasta,
+            @RequestParam(required = false) Integer stockDesde,
+            @RequestParam(required = false) Integer stockHasta,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "nombre") String sort,
+            @RequestParam(defaultValue = "asc") String dir) {
+        return productoRevisionService.buscar(termino, id, categoria, estado, tipo, clasificacion,
+                precioVentaDesde, precioVentaHasta, precioCompraDesde, precioCompraHasta,
+                stockDesde, stockHasta, page, size, sort, dir);
+    }
+
+    @PostMapping("/revision/api/{id}")
+    @PreAuthorize("hasPermission(null, 'INVENTARIO_EDITAR')")
+    @ResponseBody
+    public ResponseEntity<?> actualizarRevisionRapida(@PathVariable Long id,
+                                                      @RequestBody ProductoRevisionUpdateDTO request,
+                                                      Authentication authentication) {
+        try {
+            String usuario = authentication != null ? authentication.getName() : "sistema";
+            return ResponseEntity.ok(productoRevisionService.actualizar(id, request, usuario));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error actualizando producto desde revision rapida", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("success", false, "message", "No se pudo actualizar el producto."));
+        }
+    }
+
     /**
      * Procesa la importación de productos desde Excel
      */
@@ -354,19 +447,6 @@ public class ProductoController {
     // =====================================================
 
     /**
-     * DTO para recibir la solicitud de impresión de etiquetas.
-     */
-    public static class EtiquetaRequest {
-        private java.util.List<Long> productoIds;
-        private int cantidad = 1;
-
-        public java.util.List<Long> getProductoIds() { return productoIds; }
-        public void setProductoIds(java.util.List<Long> productoIds) { this.productoIds = productoIds; }
-        public int getCantidad() { return cantidad; }
-        public void setCantidad(int cantidad) { this.cantidad = cantidad; }
-    }
-
-    /**
      * Genera PDF con etiquetas de códigos de barras para los productos seleccionados.
      * El formato (A4 o Ticket) se determina según la configuración del sistema.
      *
@@ -375,7 +455,7 @@ public class ProductoController {
      */
     @PostMapping("/etiquetas/imprimir")
     @PreAuthorize("hasPermission(null, 'INVENTARIO_VER')")
-    public ResponseEntity<?> imprimirEtiquetas(@RequestBody EtiquetaRequest request) {
+    public ResponseEntity<?> imprimirEtiquetas(@RequestBody EtiquetaPdfOpcionesDTO request) {
         try {
             // Validación de entrada con mensaje claro
             if (request == null) {
@@ -396,15 +476,16 @@ public class ProductoController {
                         ));
             }
 
-            int cantidad = request.getCantidad() > 0 ? request.getCantidad() : 1;
+            int cantidad = request.getCantidad() != null && request.getCantidad() > 0 ? request.getCantidad() : 1;
             if (cantidad > 100) {
                 cantidad = 100; // Límite de seguridad
             }
+            request.setCantidad(cantidad);
 
             log.info("Generando etiquetas para {} productos, {} por producto",
                     request.getProductoIds().size(), cantidad);
 
-            byte[] pdf = etiquetaService.generarPdfEtiquetas(request.getProductoIds(), cantidad);
+            byte[] pdf = etiquetaService.generarPdfEtiquetas(request.getProductoIds(), cantidad, request);
 
             if (pdf == null || pdf.length == 0) {
                 return ResponseEntity.status(500)
@@ -455,5 +536,10 @@ public class ProductoController {
                             "detalle", e.getClass().getSimpleName()
                     ));
         }
+    }
+
+    private void agregarContextoCosteo(Model model) {
+        model.addAttribute("configCosteo", configuracionService.obtenerConfiguracion());
+        model.addAttribute("factorIndirectoSugerido", costeoSugerenciaService.obtenerFactorSugeridoGlobal());
     }
 }

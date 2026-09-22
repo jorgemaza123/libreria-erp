@@ -45,6 +45,8 @@ public class MovimientoCaja {
 
     @PrePersist
     protected void onCreate() {
-        this.fecha = LocalDateTime.now();
+        if (this.fecha == null) {
+            this.fecha = LocalDateTime.now();
+        }
     }
 }

@@ -1,20 +1,26 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.service.MiNegocioService;
+import com.lowagie.text.DocumentException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -76,6 +82,46 @@ public class MiNegocioController {
         model.addAttribute("finIso", fin.toString());
 
         return "mi-negocio/index";
+    }
+
+    @GetMapping("/cierre-mensual/excel")
+    public ResponseEntity<byte[]> exportarCierreMensualExcel(
+            @RequestParam(name = "inicio", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate inicio,
+            @RequestParam(name = "fin", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fin)
+            throws IOException {
+        LocalDate[] rango = resolverRangoExportacion(inicio, fin);
+        byte[] bytes = miNegocioService.exportarCierreMensualExcel(rango[0], rango[1]);
+        String filename = "cierre_contador_" + rango[0] + "_" + rango[1] + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
+    }
+
+    @GetMapping("/cierre-mensual/pdf")
+    public void exportarCierreMensualPdf(
+            @RequestParam(name = "inicio", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate inicio,
+            @RequestParam(name = "fin", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fin,
+            HttpServletResponse response) throws IOException, DocumentException {
+        LocalDate[] rango = resolverRangoExportacion(inicio, fin);
+        String filename = "cierre_contador_" + rango[0] + "_" + rango[1] + ".pdf";
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        miNegocioService.exportarCierreMensualPdf(rango[0], rango[1], response.getOutputStream());
+    }
+
+    private LocalDate[] resolverRangoExportacion(LocalDate inicio, LocalDate fin) {
+        if (inicio == null || fin == null) {
+            YearMonth mes = YearMonth.now();
+            inicio = mes.atDay(1);
+            fin = mes.atEndOfMonth();
+        }
+        if (inicio.isAfter(fin)) {
+            LocalDate temporal = inicio;
+            inicio = fin;
+            fin = temporal;
+        }
+        return new LocalDate[]{inicio, fin};
     }
 
     /**

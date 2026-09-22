@@ -31,6 +31,27 @@ public class Compra {
     private BigDecimal total;
     private String observaciones;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal subtotalDirecto;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal gastosIndirectosMonto;
+
+    @Column(precision = 6, scale = 3)
+    private BigDecimal factorIndirectoAplicadoPct;
+
+    @Column(precision = 6, scale = 3)
+    private BigDecimal factorIndirectoSugeridoPct;
+
+    @Column(length = 20)
+    private String origenFactorIndirecto;
+
+    @Column(columnDefinition = "TEXT")
+    private String detalleGastosIndirectos;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal totalCostoReal;
+
     @Column(nullable = false)
     private String estado = "REGISTRADA"; // "REGISTRADA", "ANULADA"
 
@@ -43,5 +64,10 @@ public class Compra {
         if (this.estado == null) {
             this.estado = "REGISTRADA";
         }
+        if (this.subtotalDirecto == null) this.subtotalDirecto = BigDecimal.ZERO;
+        if (this.gastosIndirectosMonto == null) this.gastosIndirectosMonto = BigDecimal.ZERO;
+        if (this.factorIndirectoAplicadoPct == null) this.factorIndirectoAplicadoPct = BigDecimal.ZERO;
+        if (this.factorIndirectoSugeridoPct == null) this.factorIndirectoSugeridoPct = BigDecimal.ZERO;
+        if (this.totalCostoReal == null) this.totalCostoReal = BigDecimal.ZERO;
     }
 }

@@ -16,7 +16,12 @@ public interface ReporteProblemaRepository extends JpaRepository<ReporteProblema
     /**
      * Buscar reportes por estado
      */
-    List<ReporteProblema> findByEstadoOrderByFechaReporteDesc(String estado);
+    @Query("SELECT r FROM ReporteProblema r " +
+           "LEFT JOIN FETCH r.usuarioReporta " +
+           "LEFT JOIN FETCH r.producto " +
+           "WHERE r.estado = :estado " +
+           "ORDER BY r.fechaReporte DESC")
+    List<ReporteProblema> findByEstadoOrderByFechaReporteDesc(@Param("estado") String estado);
 
     /**
      * Buscar reportes por estado con paginación
@@ -65,7 +70,8 @@ public interface ReporteProblemaRepository extends JpaRepository<ReporteProblema
     /**
      * Listado paginado general ordenado por fecha
      */
-    @Query("SELECT r FROM ReporteProblema r LEFT JOIN FETCH r.usuarioReporta LEFT JOIN FETCH r.producto ORDER BY r.fechaReporte DESC")
+    @Query(value = "SELECT r FROM ReporteProblema r LEFT JOIN FETCH r.usuarioReporta LEFT JOIN FETCH r.producto ORDER BY r.fechaReporte DESC",
+           countQuery = "SELECT COUNT(r) FROM ReporteProblema r")
     Page<ReporteProblema> findAllWithDetails(Pageable pageable);
 
     /**

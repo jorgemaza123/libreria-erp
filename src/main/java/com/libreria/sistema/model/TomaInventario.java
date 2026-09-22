@@ -2,6 +2,7 @@ package com.libreria.sistema.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,7 @@ public class TomaInventario {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
+    @ToString.Exclude
     private Usuario usuario;
 
     /**
@@ -51,6 +53,7 @@ public class TomaInventario {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_cierre_id")
+    @ToString.Exclude
     private Usuario usuarioCierre;
 
     /**
@@ -69,6 +72,7 @@ public class TomaInventario {
      * Detalles de los productos en esta toma de inventario.
      */
     @OneToMany(mappedBy = "tomaInventario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
     private List<DetalleTomaInventario> detalles = new ArrayList<>();
 
     // ========== CAMPOS CALCULADOS (Transient) ==========

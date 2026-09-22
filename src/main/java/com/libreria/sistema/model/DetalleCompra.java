@@ -41,4 +41,28 @@ public class DetalleCompra {
 
     @Column(precision = 12, scale = 2)
     private BigDecimal precioPorPresentacion;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoUnitarioBase;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal cargoIndirectoUnitario;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal cargoIndirectoTotal;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoUnitarioReal;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioSugeridoSnapshot;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioMinimoSnapshot;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal gananciaObjetivoPct;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal gananciaMinimaPct;
 }

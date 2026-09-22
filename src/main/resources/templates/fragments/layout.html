@@ -30,6 +30,7 @@
           body { overflow-x: hidden !important; padding-right: 0 !important; }
           .nav-sidebar .nav-item > .nav-link { margin-bottom: 0.2rem; }
           .nav-treeview { margin-left: 10px; font-size: 0.9em; }
+          .nav-sidebar .nav-item.menu-open > .nav-treeview { display: block; }
       </style>
 </head>
 
@@ -42,6 +43,14 @@
                     <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
                 </li>
             </ul>
+
+            <!-- Alerta de Exceso de Efectivo -->
+            <div class="navbar-nav ml-3 d-none" id="alertaExcesoEfectivo">
+                <div class="alert alert-warning mb-0 py-1 px-3 d-flex align-items-center" style="border-radius: 20px; font-size: 0.85rem; border: 1px solid #ffeeba; background-color: #fff3cd; color: #856404;">
+                    <i class="fas fa-exclamation-triangle mr-2 text-danger"></i>
+                    <span><strong>Exceso de Efectivo:</strong> Caja tiene S/ <span id="montoExcesoEfectivo">0.00</span>. Se sugiere un retiro de seguridad.</span>
+                </div>
+            </div>
 
             <!-- Alerta de Licencia (cuando alertaPago=true) -->
             <div th:if="${alertaPago}" class="navbar-nav mx-auto" id="alertaLicencia">
@@ -188,7 +197,291 @@
                             </a>
                         </li>
 
-                        <li sec:authorize="hasPermission(null, 'PERSONALIZADO_VER')" class="nav-item" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_pedidos' or active == 'personalizado_configuracion' ? 'menu-open' : ''}">
+                        <li class="nav-header">OPERACIÓN</li>
+
+                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizacion_servicio_nueva' or active == 'cotizacion_servicio_lista' or active == 'cobranzas' or active == 'devoluciones' or active == 'clientes' or active == 'clientes_creditos' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizacion_servicio_nueva' or active == 'cotizacion_servicio_lista' or active == 'cobranzas' or active == 'devoluciones' or active == 'clientes' or active == 'clientes_creditos' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Vender <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/ventas/nueva" class="nav-link" th:classappend="${active == 'pos' ? 'active' : ''}">
+                                        <i class="fas fa-bolt nav-icon text-warning"></i><p>Punto de Venta</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/ventas/lista" class="nav-link" th:classappend="${active == 'ventas' or active == 'historial_ventas' ? 'active' : ''}">
+                                        <i class="fas fa-list-alt nav-icon"></i><p>Historial</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones-servicio/nueva" class="nav-link" th:classappend="${active == 'cotizacion_servicio_nueva' ? 'active' : ''}">
+                                        <i class="fas fa-file-signature nav-icon text-info"></i><p>Nueva Proforma</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones-servicio/lista" class="nav-link" th:classappend="${active == 'cotizacion_servicio_lista' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon text-info"></i><p>Proformas de Trabajo</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cobranzas" class="nav-link" th:classappend="${active == 'cobranzas' ? 'active' : ''}">
+                                        <i class="fas fa-hand-holding-usd nav-icon"></i><p>Cobranzas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/devoluciones" class="nav-link" th:classappend="${active == 'devoluciones' ? 'active' : ''}">
+                                        <i class="fas fa-undo nav-icon"></i><p>Devoluciones</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/clientes" class="nav-link" th:classappend="${active == 'clientes' ? 'active' : ''}">
+                                        <i class="fas fa-users nav-icon"></i><p>Clientes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/clientes/creditos" class="nav-link" th:classappend="${active == 'clientes_creditos' ? 'active' : ''}">
+                                        <i class="fas fa-credit-card nav-icon text-warning"></i><p>Créditos y Deudas</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'ajuste' or active == 'productos' or active == 'inventario' or active == 'compras' or active == 'reposicion_ventas' or active == 'proveedores' or active == 'faltantes_unificado' or active == 'productos_faltantes' or active == 'solicitudes' or active == 'listas_escolares' or active == 'laminas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'ajuste' or active == 'productos' or active == 'inventario' or active == 'compras' or active == 'reposicion_ventas' or active == 'proveedores' or active == 'faltantes_unificado' or active == 'productos_faltantes' or active == 'solicitudes' or active == 'listas_escolares' or active == 'laminas' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-dolly"></i>
+                                <p>Comprar y Reponer <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/stock" class="nav-link text-success" th:classappend="${active == 'stock' or active == 'ajuste' ? 'active' : ''}">
+                                        <i class="fas fa-cubes nav-icon"></i><p>Control de Stock</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/compras/lista" class="nav-link" th:classappend="${active == 'compras' ? 'active' : ''}">
+                                        <i class="fas fa-shopping-basket nav-icon"></i><p>Compras</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reposicion" class="nav-link text-warning" th:classappend="${active == 'reposicion_ventas' ? 'active' : ''}">
+                                        <i class="fas fa-box-open nav-icon"></i><p>Reposición y Ganancia</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/productos" class="nav-link" th:classappend="${active == 'productos' or active == 'inventario' ? 'active' : ''}">
+                                        <i class="fas fa-barcode nav-icon"></i><p>Productos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/faltantes" class="nav-link" th:classappend="${active == 'faltantes_unificado' or active == 'productos_faltantes' or active == 'solicitudes' ? 'active' : ''}">
+                                        <i class="fas fa-exclamation-circle nav-icon text-warning"></i><p>Faltantes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/listas-escolares" class="nav-link" th:classappend="${active == 'listas_escolares' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon text-success"></i><p>Listas Escolares</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/laminas" class="nav-link" th:classappend="${active == 'laminas' ? 'active' : ''}">
+                                        <i class="fas fa-layer-group nav-icon"></i><p>Láminas</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/proveedores" class="nav-link" th:classappend="${active == 'proveedores' ? 'active' : ''}">
+                                        <i class="fas fa-truck nav-icon"></i><p>Proveedores</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item" th:classappend="${active == 'servicios' or active == 'nuevo_servicio' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'servicios' or active == 'nuevo_servicio' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-briefcase"></i>
+                                <p>Trabajos y Pedidos <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/ordenes/lista" class="nav-link" th:classappend="${active == 'servicios' ? 'active' : ''}">
+                                        <i class="fas fa-tasks nav-icon"></i><p>Lista de Trabajos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/ordenes/nueva" class="nav-link" th:classappend="${active == 'nuevo_servicio' ? 'active' : ''}">
+                                        <i class="fas fa-plus-circle nav-icon"></i><p>Nuevo Trabajo</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" style="display: none;">
+                                    <a href="/cotizaciones/lista" class="nav-link" th:classappend="${active == 'cotizaciones' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice nav-icon"></i><p>Cotizaciones</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" style="display: none;">
+                                    <a href="/cotizaciones/nueva" class="nav-link" th:classappend="${active == 'nueva_cotizacion' ? 'active' : ''}">
+                                        <i class="fas fa-plus nav-icon"></i><p>Nueva Cotización</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" style="display: none;">
+                                    <a href="/cotizaciones-servicio/lista" class="nav-link" th:classappend="${active == 'cotizacion_servicio_lista' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon"></i><p>Cotiz. Servicio</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" style="display: none;" sec:authorize="hasPermission(null, 'PERSONALIZADO_VER')">
+                                    <a href="/personalizado/pedidos" class="nav-link" th:classappend="${active == 'personalizado_pedidos' ? 'active' : ''}">
+                                        <i class="fas fa-gift nav-icon"></i><p>Pedidos Personalizados</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item" th:classappend="${active == 'mi_negocio' or active == 'costeo' or active == 'caja' or active == 'gastos' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'mi_negocio' or active == 'costeo' or active == 'caja' or active == 'gastos' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-store"></i>
+                                <p>Mi Negocio <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/mi-negocio" class="nav-link text-warning font-weight-bold" th:classappend="${active == 'mi_negocio' ? 'active' : ''}">
+                                        <i class="fas fa-store nav-icon text-warning"></i><p>Panel del Negocio</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/costeo" class="nav-link text-info" th:classappend="${active == 'costeo' ? 'active' : ''}">
+                                        <i class="fas fa-balance-scale nav-icon"></i><p>Costeo y Precios</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/caja" class="nav-link" th:classappend="${active == 'caja' ? 'active' : ''}">
+                                        <i class="fas fa-wallet nav-icon"></i><p>Caja</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/gastos" class="nav-link" th:classappend="${active == 'gastos' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice-dollar nav-icon"></i><p>Gastos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros" class="nav-link" th:classappend="${active == 'financiero_dashboard' ? 'active' : ''}">
+                                        <i class="fas fa-chart-line nav-icon"></i><p>Dashboard Financiero</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/flujo-caja" class="nav-link" th:classappend="${active == 'flujo_caja' ? 'active' : ''}">
+                                        <i class="fas fa-exchange-alt nav-icon"></i><p>Flujo de Caja</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/rentabilidad" class="nav-link" th:classappend="${active == 'rentabilidad' ? 'active' : ''}">
+                                        <i class="fas fa-percent nav-icon"></i><p>Rentabilidad</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/financieros/analisis-ventas" class="nav-link" th:classappend="${active == 'analisis_ventas' ? 'active' : ''}">
+                                        <i class="fas fa-chart-pie nav-icon"></i><p>Análisis Ventas</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-header">ADMINISTRACIÓN</li>
+
+                        <li class="nav-item" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'sunat_billing' or active == 'licencia' or active == 'auditoria' or active == 'roles' or active == 'usuarios' or active == 'notificaciones' or active == 'incidencias' or active == 'toma-inventario' or active == 'kardex' or active == 'reportes' or active == 'reportes_avanzados' or active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' or active == 'personalizado_dashboard' or active == 'personalizado_pedidos' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_configuracion' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'sunat_billing' or active == 'licencia' or active == 'auditoria' or active == 'roles' or active == 'usuarios' or active == 'notificaciones' or active == 'incidencias' or active == 'toma-inventario' or active == 'kardex' or active == 'reportes' or active == 'reportes_avanzados' or active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' or active == 'personalizado_dashboard' or active == 'personalizado_pedidos' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_configuracion' ? 'active' : ''}">
+                                <i class="nav-icon fas fa-cogs"></i>
+                                <p>Administración <i class="right fas fa-angle-left"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="/configuracion/general" class="nav-link" th:classappend="${active == 'configuracion' ? 'active' : ''}">
+                                        <i class="fas fa-sliders-h nav-icon"></i><p>Configuración</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/notificaciones" class="nav-link" th:classappend="${active == 'notificaciones' ? 'active' : ''}">
+                                        <i class="fas fa-bell nav-icon text-info"></i><p>Notificaciones</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/conexion-movil" class="nav-link" th:classappend="${active == 'red' ? 'active' : ''}">
+                                        <i class="fas fa-wifi nav-icon text-info"></i><p>Conexión Móvil</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/toma-inventario" class="nav-link" th:classappend="${active == 'toma-inventario' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-check nav-icon"></i><p>Toma Inventario</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/toma-inventario/rapida" class="nav-link" th:classappend="${active == 'toma-inventario' ? 'active' : ''}">
+                                        <i class="fas fa-barcode nav-icon text-success"></i><p>Regularizacion Rapida</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/kardex" class="nav-link" th:classappend="${active == 'kardex' ? 'active' : ''}">
+                                        <i class="fas fa-exchange-alt nav-icon"></i><p>Kardex</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes" class="nav-link" th:classappend="${active == 'reportes' ? 'active' : ''}">
+                                        <i class="fas fa-file-excel nav-icon"></i><p>Reportes</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/reportes/avanzados" class="nav-link" th:classappend="${active == 'reportes_avanzados' ? 'active' : ''}">
+                                        <i class="fas fa-chart-bar nav-icon"></i><p>Reportes Avanzados</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasPermission(null, 'PERSONALIZADO_VER')">
+                                    <a href="/personalizado" class="nav-link" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_pedidos' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_configuracion' ? 'active' : ''}">
+                                        <i class="fas fa-gift nav-icon"></i><p>Personalizado Avanzado</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/crm" class="nav-link" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'active' : ''}">
+                                        <i class="fas fa-handshake nav-icon"></i><p>CRM</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/incidencias" class="nav-link" th:classappend="${active == 'incidencias' ? 'active' : ''}">
+                                        <i class="fas fa-exclamation-triangle nav-icon text-warning"></i><p>Incidencias</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/configuracion/sunat" class="nav-link" th:classappend="${active == 'sunat' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice nav-icon"></i><p>Config. SUNAT</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/configuracion/sunat-billing" class="nav-link" th:classappend="${active == 'sunat_billing' ? 'active' : ''}">
+                                        <i class="fas fa-file-invoice-dollar nav-icon"></i><p>Consumo SUNAT</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/usuarios" class="nav-link" th:classappend="${active == 'usuarios' ? 'active' : ''}">
+                                        <i class="fas fa-users-cog nav-icon"></i><p>Usuarios</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/roles" class="nav-link" th:classappend="${active == 'roles' ? 'active' : ''}">
+                                        <i class="fas fa-user-shield nav-icon"></i><p>Roles</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/auditoria" class="nav-link" th:classappend="${active == 'auditoria' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon"></i><p>Auditoría</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                                    <a href="/licencia" class="nav-link" th:classappend="${active == 'licencia' ? 'active' : ''}">
+                                        <i class="fas fa-key nav-icon text-warning"></i><p>Licencia</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li sec:authorize="hasPermission(null, 'PERSONALIZADO_VER')" class="nav-item" style="display: none;" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_pedidos' or active == 'personalizado_configuracion' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'personalizado_dashboard' or active == 'personalizado_insumos' or active == 'personalizado_compras' or active == 'personalizado_plantillas' or active == 'personalizado_adicionales' or active == 'personalizado_pedidos' or active == 'personalizado_configuracion' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-gift"></i>
                                 <p>Personalizado <i class="right fas fa-angle-left"></i></p>
@@ -232,8 +525,8 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
-                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'cotizacion_servicio_nueva' or active == 'cotizacion_servicio_lista' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'menu-open' : ''}">
+                            <a href="#" class="nav-link" th:classappend="${active == 'pos' or active == 'ventas' or active == 'historial_ventas' or active == 'cotizaciones' or active == 'nueva_cotizacion' or active == 'cotizacion_servicio_nueva' or active == 'cotizacion_servicio_lista' or active == 'listas_escolares' or active == 'faltantes_unificado' or active == 'servicios' or active == 'nuevo_servicio' or active == 'devoluciones' or active == 'cobranzas' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-shopping-cart"></i>
                                 <p>Comercial <i class="right fas fa-angle-left"></i></p>
                             </a>
@@ -279,6 +572,16 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
+                                    <a href="/cotizaciones-servicio/nueva" class="nav-link" th:classappend="${active == 'cotizacion_servicio_nueva' ? 'active' : ''}">
+                                        <i class="fas fa-file-signature nav-icon"></i><p>Cotización de Servicio</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="/cotizaciones-servicio/lista" class="nav-link" th:classappend="${active == 'cotizacion_servicio_lista' ? 'active' : ''}">
+                                        <i class="fas fa-clipboard-list nav-icon"></i><p>Lista de Cotizaciones de Servicio</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a href="/cobranzas" class="nav-link" th:classappend="${active == 'cobranzas' ? 'active' : ''}">
                                         <i class="fas fa-hand-holding-usd nav-icon"></i><p>Cobranzas / Créditos</p>
                                     </a>
@@ -291,7 +594,7 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'menu-open' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'crm_dashboard' or active == 'crm_pipeline' or active == 'crm_leads' or active == 'crm_actividades' or active == 'crm_segmentacion' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-handshake"></i>
                                 <p>CRM <i class="right fas fa-angle-left"></i></p>
@@ -325,7 +628,7 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'clientes' or active == 'clientes_creditos' ? 'menu-open' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'clientes' or active == 'clientes_creditos' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'clientes' or active == 'clientes_creditos' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-users"></i>
                                 <p>Clientes <i class="right fas fa-angle-left"></i></p>
@@ -344,7 +647,7 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'stock' or active == 'productos' or active == 'laminas' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'stock' or active == 'productos' or active == 'laminas' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'stock' or active == 'productos' or active == 'laminas' or active == 'ajuste' or active == 'toma-inventario' or active == 'compras' or active == 'proveedores' or active == 'kardex' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-boxes"></i>
                                 <p>Logística <i class="right fas fa-angle-left"></i></p>
@@ -365,11 +668,6 @@
                                           <i class="fas fa-layer-group nav-icon"></i><p>Laminas</p>
                                       </a>
                                   </li>
-                                <li class="nav-item">
-                                    <a href="/inventario/ajuste" class="nav-link text-warning" th:classappend="${active == 'ajuste' ? 'active' : ''}">
-                                        <i class="nav-icon fas fa-balance-scale"></i><p>Ajuste Individual</p>
-                                    </a>
-                                </li>
                                 <li class="nav-item">
                                     <a href="/toma-inventario" class="nav-link text-info" th:classappend="${active == 'toma-inventario' ? 'active' : ''}">
                                         <i class="nav-icon fas fa-clipboard-check"></i><p>Toma de Inventario</p>
@@ -393,7 +691,7 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' or active == 'mi_negocio' ? 'menu-open' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' or active == 'mi_negocio' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'caja' or active == 'gastos' or active == 'reportes' or active == 'reportes_avanzados' or active == 'financiero_dashboard' or active == 'flujo_caja' or active == 'rentabilidad' or active == 'analisis_ventas' or active == 'mi_negocio' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-chart-pie"></i>
                                 <p>Finanzas <i class="right fas fa-angle-left"></i></p>
@@ -448,27 +746,27 @@
                             </ul>
                         </li>
 
-                        <li class="nav-header">SISTEMA</li>
+                        <li class="nav-header" style="display: none;">SISTEMA</li>
 
-                        <li class="nav-item">
+                        <li class="nav-item" style="display: none;">
                             <a href="/notificaciones" class="nav-link" th:classappend="${active == 'notificaciones' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-bell text-info"></i><p>Notificaciones</p>
                             </a>
                         </li>
 
-                        <li class="nav-item">
+                        <li class="nav-item" style="display: none;">
                             <a href="/incidencias" class="nav-link" th:classappend="${active == 'incidencias' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-exclamation-triangle text-warning"></i><p>Reportar Incidencias</p>
                             </a>
                         </li>
 
-                        <li class="nav-item">
+                        <li class="nav-item" style="display: none;">
                             <a href="/vendedor/dashboard" class="nav-link bg-primary text-white">
                                 <i class="nav-icon fas fa-th-large"></i><p>Modo Vendedor</p>
                             </a>
                         </li>
 
-                        <li class="nav-item" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'menu-open' : ''}">
+                        <li class="nav-item" style="display: none;" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'menu-open' : ''}">
                             <a href="#" class="nav-link" th:classappend="${active == 'configuracion' or active == 'red' or active == 'sunat' or active == 'auditoria' or active == 'roles' or active == 'usuarios' ? 'active' : ''}">
                                 <i class="nav-icon fas fa-cogs"></i>
                                 <p>Configuración <i class="right fas fa-angle-left"></i></p>
@@ -1060,6 +1358,17 @@
                 igvPorcentaje:    /*[[${config?.igvPorcentaje ?: 18.00}]]*/ 18.00
             };
 
+            $(function() {
+                $('.nav-sidebar .nav-link.active').each(function() {
+                    var $subMenu = $(this).closest('.nav-treeview');
+                    if ($subMenu.length) {
+                        $subMenu.css('display', 'block');
+                        $subMenu.closest('.nav-item').addClass('menu-open')
+                            .children('.nav-link').addClass('active');
+                    }
+                });
+            });
+
             window.formatearMoneda = function(valor) {
                 if(valor === null || valor === undefined) return window.APP_CONFIG.formatoMoneda + ' 0.00';
                 return window.APP_CONFIG.formatoMoneda + ' ' + parseFloat(valor).toFixed(2);
@@ -1523,6 +1832,43 @@
                 }
 
                 programar(intervaloNormal);
+            })();
+        </script>
+
+        <!-- Alerta de Exceso de Efectivo en Caja -->
+        <script>
+            (function () {
+                function verificarEfectivoCaja() {
+                    fetch('/caja/api/datos', { cache: 'no-store' })
+                        .then(function(r) {
+                            if (!r.ok) return;
+                            return r.json();
+                        })
+                        .then(function(data) {
+                            if (data && data.sesionActiva) {
+                                const saldo = parseFloat(data.balance.saldo || 0);
+                                const limite = parseFloat(data.limiteEfectivoCaja || 0);
+                                const alertEl = document.getElementById('alertaExcesoEfectivo');
+                                const valEl = document.getElementById('montoExcesoEfectivo');
+
+                                if (limite > 0 && saldo > limite) {
+                                    if (valEl) valEl.textContent = saldo.toFixed(2);
+                                    if (alertEl) alertEl.classList.remove('d-none');
+                                } else {
+                                    if (alertEl) alertEl.classList.add('d-none');
+                                }
+                            }
+                        })
+                        .catch(function(err) {
+                            console.warn('Error al verificar efectivo en caja:', err);
+                        });
+                }
+
+                // Ejecutar al cargar la página y luego cada 30 segundos
+                document.addEventListener('DOMContentLoaded', function() {
+                    verificarEfectivoCaja();
+                    setInterval(verificarEfectivoCaja, 30000);
+                });
             })();
         </script>
     </div>

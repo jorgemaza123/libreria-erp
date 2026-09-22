@@ -33,18 +33,18 @@
             <ul class="nav nav-pills mb-4" id="mainPills" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link"
-                       th:classappend="${activeTab == 'listas'} ? 'active' : ''"
-                       id="pill-listas" data-toggle="pill" href="#section-listas" role="tab">
-                        <i class="fas fa-clipboard-list mr-1"></i> Faltantes de Listas Escolares
-                        <span class="badge badge-warning ml-1" th:text="${#lists.size(faltantes)}">0</span>
+                       th:classappend="${activeTab == 'solicitudes'} ? 'active' : ''"
+                       id="pill-solicitudes" data-toggle="pill" href="#section-solicitudes" role="tab">
+                        <i class="fas fa-bullhorn mr-1"></i> Demanda Insatisfecha
+                        <span class="badge badge-danger ml-1" th:text="${#lists.size(solicitudes)}">0</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link"
-                       th:classappend="${activeTab == 'solicitudes'} ? 'active' : ''"
-                       id="pill-solicitudes" data-toggle="pill" href="#section-solicitudes" role="tab">
-                        <i class="fas fa-bullhorn mr-1"></i> Pedidos de Vendedores
-                        <span class="badge badge-danger ml-1" th:text="${#lists.size(solicitudes)}">0</span>
+                       th:classappend="${activeTab == 'listas'} ? 'active' : ''"
+                       id="pill-listas" data-toggle="pill" href="#section-listas" role="tab">
+                        <i class="fas fa-clipboard-list mr-1"></i> Faltantes de Listas Escolares
+                        <span class="badge badge-warning ml-1" th:text="${#lists.size(faltantes)}">0</span>
                     </a>
                 </li>
             </ul>
@@ -274,15 +274,34 @@
 
                     <div class="card card-danger card-outline">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-bullhorn mr-2"></i> Ranking de Solicitudes</h3>
+                            <h3 class="card-title"><i class="fas fa-bullhorn mr-2"></i> Pedidos de Vendedores</h3>
                             <div class="card-tools">
                                 <small class="text-muted">Productos que los clientes pidieron y no había en stock.</small>
                             </div>
                         </div>
                         <div class="card-body">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                                <div class="btn-group mb-2 mb-md-0">
+                                    <button type="button" class="btn btn-outline-danger" onclick="eliminarSolicitudesSeleccionadas()">
+                                        <i class="fas fa-trash mr-1"></i> Eliminar seleccionados
+                                    </button>
+                                    <button type="button" class="btn btn-danger" onclick="exportarSolicitudesPDF()">
+                                        <i class="fas fa-file-pdf mr-1"></i> PDF
+                                    </button>
+                                    <button type="button" class="btn btn-success" onclick="exportarSolicitudesExcel()">
+                                        <i class="fas fa-file-excel mr-1"></i> Excel
+                                    </button>
+                                </div>
+                                <span class="text-muted small" id="contadorSolicitudesSeleccionadas">
+                                    Si no seleccionas filas, se exportan todos los pedidos pendientes.
+                                </span>
+                            </div>
                             <table id="tablaSolicitudes" class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
+                                        <th style="width: 40px;" class="text-center">
+                                            <input type="checkbox" id="checkAllSolicitudes" title="Seleccionar todos los pedidos visibles">
+                                        </th>
                                         <th>Producto Solicitado</th>
                                         <th class="text-center">Veces Pedido</th>
                                         <th>Última Solicitud</th>
@@ -291,6 +310,12 @@
                                 </thead>
                                 <tbody>
                                     <tr th:each="s : ${solicitudes}">
+                                        <td class="text-center">
+                                            <input type="checkbox"
+                                                   class="solicitud-check"
+                                                   th:data-id="${s.id}"
+                                                   th:data-nombre="${s.nombreProducto}">
+                                        </td>
                                         <td class="font-weight-bold text-uppercase" th:text="${s.nombreProducto}"></td>
                                         <td class="text-center">
                                             <span class="badge badge-danger" style="font-size: 1.2em;" th:text="${s.contador}"></span>
@@ -422,6 +447,8 @@
 
 <th:block layout:fragment="scripts">
 <script th:inline="none">
+let tablaSolicitudesDt = null;
+
 $(document).ready(function() {
     // DataTable: Faltantes listas
     if ($('#tablaFaltantes tbody tr').length > 0) {
@@ -444,12 +471,14 @@ $(document).ready(function() {
 
     // DataTable: Solicitudes vendedores
     if ($('#tablaSolicitudes tbody tr').length > 0) {
-        $('#tablaSolicitudes').DataTable({
+        tablaSolicitudesDt = $('#tablaSolicitudes').DataTable({
             responsive: true,
             autoWidth: false,
-            order: [[1, 'desc']],
-            language: { url: '/js/datatables-es.json' }
+            order: [[2, 'desc']],
+            language: { url: '/js/datatables-es.json' },
+            columnDefs: [{ orderable: false, targets: [0, 4] }]
         });
+        tablaSolicitudesDt.on('draw', actualizarContadorSolicitudes);
     }
 
     // Check all
@@ -458,6 +487,15 @@ $(document).ready(function() {
         actualizarContador();
     });
     $(document).on('change', '.faltante-check', actualizarContador);
+
+    $('#checkAllSolicitudes').on('change', function() {
+        const filas = tablaSolicitudesDt
+            ? tablaSolicitudesDt.rows({ search: 'applied' }).nodes()
+            : $('#tablaSolicitudes tbody tr');
+        $(filas).find('.solicitud-check').prop('checked', this.checked);
+        actualizarContadorSolicitudes();
+    });
+    $(document).on('change', '.solicitud-check', actualizarContadorSolicitudes);
 
     // Select2 para modales
     inicializarSelect2('#asignarProductoSelect');
@@ -654,6 +692,96 @@ function actualizarContador() {
     const total = $('.faltante-check').length;
     const seleccionados = $('.faltante-check:checked').length;
     $('#contadorSeleccion').text(seleccionados > 0 ? seleccionados + ' de ' + total + ' seleccionados' : '');
+}
+
+function idsSolicitudesSeleccionadas() {
+    const ids = [];
+    $('.solicitud-check:checked').each(function() {
+        const id = parseInt($(this).data('id'), 10);
+        if (!Number.isNaN(id)) {
+            ids.push(id);
+        }
+    });
+    return ids;
+}
+
+function actualizarContadorSolicitudes() {
+    const total = $('.solicitud-check').length;
+    const seleccionados = idsSolicitudesSeleccionadas().length;
+    const texto = seleccionados > 0
+        ? seleccionados + ' de ' + total + ' pedido(s) seleccionados. PDF/Excel exportan solo la selección.'
+        : 'Si no seleccionas filas, se exportan todos los pedidos pendientes.';
+    $('#contadorSolicitudesSeleccionadas').text(texto);
+
+    const filasFiltradas = tablaSolicitudesDt
+        ? tablaSolicitudesDt.rows({ search: 'applied' }).nodes()
+        : $('#tablaSolicitudes tbody tr');
+    const checksFiltrados = $(filasFiltradas).find('.solicitud-check');
+    const seleccionadosFiltrados = checksFiltrados.filter(':checked').length;
+    $('#checkAllSolicitudes').prop(
+        'checked',
+        checksFiltrados.length > 0 && seleccionadosFiltrados === checksFiltrados.length
+    );
+}
+
+function urlExportSolicitudes(tipo) {
+    const params = new URLSearchParams();
+    idsSolicitudesSeleccionadas().forEach(id => params.append('ids', id));
+    const query = params.toString();
+    return '/solicitudes/exportar/' + tipo + (query ? '?' + query : '');
+}
+
+function exportarSolicitudesPDF() {
+    window.open(urlExportSolicitudes('pdf'), '_blank');
+}
+
+function exportarSolicitudesExcel() {
+    window.location.href = urlExportSolicitudes('excel');
+}
+
+function eliminarSolicitudesSeleccionadas() {
+    const ids = idsSolicitudesSeleccionadas();
+
+    if (ids.length === 0) {
+        Swal.fire('Atencion', 'Selecciona uno o varios pedidos de vendedores para eliminar.', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Eliminar pedidos seleccionados?',
+        html: 'Se eliminaran <strong>' + ids.length + '</strong> pedido(s) de vendedores.<br><small class="text-danger">Esta accion no se puede deshacer.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Si, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then(function(result) {
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        $.ajax({
+            url: '/solicitudes/eliminar-masivo',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ ids: ids }),
+            success: function(resp) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pedidos eliminados',
+                    text: (resp.eliminados || 0) + ' pedido(s) eliminados.',
+                    timer: 1600,
+                    showConfirmButton: false
+                }).then(function() {
+                    window.location.href = '/faltantes?tab=solicitudes';
+                });
+            },
+            error: function(xhr) {
+                const mensaje = xhr.responseJSON?.message || xhr.responseJSON?.error || 'No se pudieron eliminar los pedidos seleccionados.';
+                Swal.fire('Error', mensaje, 'error');
+            }
+        });
+    });
 }
 
 function eliminarSeleccionados() {

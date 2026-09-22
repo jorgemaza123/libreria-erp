@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -47,28 +48,56 @@ public class SslConfigService {
     @PostConstruct
     public void init() {
         try {
-            // Solo generar keystore si no existe
             File keystoreFile = new File(keystorePath);
+            String currentIp = conexionMovilService != null
+                    ? conexionMovilService.obtenerIpConfigurada()
+                    : NetworkUtils.detectarIpLan();
+
             if (!keystoreFile.exists()) {
                 log.info("Keystore no encontrado. Generando certificado SSL automáticamente...");
-                generateKeystoreWithKeytool(keystoreFile);
+                generateKeystoreWithKeytool(keystoreFile, currentIp);
+            } else if (sslEnabled && NetworkUtils.esIpv4Valida(currentIp) && !keystoreIncluyeIp(keystoreFile, currentIp)) {
+                log.warn("El certificado SSL no incluye la IP {}. Se regenerará para evitar errores en celulares.", currentIp);
+                if (keystoreFile.delete()) {
+                    generateKeystoreWithKeytool(keystoreFile, currentIp);
+                } else {
+                    log.error("No se pudo reemplazar el keystore existente: {}", keystoreFile.getAbsolutePath());
+                }
             } else {
                 log.info("Keystore existente encontrado: {}", keystoreFile.getAbsolutePath());
             }
 
             // Log informativo — IP se lee de BD (ya inicializada por ConexionMovilService)
-            String currentIp = conexionMovilService != null
-                    ? conexionMovilService.obtenerIpConfigurada()
-                    : NetworkUtils.detectarIpLan();
             log.info("========================================");
-            log.info("SERVIDOR HTTPS ACTIVO");
+            log.info(sslEnabled ? "SERVIDOR HTTPS ACTIVO" : "SERVIDOR HTTP ACTIVO");
             log.info("IP configurada: {}", currentIp);
-            log.info("URL de acceso: https://{}:{}", currentIp, serverPort);
+            log.info("URL de acceso: {}://{}:{}", sslEnabled ? "https" : "http", currentIp, serverPort);
             log.info("========================================");
 
         } catch (Exception e) {
             log.error("Error en configuración SSL: {}", e.getMessage(), e);
         }
+    }
+
+    public boolean prepararCertificadoParaIp(String ip) {
+        if (!sslEnabled || !NetworkUtils.esIpv4Valida(ip)) {
+            return false;
+        }
+
+        File keystoreFile = new File(keystorePath);
+        if (keystoreFile.exists() && keystoreIncluyeIp(keystoreFile, ip)) {
+            log.info("El certificado SSL ya incluye la IP {}", ip);
+            return false;
+        }
+
+        if (keystoreFile.exists() && !keystoreFile.delete()) {
+            log.error("No se pudo reemplazar el keystore existente para la IP {}", ip);
+            return false;
+        }
+
+        log.warn("Regenerando certificado SSL para IP {}. Reinicie Docker para que Tomcat lo use.", ip);
+        generateKeystoreWithKeytool(keystoreFile, ip);
+        return keystoreFile.exists() && keystoreIncluyeIp(keystoreFile, ip);
     }
 
     /**
@@ -77,7 +106,7 @@ public class SslConfigService {
      * al momento de generar. Esto minimiza errores NET::ERR_CERT_COMMON_NAME_INVALID
      * en navegadores móviles (especialmente Android 7+/Chrome).
      */
-    private void generateKeystoreWithKeytool(File keystoreFile) {
+    private void generateKeystoreWithKeytool(File keystoreFile, String ipPreferida) {
         try {
             String javaHome = System.getProperty("java.home");
             String keytoolPath = javaHome + File.separator + "bin" + File.separator + "keytool";
@@ -98,7 +127,7 @@ public class SslConfigService {
             }
 
             // Construir SAN con TODAS las IPs privadas detectadas + localhost + 127.0.0.1
-            String sanValue = buildSanWithAllIps();
+            String sanValue = buildSanWithAllIps(ipPreferida);
 
             List<String> command = new ArrayList<>(List.of(
                     keytoolPath,
@@ -161,10 +190,14 @@ public class SslConfigService {
      *
      * Ejemplo resultado: "SAN=dns:localhost,ip:127.0.0.1,ip:192.168.1.100,ip:192.168.18.25"
      */
-    private String buildSanWithAllIps() {
+    private String buildSanWithAllIps(String ipPreferida) {
         List<String> sanEntries = new ArrayList<>();
         sanEntries.add("dns:localhost");
         sanEntries.add("ip:127.0.0.1");
+
+        if (NetworkUtils.esIpv4Valida(ipPreferida)) {
+            sanEntries.add("ip:" + ipPreferida);
+        }
 
         // Agregar la IP detectada/configurada
         String detectedIp = NetworkUtils.detectarIpLan();
@@ -178,6 +211,61 @@ public class SslConfigService {
         String san = "SAN=" + sanEntries.stream().collect(Collectors.joining(","));
         log.info("SAN generado para certificado: {}", san);
         return san;
+    }
+
+    private boolean keystoreIncluyeIp(File keystoreFile, String ip) {
+        if (!NetworkUtils.esIpv4Valida(ip) || !keystoreFile.exists()) {
+            return true;
+        }
+        try {
+            String javaHome = System.getProperty("java.home");
+            String keytoolPath = javaHome + File.separator + "bin" + File.separator + "keytool";
+
+            if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                keytoolPath += ".exe";
+            }
+
+            File keytoolFile = new File(keytoolPath);
+            if (!keytoolFile.exists()) {
+                keytoolPath = "keytool";
+            }
+
+            List<String> command = List.of(
+                    keytoolPath,
+                    "-list",
+                    "-v",
+                    "-keystore", keystoreFile.getAbsolutePath(),
+                    "-storepass", keystorePassword,
+                    "-alias", keyAlias
+            );
+
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+
+            if (!process.waitFor(20, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                log.warn("No se pudo validar SAN del certificado por timeout. Se conserva el keystore actual.");
+                return true;
+            }
+
+            if (process.exitValue() != 0) {
+                log.warn("No se pudo leer el certificado SSL. Se conserva el keystore actual.");
+                return true;
+            }
+
+            String normalizado = output.replace(" ", "").toLowerCase(Locale.ROOT);
+            return normalizado.contains("ipaddress:" + ip.toLowerCase(Locale.ROOT))
+                    || normalizado.contains("ip:" + ip.toLowerCase(Locale.ROOT));
+        } catch (Exception e) {
+            log.warn("No se pudo validar IP en certificado SSL: {}", e.getMessage());
+            return true;
+        }
     }
 
     /**

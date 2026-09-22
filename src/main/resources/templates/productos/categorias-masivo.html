@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='productos'">
+<head>
+    <title>Categorizacion masiva de productos</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Categorizacion masiva</h1>
+                    <p class="text-muted mb-0">Asigna o corrige categorias por lote sin entrar producto por producto.</p>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <a href="/productos" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left mr-1"></i> Volver a productos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Aplicar categoria a varios productos</h3>
+                </div>
+                <form th:action="@{/productos/categorias-masivo/aplicar}" method="post">
+                    <div class="card-body">
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label>Nueva categoria</label>
+                                <input type="text" class="form-control" name="categoria" list="listaCategoriasSugeridas" placeholder="Ej: CUADERNOS" required>
+                                <datalist id="listaCategoriasSugeridas">
+                                    <option th:each="categoria : ${categoriasSugeridas}" th:value="${categoria}"></option>
+                                </datalist>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="custom-control custom-switch mt-4">
+                                    <input type="checkbox" class="custom-control-input" id="soloSinCategoria" th:checked="${soloSinCategoria}"
+                                           onchange="window.location.href='/productos/categorias-masivo?soloSinCategoria=' + (this.checked ? 'true' : 'false')">
+                                    <label class="custom-control-label" for="soloSinCategoria">Mostrar solo sin categoria</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button type="submit" class="btn btn-primary" onclick="return validarSeleccionMasiva()">
+                                    <i class="fas fa-tags mr-1"></i> Aplicar categoria seleccionada
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border mt-3 mb-0">
+                            <strong>Tip:</strong> selecciona varios productos, escribe la categoria una sola vez y aplica el cambio en lote.
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tablaCategoriaMasiva" class="table table-bordered table-striped mb-0">
+                            <thead>
+                            <tr>
+                                <th style="width:40px" class="text-center">
+                                    <input type="checkbox" id="checkAllCategorias">
+                                </th>
+                                <th>Codigo</th>
+                                <th>Producto</th>
+                                <th>Categoria actual</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-right">P. Venta</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="producto : ${productosCategoria}">
+                                <td class="text-center">
+                                    <input type="checkbox" name="productoIds" class="categoria-checkbox" th:value="${producto.id}">
+                                </td>
+                                <td th:text="${producto.codigoInterno != null and !#strings.isEmpty(producto.codigoInterno) ? producto.codigoInterno : producto.codigoBarra}"></td>
+                                <td>
+                                    <span class="font-weight-bold" th:text="${producto.nombre}"></span>
+                                    <small class="d-block text-muted" th:text="${producto.marca}"></small>
+                                </td>
+                                <td>
+                                    <span th:if="${producto.categoria != null and !#strings.isEmpty(producto.categoria)}" th:text="${producto.categoria}"></span>
+                                    <span th:unless="${producto.categoria != null and !#strings.isEmpty(producto.categoria)}" class="badge badge-warning">SIN CATEGORIA</span>
+                                </td>
+                                <td class="text-center" th:text="${producto.stockActual != null ? producto.stockActual : 0}"></td>
+                                <td class="text-right" th:text="${producto.precioVenta != null ? 'S/ ' + #numbers.formatDecimal(producto.precioVenta, 1, 2) : '-'}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        $(document).ready(function () {
+            $('#tablaCategoriaMasiva').DataTable({
+                responsive: true,
+                autoWidth: false,
+                pageLength: 25,
+                order: [[2, 'asc']],
+                language: { url: '/js/datatables-es.json' }
+            });
+
+            $('#checkAllCategorias').on('change', function () {
+                $('.categoria-checkbox').prop('checked', $(this).is(':checked'));
+            });
+        });
+
+        function validarSeleccionMasiva() {
+            const total = $('.categoria-checkbox:checked').length;
+            if (total === 0) {
+                Swal.fire('Atencion', 'Selecciona al menos un producto para aplicar la categoria.', 'warning');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

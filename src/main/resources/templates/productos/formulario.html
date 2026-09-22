@@ -114,14 +114,17 @@
                                     <select class="form-control" th:field="*{clasificacion}" id="clasificacionSelect">
                                         <option value="MERCADERIA">Mercadería</option>
                                         <option value="INSUMO">Insumo interno</option>
+                                        <option value="SERVICIO">Servicio</option>
+                                        <option value="INACTIVO">Inactivo</option>
+                                        <option value="DESCONOCIDO">Desconocido</option>
                                     </select>
-                                    <small class="text-muted">Todos los productos actuales quedan como mercadería si no eliges otra opción.</small>
+                                    <small class="text-muted">Mercadería e insumos se cuentan en inventario; servicios no se cuentan como stock.</small>
                                 </div>
                             </div>
                             <div class="col-md-8">
                                 <div class="alert alert-info mb-0 d-none" id="alertaInsumo">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    El insumo se compra y controla en stock, pero no aparece en ventas ni necesita ubicación o precio de venta.
+                                    <span id="alertaClasificacionTexto">El insumo se compra y controla en stock, pero no aparece en ventas ni necesita ubicación o precio de venta.</span>
                                 </div>
                             </div>
                         </div>
@@ -179,7 +182,7 @@
                                     <label class="text-secondary">Precio Compra</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
-                                        <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}">
+                                        <input type="number" step="0.01" class="form-control" th:field="*{precioCompra}" id="precioCompraInput">
                                     </div>
                                 </div>
                             </div>
@@ -189,6 +192,13 @@
                                     <div class="input-group">
                                         <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
                                         <input type="number" step="0.01" class="form-control font-weight-bold border-success" th:field="*{precioVenta}" id="precioVentaInput" required>
+                                    </div>
+                                    <small id="precioVentaSugerencia" class="text-muted d-block mt-1" style="font-size: 0.72rem;"></small>
+                                    <div id="margenSemaforo" class="mt-1 small font-weight-bold text-muted">Margen: --</div>
+                                    <div id="boxSugerirPrecios" class="mt-2 btn-group btn-group-sm d-flex" role="group">
+                                        <button type="button" class="btn btn-outline-secondary w-100" onclick="aplicarMargenSugerido(20)" title="Margen de Ganancia +20%">+20%</button>
+                                        <button type="button" class="btn btn-outline-secondary w-100" onclick="aplicarMargenSugerido(35)" title="Margen de Ganancia +35%">+35%</button>
+                                        <button type="button" class="btn btn-outline-secondary w-100" onclick="aplicarMargenSugerido(50)" title="Margen de Ganancia +50%">+50%</button>
                                     </div>
                                 </div>
                             </div>
@@ -218,11 +228,11 @@
                                 <div class="form-group">
                                     <label>Stock Actual</label>
                                     <!-- C-3: en modo edición el stock es readonly para proteger integridad del Kardex -->
-                                    <input type="number" class="form-control" th:field="*{stockActual}" required
+                                    <input type="number" class="form-control" th:field="*{stockActual}" id="stockActualInput" required
                                            th:readonly="${producto.id != null}"
                                            th:classappend="${producto.id != null} ? 'bg-light text-muted' : ''">
                                     <small th:if="${producto.id != null}" class="form-text text-muted">
-                                        <i class="fas fa-lock"></i> Para ajustar el stock use <a th:href="@{/inventario/ajustar}">Ajuste de Inventario</a>.
+                                        <i class="fas fa-lock"></i> Para ajustar el stock use <a th:href="@{/stock}">Control de Stock</a>.
                                     </small>
                                 </div>
                             </div>
@@ -230,6 +240,12 @@
                                 <div class="form-group">
                                     <label class="text-danger">Stock Mínimo</label>
                                     <input type="number" class="form-control" th:field="*{stockMinimo}">
+                                </div>
+                            </div>
+                            <div class="col-md-3 js-bloque-insumo-oculto">
+                                <div class="form-group">
+                                    <label>Stock Máximo</label>
+                                    <input type="number" class="form-control" th:field="*{stockMaximo}" min="0">
                                 </div>
                             </div>
                             <div class="col-md-3 js-bloque-insumo-oculto">
@@ -242,6 +258,213 @@
                                         <option value="METRO">METRO</option>
                                         <option value="LITRO">LITRO</option>
                                     </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2 js-bloque-insumo-oculto">
+                            <div class="col-md-3">
+                                <div class="custom-control custom-switch mt-2">
+                                    <input type="checkbox" class="custom-control-input" th:field="*{temporadaActiva}" id="temporadaActiva">
+                                    <label class="custom-control-label font-weight-bold" for="temporadaActiva">Temporada activa</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Objetivo temporada</label>
+                                    <input type="number" class="form-control" th:field="*{stockObjetivoTemporada}" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-outline card-info mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-calculator text-info mr-1"></i>
+                                    Costo y precio inteligente
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label>1. Cantidad comprada</label>
+                                        <input type="number" min="0" step="1" class="form-control" id="costeoCantidadComprada" placeholder="Ej: 12">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>2. Total pagado</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="costeoTotalPagado" placeholder="Ej: 8.00">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>3. Indirecto manual (%)</label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" step="0.01" class="form-control" id="costeoFactorManual" placeholder="Usar sugerido">
+                                            <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                        </div>
+                                        <small class="text-muted">Sugerido: <span id="costeoFactorSugeridoTexto" th:text="${factorIndirectoSugerido != null ? #numbers.formatDecimal(factorIndirectoSugerido,1,2) : '0.00'}">0.00</span>%</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label>Ganancia deseada (%)</label>
+                                                <div class="input-group">
+                                                    <input type="number" min="0" step="0.01" class="form-control" id="costeoGananciaObjetivo"
+                                                           th:value="${configCosteo != null ? configCosteo.gananciaObjetivoGlobalPct : ''}">
+                                                    <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label>Ganancia minima (%)</label>
+                                                <div class="input-group">
+                                                    <input type="number" min="0" step="0.01" class="form-control" id="costeoGananciaMinima"
+                                                           th:value="${configCosteo != null ? configCosteo.gananciaMinimaGlobalPct : ''}">
+                                                    <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="alert mt-3 mb-0" id="costeoEstado" style="display:none;"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-2">
+                                                <div class="border rounded p-2 h-100">
+                                                    <div class="text-muted small">Costo por unidad</div>
+                                                    <div class="font-weight-bold" id="costeoCostoUnitario">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <div class="border rounded p-2 h-100">
+                                                    <div class="text-muted small">Costo real</div>
+                                                    <div class="font-weight-bold" id="costeoCostoReal">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <div class="border rounded p-2 h-100">
+                                                    <div class="text-muted small">Precio minimo</div>
+                                                    <div class="font-weight-bold text-warning" id="costeoPrecioMinimo">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <div class="border rounded p-2 h-100">
+                                                    <div class="text-muted small">Precio sugerido</div>
+                                                    <div class="font-weight-bold text-success" id="costeoPrecioSugerido">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex flex-wrap justify-content-end mt-2">
+                                            <button type="button" class="btn btn-outline-info btn-sm mr-2 mb-2" id="btnUsarCostoReal">
+                                                <i class="fas fa-coins mr-1"></i>Usar costo real
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success btn-sm mr-2 mb-2" id="btnUsarPrecioSugerido">
+                                                <i class="fas fa-tags mr-1"></i>Usar precio sugerido
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm mb-2" id="btnDuplicarPrecio">
+                                                <i class="fas fa-clone mr-1"></i>Duplicar precio
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card card-outline card-primary mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-balance-scale text-primary mr-1"></i>
+                                    Costeo empresarial del producto
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Regla de costeo</label>
+                                            <select class="form-control" th:field="*{reglaCosteo}">
+                                                <option value="AUTO">Automático</option>
+                                                <option value="UNIDADES">Mercadería por unidad</option>
+                                                <option value="COSTO_COMPRA">Según costo de compra</option>
+                                                <option value="TIEMPO">Trabajo por tiempo</option>
+                                                <option value="IMPRESION">Impresión / copias</option>
+                                            </select>
+                                            <small class="text-muted">Define cómo se reparten alquiler, luz, sueldo, depreciación y otros gastos.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Unidades estimadas por mes</label>
+                                            <input type="number" min="0" step="0.01" class="form-control" th:field="*{unidadesEstimadasMes}" placeholder="Ej: 80">
+                                            <small class="text-muted">Útil cuando compras por temporada o por pedido.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Tiempo de trabajo por unidad</label>
+                                            <div class="input-group">
+                                                <input type="number" min="0" step="0.01" class="form-control" th:field="*{minutosTrabajoUnidad}" placeholder="Ej: 12">
+                                                <div class="input-group-append"><span class="input-group-text">min</span></div>
+                                            </div>
+                                            <small class="text-muted">Para arreglos, sublimación, maquetas o diseños.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Equivalente de impresión</label>
+                                            <input type="number" min="0" step="0.001" class="form-control" th:field="*{impresionesEquivalentesUnidad}" placeholder="Ej: 1 hoja, 0.5 media hoja">
+                                            <small class="text-muted">Sirve para repartir tinta, papel, mantenimiento y depreciación.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="custom-control custom-switch mt-4">
+                                            <input type="checkbox" class="custom-control-input" th:field="*{usarReglaManualPrecio}" id="usarReglaManualPrecio">
+                                            <label class="custom-control-label font-weight-bold" for="usarReglaManualPrecio">Usar margen propio</label>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">Actívalo si este producto no debe usar el margen global.</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Ganancia mínima</label>
+                                            <div class="input-group">
+                                                <input type="number" min="0" step="0.01" class="form-control" th:field="*{gananciaMinimaPct}">
+                                                <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Ganancia objetivo</label>
+                                            <div class="input-group">
+                                                <input type="number" min="0" step="0.01" class="form-control" th:field="*{gananciaObjetivoPct}">
+                                                <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div th:if="${producto.precioSugeridoEmpresarial != null}" class="alert alert-light border mb-0">
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <div class="text-muted small">Indirecto estimado</div>
+                                            <strong>S/ <span th:text="${#numbers.formatDecimal(producto.costoIndirectoEstimado ?: 0, 1, 2)}">0.00</span></strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-muted small">Costo total</div>
+                                            <strong>S/ <span th:text="${#numbers.formatDecimal(producto.costoTotalEstimado ?: 0, 1, 2)}">0.00</span></strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-muted small">Precio mínimo</div>
+                                            <strong class="text-warning">S/ <span th:text="${#numbers.formatDecimal(producto.precioMinimoEmpresarial ?: 0, 1, 2)}">0.00</span></strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-muted small">Precio sugerido</div>
+                                            <strong class="text-success">S/ <span th:text="${#numbers.formatDecimal(producto.precioSugeridoEmpresarial ?: 0, 1, 2)}">0.00</span></strong>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -344,42 +567,93 @@
     <!-- Librería html5-qrcode para escaneo de códigos de barras -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-    <script>
+    <script th:inline="javascript">
         // Variables globales para el escáner
         let html5QrCode = null;
         let escanerActivo = false;
         let escanerIniciado = false;
+        const COSTEO_CONFIG = {
+            activo: true,
+            sugerido: /*[[${factorIndirectoSugerido != null ? factorIndirectoSugerido : 0}]]*/ 0,
+            paso: /*[[${configCosteo != null ? configCosteo.redondeoPrecioPaso : 0.10}]]*/ 0.10,
+            productoNuevo: /*[[${producto.id == null}]]*/ true
+        };
 
         $(document).ready(function () {
             bsCustomFileInput.init();
 
             function actualizarFormularioClasificacion() {
-                const esInsumo = ($('#clasificacionSelect').val() || 'MERCADERIA') === 'INSUMO';
-                $('.js-bloque-insumo-oculto').toggleClass('d-none', esInsumo);
-                $('#alertaInsumo').toggleClass('d-none', !esInsumo);
+                const clasificacion = ($('#clasificacionSelect').val() || 'MERCADERIA');
+                const esInsumo = clasificacion === 'INSUMO';
+                const esServicio = clasificacion === 'SERVICIO';
+                const esInactivo = clasificacion === 'INACTIVO';
+                const esDesconocido = clasificacion === 'DESCONOCIDO';
+                const sinStockOperativo = esInsumo || esServicio;
+                $('.js-bloque-insumo-oculto').toggleClass('d-none', sinStockOperativo);
+                $('#alertaInsumo').toggleClass('d-none', !(esInsumo || esServicio || esInactivo || esDesconocido));
+                if (esServicio) {
+                    $('#alertaClasificacionTexto').text('El servicio se vende desde el POS, pero no se cuenta como stock. Sus costos deben venir de insumos, tiempo y reglas de costeo.');
+                } else if (esInactivo) {
+                    $('#alertaClasificacionTexto').text('El producto inactivo queda fuera de ventas, POS rapido e inventario operativo.');
+                } else if (esDesconocido) {
+                    $('#alertaClasificacionTexto').text('Usa desconocido solo para regularizar: el producto queda bloqueado para venta hasta clasificarlo bien.');
+                } else {
+                    $('#alertaClasificacionTexto').text('El insumo se compra y controla en stock, pero no aparece en ventas ni necesita ubicación o precio de venta.');
+                }
                 $('#precioVentaInput').prop('required', !esInsumo);
 
-                if (esInsumo) {
+                if (sinStockOperativo) {
                     if (!$('#precioVentaInput').val()) {
                         $('#precioVentaInput').val('0');
                     }
-                    $('#stockMinimo').val('0');
+                    $('#stockMinimo, #stockMaximo, #stockObjetivoTemporada').val('0');
+                    $('#temporadaActiva').prop('checked', false);
                     $('#ubicacionEstante, #ubicacionFila, #ubicacionColumna').val('');
+                    if (esServicio) {
+                        $('#tipo').val('SERVICIO');
+                    }
                 }
             }
 
             $('#clasificacionSelect').on('change', actualizarFormularioClasificacion);
             actualizarFormularioClasificacion();
 
+            $('#costeoCantidadComprada, #costeoTotalPagado, #costeoFactorManual, #costeoGananciaObjetivo, #costeoGananciaMinima, #precioVentaInput')
+                .on('input', calcularCosteoInteligente);
+            $('#btnUsarCostoReal').on('click', function () {
+                let costoReal = parseFloat($('#costeoCostoReal').data('valor') || 0);
+                if (costoReal > 0) {
+                    $('#precioCompraInput').val(costoReal.toFixed(2)).trigger('change');
+                }
+            });
+            $('#btnUsarPrecioSugerido').on('click', function () {
+                let sugerido = parseFloat($('#costeoPrecioSugerido').data('valor') || 0);
+                if (sugerido > 0) {
+                    $('#precioVentaInput').val(sugerido.toFixed(2)).trigger('input');
+                }
+            });
+            $('#btnDuplicarPrecio').on('click', function () {
+                let costoReal = parseFloat($('#costeoCostoReal').data('valor') || 0);
+                if (costoReal > 0) {
+                    $('#precioVentaInput').val((costoReal * 2).toFixed(2)).trigger('input');
+                }
+            });
+            calcularCosteoInteligente();
+
+            $('#precioCompraInput, #precioVentaInput').on('input change', calcularMargenSemaforo);
+            calcularMargenSemaforo();
+
             $('form').on('submit', function () {
-                if (($('#clasificacionSelect').val() || 'MERCADERIA') === 'INSUMO') {
+                const clasificacion = ($('#clasificacionSelect').val() || 'MERCADERIA');
+                if (clasificacion === 'INSUMO' || clasificacion === 'SERVICIO') {
                     if (!$('#precioVentaInput').val()) {
                         $('#precioVentaInput').val('0');
                     }
                     $('#precioMayorista').val($('#precioMayorista').val() || '0');
-                    $('#stockMinimo').val('0');
+                    $('#stockMinimo, #stockMaximo, #stockObjetivoTemporada').val('0');
+                    $('#temporadaActiva').prop('checked', false);
                     $('#ubicacionEstante, #ubicacionFila, #ubicacionColumna').val('');
-                    $('#tipo').val('ESTANDAR');
+                    $('#tipo').val(clasificacion === 'SERVICIO' ? 'SERVICIO' : 'ESTANDAR');
                 }
             });
 
@@ -398,6 +672,118 @@
                 reader.readAsDataURL(file);
             });
         });
+
+        function calcularCosteoInteligente(e) {
+            if (!COSTEO_CONFIG.activo) return;
+
+            const cantidad = parseFloat($('#costeoCantidadComprada').val()) || 0;
+            const totalPagado = parseFloat($('#costeoTotalPagado').val()) || 0;
+            const factorManualRaw = $('#costeoFactorManual').val();
+            const factorAplicado = factorManualRaw !== '' ? (parseFloat(factorManualRaw) || 0) : (parseFloat(COSTEO_CONFIG.sugerido) || 0);
+            const gananciaObjetivo = parseFloat($('#costeoGananciaObjetivo').val()) || 0;
+            const gananciaMinima = parseFloat($('#costeoGananciaMinima').val()) || 0;
+            const precioVenta = parseFloat($('#precioVentaInput').val()) || 0;
+
+            const $estado = $('#costeoEstado');
+            if (cantidad <= 0 || totalPagado <= 0) {
+                $('#costeoCostoUnitario, #costeoCostoReal, #costeoPrecioMinimo, #costeoPrecioSugerido').text('S/ 0.00').data('valor', 0);
+                $('#precioVentaSugerencia').text('');
+                $estado.removeClass('alert-danger alert-warning alert-success').addClass('alert-secondary')
+                    .text('Ingresa cantidad comprada y total pagado para ver el costo real antes de guardar.').show();
+                return;
+            }
+
+            const costoUnitario = totalPagado / cantidad;
+            const costoReal = costoUnitario * (1 + (factorAplicado / 100));
+            const precioMinimo = costoReal * (1 + (gananciaMinima / 100));
+            const precioSugeridoBruto = costoReal * (1 + (gananciaObjetivo / 100));
+            const paso = parseFloat(COSTEO_CONFIG.paso) || 0;
+            const precioSugerido = paso > 0 ? Math.ceil(precioSugeridoBruto / paso) * paso : precioSugeridoBruto;
+
+            $('#costeoCostoUnitario').text('S/ ' + costoUnitario.toFixed(2)).data('valor', costoUnitario);
+            $('#costeoCostoReal').text('S/ ' + costoReal.toFixed(2)).data('valor', costoReal);
+            $('#costeoPrecioMinimo').text('S/ ' + precioMinimo.toFixed(2)).data('valor', precioMinimo);
+            $('#costeoPrecioSugerido').text('S/ ' + precioSugerido.toFixed(2)).data('valor', precioSugerido);
+
+            // Auto-rellenar campos superiores si el cambio se originó en los campos de la calculadora
+            const costeoFieldIds = ['costeoCantidadComprada', 'costeoTotalPagado', 'costeoFactorManual', 'costeoGananciaObjetivo', 'costeoGananciaMinima'];
+            const triggeredByCalculator = !e || !e.target || costeoFieldIds.includes(e.target.id);
+
+            if (triggeredByCalculator) {
+                if (COSTEO_CONFIG.productoNuevo && document.activeElement.id !== 'stockActualInput' && cantidad > 0) {
+                    $('#stockActualInput').val(Math.floor(cantidad)).trigger('change');
+                }
+                if (document.activeElement.id !== 'precioCompraInput' && costoReal > 0) {
+                    $('#precioCompraInput').val(costoReal.toFixed(2)).trigger('change');
+                }
+                if (document.activeElement.id !== 'precioVentaInput' && precioSugerido > 0) {
+                    $('#precioVentaInput').val(precioSugerido.toFixed(2)).trigger('input');
+                }
+            }
+
+            // Calcular ganancia real del precio venta ingresado contra el costo real
+            let textoGanancia = '';
+            if (costoReal > 0 && precioVenta > 0) {
+                const margenActual = ((precioVenta - costoReal) / costoReal) * 100;
+                const claseMargen = margenActual >= 30 ? 'text-success' : (margenActual >= 15 ? 'text-warning' : 'text-danger');
+                const signo = margenActual >= 0 ? '+' : '';
+                textoGanancia = ` · Ganancia: <strong class="${claseMargen}">${signo}${margenActual.toFixed(1)}%</strong>`;
+            }
+
+            // Mostrar sugerencias visuales
+            $('#precioVentaSugerencia').html(`Recomendado: <strong class="text-success">S/ ${precioSugerido.toFixed(2)}</strong> · Mínimo (Sin pérdida): <strong class="text-dark">S/ ${costoReal.toFixed(2)}</strong>${textoGanancia}`);
+
+            if (precioVenta > 0 && precioVenta < costoReal) {
+                $estado.removeClass('alert-secondary alert-warning alert-success').addClass('alert-danger')
+                    .text('Ese precio te hace perder dinero. Sube el precio o revisa el costo real.').show();
+            } else if (precioVenta > 0 && precioVenta < precioMinimo) {
+                $estado.removeClass('alert-secondary alert-danger alert-success').addClass('alert-warning')
+                    .text('Ese precio gana poco y queda debajo del minimo recomendado.').show();
+            } else {
+                $estado.removeClass('alert-secondary alert-danger alert-warning').addClass('alert-success')
+                    .text('Precio saludable para vender con mejor control.').show();
+            }
+        }
+
+        function calcularMargenSemaforo() {
+            const precioCompra = parseFloat($('#precioCompraInput').val()) || 0;
+            const precioVenta = parseFloat($('#precioVentaInput').val()) || 0;
+            const $semaforo = $('#margenSemaforo');
+
+            if (precioCompra <= 0 || precioVenta <= 0) {
+                $semaforo.text('Margen: --').removeClass('text-danger text-warning text-success').addClass('text-muted');
+                return;
+            }
+
+            const ganancia = precioVenta - precioCompra;
+            const margenPct = (ganancia / precioCompra) * 100;
+
+            let texto = 'Margen: ' + margenPct.toFixed(1) + '% (Ganancia: S/ ' + ganancia.toFixed(2) + ')';
+            $semaforo.text(texto).removeClass('text-muted text-danger text-warning text-success');
+
+            if (margenPct < 15) {
+                $semaforo.addClass('text-danger').html('<i class="fas fa-exclamation-circle"></i> ' + texto + ' - Bajo (< 15%)');
+            } else if (margenPct >= 15 && margenPct <= 35) {
+                $semaforo.addClass('text-warning').html('<i class="fas fa-exclamation-triangle"></i> ' + texto + ' - Moderado (15%-35%)');
+            } else {
+                $semaforo.addClass('text-success').html('<i class="fas fa-check-circle"></i> ' + texto + ' - Rentable (> 35%)');
+            }
+        }
+
+        function aplicarMargenSugerido(factor) {
+            const precioCompra = parseFloat($('#precioCompraInput').val()) || 0;
+            if (precioCompra <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Precio de compra requerido',
+                    text: 'Debe ingresar un precio de compra válido para calcular el margen sugerido.',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+            const precioSugerido = precioCompra * (1 + (factor / 100));
+            $('#precioVentaInput').val(precioSugerido.toFixed(2)).trigger('input').trigger('change');
+        }
 
         /**
          * Inicia el escáner de código de barras usando la cámara del dispositivo

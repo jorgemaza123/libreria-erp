@@ -36,7 +36,7 @@ public class UsuarioController {
 
     @GetMapping
     public String listar(Model model) {
-        model.addAttribute("usuarios", usuarioRepository.findAll());
+        model.addAttribute("usuarios", usuarioRepository.findAllWithRoles());
         return "usuarios/lista";
     }
 
@@ -59,7 +59,7 @@ public class UsuarioController {
     @GetMapping("/editar/{id}")
     @PreAuthorize("hasPermission(null, 'USUARIOS_EDITAR')")
     public String editar(@PathVariable Long id, Model model, RedirectAttributes attr) {
-        return usuarioRepository.findById(id).map(u -> {
+        return usuarioRepository.findByIdWithRoles(id).map(u -> {
             if (!model.containsAttribute("usuario")) {
                 model.addAttribute("usuario", u);
             }

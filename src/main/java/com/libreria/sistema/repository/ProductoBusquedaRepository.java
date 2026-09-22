@@ -45,16 +45,21 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
             OR p.codigo_interno ILIKE '%' || :termino || '%'
             OR p.descripcion ILIKE '%' || :termino || '%'
             OR p.modelo ILIKE '%' || :termino || '%'
+            OR p.color ILIKE '%' || :termino || '%'
+            OR p.generacion ILIKE '%' || :termino || '%'
             OR p.tags ILIKE '%' || :termino || '%'
         )
         ORDER BY
-            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             CASE WHEN p.codigo_barra = :termino THEN 0
                  WHEN p.codigo_interno = :termino THEN 1
                  WHEN p.nombre ILIKE :termino THEN 2
                  WHEN p.nombre ILIKE :termino || '%' THEN 3
-                 WHEN p.tags ILIKE '%' || :termino || '%' THEN 4
-                 ELSE 5 END,
+                 WHEN p.nombre ILIKE '% ' || :termino || '%' THEN 4
+                 WHEN p.modelo ILIKE :termino || '%' THEN 5
+                 WHEN p.color ILIKE :termino || '%' THEN 6
+                 WHEN p.tags ILIKE '%' || :termino || '%' THEN 7
+                 ELSE 8 END,
+            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             p.nombre ASC
         LIMIT :limite
         """, nativeQuery = true)
@@ -90,6 +95,9 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
             OR p.codigo_barra ILIKE '%' || :token1 || '%'
             OR p.codigo_interno ILIKE '%' || :token1 || '%'
             OR p.descripcion ILIKE '%' || :token1 || '%'
+            OR p.modelo ILIKE '%' || :token1 || '%'
+            OR p.color ILIKE '%' || :token1 || '%'
+            OR p.generacion ILIKE '%' || :token1 || '%'
             OR p.tags ILIKE '%' || :token1 || '%'
         )
         AND (
@@ -97,7 +105,12 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
                 p.nombre ILIKE '%' || :token2 || '%'
                 OR p.marca ILIKE '%' || :token2 || '%'
                 OR p.categoria ILIKE '%' || :token2 || '%'
+                OR p.codigo_barra ILIKE '%' || :token2 || '%'
+                OR p.codigo_interno ILIKE '%' || :token2 || '%'
                 OR p.descripcion ILIKE '%' || :token2 || '%'
+                OR p.modelo ILIKE '%' || :token2 || '%'
+                OR p.color ILIKE '%' || :token2 || '%'
+                OR p.generacion ILIKE '%' || :token2 || '%'
                 OR p.tags ILIKE '%' || :token2 || '%'
             )
         )
@@ -106,7 +119,12 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
                 p.nombre ILIKE '%' || :token3 || '%'
                 OR p.marca ILIKE '%' || :token3 || '%'
                 OR p.categoria ILIKE '%' || :token3 || '%'
+                OR p.codigo_barra ILIKE '%' || :token3 || '%'
+                OR p.codigo_interno ILIKE '%' || :token3 || '%'
                 OR p.descripcion ILIKE '%' || :token3 || '%'
+                OR p.modelo ILIKE '%' || :token3 || '%'
+                OR p.color ILIKE '%' || :token3 || '%'
+                OR p.generacion ILIKE '%' || :token3 || '%'
                 OR p.tags ILIKE '%' || :token3 || '%'
             )
         )
@@ -115,12 +133,16 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
                 p.nombre ILIKE '%' || :token4 || '%'
                 OR p.marca ILIKE '%' || :token4 || '%'
                 OR p.categoria ILIKE '%' || :token4 || '%'
+                OR p.codigo_barra ILIKE '%' || :token4 || '%'
+                OR p.codigo_interno ILIKE '%' || :token4 || '%'
                 OR p.descripcion ILIKE '%' || :token4 || '%'
+                OR p.modelo ILIKE '%' || :token4 || '%'
+                OR p.color ILIKE '%' || :token4 || '%'
+                OR p.generacion ILIKE '%' || :token4 || '%'
                 OR p.tags ILIKE '%' || :token4 || '%'
             )
         )
         ORDER BY
-            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             CASE
                 -- Coincidencia exacta de código
                 WHEN p.codigo_barra = :token1 THEN 0
@@ -134,6 +156,7 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
                 WHEN p.tags ILIKE '%' || :token1 || '%' THEN 3
                 ELSE 4
             END,
+            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             p.nombre ASC
         LIMIT :limite
         """, nativeQuery = true)
@@ -238,19 +261,25 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
             OR p.nombre ILIKE :termino || '%'
             OR p.nombre ILIKE '% ' || :termino || '%'
             OR p.marca ILIKE :termino || '%'
+            OR p.modelo ILIKE :termino || '%'
+            OR p.color ILIKE :termino || '%'
+            OR p.generacion ILIKE :termino || '%'
             OR p.tags ILIKE '%' || :termino || '%'
         )
         ORDER BY
-            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             CASE
                 WHEN p.codigo_barra = :termino THEN 0
                 WHEN p.codigo_barra ILIKE :termino || '%' THEN 1
                 WHEN p.codigo_interno = :termino THEN 2
                 WHEN p.codigo_interno ILIKE :termino || '%' THEN 3
                 WHEN p.nombre ILIKE :termino || '%' THEN 4
-                WHEN p.tags ILIKE '%' || :termino || '%' THEN 5
-                ELSE 6
+                WHEN p.nombre ILIKE '% ' || :termino || '%' THEN 5
+                WHEN p.modelo ILIKE :termino || '%' THEN 6
+                WHEN p.color ILIKE :termino || '%' THEN 7
+                WHEN p.tags ILIKE '%' || :termino || '%' THEN 8
+                ELSE 9
             END,
+            CASE WHEN p.stock_actual > 0 THEN 0 ELSE 1 END,
             p.nombre ASC
         LIMIT 10
         """, nativeQuery = true)
@@ -272,7 +301,10 @@ public interface ProductoBusquedaRepository extends JpaRepository<Producto, Long
         WHERE p.activo = true
         AND COALESCE(p.clasificacion, 'MERCADERIA') <> 'INSUMO'
         AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'
-        AND (p.codigo_barra = :codigo OR p.codigo_interno = :codigo)
+        AND (
+            LOWER(p.codigo_barra) = LOWER(:codigo)
+            OR LOWER(p.codigo_interno) = LOWER(:codigo)
+        )
         LIMIT 1
         """, nativeQuery = true)
     List<Producto> buscarPorCodigoExacto(@Param("codigo") String codigo);

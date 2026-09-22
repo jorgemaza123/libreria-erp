@@ -82,6 +82,7 @@ public class CotizacionController {
         model.addAttribute("fechaDesde", fechaDesde);
         model.addAttribute("fechaHasta", fechaHasta);
         model.addAttribute("ordenesVinculadas", cotizacionService.obtenerOrdenesVinculadas(pageCoti.getContent()));
+        model.addAttribute("resumenItemsCotizacion", cotizacionService.obtenerResumenItemsPorCotizacion(pageCoti.getContent()));
         model.addAttribute("kpis", cotizacionService.obtenerKPIs());
 
         return "cotizaciones/lista";

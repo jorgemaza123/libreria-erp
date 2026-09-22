@@ -10,7 +10,7 @@
  * Su propósito: instalación como app, carga rápida, experiencia nativa.
  */
 
-const CACHE_NAME = 'sistema-erp-v2';
+const CACHE_NAME = 'sistema-erp-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Assets estáticos a pre-cachear en install
@@ -133,6 +133,10 @@ function isStaticAsset(url) {
     var path = url.pathname;
     var host = url.hostname;
 
+    // La conexion movil genera QR e informacion dependiente de la IP actual.
+    // Nunca debe cachearse porque puede dejar codificada una IP antigua de Docker.
+    if (path.startsWith('/conexion-movil/')) return false;
+
     // CDNs conocidos (AdminLTE, Font Awesome, DataTables, Select2, Google Fonts)
     if (host.includes('cdn.') || host.includes('cdnjs.') ||
         host.includes('fonts.googleapis.com') || host.includes('fonts.gstatic.com')) {
@@ -143,7 +147,6 @@ function isStaticAsset(url) {
     if (/\.(css|js|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|json)$/i.test(path)) {
         // Excluir manifest.json y API endpoints
         if (path === '/manifest.json') return false;
-        if (path.startsWith('/conexion-movil/api/')) return false;
         if (path.startsWith('/api/')) return false;
         return true;
     }

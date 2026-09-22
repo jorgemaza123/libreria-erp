@@ -76,10 +76,11 @@ public class CobranzaController {
         String terminoNormalizado = termino != null ? termino.trim() : "";
         List<Venta> deudas = ventaRepository.findDeudasPorTermino(terminoNormalizado);
         // M-1: construir mapa ventaId -> lista de pagos anteriores
-        Map<Long, List<Amortizacion>> amortizacionesPorVenta = deudas.stream()
-                .collect(Collectors.toMap(
-                        Venta::getId,
-                        amortizacionRepository::findByVentaOrderByFechaPagoDesc));
+        List<Long> ventaIds = deudas.stream().map(Venta::getId).toList();
+        Map<Long, List<Amortizacion>> amortizacionesPorVenta = ventaIds.isEmpty()
+                ? Map.of()
+                : amortizacionRepository.findByVentaIdInOrderByVentaIdAscFechaPagoDesc(ventaIds).stream()
+                        .collect(Collectors.groupingBy(a -> a.getVenta().getId()));
         cargarFiltrosBase(model, null, null, terminoNormalizado);
         configurarClienteReporte(model, deudas, terminoNormalizado);
         model.addAttribute("deudas", deudas);

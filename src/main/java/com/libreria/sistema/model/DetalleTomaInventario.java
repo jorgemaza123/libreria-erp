@@ -2,6 +2,7 @@ package com.libreria.sistema.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -63,6 +64,37 @@ public class DetalleTomaInventario {
     private LocalDateTime fechaConteo;
 
     /**
+     * Usuario que registro el conteo o el ultimo reconteo.
+     */
+    @Column(length = 80)
+    private String usuarioConteo;
+
+    private Integer primerConteoFisico;
+
+    private Integer segundoConteoFisico;
+
+    private LocalDateTime fechaPrimerConteo;
+
+    private LocalDateTime fechaSegundoConteo;
+
+    @Column(length = 80)
+    private String usuarioPrimerConteo;
+
+    @Column(length = 80)
+    private String usuarioSegundoConteo;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean segundoConteoRequerido = false;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean segundoConteoConfirmado = false;
+
+    @Column(length = 80)
+    private String usuarioDeshacerConteo;
+
+    private LocalDateTime fechaDeshacerConteo;
+
+    /**
      * Observación específica para este producto (opcional).
      * Ej: "Producto dañado", "Encontrado en otra ubicación".
      */
@@ -70,10 +102,76 @@ public class DetalleTomaInventario {
     private String observacion;
 
     /**
+     * Zona física donde se contó el producto.
+     * Ej: MOSTRADOR, VITRINA, ALMACEN, SUBLIMACION.
+     */
+    @Column(length = 80)
+    private String zonaConteo;
+
+    /**
      * Indica si el ajuste ya fue aplicado al stock (durante el procesamiento).
      */
     @Column(nullable = false)
     private Boolean ajusteAplicado = false;
+
+    @Column(length = 160)
+    private String nombreCorregido;
+
+    @Column(length = 120)
+    private String categoriaCorregida;
+
+    @Column(length = 80)
+    private String marcaCorregida;
+
+    @Column(length = 80)
+    private String colorCorregido;
+
+    @Column(length = 80)
+    private String modeloCorregido;
+
+    @Column(length = 60)
+    private String tipoCorregido;
+
+    @Column(length = 40)
+    private String clasificacionCorregida;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoCorregido;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioCorregido;
+
+    @Column(nullable = false)
+    private Boolean correccionPendiente = false;
+
+    @Column(nullable = false)
+    private Boolean correccionAplicada = false;
+
+    private LocalDateTime fechaCorreccion;
+
+    @Column(length = 80)
+    private String usuarioCorreccion;
+
+    private LocalDateTime fechaAplicacionCorreccion;
+
+    @Column(length = 80)
+    private String usuarioAplicacionCorreccion;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoAnteriorCorreccion;
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoAplicadoCorreccion;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioAnteriorCorreccion;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioAplicadoCorreccion;
+
+    private Integer stockAnteriorAjuste;
+
+    private Integer stockNuevoAjuste;
 
     // ========== MÉTODOS HELPER ==========
 
@@ -81,10 +179,64 @@ public class DetalleTomaInventario {
      * Registra el conteo físico y calcula la diferencia.
      */
     public void registrarConteo(Integer cantidadFisica) {
+        this.primerConteoFisico = cantidadFisica;
+        this.segundoConteoFisico = null;
+        this.fechaPrimerConteo = LocalDateTime.now();
+        this.fechaSegundoConteo = null;
+        this.usuarioSegundoConteo = null;
+        this.segundoConteoRequerido = false;
+        this.segundoConteoConfirmado = true;
         this.stockFisico = cantidadFisica;
         this.diferencia = cantidadFisica - this.stockSistema;
         this.contado = true;
-        this.fechaConteo = LocalDateTime.now();
+        this.fechaConteo = this.fechaPrimerConteo;
+    }
+
+    public void registrarPrimerConteo(Integer cantidadFisica, String usuario, boolean requiereSegundoConteo) {
+        LocalDateTime ahora = LocalDateTime.now();
+        this.primerConteoFisico = cantidadFisica;
+        this.segundoConteoFisico = null;
+        this.fechaPrimerConteo = ahora;
+        this.fechaSegundoConteo = null;
+        this.usuarioPrimerConteo = usuario;
+        this.usuarioSegundoConteo = null;
+        this.segundoConteoRequerido = requiereSegundoConteo;
+        this.segundoConteoConfirmado = !requiereSegundoConteo;
+        this.stockFisico = cantidadFisica;
+        this.diferencia = cantidadFisica - this.stockSistema;
+        this.contado = !requiereSegundoConteo;
+        this.fechaConteo = requiereSegundoConteo ? null : ahora;
+        this.usuarioConteo = requiereSegundoConteo ? null : usuario;
+    }
+
+    public void registrarSegundoConteo(Integer cantidadFisica, String usuario) {
+        LocalDateTime ahora = LocalDateTime.now();
+        this.segundoConteoFisico = cantidadFisica;
+        this.fechaSegundoConteo = ahora;
+        this.usuarioSegundoConteo = usuario;
+        this.segundoConteoRequerido = true;
+        this.segundoConteoConfirmado = true;
+        this.stockFisico = cantidadFisica;
+        this.diferencia = cantidadFisica - this.stockSistema;
+        this.contado = true;
+        this.fechaConteo = ahora;
+        this.usuarioConteo = usuario;
+    }
+
+    public void limpiarConteos() {
+        this.stockFisico = null;
+        this.diferencia = null;
+        this.contado = false;
+        this.fechaConteo = null;
+        this.usuarioConteo = null;
+        this.primerConteoFisico = null;
+        this.segundoConteoFisico = null;
+        this.fechaPrimerConteo = null;
+        this.fechaSegundoConteo = null;
+        this.usuarioPrimerConteo = null;
+        this.usuarioSegundoConteo = null;
+        this.segundoConteoRequerido = false;
+        this.segundoConteoConfirmado = false;
     }
 
     /**
@@ -119,5 +271,9 @@ public class DetalleTomaInventario {
     protected void onCreate() {
         if (this.contado == null) this.contado = false;
         if (this.ajusteAplicado == null) this.ajusteAplicado = false;
+        if (this.segundoConteoRequerido == null) this.segundoConteoRequerido = false;
+        if (this.segundoConteoConfirmado == null) this.segundoConteoConfirmado = false;
+        if (this.correccionPendiente == null) this.correccionPendiente = false;
+        if (this.correccionAplicada == null) this.correccionAplicada = false;
     }
 }

@@ -2,6 +2,7 @@ package com.libreria.sistema.service;
 
 import com.libreria.sistema.aspect.Auditable;
 import com.libreria.sistema.model.*;
+import com.libreria.sistema.model.dto.CosteoVentaSnapshotDTO;
 import com.libreria.sistema.model.dto.SunatResponseDTO;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
@@ -31,6 +32,8 @@ import java.util.Map;
 @Slf4j
 public class VentaService {
 
+    private static final int MAX_DESCRIPCION_DETALLE_VENTA = 200;
+
     private final ProductoRepository productoRepository;
     private final VentaRepository ventaRepository;
     private final KardexRepository kardexRepository;
@@ -42,6 +45,8 @@ public class VentaService {
     private final FacturacionElectronicaService facturacionService;
     private final ConfiguracionService configuracionService;
     private final ClienteService clienteService;
+    private final CosteoEmpresarialService costeoEmpresarialService;
+    private final ReposicionPendienteService reposicionPendienteService;
 
     public VentaService(ProductoRepository productoRepository,
             VentaRepository ventaRepository,
@@ -53,7 +58,9 @@ public class VentaService {
             CajaService cajaService,
             FacturacionElectronicaService facturacionService,
             ConfiguracionService configuracionService,
-            ClienteService clienteService) {
+            ClienteService clienteService,
+            CosteoEmpresarialService costeoEmpresarialService,
+            ReposicionPendienteService reposicionPendienteService) {
         this.productoRepository = productoRepository;
         this.ventaRepository = ventaRepository;
         this.kardexRepository = kardexRepository;
@@ -65,6 +72,8 @@ public class VentaService {
         this.facturacionService = facturacionService;
         this.configuracionService = configuracionService;
         this.clienteService = clienteService;
+        this.costeoEmpresarialService = costeoEmpresarialService;
+        this.reposicionPendienteService = reposicionPendienteService;
     }
 
     /**
@@ -278,6 +287,14 @@ public class VentaService {
             Producto prod = productoRepository.findByIdWithLock(item.getProductoId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado: ID " + item.getProductoId()));
 
+            if (prod.esInactivoInventario()) {
+                throw new RuntimeException("El producto '" + prod.getNombre() + "' esta inactivo y no puede venderse desde el POS.");
+            }
+
+            if (prod.esDesconocidoInventario()) {
+                throw new RuntimeException("El producto '" + prod.getNombre() + "' esta como desconocido. Clasificalo antes de venderlo.");
+            }
+
             if (prod.esInsumo()) {
                 throw new RuntimeException("El producto '" + prod.getNombre() + "' está marcado como insumo y no puede venderse desde el POS.");
             }
@@ -289,7 +306,7 @@ public class VentaService {
             // Verificamos si es un servicio basándonos en tu modelo Producto.java (campo
             // 'tipo')
             // Asumimos que en BD guardas "SERVICIO" o "PRODUCTO" en ese campo.
-            boolean esServicio = prod.getTipo() != null && "SERVICIO".equalsIgnoreCase(prod.getTipo());
+            boolean esServicio = prod.esServicioInventario();
 
             int cantidadRequerida = item.getCantidad().intValue();
             int stockDisponible = prod.getStockActual() != null ? prod.getStockActual() : 0;
@@ -322,19 +339,26 @@ public class VentaService {
             det.setVenta(venta);
             det.setProducto(prod);
             det.setCantidad(cantidad);
-            det.setDescripcion(item.getDescripcion() != null && !item.getDescripcion().isBlank()
-                    ? item.getDescripcion().trim()
-                    : prod.getNombre());
+            det.setDescripcion(descripcionDetalleVenta(item, prod));
             det.setUnidadMedida(prod.getUnidadMedida() != null ? prod.getUnidadMedida() : "NIU");
             det.setPrecioUnitario(precioFinal);
             det.setValorUnitario(valorUnitario);
             det.setSubtotal(subtotalItem);
 
-            // Congelar costo al momento de la venta
-            BigDecimal costoUnit = prod.getPrecioCompra() != null ? prod.getPrecioCompra() : BigDecimal.ZERO;
-            det.setCostoUnitario(costoUnit);
-            det.setUtilidadUnitaria(precioFinal.subtract(costoUnit));
-            det.setUtilidadTotal(precioFinal.subtract(costoUnit).multiply(cantidad));
+            CosteoVentaSnapshotDTO costeo = costeoEmpresarialService.snapshotParaVenta(prod, precioFinal, cantidad);
+            det.setCostoUnitario(costeo.getCostoDirectoUnitario().setScale(2, RoundingMode.HALF_UP));
+            det.setUtilidadUnitaria(costeo.getUtilidadBrutaUnitaria());
+            det.setUtilidadTotal(costeo.getUtilidadBrutaTotal());
+            det.setCostoIndirectoUnitario(costeo.getCostoIndirectoUnitario());
+            det.setCostoTotalUnitario(costeo.getCostoTotalUnitario());
+            det.setPrecioMinimoSnapshot(costeo.getPrecioMinimoSnapshot());
+            det.setPrecioSugeridoSnapshot(costeo.getPrecioSugeridoSnapshot());
+            det.setMontoReposicionTotal(costeo.getMontoReposicionTotal());
+            det.setUtilidadNetaUnitaria(costeo.getUtilidadNetaUnitaria());
+            det.setUtilidadNetaTotal(costeo.getUtilidadNetaTotal());
+            det.setMargenBrutoPct(costeo.getMargenBrutoPct());
+            det.setMargenNetoPct(costeo.getMargenNetoPct());
+            det.setReglaCosteoSnapshot(costeo.getReglaResumen());
 
             det.setPorcentajeIgv(igvPorcentaje);
 
@@ -361,10 +385,23 @@ public class VentaService {
                 registrarKardex(prod, cantidadRequerida, venta);
                 prod.setStockActual(stockDisponible - cantidadRequerida);
                 productoRepository.save(prod);
+                reposicionPendienteService.registrarVenta(det);
             }
         }
 
         return new BigDecimal[] { totalVenta, totalGravada, totalIgv };
+    }
+
+    private String descripcionDetalleVenta(VentaDTO.DetalleDTO item, Producto producto) {
+        String descripcion = item.getDescripcion() != null && !item.getDescripcion().isBlank()
+                ? item.getDescripcion().trim()
+                : producto.getNombre();
+        if (descripcion == null) {
+            return "Producto";
+        }
+        return descripcion.length() > MAX_DESCRIPCION_DETALLE_VENTA
+                ? descripcion.substring(0, MAX_DESCRIPCION_DETALLE_VENTA).trim()
+                : descripcion;
     }
 
     /**
@@ -708,6 +745,7 @@ public class VentaService {
                         // Actualizar stock
                         producto.setStockActual(producto.getStockActual() + cantidadVendida);
                         productoRepository.save(producto);
+                        reposicionPendienteService.revertirVenta(detalle);
                     }
                 }
             }

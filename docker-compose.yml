@@ -6,7 +6,10 @@ services:
     image: sistema-libreria:v1
     container_name: sistema_app
     ports:
-      - "8443:8443" # PUERTO HTTPS SEGURO
+      # Publica el HTTPS en todas las interfaces de Windows para que el celular pueda entrar por la IP LAN.
+      - "0.0.0.0:8443:8443" # PUERTO HTTPS SEGURO
+      # Prueba HTTP auxiliar para diagnosticar si el celular llega a Docker/Windows.
+      - "0.0.0.0:8081:8081"
     depends_on:
       db:
         condition: service_healthy
@@ -16,8 +19,11 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-1234}
       - SERVER_PORT=${SERVER_PORT:-8443}
       - SERVER_SSL_ENABLED=${SERVER_SSL_ENABLED:-true}
+      - MOBILE_HTTP_DIAGNOSTIC_ENABLED=${MOBILE_HTTP_DIAGNOSTIC_ENABLED:-true}
+      - MOBILE_HTTP_DIAGNOSTIC_PORT=${MOBILE_HTTP_DIAGNOSTIC_PORT:-8081}
       - AUTO_UPDATE_ENABLED=${AUTO_UPDATE_ENABLED:-true}
       - TZ=${TZ:-America/Lima}
+      - HOST_IP=${HOST_IP:-}
 
       # Para override manual de IP (descomentar y poner la IP del host si la detección automática falla):
       # - HOST_IP=192.168.1.100

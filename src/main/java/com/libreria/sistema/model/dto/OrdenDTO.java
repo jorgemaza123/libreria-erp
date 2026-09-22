@@ -18,9 +18,14 @@ public class OrdenDTO {
     private String clienteEmail;
     private String clienteDireccion;
     private LocalDate fechaEntrega;
+    private LocalDate fechaRecordatorio;
+    private Boolean recordatorioActivo;
+    private String prioridad = "NORMAL";
     @JsonProperty("aCuenta")
     private BigDecimal aCuenta;
     private String observaciones;
+    private String recordatorioNota;
+    private String metodoPago = "EFECTIVO";
     private List<ItemDTO> items;
 
     @Data

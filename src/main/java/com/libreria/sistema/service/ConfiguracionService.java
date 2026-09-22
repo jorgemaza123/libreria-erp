@@ -67,6 +67,14 @@ public class ConfiguracionService {
         config.setPorcentajeDescuentoMaximo(new BigDecimal("10.00"));
         config.setMargenMinimoAlerta(new BigDecimal("15.00"));
         config.setPreciosIncluyenImpuesto(true);
+        config.setCosteoInteligenteActivo(true);
+        config.setGananciaObjetivoGlobalPct(new BigDecimal("60.00"));
+        config.setGananciaMinimaGlobalPct(new BigDecimal("30.00"));
+        config.setRedondeoPrecioModo("MULTIPLO");
+        config.setRedondeoPrecioPaso(new BigDecimal("0.10"));
+        config.setCosteoSugerenciaComprasActiva(true);
+        config.setCantidadComprasBaseSugerencia(20);
+        config.setUmbralAlertaCambioCostoPct(new BigDecimal("10.00"));
 
         // Facturación electrónica
         config.setFacturacionEndpoint("");
@@ -130,6 +138,14 @@ public class ConfiguracionService {
         configDB.setDiasDevolucion(nuevosDatos.getDiasDevolucion());
         configDB.setPorcentajeDescuentoMaximo(nuevosDatos.getPorcentajeDescuentoMaximo());
         configDB.setMargenMinimoAlerta(nuevosDatos.getMargenMinimoAlerta());
+        configDB.setCosteoInteligenteActivo(nuevosDatos.getCosteoInteligenteActivo());
+        configDB.setGananciaObjetivoGlobalPct(nuevosDatos.getGananciaObjetivoGlobalPct());
+        configDB.setGananciaMinimaGlobalPct(nuevosDatos.getGananciaMinimaGlobalPct());
+        configDB.setRedondeoPrecioModo(nuevosDatos.getRedondeoPrecioModo());
+        configDB.setRedondeoPrecioPaso(nuevosDatos.getRedondeoPrecioPaso());
+        configDB.setCosteoSugerenciaComprasActiva(nuevosDatos.getCosteoSugerenciaComprasActiva());
+        configDB.setCantidadComprasBaseSugerencia(nuevosDatos.getCantidadComprasBaseSugerencia());
+        configDB.setUmbralAlertaCambioCostoPct(nuevosDatos.getUmbralAlertaCambioCostoPct());
 
         // --- BOOLEANS (Checkboxes) - CORRECCIÓN MASIVA ---
         // Cambiado de is...() a get...()

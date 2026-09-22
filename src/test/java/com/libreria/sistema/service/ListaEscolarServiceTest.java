@@ -96,8 +96,15 @@ class ListaEscolarServiceTest {
                 return l;
             });
 
-        // Max numero → null (primera lista)
-        when(listaRepository.findMaxNumeroBySerie(anyString())).thenReturn(null);
+        // Correlativo: primera lista → numero=1
+        Correlativo correlativoMock = new Correlativo("LISTA_ESCOLAR", "LE001", 0);
+        when(correlativoRepository.findByCodigoAndSerieWithLock(anyString(), anyString()))
+            .thenReturn(Optional.of(correlativoMock));
+        when(correlativoRepository.save(any(Correlativo.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Max numero → 0 (primera lista) — Integer para evitar NPE en auto-unboxing
+        when(listaRepository.findMaxNumeroBySerie(anyString())).thenReturn(0);
 
         // Usuario y cliente opcionales
         when(usuarioRepository.findByUsername(anyString())).thenReturn(Optional.empty());

@@ -83,6 +83,83 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Gastos de la compra completa; el backend los reparte proporcionalmente por línea. -->
+                            <div class="row mt-3 pt-3 border-top">
+                                <div class="col-md-3">
+                                    <div class="form-group mb-2">
+                                        <label class="text-info font-weight-bold"><i class="fas fa-shipping-fast mr-1"></i>Gastos de toda la compra (S/)</label>
+                                        <input type="number" min="0" step="0.01" class="form-control form-control-sm costeo-indirecto" id="gastosIndirectosMonto" placeholder="Ej: Pasajes, fletes (S/ 0.00)">
+                                        <small class="text-muted">Se reparte proporcionalmente entre todos los productos.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-group mb-2">
+                                        <label class="text-info font-weight-bold"><i class="fas fa-file-alt mr-1"></i>Detalle de Gastos</label>
+                                        <input type="text" class="form-control form-control-sm costeo-indirecto" id="detalleGastosIndirectos" placeholder="Ej: S/ 15 pasaje, S/ 5 bolsas de embalaje">
+                                        <small class="text-muted">Ej: pasaje, bolsas, movilidad, comida, flete.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-2">
+                                        <label class="text-info font-weight-bold"><i class="fas fa-percentage mr-1"></i>Factor Aplicado</label>
+                                        <input type="number" min="0" step="0.001" class="form-control form-control-sm costeo-indirecto" id="factorIndirectoAplicadoPct" placeholder="Auto-calculado %">
+                                        <small class="text-muted">Manual o auto-calculado.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-2">
+                                        <label class="text-info font-weight-bold"><i class="fas fa-history mr-1"></i>Factor Sugerido</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="factorIndirectoSugeridoPct"
+                                                   th:value="${factorIndirectoSugerido != null ? #numbers.formatDecimal(factorIndirectoSugerido,1,3) : '0.000'}" readonly>
+                                            <div class="input-group-append">
+                                                <button type="button" class="btn btn-outline-info" id="btnAplicarSugerido" title="Aplicar factor sugerido">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Historial del proveedor/general.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:if="${reposicionPrefill != null and !#lists.isEmpty(reposicionPrefill)}" class="card card-outline card-info">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-clipboard-list mr-1"></i>Reposicion cubierta en esta compra
+                            </h3>
+                            <div class="card-tools">
+                                <span class="badge badge-info" th:text="${#lists.size(reposicionPrefill)} + ' productos'">0 productos</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-0 table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-right">Stock</th>
+                                    <th class="text-right">Cantidad sugerida</th>
+                                    <th>Presentacion</th>
+                                    <th>Prioridad</th>
+                                    <th>Notas</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="item : ${reposicionPrefill}">
+                                    <td class="font-weight-bold" th:text="${item['nombre']}">Producto</td>
+                                    <td class="text-right" th:text="${item['stockActual']}">0</td>
+                                    <td class="text-right" th:text="${item['cantidad']}">0</td>
+                                    <td th:text="${item['presentacionSugerida'] ?: 'UNIDAD'}">UNIDAD</td>
+                                    <td><span class="badge badge-warning" th:text="${item['prioridadReposicion'] ?: 'MEDIA'}">MEDIA</span></td>
+                                    <td class="text-muted" th:text="${item['notasReposicion'] ?: '-'}">-</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer small text-muted">
+                            Al guardar la compra, estos productos se descuentan automaticamente de la reposicion pendiente segun la cantidad comprada.
                         </div>
                     </div>
 
@@ -111,6 +188,10 @@
                                                 th:data-costo="${prod.precioCompra}"
                                                 th:data-precio-venta="${prod.precioVenta}"
                                                 th:data-clasificacion="${prod.clasificacion}"
+                                                th:data-stock-actual="${prod.stockActual}"
+                                                th:data-usar-regla-manual-precio="${prod.usarReglaManualPrecio}"
+                                                th:data-ganancia-objetivo="${prod.gananciaObjetivoPct}"
+                                                th:data-ganancia-minima="${prod.gananciaMinimaPct}"
                                                 th:data-codigo-barra="${prod.codigoBarra}"
                                                 th:data-codigo-interno="${prod.codigoInterno}"
                                                 th:data-nombre="${prod.nombre}"
@@ -261,16 +342,26 @@
                                             <th>Producto</th>
                                             <th width="80" class="text-center">Cant.</th>
                                             <th width="130" class="text-right">Total pagado</th>
-                                            <th width="130" class="text-right">Costo unit.</th>
+                                            <th width="120" class="text-right">Gasto repartido</th>
+                                            <th width="130" class="text-right">Costo real/u</th>
+                                            <th width="130" class="text-right">Costo promedio</th>
+                                            <th width="120" class="text-right">Precio minimo</th>
+                                            <th width="120" class="text-right">Precio sugerido</th>
                                             <th width="50"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tablaItems"></tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="3" class="text-right font-weight-bold">TOTAL A PAGAR:</td>
-                                            <td class="text-right font-weight-bold" style="font-size: 1.2em;">S/ <span
+                                            <td colspan="7" class="text-right font-weight-bold">TOTAL COMPRA (Base):</td>
+                                            <td class="text-right font-weight-bold" style="font-size: 1.1em;">S/ <span
                                                     id="totalVenta">0.00</span></td>
+                                            <td></td>
+                                        </tr>
+                                        <tr id="totalCostoRealContenedor" class="bg-light text-info">
+                                            <td colspan="7" class="text-right font-weight-bold">TOTAL COSTO REAL (Con Gastos):</td>
+                                            <td class="text-right font-weight-bold" style="font-size: 1.1em;">S/ <span
+                                                    id="totalCostoRealVal">0.00</span></td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
@@ -464,7 +555,7 @@
                                 <input type="file" class="custom-file-input" id="ip_archivo" accept=".xlsx,.xls">
                                 <label class="custom-file-label" for="ip_archivo">Seleccionar archivo...</label>
                             </div>
-                            <small class="text-muted">Puedes descargar la plantilla oficial desde <a href="/productos/plantilla-excel" target="_blank">aqui</a>. La columna <code>CLASIFICACION</code> acepta <code>MERCADERIA</code> o <code>INSUMO</code>.</small>
+                            <small class="text-muted">Puedes descargar la plantilla oficial desde <a href="/productos/plantilla-excel" target="_blank">aqui</a>. La columna <code>CLASIFICACION</code> acepta <code>MERCADERIA</code>, <code>INSUMO</code>, <code>SERVICIO</code>, <code>INACTIVO</code> o <code>DESCONOCIDO</code>.</small>
                         </div>
                         <div class="custom-control custom-checkbox mb-3">
                             <input type="checkbox" class="custom-control-input" id="ip_actualizarExistentes">
@@ -582,15 +673,18 @@
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p>El costo de los siguientes productos cambió <strong>más del 10%</strong>. ¿Deseas actualizar
+                        <p>El costo de los siguientes productos superó el umbral de alerta configurado. ¿Deseas actualizar
                             el precio de venta para mantener tu margen?</p>
                         <table class="table table-sm table-bordered">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Producto</th>
+                                    <th>Proveedor ant.</th>
+                                    <th>Proveedor actual</th>
                                     <th class="text-right">Costo ant.</th>
                                     <th class="text-right">Costo nuevo</th>
                                     <th class="text-right">Cambio</th>
+                                    <th class="text-right">Umbral</th>
                                     <th class="text-right">P. venta actual</th>
                                     <th class="text-right">P. venta sugerido</th>
                                     <th class="text-center">Actualizar</th>
@@ -620,7 +714,7 @@
                     <div class="modal-body pb-2">
                         <div class="alert alert-info py-2 d-none" id="np_alertaInsumo">
                             <i class="fas fa-info-circle mr-1"></i>
-                            El insumo se compra con stock y costo, pero no se mostrará en ventas ni requiere ubicación o precio de venta.
+                            <span id="np_alertaClasificacionTexto">El insumo se compra con stock y costo, pero no se mostrará en ventas ni requiere ubicación o precio de venta.</span>
                         </div>
                         <!-- Fila 1: Identificación -->
                         <div class="row">
@@ -667,6 +761,9 @@
                                     <select id="np_clasificacion" class="form-control form-control-sm">
                                         <option value="MERCADERIA">Mercadería</option>
                                         <option value="INSUMO">Insumo</option>
+                                        <option value="SERVICIO">Servicio</option>
+                                        <option value="INACTIVO">Inactivo</option>
+                                        <option value="DESCONOCIDO">Desconocido</option>
                                     </select>
                                 </div>
                             </div>
@@ -701,6 +798,12 @@
                             </div>
                             <div class="col-md-2">
                                 <div class="form-group mb-1">
+                                    <label class="small">Generación</label>
+                                    <input type="text" id="np_generacion" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mb-1">
                                     <label class="small">Tipo</label>
                                     <select id="np_tipo" class="form-control form-control-sm">
                                         <option value="ESTANDAR">Estándar</option>
@@ -719,16 +822,6 @@
                                         <option value="CAJA">CAJA</option>
                                         <option value="METRO">METRO</option>
                                         <option value="LITRO">LITRO</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-group mb-1">
-                                    <label class="small">Afect. IGV</label>
-                                    <select id="np_tipoAfectacionIgv" class="form-control form-control-sm">
-                                        <option value="GRAVADO">GRAVADO (18%)</option>
-                                        <option value="EXONERADO">EXONERADO</option>
-                                        <option value="INAFECTO">INAFECTO</option>
                                     </select>
                                 </div>
                             </div>
@@ -756,6 +849,16 @@
                                         placeholder="Ej: 3">
                                 </div>
                             </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-1">
+                                    <label class="small">Afect. IGV</label>
+                                    <select id="np_tipoAfectacionIgv" class="form-control form-control-sm">
+                                        <option value="GRAVADO">GRAVADO (18%)</option>
+                                        <option value="EXONERADO">EXONERADO</option>
+                                        <option value="INAFECTO">INAFECTO</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         <!-- Fila 3: Precios -->
                         <div class="row">
@@ -779,6 +882,7 @@
                                             class="form-control border-success font-weight-bold" placeholder="0.00"
                                             required>
                                     </div>
+                                    <small id="np_precioVentaSugerencia" class="form-text text-muted"></small>
                                 </div>
                             </div>
                             <div class="col-md-3 js-np-insumo-oculto">
@@ -802,12 +906,108 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-2">
-                                    <label class="small text-dark">Stock Actual</label>
+                                    <label class="small text-dark">Cantidad para esta compra</label>
                                     <input type="number" id="np_stockActual" class="form-control form-control-sm"
                                         value="0" min="0" step="1">
                                     <small class="form-text text-muted">
-                                        Se usara para llenar la cantidad de esta compra sin duplicar el stock.
+                                        Se cargara en la linea de compra; el stock se sumara al guardar la compra.
                                     </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta de Costeo Inteligente inside Modal -->
+                        <div class="card card-outline card-info mt-3 js-np-insumo-oculto">
+                            <div class="card-header py-1">
+                                <h6 class="card-title mb-0 font-weight-bold text-info">
+                                    <i class="fas fa-calculator mr-1"></i>
+                                    Costo y precio inteligente (Creación rápida)
+                                </h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="small mb-1">1. Cantidad comprada</label>
+                                        <input type="number" min="0" step="1" class="form-control form-control-sm" id="modalCosteoCantidadComprada" placeholder="Ej: 12">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small mb-1">2. Total pagado</label>
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="modalCosteoTotalPagado" placeholder="Ej: 8.00">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small mb-1">3. Indirecto manual (%)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" min="0" step="0.01" class="form-control" id="modalCosteoFactorManual" placeholder="Usar sugerido">
+                                            <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                        </div>
+                                        <small class="text-muted">Sugerido: <span id="modalCosteoFactorSugeridoTexto" th:text="${factorIndirectoSugerido != null ? #numbers.formatDecimal(factorIndirectoSugerido,1,2) : '0.00'}">0.00</span>%</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="small mb-1">Ganancia deseada (%)</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" min="0" step="0.01" class="form-control" id="modalCosteoGananciaObjetivo"
+                                                           th:value="${configCosteo != null ? configCosteo.gananciaObjetivoGlobalPct : ''}">
+                                                    <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="small mb-1">Ganancia mínima (%)</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" min="0" step="0.01" class="form-control" id="modalCosteoGananciaMinima"
+                                                           th:value="${configCosteo != null ? configCosteo.gananciaMinimaGlobalPct : ''}">
+                                                    <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="alert mt-2 mb-0 py-1 px-2 small" id="modalCosteoEstado" style="display:none;"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-1">
+                                                <div class="border rounded p-1">
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">Costo por unidad</div>
+                                                    <div class="font-weight-bold small" id="modalCosteoCostoUnitario">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-1">
+                                                <div class="border rounded p-1">
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">Costo real</div>
+                                                    <div class="font-weight-bold small" id="modalCosteoCostoReal">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-1">
+                                                <div class="border rounded p-1">
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">Precio mínimo</div>
+                                                    <div class="font-weight-bold text-warning small" id="modalCosteoPrecioMinimo">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-1">
+                                                <div class="border rounded p-1">
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">Precio sugerido</div>
+                                                    <div class="font-weight-bold text-success small" id="modalCosteoPrecioSugerido">S/ 0.00</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex flex-wrap justify-content-end mt-1">
+                                            <button type="button" class="btn btn-outline-info btn-xs mr-1 mb-1" id="btnModalUsarCostoReal">
+                                                <i class="fas fa-coins mr-1"></i>Usar costo real
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success btn-xs mr-1 mb-1" id="btnModalUsarPrecioSugerido">
+                                                <i class="fas fa-tags mr-1"></i>Usar sugerido
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-xs mb-1" id="btnModalDuplicarPrecio">
+                                                <i class="fas fa-clone mr-1"></i>Duplicar precio
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -877,6 +1077,12 @@
                                                     <option value="">Seleccionar producto...</option>
                                                     <option th:each="prod : ${productos}" th:value="${prod.id}"
                                                         th:data-costo="${prod.precioCompra}"
+                                                        th:data-precio-venta="${prod.precioVenta}"
+                                                        th:data-clasificacion="${prod.clasificacion}"
+                                                        th:data-stock-actual="${prod.stockActual}"
+                                                        th:data-usar-regla-manual-precio="${prod.usarReglaManualPrecio}"
+                                                        th:data-ganancia-objetivo="${prod.gananciaObjetivoPct}"
+                                                        th:data-ganancia-minima="${prod.gananciaMinimaPct}"
                                                         th:data-codigo-barra="${prod.codigoBarra}"
                                                         th:data-codigo-interno="${prod.codigoInterno}"
                                                         th:data-nombre="${prod.nombre}"
@@ -925,7 +1131,17 @@
     </div>
 
     <th:block layout:fragment="scripts">
-        <script>
+        <script th:inline="javascript">
+            const COSTEO_CONFIG = {
+                activo: true,
+                sugerido: /*[[${factorIndirectoSugerido != null ? factorIndirectoSugerido : 0}]]*/ 0,
+                paso: /*[[${configCosteo != null ? configCosteo.redondeoPrecioPaso : 0.10}]]*/ 0.10,
+                redondeoModo: /*[[${configCosteo != null ? configCosteo.redondeoPrecioModo : 'MULTIPLO'}]]*/ 'MULTIPLO',
+                gananciaObjetivo: /*[[${configCosteo != null ? configCosteo.gananciaObjetivoGlobalPct : 60}]]*/ 60,
+                gananciaMinima: /*[[${configCosteo != null ? configCosteo.gananciaMinimaGlobalPct : 30}]]*/ 30
+            };
+            const REPOSICION_PREFILL = /*[[${reposicionPrefill}]]*/ [];
+
             let carrito = [];
             let costoCalculado = 0;
             let salidaPermitida = false;
@@ -1017,12 +1233,131 @@
                 });
             }
 
+            function calcularCosteoInteligenteModal(e) {
+                if (!COSTEO_CONFIG.activo) return;
+
+                const cantidad = parseFloat($('#modalCosteoCantidadComprada').val()) || 0;
+                const totalPagado = parseFloat($('#modalCosteoTotalPagado').val()) || 0;
+                const factorManualRaw = $('#modalCosteoFactorManual').val();
+                const factorCompra = obtenerFactorIndirectoAplicado();
+                const factorAplicado = factorManualRaw !== '' ? (parseFloat(factorManualRaw) || 0) : (factorCompra > 0 ? factorCompra : (parseFloat(COSTEO_CONFIG.sugerido) || 0));
+                const gananciaObjetivo = parseFloat($('#modalCosteoGananciaObjetivo').val()) || 0;
+                const gananciaMinima = parseFloat($('#modalCosteoGananciaMinima').val()) || 0;
+                const precioVenta = parseFloat($('#np_precioVenta').val()) || 0;
+
+                const $estado = $('#modalCosteoEstado');
+                if (cantidad <= 0 || totalPagado <= 0) {
+                    $('#modalCosteoCostoUnitario, #modalCosteoCostoReal, #modalCosteoPrecioMinimo, #modalCosteoPrecioSugerido').text('S/ 0.00').data('valor', 0);
+                    $('#np_precioVentaSugerencia').html('');
+                    $estado.removeClass('alert-danger alert-warning alert-success').addClass('alert-secondary')
+                        .text('Ingresa cantidad comprada y total pagado para ver el costo real antes de guardar.').show();
+                    return;
+                }
+
+                const costoUnitario = totalPagado / cantidad;
+                const costoReal = costoUnitario * (1 + (factorAplicado / 100));
+                const precioMinimo = costoReal * (1 + (gananciaMinima / 100));
+                const precioSugeridoBruto = costoReal * (1 + (gananciaObjetivo / 100));
+                const precioSugerido = aplicarRedondeoRetailJS(precioSugeridoBruto);
+
+                $('#modalCosteoCostoUnitario').text('S/ ' + costoUnitario.toFixed(2)).data('valor', costoUnitario);
+                $('#modalCosteoCostoReal').text('S/ ' + costoReal.toFixed(2)).data('valor', costoReal);
+                $('#modalCosteoPrecioMinimo').text('S/ ' + precioMinimo.toFixed(2)).data('valor', precioMinimo);
+                $('#modalCosteoPrecioSugerido').text('S/ ' + precioSugerido.toFixed(2)).data('valor', precioSugerido);
+
+                // Auto-rellenar campos si fue disparado por los controles de costeo
+                const costeoFieldIds = ['modalCosteoCantidadComprada', 'modalCosteoTotalPagado', 'modalCosteoFactorManual', 'modalCosteoGananciaObjetivo', 'modalCosteoGananciaMinima'];
+                const triggeredByCalculator = !e || !e.target || costeoFieldIds.includes(e.target.id);
+
+                if (triggeredByCalculator) {
+                    if ((!document.activeElement || document.activeElement.id !== 'np_stockActual') && cantidad > 0) {
+                        $('#np_stockActual').val(Math.floor(cantidad)).trigger('change');
+                    }
+                    if ((!document.activeElement || document.activeElement.id !== 'np_precioCompra') && costoReal > 0) {
+                        $('#np_precioCompra').val(costoReal.toFixed(2)).trigger('change');
+                    }
+                    if ((!document.activeElement || document.activeElement.id !== 'np_precioVenta') && precioSugerido > 0) {
+                        $('#np_precioVenta').val(precioSugerido.toFixed(2)).trigger('input');
+                    }
+                }
+
+                // Calcular ganancia real del precio venta ingresado contra el costo real
+                let textoGanancia = '';
+                if (costoReal > 0 && precioVenta > 0) {
+                    const margenActual = ((precioVenta - costoReal) / costoReal) * 100;
+                    const claseMargen = margenActual >= 30 ? 'text-success' : (margenActual >= 15 ? 'text-warning' : 'text-danger');
+                    const signo = margenActual >= 0 ? '+' : '';
+                    textoGanancia = ` · Ganancia: <strong class="${claseMargen}">${signo}${margenActual.toFixed(1)}%</strong>`;
+                }
+
+                // Mostrar sugerencias visuales
+                $('#np_precioVentaSugerencia').html(`Recomendado: <strong class="text-success">S/ ${precioSugerido.toFixed(2)}</strong> · Minimo saludable: <strong class="text-warning">S/ ${precioMinimo.toFixed(2)}</strong> · No perder: <strong class="text-dark">S/ ${costoReal.toFixed(2)}</strong>${textoGanancia}`);
+
+                if (precioVenta > 0 && precioVenta < costoReal) {
+                    $estado.removeClass('alert-secondary alert-warning alert-success').addClass('alert-danger')
+                        .text('Ese precio te hace perder dinero. Sube el precio o revisa el costo real.').show();
+                } else if (precioVenta > 0 && precioVenta < precioMinimo) {
+                    $estado.removeClass('alert-secondary alert-danger alert-success').addClass('alert-warning')
+                        .text('Ese precio gana poco y queda debajo del minimo recomendado.').show();
+                } else {
+                    $estado.removeClass('alert-secondary alert-danger alert-warning').addClass('alert-success')
+                        .text('Precio saludable para vender con mejor control.').show();
+                }
+            }
+
             $(document).ready(function () {
                 inicializarSelect2Compras();
 
+                // Bind costeo inputs inside the quick creation modal
+                $('#modalCosteoCantidadComprada, #modalCosteoTotalPagado, #modalCosteoFactorManual, #modalCosteoGananciaObjetivo, #modalCosteoGananciaMinima, #np_precioCompra, #np_precioVenta')
+                    .on('input change', calcularCosteoInteligenteModal);
+
+                // Conflict prevention and recalculation trigger for purchase indirect costs
+                $('#gastosIndirectosMonto').on('input change', function() {
+                    if ($(this).val() !== '') {
+                        $('#factorIndirectoAplicadoPct').val('');
+                    }
+                    renderizarTabla();
+                });
+
+                $('#factorIndirectoAplicadoPct').on('input change', function() {
+                    if ($(this).val() !== '') {
+                        $('#gastosIndirectosMonto').val('');
+                    }
+                    renderizarTabla();
+                });
+
+                $('#btnAplicarSugerido').on('click', function() {
+                    let sug = parseFloat($('#factorIndirectoSugeridoPct').val()) || 0;
+                    $('#factorIndirectoAplicadoPct').val(sug.toFixed(3));
+                    $('#gastosIndirectosMonto').val('');
+                    renderizarTabla();
+                });
+
+                $('#btnModalUsarCostoReal').on('click', function () {
+                    let costoReal = parseFloat($('#modalCosteoCostoReal').data('valor') || 0);
+                    if (costoReal > 0) {
+                        $('#np_precioCompra').val(costoReal.toFixed(2)).trigger('change');
+                    }
+                });
+
+                $('#btnModalUsarPrecioSugerido').on('click', function () {
+                    let sugerido = parseFloat($('#modalCosteoPrecioSugerido').data('valor') || 0);
+                    if (sugerido > 0) {
+                        $('#np_precioVenta').val(sugerido.toFixed(2)).trigger('input');
+                    }
+                });
+
+                $('#btnModalDuplicarPrecio').on('click', function () {
+                    let costoReal = parseFloat($('#modalCosteoCostoReal').data('valor') || 0);
+                    if (costoReal > 0) {
+                        $('#np_precioVenta').val((costoReal * 2).toFixed(2)).trigger('input');
+                    }
+                });
+
                 $('#productoSelect').on('change', function () {
-                    let costo = $(this).find(':selected').data('costo');
-                    if (costo) {
+                    let costo = leerNumeroOption($(this).find(':selected'), 'costo', 0);
+                    if (costo > 0) {
                         // Al seleccionar producto, pre-llenamos costo unit y calculamos total
                         $('#costoInput').val(parseFloat(costo).toFixed(2));
                         sincronizarDesdeCosto();
@@ -1094,20 +1429,54 @@
             }
 
             // ── PANEL DE PRECIO (COMPLETAMENTE LIBRE) ────────────────
+            function obtenerFactorIndirectoAplicado() {
+                if (!COSTEO_CONFIG.activo) return 0;
+
+                let appliedPct = parseFloat($('#factorIndirectoAplicadoPct').val());
+                if (!isNaN(appliedPct) && appliedPct >= 0) {
+                    return appliedPct;
+                }
+
+                let gastosMonto = parseFloat($('#gastosIndirectosMonto').val()) || 0;
+                let subtotalDirecto = 0;
+                carrito.forEach(item => {
+                    subtotalDirecto += obtenerSubtotalItem(item);
+                });
+
+                if (gastosMonto > 0 && subtotalDirecto > 0) {
+                    return (gastosMonto * 100) / subtotalDirecto;
+                }
+
+                return 0;
+            }
+
             function mostrarPanelPrecio(costoUnit) {
                 if (!costoUnit || costoUnit <= 0) { $('#panelPrecio').addClass('d-none'); return; }
                 let selectedOption = $('#productoSelect option:selected');
-                if ((selectedOption.data('clasificacion') || 'MERCADERIA') === 'INSUMO') {
+                if (leerTextoOption(selectedOption, 'clasificacion', 'MERCADERIA').toUpperCase() === 'INSUMO') {
                     $('#panelPrecio').addClass('d-none');
                     return;
                 }
+
+                let factor = obtenerFactorIndirectoAplicado();
                 const costoUnitF = parseFloat(costoUnit);
-                $('#ppCostoUnit').text(costoUnitF.toFixed(4));
+                const costoRealF = costoUnitF * (1 + factor / 100);
+
+                $('#ppCostoUnit').data('costo-base', costoUnitF);
+                $('#ppCostoUnit').data('costo-real', costoRealF);
+
+                if (COSTEO_CONFIG.activo && factor > 0) {
+                    $('#ppCostoUnit').html(`${costoUnitF.toFixed(4)} <span class="text-info font-weight-bold ml-1">(Real: S/ ${costoRealF.toFixed(4)})</span>`);
+                } else {
+                    $('#ppCostoUnit').text(costoUnitF.toFixed(4));
+                }
 
                 // Si el producto ya tiene precio de venta, mostrar margen actual
-                let precioVentaActual = parseFloat(selectedOption.data('precio-venta') || 0);
-                if (precioVentaActual > 0 && costoUnitF > 0) {
-                    let margenActual = ((precioVentaActual - costoUnitF) / costoUnitF * 100);
+                let precioVentaActual = leerNumeroOption(selectedOption, 'precio-venta', 0);
+                let referenceCost = COSTEO_CONFIG.activo ? costoRealF : costoUnitF;
+
+                if (precioVentaActual > 0 && referenceCost > 0) {
+                    let margenActual = ((precioVentaActual - referenceCost) / referenceCost * 100);
                     $('#ppMargenActualVal').text('S/ ' + precioVentaActual.toFixed(2) + ' (' + margenActual.toFixed(1) + '%)');
                     $('#ppMargenActualLabel').removeClass('d-none');
                     // Pre-llenar con el margen actual como punto de partida
@@ -1124,38 +1493,47 @@
             }
 
             function actualizarPrecioCustom() {
-                let costo = parseFloat($('#costoInput').val()) || 0;
+                let factor = obtenerFactorIndirectoAplicado();
+                let costoBase = parseFloat($('#costoInput').val()) || 0;
+                let referenceCost = COSTEO_CONFIG.activo ? (costoBase * (1 + factor / 100)) : costoBase;
                 let margen = parseFloat($('#ppMargenCustom').val());
-                if (costo > 0 && !isNaN(margen)) {
-                    let precio = costo * (1 + margen / 100);
+                if (referenceCost > 0 && !isNaN(margen)) {
+                    let precio = referenceCost * (1 + margen / 100);
                     $('#ppPrecioCustom').val(precio.toFixed(2));
                     actualizarResumenCustom();
                 }
             }
 
             function actualizarMargenCustom() {
-                let costo = parseFloat($('#costoInput').val()) || 0;
+                let factor = obtenerFactorIndirectoAplicado();
+                let costoBase = parseFloat($('#costoInput').val()) || 0;
+                let referenceCost = COSTEO_CONFIG.activo ? (costoBase * (1 + factor / 100)) : costoBase;
                 let precio = parseFloat($('#ppPrecioCustom').val()) || 0;
-                if (costo > 0 && precio > 0) {
-                    let margen = ((precio - costo) / costo) * 100;
+                if (referenceCost > 0 && precio > 0) {
+                    let margen = ((precio - referenceCost) / referenceCost) * 100;
                     $('#ppMargenCustom').val(margen.toFixed(1));
                     actualizarResumenCustom();
                 }
             }
 
             function actualizarResumenCustom() {
-                let costo = parseFloat($('#costoInput').val()) || 0;
+                let factor = obtenerFactorIndirectoAplicado();
+                let costoBase = parseFloat($('#costoInput').val()) || 0;
+                let referenceCost = COSTEO_CONFIG.activo ? (costoBase * (1 + factor / 100)) : costoBase;
                 let precio = parseFloat($('#ppPrecioCustom').val()) || 0;
                 let margen = parseFloat($('#ppMargenCustom').val()) || 0;
                 let cant = parseFloat($('#cantInput').val()) || 1;
-                if (costo > 0 && precio > 0) {
-                    let gan = precio - costo;
+
+                if (referenceCost > 0 && precio > 0) {
+                    let gan = precio - referenceCost;
                     let ganLote = gan * cant;
                     let clase = margen >= 30 ? 'text-success' : (margen >= 15 ? 'text-warning' : 'text-danger');
                     $('#ppGananciaUnit').html('<span class="' + clase + ' font-weight-bold">S/ ' + gan.toFixed(2) + '</span>');
                     $('#ppGananciaLote').html('<span class="' + clase + ' font-weight-bold">S/ ' + ganLote.toFixed(2) + '</span>');
+
+                    let costText = COSTEO_CONFIG.activo && factor > 0 ? 'costo real' : 'costo unit.';
                     $('#ppResumenCustom').html(
-                        '<span class="' + clase + '">' + margen.toFixed(1) + '% de margen</span> — ' +
+                        '<span class="' + clase + '">' + margen.toFixed(1) + '% de margen (sobre ' + costText + ')</span> — ' +
                         'Ganas S/ ' + gan.toFixed(2) + '/unid · ' +
                         'S/ ' + ganLote.toFixed(2) + ' si vendes todo el lote (' + cant + ' unid.)'
                     );
@@ -1262,6 +1640,250 @@
             }
 
             // ── CARRITO ──────────────────────────────────────────────────
+            function redondearNumero(valor, decimales) {
+                let factor = Math.pow(10, decimales || 2);
+                return Math.round((parseFloat(valor || 0) + Number.EPSILON) * factor) / factor;
+            }
+
+            function escaparHtml(texto) {
+                return String(texto || '').replace(/[&<>"']/g, function (char) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;'
+                    }[char];
+                });
+            }
+
+            function leerNumeroOption($option, dataAttr, fallback) {
+                let raw = $option && $option.length ? $option.attr('data-' + dataAttr) : null;
+                if (raw === undefined || raw === null || raw === '') {
+                    raw = $option && $option.length ? $option.data(dataAttr) : null;
+                }
+                let parsed = parseFloat(raw);
+                return isNaN(parsed) ? (fallback || 0) : parsed;
+            }
+
+            function leerTextoOption($option, dataAttr, fallback) {
+                let raw = $option && $option.length ? $option.attr('data-' + dataAttr) : null;
+                if (raw === undefined || raw === null || raw === '') {
+                    raw = $option && $option.length ? $option.data(dataAttr) : null;
+                }
+                return raw === undefined || raw === null || raw === '' ? (fallback || '') : String(raw);
+            }
+
+            function leerBooleanOption($option, dataAttr) {
+                let raw = leerTextoOption($option, dataAttr, 'false').toLowerCase();
+                return raw === 'true' || raw === '1' || raw === 'si';
+            }
+
+            function obtenerMetaProductoPorId(productoId) {
+                let $option = $('#productoSelect').find(`option[value="${productoId}"]`);
+                if (!$option.length) {
+                    $option = $('#dp_productoDestino').find(`option[value="${productoId}"]`);
+                }
+                return {
+                    nombre: $option.length ? $option.text() : '',
+                    stockActual: leerNumeroOption($option, 'stock-actual', 0),
+                    costoAnterior: leerNumeroOption($option, 'costo', 0),
+                    precioVentaActual: leerNumeroOption($option, 'precio-venta', 0),
+                    clasificacion: leerTextoOption($option, 'clasificacion', 'MERCADERIA'),
+                    usarReglaManualPrecio: leerBooleanOption($option, 'usar-regla-manual-precio'),
+                    gananciaObjetivoPct: leerNumeroOption($option, 'ganancia-objetivo', 0),
+                    gananciaMinimaPct: leerNumeroOption($option, 'ganancia-minima', 0)
+                };
+            }
+
+            function copiarCamposDefinidos(destino, origen) {
+                Object.keys(origen || {}).forEach(function (key) {
+                    let value = origen[key];
+                    if (value !== undefined && value !== null && value !== '') {
+                        destino[key] = value;
+                    }
+                });
+                return destino;
+            }
+
+            function normalizarItemCarrito(item) {
+                let productoId = String(item.productoId || '');
+                let meta = obtenerMetaProductoPorId(productoId);
+                let combinado = copiarCamposDefinidos(Object.assign({}, meta), item || {});
+
+                let cantidad = parseFloat(combinado.cantidad);
+                let costo = parseFloat(combinado.costo);
+                let totalPagado = parseFloat(combinado.totalPagado);
+
+                if (!productoId || !cantidad || cantidad <= 0) {
+                    return null;
+                }
+                if ((!totalPagado || totalPagado <= 0) && costo > 0) {
+                    totalPagado = redondearNumero(cantidad * costo, 2);
+                }
+                if ((!costo || costo <= 0) && totalPagado > 0) {
+                    costo = redondearNumero(totalPagado / cantidad, 4);
+                }
+                if (!costo || costo <= 0 || !totalPagado || totalPagado <= 0) {
+                    return null;
+                }
+
+                return Object.assign({}, combinado, {
+                    productoId: productoId,
+                    nombre: combinado.nombre || meta.nombre || 'Producto',
+                    cantidad: cantidad,
+                    costo: redondearNumero(totalPagado / cantidad, 4),
+                    totalPagado: redondearNumero(totalPagado, 2),
+                    stockActual: parseFloat(combinado.stockActual || 0),
+                    costoAnterior: parseFloat(combinado.costoAnterior || combinado.precioCompra || 0),
+                    precioVentaActual: parseFloat(combinado.precioVentaActual || combinado.precioVenta || 0),
+                    clasificacion: combinado.clasificacion || 'MERCADERIA',
+                    usarReglaManualPrecio: combinado.usarReglaManualPrecio === true || combinado.usarReglaManualPrecio === 'true',
+                    gananciaObjetivoPct: parseFloat(combinado.gananciaObjetivoPct || 0),
+                    gananciaMinimaPct: parseFloat(combinado.gananciaMinimaPct || 0)
+                });
+            }
+
+            function sumarItemCarrito(item) {
+                let normalizado = normalizarItemCarrito(item);
+                if (!normalizado) {
+                    return false;
+                }
+
+                let existe = carrito.find(i => String(i.productoId) === String(normalizado.productoId));
+                if (existe) {
+                    let totalAnterior = parseFloat(existe.totalPagado) || redondearNumero((parseFloat(existe.cantidad) || 0) * (parseFloat(existe.costo) || 0), 2);
+                    existe.cantidad = redondearNumero((parseFloat(existe.cantidad) || 0) + normalizado.cantidad, 4);
+                    existe.totalPagado = redondearNumero(totalAnterior + normalizado.totalPagado, 2);
+                    existe.costo = redondearNumero(existe.totalPagado / existe.cantidad, 4);
+                    existe.nombre = normalizado.nombre || existe.nombre;
+                    copiarCamposDefinidos(existe, {
+                        stockActual: normalizado.stockActual,
+                        costoAnterior: normalizado.costoAnterior,
+                        precioVentaActual: normalizado.precioVentaActual,
+                        clasificacion: normalizado.clasificacion,
+                        usarReglaManualPrecio: normalizado.usarReglaManualPrecio,
+                        gananciaObjetivoPct: normalizado.gananciaObjetivoPct,
+                        gananciaMinimaPct: normalizado.gananciaMinimaPct
+                    });
+                } else {
+                    carrito.push(normalizado);
+                }
+                return true;
+            }
+
+            function obtenerSubtotalItem(item) {
+                let subtotal = parseFloat(item.totalPagado);
+                if (!subtotal || subtotal <= 0) {
+                    subtotal = (parseFloat(item.cantidad) || 0) * (parseFloat(item.costo) || 0);
+                }
+                return redondearNumero(subtotal, 2);
+            }
+
+            function aplicarGananciaJS(costo, gananciaPct) {
+                return parseFloat(costo || 0) * (1 + ((parseFloat(gananciaPct) || 0) / 100));
+            }
+
+            function aplicarRedondeoRetailJS(precio) {
+                let paso = parseFloat(COSTEO_CONFIG.paso) || 0;
+                let modo = (COSTEO_CONFIG.redondeoModo || 'NINGUNO').toString().toUpperCase();
+                if (modo !== 'MULTIPLO' || paso <= 0) {
+                    return redondearNumero(precio, 2);
+                }
+                return redondearNumero(Math.ceil(precio / paso) * paso, 2);
+            }
+
+            function resolverGananciasItem(item) {
+                let usarManual = item.usarReglaManualPrecio === true || item.usarReglaManualPrecio === 'true';
+                let objetivoManual = parseFloat(item.gananciaObjetivoPct);
+                let minimaManual = parseFloat(item.gananciaMinimaPct);
+                return {
+                    objetivo: usarManual && !isNaN(objetivoManual) && objetivoManual > 0
+                        ? objetivoManual
+                        : (parseFloat(COSTEO_CONFIG.gananciaObjetivo) || 0),
+                    minima: usarManual && !isNaN(minimaManual) && minimaManual > 0
+                        ? minimaManual
+                        : (parseFloat(COSTEO_CONFIG.gananciaMinima) || 0)
+                };
+            }
+
+            function calcularCosteoCarrito() {
+                let subtotalDirecto = redondearNumero(carrito.reduce(function (sum, item) {
+                    return sum + obtenerSubtotalItem(item);
+                }, 0), 2);
+
+                let factor = 0;
+                let gastosMonto = 0;
+                if (COSTEO_CONFIG.activo) {
+                    let factorManualRaw = ($('#factorIndirectoAplicadoPct').val() || '').toString().trim();
+                    let factorManual = parseFloat(factorManualRaw);
+                    if (factorManualRaw !== '' && !isNaN(factorManual) && factorManual >= 0) {
+                        factor = factorManual;
+                        gastosMonto = redondearNumero(subtotalDirecto * factor / 100, 2);
+                    } else {
+                        gastosMonto = redondearNumero(parseFloat($('#gastosIndirectosMonto').val()) || 0, 2);
+                        factor = subtotalDirecto > 0 && gastosMonto > 0
+                            ? (gastosMonto * 100) / subtotalDirecto
+                            : 0;
+                    }
+                }
+
+                let cargoIndirectoAcumulado = 0;
+                let totalCostoReal = 0;
+                let lineas = carrito.map(function (item, index) {
+                    let cantidad = parseFloat(item.cantidad) || 0;
+                    let subtotal = obtenerSubtotalItem(item);
+                    let cargoIndirectoTotal = 0;
+                    if (COSTEO_CONFIG.activo && gastosMonto > 0 && subtotalDirecto > 0) {
+                        if (index === carrito.length - 1) {
+                            cargoIndirectoTotal = redondearNumero(gastosMonto - cargoIndirectoAcumulado, 2);
+                        } else {
+                            cargoIndirectoTotal = redondearNumero(subtotal * gastosMonto / subtotalDirecto, 2);
+                            cargoIndirectoAcumulado = redondearNumero(cargoIndirectoAcumulado + cargoIndirectoTotal, 2);
+                        }
+                    }
+
+                    let subtotalReal = redondearNumero(subtotal + cargoIndirectoTotal, 2);
+                    let costoBaseUnit = cantidad > 0 ? redondearNumero(subtotal / cantidad, 4) : 0;
+                    let costoRealUnit = cantidad > 0 ? redondearNumero(subtotalReal / cantidad, 4) : 0;
+                    let stockActual = parseFloat(item.stockActual) || 0;
+                    let costoAnterior = parseFloat(item.costoAnterior) || 0;
+                    let stockDespues = stockActual + cantidad;
+                    let costoPromedio = stockDespues > 0
+                        ? redondearNumero(((costoAnterior * stockActual) + (costoRealUnit * cantidad)) / stockDespues, 4)
+                        : costoRealUnit;
+                    let ganancias = resolverGananciasItem(item);
+                    let precioMinimo = redondearNumero(aplicarGananciaJS(costoRealUnit, ganancias.minima), 2);
+                    let precioSugerido = aplicarRedondeoRetailJS(aplicarGananciaJS(costoRealUnit, ganancias.objetivo));
+                    totalCostoReal = redondearNumero(totalCostoReal + subtotalReal, 2);
+
+                    return {
+                        item: item,
+                        cantidad: cantidad,
+                        subtotal: subtotal,
+                        cargoIndirectoTotal: cargoIndirectoTotal,
+                        subtotalReal: subtotalReal,
+                        costoBaseUnit: costoBaseUnit,
+                        costoRealUnit: costoRealUnit,
+                        stockActual: stockActual,
+                        stockDespues: stockDespues,
+                        costoAnterior: costoAnterior,
+                        costoPromedio: costoPromedio,
+                        precioMinimo: precioMinimo,
+                        precioSugerido: precioSugerido,
+                        insumo: (item.clasificacion || 'MERCADERIA').toString().toUpperCase() === 'INSUMO'
+                    };
+                });
+
+                return {
+                    subtotalDirecto: subtotalDirecto,
+                    gastosMonto: gastosMonto,
+                    factor: factor,
+                    totalCostoReal: totalCostoReal,
+                    lineas: lineas
+                };
+            }
+
             function agregarItem() {
                 let id = $('#productoSelect').val();
                 let nombre = $('#productoSelect option:selected').text();
@@ -1274,13 +1896,9 @@
                     return;
                 }
 
-                let existe = carrito.find(i => i.productoId == id);
-                if (existe) {
-                    existe.cantidad += cantidad;
-                    existe.costo = costo;
-                    existe.totalPagado = +(existe.cantidad * costo).toFixed(2);
-                } else {
-                    carrito.push({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo, totalPagado: totalPag });
+                if (!sumarItemCarrito({ productoId: id, nombre: nombre, cantidad: cantidad, costo: costo, totalPagado: totalPag })) {
+                    Swal.fire('Error', 'No se pudo agregar el producto. Revisa cantidad y costo.', 'warning');
+                    return;
                 }
 
                 renderizarTabla();
@@ -1293,15 +1911,45 @@
 
             function renderizarTabla() {
                 let html = '';
-                let gran = 0;
-                carrito.forEach((item, index) => {
-                    let subtotal = item.totalPagado || +(item.cantidad * item.costo).toFixed(2);
-                    gran += subtotal;
+                let costeo = calcularCosteoCarrito();
+                let factorManualRaw = ($('#factorIndirectoAplicadoPct').val() || '').toString().trim();
+                if (factorManualRaw === '') {
+                    $('#factorIndirectoAplicadoPct').attr('placeholder',
+                        costeo.factor > 0 ? costeo.factor.toFixed(3) + '%' : 'Auto-calculado %');
+                } else {
+                    $('#factorIndirectoAplicadoPct').attr('placeholder', 'Auto-calculado %');
+                }
+
+                costeo.lineas.forEach((linea, index) => {
+                    let item = linea.item;
+                    let precioMinimoHtml = linea.insumo
+                        ? '<span class="badge badge-secondary">Insumo</span>'
+                        : `<strong>S/ ${linea.precioMinimo.toFixed(2)}</strong><br><small class="text-muted">No perder: S/ ${linea.costoRealUnit.toFixed(4)}</small>`;
+                    let precioSugeridoHtml = linea.insumo
+                        ? '<span class="text-muted small">No vendible</span>'
+                        : `<strong class="text-success">S/ ${linea.precioSugerido.toFixed(2)}</strong><br><small class="text-muted">Actual: S/ ${(parseFloat(item.precioVentaActual) || 0).toFixed(2)}</small>`;
+
                     html += `<tr>
-                    <td>${item.nombre}</td>
-                    <td class="text-center">${item.cantidad}</td>
-                    <td class="text-right font-weight-bold">S/ ${subtotal.toFixed(2)}</td>
-                    <td class="text-right text-muted small">S/ ${item.costo.toFixed(4)}</td>
+                    <td>
+                        ${escaparHtml(item.nombre)}
+                        <br><small class="text-muted">Stock: ${linea.stockActual.toFixed(0)} -> ${linea.stockDespues.toFixed(0)}</small>
+                    </td>
+                    <td class="text-center">${linea.cantidad}</td>
+                    <td class="text-right font-weight-bold">S/ ${linea.subtotal.toFixed(2)}</td>
+                    <td class="text-right">
+                        S/ ${linea.cargoIndirectoTotal.toFixed(2)}
+                        <br><small class="text-muted">${costeo.factor.toFixed(3)}%</small>
+                    </td>
+                    <td class="text-right">
+                        <strong>S/ ${linea.costoRealUnit.toFixed(4)}</strong>
+                        <br><small class="text-muted">Base: S/ ${linea.costoBaseUnit.toFixed(4)}</small>
+                    </td>
+                    <td class="text-right">
+                        <strong>S/ ${linea.costoPromedio.toFixed(4)}</strong>
+                        <br><small class="text-muted">Antes: S/ ${linea.costoAnterior.toFixed(2)}</small>
+                    </td>
+                    <td class="text-right">${precioMinimoHtml}</td>
+                    <td class="text-right">${precioSugeridoHtml}</td>
                     <td class="text-center">
                         <button type="button" class="btn btn-info btn-sm mr-1" title="Despiece / Fraccionamiento"
                             onclick="abrirDespiece(${index})">
@@ -1313,8 +1961,16 @@
                     </td>
                 </tr>`;
                 });
+
                 $('#tablaItems').html(html);
-                $('#totalVenta').text(gran.toFixed(2));
+                $('#totalVenta').text(costeo.subtotalDirecto.toFixed(2));
+                $('#totalCostoRealVal').text(costeo.totalCostoReal.toFixed(2));
+
+                // Update custom pricing panel if visible
+                let costoUnit = parseFloat($('#costoInput').val()) || 0;
+                if (costoUnit > 0) {
+                    mostrarPanelPrecio(costoUnit);
+                }
             }
 
             function eliminarItem(index) {
@@ -1325,23 +1981,37 @@
             // ── MODAL: NUEVO PRODUCTO RÁPIDO ────────────────────────────────
             // Limpiar modal al abrir
             function compraQuickActualizarFormularioProductoRapido() {
-                let esInsumo = ($('#np_clasificacion').val() || 'MERCADERIA') === 'INSUMO';
-                $('.js-np-insumo-oculto').toggleClass('d-none', esInsumo);
-                $('#np_alertaInsumo').toggleClass('d-none', !esInsumo);
+                let clasificacion = ($('#np_clasificacion').val() || 'MERCADERIA');
+                let esInsumo = clasificacion === 'INSUMO';
+                let esServicio = clasificacion === 'SERVICIO';
+                let esInactivo = clasificacion === 'INACTIVO';
+                let esDesconocido = clasificacion === 'DESCONOCIDO';
+                let sinStockOperativo = esInsumo || esServicio;
+                $('.js-np-insumo-oculto').toggleClass('d-none', sinStockOperativo);
+                $('#np_alertaInsumo').toggleClass('d-none', !(esInsumo || esServicio || esInactivo || esDesconocido));
+                if (esServicio) {
+                    $('#np_alertaClasificacionTexto').text('El servicio se vende, pero no se cuenta como stock. Sus costos deben venir de insumos, tiempo y reglas de costeo.');
+                } else if (esInactivo) {
+                    $('#np_alertaClasificacionTexto').text('El producto inactivo queda fuera del POS, productos rápidos e inventario operativo.');
+                } else if (esDesconocido) {
+                    $('#np_alertaClasificacionTexto').text('Úsalo solo si aún no sabes clasificarlo; no debería venderse hasta regularizarlo.');
+                } else {
+                    $('#np_alertaClasificacionTexto').text('El insumo se compra con stock y costo, pero no se mostrará en ventas ni requiere ubicación o precio de venta.');
+                }
                 $('#np_precioVenta').prop('required', !esInsumo);
 
-                if (esInsumo) {
+                if (sinStockOperativo) {
                     $('#np_precioVenta').val($('#np_precioVenta').val() || '0');
                     $('#np_precioMayorista').val($('#np_precioMayorista').val() || '0');
                     $('#np_stockMinimo').val('0');
-                    $('#np_tipo').val('ESTANDAR');
+                    $('#np_tipo').val(esServicio ? 'SERVICIO' : 'ESTANDAR');
                     $('#np_ubicacionEstante,#np_ubicacionFila,#np_ubicacionColumna').val('');
                 }
             }
 
             $('#modalNuevoProducto').on('show.bs.modal', function () {
                 $('#np_nombre,#np_codigoBarra,#np_codigoInterno,#np_categoria,#np_descripcion').val('');
-                $('#np_marca,#np_modelo,#np_color,#np_precioCompra,#np_precioVenta,#np_precioMayorista').val('');
+                $('#np_marca,#np_modelo,#np_color,#np_precioCompra,#np_precioVenta,#np_precioMayorista,#np_generacion').val('');
                 $('#np_ubicacionEstante,#np_ubicacionFila,#np_ubicacionColumna').val('');
                 $('#np_stockActual').val(parseInt($('#cantInput').val(), 10) > 0 ? parseInt($('#cantInput').val(), 10) : 0);
                 $('#np_stockMinimo').val(0);
@@ -1351,7 +2021,35 @@
                 $('#np_tipoAfectacionIgv').val('GRAVADO');
                 $('#np_error').addClass('d-none').text('');
                 $('#btnGuardarNuevoProducto').prop('disabled', false);
+
+                // Limpiar costeo inteligente en modal
+                $('#modalCosteoCantidadComprada').val('');
+                $('#modalCosteoTotalPagado').val('');
+                $('#modalCosteoFactorManual').val('');
+                $('#modalCosteoEstado').hide().text('');
+                $('#modalCosteoCostoUnitario, #modalCosteoCostoReal, #modalCosteoPrecioMinimo, #modalCosteoPrecioSugerido').text('S/ 0.00').data('valor', 0);
+                $('#np_precioVentaSugerencia').html('');
+
+                // Pre-llenar desde formulario principal de compra
+                let cantMain = parseFloat($('#cantInput').val()) || 1;
+                let totalMain = parseFloat($('#totalPagadoInput').val()) || 0;
+                let costoMain = parseFloat($('#costoInput').val()) || 0;
+
+                if (cantMain > 0) {
+                    $('#modalCosteoCantidadComprada').val(cantMain);
+                }
+                if (totalMain > 0) {
+                    $('#modalCosteoTotalPagado').val(totalMain.toFixed(2));
+                } else if (costoMain > 0 && cantMain > 0) {
+                    $('#modalCosteoTotalPagado').val((costoMain * cantMain).toFixed(2));
+                }
+
+                if (costoMain > 0) {
+                    $('#np_precioCompra').val(costoMain.toFixed(2));
+                }
+
                 compraQuickActualizarFormularioProductoRapido();
+                calcularCosteoInteligenteModal();
 
                 // Autogenerar SKU
                 $('#np_codigoInterno').val('Cargando...');
@@ -1372,14 +2070,15 @@
                 let sku = $('#np_codigoInterno').val().trim();
                 let clasificacion = ($('#np_clasificacion').val() || 'MERCADERIA').trim().toUpperCase();
                 let esInsumo = clasificacion === 'INSUMO';
+                let esServicio = clasificacion === 'SERVICIO';
                 let precioVenta = esInsumo ? ($('#np_precioVenta').val() || '1') : $('#np_precioVenta').val();
-                let stockActual = parseInt($('#np_stockActual').val(), 10);
+                let stockActual = esServicio ? 0 : parseInt($('#np_stockActual').val(), 10);
                 let precioVentaFinal = esInsumo ? '0' : precioVenta;
 
                 if (!nombre) { $('#np_error').removeClass('d-none').text('El nombre es obligatorio.'); return; }
                 if (!sku) { $('#np_error').removeClass('d-none').text('El SKU / Código Interno es obligatorio.'); return; }
                 if (!precioVenta || parseFloat(precioVenta) <= 0) { $('#np_error').removeClass('d-none').text('Ingresa un precio de venta válido (mayor a cero).'); return; }
-                if (Number.isNaN(stockActual) || stockActual < 0) { $('#np_error').removeClass('d-none').text('Ingresa un stock válido (0 o mayor).'); return; }
+                if (Number.isNaN(stockActual) || stockActual < 0) { $('#np_error').removeClass('d-none').text('Ingresa una cantidad valida (0 o mayor).'); return; }
 
                 $('#np_error').addClass('d-none').text('');
                 let btn = $(this).prop('disabled', true).text('Guardando...');
@@ -1389,20 +2088,21 @@
                     codigoInterno: sku,
                     clasificacion: clasificacion,
                     categoria: $('#np_categoria').val().trim(),
-                    descripcion: esInsumo ? '' : $('#np_descripcion').val().trim(),
-                    marca: esInsumo ? '' : $('#np_marca').val().trim(),
-                    modelo: esInsumo ? '' : $('#np_modelo').val().trim(),
-                    color: esInsumo ? '' : $('#np_color').val().trim(),
-                    ubicacionEstante: esInsumo ? '' : $('#np_ubicacionEstante').val().trim(),
-                    ubicacionFila: esInsumo ? '' : $('#np_ubicacionFila').val().trim(),
-                    ubicacionColumna: esInsumo ? '' : $('#np_ubicacionColumna').val().trim(),
-                    tipo: esInsumo ? 'ESTANDAR' : $('#np_tipo').val(),
-                    unidadMedida: $('#np_unidadMedida').val(),
+                    descripcion: (esInsumo || esServicio) ? '' : $('#np_descripcion').val().trim(),
+                    marca: (esInsumo || esServicio) ? '' : $('#np_marca').val().trim(),
+                    modelo: (esInsumo || esServicio) ? '' : $('#np_modelo').val().trim(),
+                    color: (esInsumo || esServicio) ? '' : $('#np_color').val().trim(),
+                    generacion: (esInsumo || esServicio) ? '' : $('#np_generacion').val().trim(),
+                    ubicacionEstante: (esInsumo || esServicio) ? '' : $('#np_ubicacionEstante').val().trim(),
+                    ubicacionFila: (esInsumo || esServicio) ? '' : $('#np_ubicacionFila').val().trim(),
+                    ubicacionColumna: (esInsumo || esServicio) ? '' : $('#np_ubicacionColumna').val().trim(),
+                    tipo: esServicio ? 'SERVICIO' : (esInsumo ? 'ESTANDAR' : $('#np_tipo').val()),
+                    unidadMedida: esServicio ? 'SERVICIO' : $('#np_unidadMedida').val(),
                     tipoAfectacionIgv: $('#np_tipoAfectacionIgv').val(),
                     precioCompra: $('#np_precioCompra').val() || '0',
                     precioVenta: precioVentaFinal,
                     precioMayorista: esInsumo ? '0' : ($('#np_precioMayorista').val() || '0'),
-                    stockMinimo: esInsumo ? '0' : ($('#np_stockMinimo').val() || '0')
+                    stockMinimo: (esInsumo || esServicio) ? '0' : ($('#np_stockMinimo').val() || '0')
                 };
 
                 $.ajax({
@@ -1417,6 +2117,10 @@
                         $(newOption).attr('data-costo', prod.precioCompra);
                         $(newOption).attr('data-precio-venta', prod.precioVenta);
                         $(newOption).attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                        $(newOption).attr('data-stock-actual', prod.stockActual || 0);
+                        $(newOption).attr('data-usar-regla-manual-precio', prod.usarReglaManualPrecio || false);
+                        $(newOption).attr('data-ganancia-objetivo', prod.gananciaObjetivoPct || 0);
+                        $(newOption).attr('data-ganancia-minima', prod.gananciaMinimaPct || 0);
                         $(newOption).attr('data-codigo-barra', prod.codigoBarra || '');
                         $(newOption).attr('data-codigo-interno', prod.codigoInterno || '');
                         $(newOption).attr('data-nombre', prod.nombre || '');
@@ -1435,7 +2139,12 @@
                         // Al mismo tiempo, actualizar dp_productoDestino
                         let dupOption = new Option(label, prod.id, false, false);
                         $(dupOption).attr('data-costo', prod.precioCompra);
+                        $(dupOption).attr('data-precio-venta', prod.precioVenta || 0);
                         $(dupOption).attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                        $(dupOption).attr('data-stock-actual', prod.stockActual || 0);
+                        $(dupOption).attr('data-usar-regla-manual-precio', prod.usarReglaManualPrecio || false);
+                        $(dupOption).attr('data-ganancia-objetivo', prod.gananciaObjetivoPct || 0);
+                        $(dupOption).attr('data-ganancia-minima', prod.gananciaMinimaPct || 0);
                         $(dupOption).attr('data-codigo-barra', prod.codigoBarra || '');
                         $(dupOption).attr('data-codigo-interno', prod.codigoInterno || '');
                         $(dupOption).attr('data-nombre', prod.nombre || '');
@@ -1489,7 +2198,7 @@
 
             // Cuando se selecciona el producto destino, pre-llenar su costo
             $('#dp_productoDestino').on('change', function () {
-                let costo = $(this).find(':selected').data('costo');
+                let costo = leerNumeroOption($(this).find(':selected'), 'costo', 0);
                 if (costo && parseFloat(costo) > 0) {
                     $('#dp_costoDestino').val(parseFloat(costo).toFixed(4));
                 } else if (!$('#dp_costoDestino').val()) {
@@ -1555,17 +2264,13 @@
                 }
 
                 // Agregar producto destino al carrito
-                let existe = carrito.find(i => i.productoId == destinoId);
-                if (existe) {
-                    existe.cantidad += cantResultado;
-                    existe.costo = costo;
-                    existe.totalPagado = +(existe.cantidad * costo).toFixed(2);
-                } else {
-                    carrito.push({
-                        productoId: destinoId, nombre: destinoNombre,
-                        cantidad: cantResultado, costo: costo, totalPagado: totalPag
-                    });
-                }
+                sumarItemCarrito({
+                    productoId: destinoId,
+                    nombre: destinoNombre,
+                    cantidad: cantResultado,
+                    costo: costo,
+                    totalPagado: totalPag
+                });
 
                 renderizarTabla();
                 $('#modalDespiece').modal('hide');
@@ -1602,12 +2307,41 @@
                     return;
                 }
 
+                let costeo = calcularCosteoCarrito();
+                let factorManualRaw = ($('#factorIndirectoAplicadoPct').val() || '').toString().trim();
+                let gastosRaw = ($('#gastosIndirectosMonto').val() || '').toString().trim();
+                let origenFactor = 'SIN_GASTOS';
+                if (factorManualRaw !== '') {
+                    origenFactor = 'FACTOR_MANUAL';
+                } else if (gastosRaw !== '' && costeo.gastosMonto > 0) {
+                    origenFactor = 'MONTO_COMPRA';
+                }
+
                 let data = {
                     proveedorId: $('#proveedor').val(),
                     tipoComprobante: $('#tipoDoc').val(),
                     numeroComprobante: $('#nroDoc').val(),
                     observaciones: $('#obs').val(),
-                    items: carrito
+                    subtotalDirecto: costeo.subtotalDirecto,
+                    gastosIndirectosMonto: costeo.gastosMonto,
+                    factorIndirectoAplicadoPct: COSTEO_CONFIG.activo ? costeo.factor : null,
+                    factorIndirectoSugeridoPct: parseFloat($('#factorIndirectoSugeridoPct').val()) || null,
+                    origenFactorIndirecto: origenFactor,
+                    detalleGastosIndirectos: $('#detalleGastosIndirectos').val() || '',
+                    totalCostoReal: costeo.totalCostoReal,
+                    items: carrito.map(function (item) {
+                        return {
+                            productoId: item.productoId,
+                            cantidad: parseInt(item.cantidad, 10),
+                            costo: parseFloat(item.costo),
+                            totalPagado: parseFloat(item.totalPagado),
+                            tipoCatalogo: item.tipoCatalogo,
+                            presentacionNombre: item.presentacionNombre,
+                            cantidadPresentacion: item.cantidadPresentacion,
+                            factorPresentacion: item.factorPresentacion,
+                            precioPorPresentacion: item.precioPorPresentacion
+                        };
+                    })
                 };
 
                 guardandoCompra = true;
@@ -1650,9 +2384,12 @@
                 alertas.forEach((a, i) => {
                     html += `<tr>
                     <td>${a.nombre}</td>
+                    <td>${a.proveedorAnterior || '-'}</td>
+                    <td>${a.proveedorActual || '-'} ${a.cambioProveedor ? '<span class="badge badge-info ml-1">nuevo</span>' : ''}</td>
                     <td class="text-right">S/ ${parseFloat(a.costoAnterior).toFixed(2)}</td>
                     <td class="text-right">S/ ${parseFloat(a.costoNuevo).toFixed(2)}</td>
                     <td class="text-right text-warning font-weight-bold">${parseFloat(a.cambioPct).toFixed(1)}%</td>
+                    <td class="text-right">${parseFloat(a.umbralCambioCostoPct || 10).toFixed(1)}%</td>
                     <td class="text-right">S/ ${parseFloat(a.precioVentaActual).toFixed(2)}</td>
                     <td class="text-right text-success font-weight-bold">S/ ${parseFloat(a.precioVentaSugerido).toFixed(2)}</td>
                     <td class="text-center">
@@ -1723,30 +2460,32 @@
             }
 
             function compraQuickAgregarCarrito(item) {
-                let id = String(item.productoId || '');
-                let cantidad = parseInt(item.cantidad, 10);
-                let costo = parseFloat(item.costo);
-                let totalPagado = parseFloat(item.totalPagado);
-                if (!id || !cantidad || !costo) return;
-                if (!totalPagado || totalPagado <= 0) totalPagado = +(cantidad * costo).toFixed(2);
+                sumarItemCarrito(item);
+            }
 
-                let existente = carrito.find(function (entry) {
-                    return String(entry.productoId) === id;
-                });
-
-                if (existente) {
-                    existente.cantidad += cantidad;
-                    existente.costo = costo;
-                    existente.totalPagado = +(existente.cantidad * costo).toFixed(2);
-                } else {
-                    carrito.push({
-                        productoId: id,
-                        nombre: item.nombre,
-                        cantidad: cantidad,
-                        costo: costo,
-                        totalPagado: totalPagado
-                    });
+            function compraQuickCargarReposicionPrefill() {
+                if (!Array.isArray(REPOSICION_PREFILL) || REPOSICION_PREFILL.length === 0) {
+                    return;
                 }
+                let agregados = 0;
+                REPOSICION_PREFILL.forEach(function (item) {
+                    if (sumarItemCarrito(item)) {
+                        agregados++;
+                    }
+                });
+                if (agregados === 0) {
+                    return;
+                }
+                $('#obs').val('Compra creada desde reposicion pendiente');
+                renderizarTabla();
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: agregados + ' producto(s) de reposicion cargados',
+                    showConfirmButton: false,
+                    timer: 2200
+                });
             }
 
             function compraQuickAgregarCatalogo(prod, seleccionar, silencioso) {
@@ -1763,6 +2502,10 @@
                     option.attr('data-costo', prod.precioCompra || 0);
                     option.attr('data-precio-venta', prod.precioVenta || 0);
                     option.attr('data-clasificacion', prod.clasificacion || 'MERCADERIA');
+                    option.attr('data-stock-actual', prod.stockActual || 0);
+                    option.attr('data-usar-regla-manual-precio', prod.usarReglaManualPrecio || false);
+                    option.attr('data-ganancia-objetivo', prod.gananciaObjetivoPct || 0);
+                    option.attr('data-ganancia-minima', prod.gananciaMinimaPct || 0);
                     option.attr('data-codigo-barra', prod.codigoBarra || '');
                     option.attr('data-codigo-interno', prod.codigoInterno || '');
                     option.attr('data-nombre', prod.nombre || '');
@@ -1970,8 +2713,11 @@
                         <td><input type="text" class="form-control form-control-sm faltante-nombre" value="${item.nombreOriginal || item.referencia || ''}"></td>
                         <td>
                             <select class="form-control form-control-sm faltante-clasificacion">
-                                <option value="MERCADERIA" ${item.clasificacion === 'INSUMO' ? '' : 'selected'}>Mercadería</option>
+                                <option value="MERCADERIA" ${['INSUMO','SERVICIO','INACTIVO','DESCONOCIDO'].includes(item.clasificacion) ? '' : 'selected'}>Mercadería</option>
                                 <option value="INSUMO" ${item.clasificacion === 'INSUMO' ? 'selected' : ''}>Insumo</option>
+                                <option value="SERVICIO" ${item.clasificacion === 'SERVICIO' ? 'selected' : ''}>Servicio</option>
+                                <option value="INACTIVO" ${item.clasificacion === 'INACTIVO' ? 'selected' : ''}>Inactivo</option>
+                                <option value="DESCONOCIDO" ${item.clasificacion === 'DESCONOCIDO' ? 'selected' : ''}>Desconocido</option>
                             </select>
                         </td>
                         <td><input type="text" class="form-control form-control-sm faltante-categoria" value="${item.categoria || ''}" placeholder="Opcional"></td>
@@ -2246,6 +2992,7 @@
 
             $(document).ready(function () {
                 compraQuickActualizarBotonClonar();
+                compraQuickCargarReposicionPrefill();
                 $('#btnAbrirFaltantesDesdePegado').prop('disabled', true);
                 $('#np_clasificacion').on('change', compraQuickActualizarFormularioProductoRapido);
 

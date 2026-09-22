@@ -2,6 +2,7 @@ package com.libreria.sistema.controller;
 
 import com.libreria.sistema.aspect.RequerirCajaAbierta;
 import com.libreria.sistema.model.*;
+import com.libreria.sistema.model.dto.PosConfiguracionRapidaDTO;
 import com.libreria.sistema.model.dto.PosProformaDTO;
 import com.libreria.sistema.model.dto.ServicioRapidoDTO;
 import com.libreria.sistema.model.dto.VentaDTO;
@@ -14,6 +15,7 @@ import com.libreria.sistema.service.LaminaBusquedaService;
 import com.libreria.sistema.service.LaminaService;
 import com.libreria.sistema.service.ProductoBusquedaService;
 import com.libreria.sistema.service.ReporteService;
+import com.libreria.sistema.service.RolePermissionService;
 import com.libreria.sistema.service.VentaService;
 import com.libreria.sistema.util.Constants;
 
@@ -25,8 +27,11 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.validation.BindingResult;
@@ -37,9 +42,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -47,7 +58,21 @@ import java.util.stream.Collectors;
 @Slf4j
 public class VentaController {
 
+    private static final Set<String> CODIGOS_IMPRESION_POS = Set.of(
+            "IMPRESION_BN",
+            "IMPRESION_COLOR",
+            "FOTO_ESTANDAR",
+            "IMPRESION_HOJA_COLOR");
+    private static final int LIMITE_PRODUCTOS_RAPIDOS_POS = 10;
+    private static final int DIAS_VENTAS_URGENTES_POS = 7;
+    private static final int DIAS_VENTAS_RECIENTES_POS = 30;
+    private static final Set<String> TOKENS_POS_IGNORADOS = Set.of(
+            "para", "con", "sin", "por", "und", "unidad", "unidades", "pack", "set",
+            "color", "colores", "tamano", "modelo", "nuevo", "grande", "chico",
+            "mediano", "surtido", "varios", "varias", "producto", "servicio");
+
     private final ProductoRepository productoRepository;
+    private final DetalleVentaRepository detalleVentaRepository;
     private final VentaRepository ventaRepository;
     private final ClienteRepository clienteRepository;
     private final ConfiguracionService configuracionService;
@@ -58,6 +83,7 @@ public class VentaController {
     private final ProductoBusquedaService productoBusquedaService;
     private final LaminaBusquedaService laminaBusquedaService;
     private final LaminaService laminaService;
+    private final RolePermissionService rolePermissionService;
 
     @Autowired
     private SolicitudProductoRepository solicitudRepository;
@@ -66,6 +92,7 @@ public class VentaController {
     private DevolucionService devolucionService;
 
     public VentaController(ProductoRepository productoRepository,
+            DetalleVentaRepository detalleVentaRepository,
             VentaRepository ventaRepository,
             ClienteRepository clienteRepository,
             ConfiguracionService configuracionService,
@@ -75,8 +102,10 @@ public class VentaController {
             ConsultaDocumentoService consultaDocumentoService,
             ProductoBusquedaService productoBusquedaService,
             LaminaBusquedaService laminaBusquedaService,
-            LaminaService laminaService) {
+            LaminaService laminaService,
+            RolePermissionService rolePermissionService) {
         this.productoRepository = productoRepository;
+        this.detalleVentaRepository = detalleVentaRepository;
         this.ventaRepository = ventaRepository;
         this.clienteRepository = clienteRepository;
         this.configuracionService = configuracionService;
@@ -87,6 +116,7 @@ public class VentaController {
         this.productoBusquedaService = productoBusquedaService;
         this.laminaBusquedaService = laminaBusquedaService;
         this.laminaService = laminaService;
+        this.rolePermissionService = rolePermissionService;
     }
 
     /** Redirige /ventas → /ventas/lista para evitar Error 500 en URL raíz. */
@@ -108,7 +138,7 @@ public class VentaController {
         if (buscar != null && !buscar.isBlank()) {
             ventas = ventaRepository.buscarPorTermino(buscar.trim(), pageable);
         } else {
-            ventas = ventaRepository.findAll(pageable);
+            ventas = ventaRepository.findAllBy(pageable);
         }
 
         java.util.List<Long> ventaIds = ventas.getContent().stream()
@@ -126,7 +156,7 @@ public class VentaController {
     @GetMapping("/nueva")
     @PreAuthorize("hasPermission(null, 'VENTAS_CREAR')")
     @RequerirCajaAbierta(mensaje = "Debe abrir caja antes de realizar ventas.")
-    public String nuevaVenta(Model model) {
+    public String nuevaVenta(Model model, Authentication auth) {
         // Obtener estado de facturación electrónica
         boolean facturaElectronicaActiva = ventaService.isFacturacionElectronicaActiva();
 
@@ -137,7 +167,415 @@ public class VentaController {
 
         model.addAttribute("laminaCategoriasPos", laminaService.listarCategoriasActivas());
         model.addAttribute("laminaPrecioVentaDefault", LaminaService.PRECIO_VENTA_DEFAULT);
+        ContextoProductosRapidosPos contextoRapidosPos = construirContextoProductosRapidosPos();
+        model.addAttribute("productosRapidosPos", contextoRapidosPos.productos());
+        model.addAttribute("campanasPos", contextoRapidosPos.campanas());
+        model.addAttribute("servicioVariablePosId", obtenerServicioVariablePosId());
+        model.addAttribute("impresionPresetsPos", construirPresetsImpresionPos());
+        model.addAttribute("puedeConfigurarRapidosPos", puedeConfigurarRapidosPos(auth));
         return "ventas/pos";
+    }
+
+    private boolean esPresetImpresionPos(Producto producto) {
+        String codigoInterno = producto.getCodigoInterno() != null ? producto.getCodigoInterno().trim().toUpperCase() : "";
+        return CODIGOS_IMPRESION_POS.contains(codigoInterno);
+    }
+
+    private Long obtenerServicioVariablePosId() {
+        return productoRepository.findByCodigoInterno("SERV-001")
+                .map(Producto::getId)
+                .orElse(null);
+    }
+
+    private List<Map<String, Object>> construirPresetsImpresionPos() {
+        List<Map<String, Object>> presets = new ArrayList<>();
+        presets.add(crearPresetImpresion("bn", "B/N", "Impresion B/N", "IMPRESION_BN",
+                new BigDecimal("0.40"), "Alt+B", "fas fa-file-alt"));
+        presets.add(crearPresetImpresion("color", "Color", "Impresion a color", "IMPRESION_COLOR",
+                new BigDecimal("0.70"), "Alt+C", "fas fa-print"));
+        presets.add(crearPresetImpresion("foto", "Foto", "Foto estandar", "FOTO_ESTANDAR",
+                new BigDecimal("3.00"), "Alt+F", "fas fa-camera"));
+        presets.add(crearPresetImpresion("hoja", "Hoja color", "Hoja completa a color", "IMPRESION_HOJA_COLOR",
+                new BigDecimal("5.00"), "Alt+H", "fas fa-file-image"));
+        return presets;
+    }
+
+    private Map<String, Object> crearPresetImpresion(String tipo, String etiqueta, String descripcion,
+                                                     String codigoInterno, BigDecimal precioDefault,
+                                                     String atajo, String icono) {
+        Producto producto = productoRepository.findByCodigoInterno(codigoInterno).orElse(null);
+        BigDecimal precio = producto != null && producto.getPrecioVenta() != null
+                ? producto.getPrecioVenta()
+                : precioDefault;
+        String etiquetaVisible = producto != null && producto.getNombre() != null && !producto.getNombre().isBlank()
+                ? producto.getNombre().trim()
+                : etiqueta;
+
+        Map<String, Object> preset = new HashMap<>();
+        preset.put("tipo", tipo);
+        preset.put("etiqueta", etiquetaVisible);
+        preset.put("descripcion", producto != null && producto.getNombre() != null ? producto.getNombre() : descripcion);
+        preset.put("codigoInterno", codigoInterno);
+        preset.put("productoId", producto != null ? producto.getId() : null);
+        preset.put("precio", precio);
+        preset.put("atajo", atajo);
+        preset.put("icono", icono);
+        return preset;
+    }
+
+    private ContextoProductosRapidosPos construirContextoProductosRapidosPos() {
+        Map<Long, Integer> ordenManual = new HashMap<>();
+        productoRepository.findProductosRapidosPosManuales(CODIGOS_IMPRESION_POS, PageRequest.of(0, 30))
+                .forEach(producto -> ordenManual.put(producto.getId(),
+                        producto.getPosRapidoOrden() != null ? producto.getPosRapidoOrden() : 999));
+
+        LocalDate hoy = LocalDate.now();
+        Map<Long, VentaRecientePos> ventasUltimos7 = cargarVentasRecientesPos(hoy.minusDays(DIAS_VENTAS_URGENTES_POS), hoy);
+        Map<Long, VentaRecientePos> ventasUltimos30 = cargarVentasRecientesPos(hoy.minusDays(DIAS_VENTAS_RECIENTES_POS), hoy);
+        List<Producto> productosCatalogo = productoRepository.findProductosParaCategorizacion();
+        List<CampanaPos> campanas = new ArrayList<>(detectarCampanasActivasPos());
+        campanas.addAll(detectarCampanasPorVentasPos(productosCatalogo, ventasUltimos7, ventasUltimos30));
+
+        List<ProductoRapidoScore> candidatos = productosCatalogo.stream()
+                .filter(this::esCandidatoRapidoPos)
+                .map(producto -> new ProductoRapidoScore(producto,
+                        calcularScoreProductoRapido(producto, ordenManual, ventasUltimos7, ventasUltimos30, campanas),
+                        ordenManual.getOrDefault(producto.getId(), 999)))
+                .filter(score -> score.score() > 0)
+                .sorted(Comparator
+                        .comparingDouble(ProductoRapidoScore::score).reversed()
+                        .thenComparingInt(ProductoRapidoScore::ordenManual)
+                        .thenComparing(score -> score.producto().getNombre(), String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        Map<Long, Producto> seleccionados = new LinkedHashMap<>();
+        for (ProductoRapidoScore score : candidatos) {
+            seleccionados.putIfAbsent(score.producto().getId(), score.producto());
+            if (seleccionados.size() >= LIMITE_PRODUCTOS_RAPIDOS_POS) {
+                break;
+            }
+        }
+        return new ContextoProductosRapidosPos(new ArrayList<>(seleccionados.values()), campanas);
+    }
+
+    private List<Producto> construirProductosRapidosPosInteligentes() {
+        return construirContextoProductosRapidosPos().productos();
+    }
+
+    private Map<Long, VentaRecientePos> cargarVentasRecientesPos(LocalDate inicio, LocalDate fin) {
+        return detalleVentaRepository.ventasRecientesProductosPos(inicio, fin, CODIGOS_IMPRESION_POS).stream()
+                .filter(row -> toLong(row[0]) != null)
+                .collect(Collectors.toMap(
+                        row -> toLong(row[0]),
+                        row -> new VentaRecientePos(toBigDecimal(row[1]), toLocalDate(row[2])),
+                        (a, b) -> a,
+                        LinkedHashMap::new));
+    }
+
+    private boolean esCandidatoRapidoPos(Producto producto) {
+        if (producto == null || producto.getId() == null || !producto.esVendible()) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(producto.getEsLamina()) || producto.esCatalogoPersonalizado()) {
+            return false;
+        }
+        String codigoInterno = producto.getCodigoInterno() == null ? "" : producto.getCodigoInterno().trim().toUpperCase();
+        return !CODIGOS_IMPRESION_POS.contains(codigoInterno);
+    }
+
+    private double calcularScoreProductoRapido(Producto producto,
+                                               Map<Long, Integer> ordenManual,
+                                               Map<Long, VentaRecientePos> ventasUltimos7,
+                                               Map<Long, VentaRecientePos> ventasUltimos30,
+                                               List<CampanaPos> campanas) {
+        double score = 0.0d;
+        if (ordenManual.containsKey(producto.getId())) {
+            score += 580.0d - Math.min(ordenManual.get(producto.getId()), 99) * 2.0d;
+        }
+        VentaRecientePos venta7 = ventasUltimos7.get(producto.getId());
+        VentaRecientePos venta30 = ventasUltimos30.get(producto.getId());
+        if (venta7 != null) {
+            score += venta7.cantidad().doubleValue() * 18.0d;
+            if (venta7.ultimaFecha() != null && !venta7.ultimaFecha().isBefore(LocalDate.now().minusDays(3))) {
+                score += 120.0d;
+            }
+        }
+        if (venta30 != null) {
+            score += Math.min(venta30.cantidad().doubleValue() * 5.0d, 180.0d);
+            if (venta7 != null && venta30.cantidad().compareTo(BigDecimal.ZERO) > 0) {
+                double ratio = venta7.cantidad().divide(venta30.cantidad(), 4, RoundingMode.HALF_UP).doubleValue();
+                score += Math.min(ratio, 1.0d) * 85.0d;
+            }
+        }
+        if (Boolean.TRUE.equals(producto.getTemporadaActiva())) {
+            score += 210.0d;
+        }
+        long coincidenciasCampana = campanas.stream()
+                .filter(campana -> coincideConCampana(producto, campana))
+                .count();
+        score += coincidenciasCampana * 160.0d;
+        if (producto.getStockActual() != null && producto.getStockActual() > 0) {
+            score += 25.0d;
+        }
+        return score;
+    }
+
+    private List<CampanaPos> detectarCampanasPorVentasPos(List<Producto> productos,
+                                                           Map<Long, VentaRecientePos> ventasUltimos7,
+                                                           Map<Long, VentaRecientePos> ventasUltimos30) {
+        if (productos == null || productos.isEmpty() || ventasUltimos7.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Producto> productosPorId = productos.stream()
+                .filter(this::esCandidatoRapidoPos)
+                .filter(producto -> producto.getId() != null)
+                .collect(Collectors.toMap(Producto::getId, producto -> producto, (a, b) -> a));
+        Map<String, TendenciaTokenPos> tendencias = new LinkedHashMap<>();
+
+        ventasUltimos7.entrySet().stream()
+                .sorted((a, b) -> b.getValue().cantidad().compareTo(a.getValue().cantidad()))
+                .limit(40)
+                .forEach(entry -> {
+                    Producto producto = productosPorId.get(entry.getKey());
+                    if (producto == null || entry.getValue().cantidad().compareTo(BigDecimal.ZERO) <= 0) {
+                        return;
+                    }
+                    VentaRecientePos venta30 = ventasUltimos30.get(entry.getKey());
+                    double cantidad7 = entry.getValue().cantidad().doubleValue();
+                    double cantidad30 = venta30 != null ? venta30.cantidad().doubleValue() : cantidad7;
+                    for (String token : tokensCampanaProducto(producto)) {
+                        tendencias.computeIfAbsent(token, TendenciaTokenPos::new)
+                                .agregar(cantidad7, cantidad30);
+                    }
+                });
+
+        return tendencias.values().stream()
+                .filter(tendencia -> tendencia.cantidad7 >= 2.0d || tendencia.score() >= 18.0d)
+                .sorted(Comparator.comparingDouble(TendenciaTokenPos::score).reversed()
+                        .thenComparing(tendencia -> tendencia.token))
+                .limit(3)
+                .map(tendencia -> new CampanaPos(
+                        "TENDENCIA_" + tendencia.token.toUpperCase(),
+                        "Tendencia: " + capitalizarTokenPos(tendencia.token),
+                        List.of(tendencia.token)))
+                .toList();
+    }
+
+    private List<String> tokensCampanaProducto(Producto producto) {
+        return java.util.Arrays.stream(textoProductoRapido(producto).split("\\s+"))
+                .map(String::trim)
+                .filter(token -> token.length() >= 4 && token.length() <= 24)
+                .filter(token -> !token.chars().allMatch(Character::isDigit))
+                .filter(token -> !TOKENS_POS_IGNORADOS.contains(token))
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .limit(6)
+                .toList();
+    }
+
+    private String capitalizarTokenPos(String token) {
+        if (token == null || token.isBlank()) {
+            return "ventas recientes";
+        }
+        return token.substring(0, 1).toUpperCase() + token.substring(1).toLowerCase();
+    }
+
+    private List<CampanaPos> detectarCampanasActivasPos() {
+        LocalDate hoy = LocalDate.now();
+        int mes = hoy.getMonthValue();
+        int dia = hoy.getDayOfMonth();
+        List<CampanaPos> campanas = new ArrayList<>();
+
+        if (mes == 2 || mes == 3) {
+            campanas.add(new CampanaPos("ESCOLAR", "Campana escolar", List.of(
+                    "cuaderno", "lapicero", "lapiz", "cartulina", "folder", "colores", "plumon", "forro")));
+        }
+        if (mes >= 3 && mes <= 12 && hoy.getDayOfWeek().getValue() <= 5) {
+            campanas.add(new CampanaPos("SEMANA_ESCOLAR", "Semana escolar", List.of(
+                    "impresion", "copia", "cartulina", "papelote", "silicona", "maqueta", "folder", "hoja")));
+        }
+        if (mes >= 8 && mes <= 11) {
+            campanas.add(new CampanaPos("DIA_LOGRO", "Dia del logro", List.of(
+                    "maqueta", "cartulina", "triptico", "papelote", "tempera", "plumon", "decoracion", "impresion")));
+        }
+        if (mes == 9 && dia >= 10 && dia <= 30) {
+            campanas.add(new CampanaPos("FLORES_AMARILLAS", "Flores amarillas", List.of(
+                    "flor", "flores", "amarilla", "amarillo", "lazo", "globos", "regalo", "bouquet")));
+        }
+        if (mes == 5 && dia <= 15) {
+            campanas.add(new CampanaPos("DIA_MADRE", "Dia de la madre", List.of(
+                    "flor", "lazo", "globos", "regalo", "tarjeta", "sublimacion", "taza")));
+        }
+        if (mes == 7) {
+            campanas.add(new CampanaPos("FIESTAS_PATRIAS", "Fiestas patrias escolar", List.of(
+                    "escarapela", "cartulina", "rojo", "blanco", "maqueta", "bandera", "papel")));
+        }
+        if (mes == 12) {
+            campanas.add(new CampanaPos("NAVIDAD_CIERRE", "Navidad y cierre escolar", List.of(
+                    "navidad", "regalo", "lazo", "globos", "tarjeta", "certificado", "impresion", "foto")));
+        }
+        return campanas;
+    }
+
+    private boolean coincideConCampana(Producto producto, CampanaPos campana) {
+        String texto = textoProductoRapido(producto);
+        return campana.tokens().stream()
+                .map(this::normalizarTextoRapido)
+                .anyMatch(token -> !token.isBlank() && texto.contains(token));
+    }
+
+    private String textoProductoRapido(Producto producto) {
+        return normalizarTextoRapido(String.join(" ",
+                textoSeguro(producto.getNombre()),
+                textoSeguro(producto.getCategoria()),
+                textoSeguro(producto.getMarca()),
+                textoSeguro(producto.getModelo()),
+                textoSeguro(producto.getColor()),
+                textoSeguro(producto.getTags())));
+    }
+
+    private String normalizarTextoRapido(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        return java.text.Normalizer.normalize(valor, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private String textoSeguro(String valor) {
+        return valor == null ? "" : valor;
+    }
+
+    private Long toLong(Object value) {
+        return value instanceof Number n ? n.longValue() : null;
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value instanceof BigDecimal bd) {
+            return bd;
+        }
+        if (value instanceof Number n) {
+            return BigDecimal.valueOf(n.doubleValue());
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private LocalDate toLocalDate(Object value) {
+        if (value instanceof LocalDate fecha) {
+            return fecha;
+        }
+        if (value instanceof java.sql.Date fecha) {
+            return fecha.toLocalDate();
+        }
+        return null;
+    }
+
+    @PostMapping("/api/configuracion-rapida-pos")
+    @PreAuthorize("hasPermission(null, 'STOCK_AJUSTAR') or hasAuthority('ROLE_ADMIN')")
+    @Transactional
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> guardarConfiguracionRapidaPos(
+            @RequestBody PosConfiguracionRapidaDTO dto) {
+        actualizarPresetsImpresion(dto);
+        actualizarProductosRapidosPos(dto);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Configuracion rapida del POS actualizada");
+        response.put("productosRapidosPos", construirProductosRapidosPosInteligentes().stream()
+                .map(p -> mapearProductoParaVenta(p, BigDecimal.ZERO))
+                .collect(Collectors.toList()));
+        response.put("impresionPresetsPos", construirPresetsImpresionPos());
+        return ResponseEntity.ok(response);
+    }
+
+    private boolean puedeConfigurarRapidosPos(Authentication auth) {
+        if (auth == null || auth.getName() == null) {
+            return false;
+        }
+        boolean esAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return esAdmin || rolePermissionService.tienePermiso(auth.getName(), "STOCK_AJUSTAR");
+    }
+
+    private void actualizarPresetsImpresion(PosConfiguracionRapidaDTO dto) {
+        if (dto == null || dto.getImpresiones() == null) {
+            return;
+        }
+
+        for (PosConfiguracionRapidaDTO.ImpresionPresetDTO presetDto : dto.getImpresiones()) {
+            String codigoInterno = codigoPresetImpresion(presetDto.getTipo());
+            if (codigoInterno == null) {
+                continue;
+            }
+
+            productoRepository.findByCodigoInterno(codigoInterno).ifPresent(producto -> {
+                String etiqueta = presetDto.getEtiqueta() != null ? presetDto.getEtiqueta().trim() : "";
+                if (!etiqueta.isBlank()) {
+                    producto.setNombre(etiqueta);
+                    producto.setDescripcion(etiqueta);
+                }
+                if (presetDto.getPrecio() != null && presetDto.getPrecio().compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal precio = presetDto.getPrecio().setScale(2, RoundingMode.HALF_UP);
+                    producto.setPrecioVenta(precio);
+                    producto.setPrecioMayorista(precio);
+                }
+                productoRepository.save(producto);
+            });
+        }
+    }
+
+    private void actualizarProductosRapidosPos(PosConfiguracionRapidaDTO dto) {
+        List<Long> productoIds = dto != null && dto.getProductoIds() != null
+                ? dto.getProductoIds().stream()
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .limit(10)
+                        .collect(Collectors.toList())
+                : List.of();
+
+        List<Producto> actuales = productoRepository.findProductosRapidosNoReservados(CODIGOS_IMPRESION_POS);
+        actuales.forEach(producto -> {
+            producto.setPosRapido(false);
+            producto.setPosRapidoOrden(null);
+        });
+        productoRepository.saveAll(actuales);
+
+        Map<Long, Producto> seleccionados = productoRepository.findAllById(productoIds).stream()
+                .filter(producto -> !esPresetImpresionPos(producto))
+                .filter(producto -> Boolean.TRUE.equals(producto.isActivo()))
+                .filter(Producto::esVendible)
+                .collect(Collectors.toMap(Producto::getId, producto -> producto));
+
+        List<Producto> paraGuardar = new ArrayList<>();
+        int orden = 1;
+        for (Long productoId : productoIds) {
+            Producto producto = seleccionados.get(productoId);
+            if (producto == null) {
+                continue;
+            }
+            producto.setPosRapido(true);
+            producto.setPosRapidoOrden(orden++);
+            paraGuardar.add(producto);
+        }
+        productoRepository.saveAll(paraGuardar);
+    }
+
+    private String codigoPresetImpresion(String tipo) {
+        if (tipo == null) {
+            return null;
+        }
+        return switch (tipo.trim().toLowerCase()) {
+            case "bn" -> "IMPRESION_BN";
+            case "color" -> "IMPRESION_COLOR";
+            case "foto" -> "FOTO_ESTANDAR";
+            case "hoja" -> "IMPRESION_HOJA_COLOR";
+            default -> null;
+        };
     }
 
     /**
@@ -162,74 +600,23 @@ public class VentaController {
             margenMinimoAlerta = new BigDecimal("15.00");
         final BigDecimal margenMinConfig = margenMinimoAlerta;
 
-        return productoBusquedaService.buscar(term, 20).stream().map(p -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", p.getId());
+        return productoBusquedaService.buscar(term, 20).stream()
+                .map(p -> mapearProductoParaVenta(p, margenMinConfig))
+                .collect(Collectors.toList());
+    }
 
-            // Texto enriquecido con marca y stock para mejor identificación
-            StringBuilder textBuilder = new StringBuilder();
-            if (p.getCodigoBarra() != null && !p.getCodigoBarra().isEmpty()) {
-                textBuilder.append(p.getCodigoBarra()).append(" - ");
-            }
-            textBuilder.append(p.getNombre());
-            if (p.getMarca() != null && !p.getMarca().isEmpty()) {
-                textBuilder.append(" [").append(p.getMarca()).append("]");
-            }
-            textBuilder.append(" (Stock: ").append(p.getStockActual()).append(")");
+    @GetMapping("/api/producto-por-codigo")
+    @ResponseBody
+    public ResponseEntity<?> buscarProductoPorCodigo(@RequestParam String codigo) {
+        BigDecimal margenMinimoAlerta = configuracionService.obtenerConfiguracion().getMargenMinimoAlerta();
+        if (margenMinimoAlerta == null)
+            margenMinimoAlerta = new BigDecimal("15.00");
 
-            map.put("text", textBuilder.toString());
-            map.put("precio", p.getPrecioVenta());
-            map.put("precioMin", p.getPrecioVenta() != null
-                    ? p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA)
-                    : null);
-            map.put("stock", p.getStockActual());
-            map.put("stockMinimo", p.getStockMinimo());
-            map.put("nombre", p.getNombre());
-            map.put("marca", p.getMarca());
-            map.put("categoria", p.getCategoria());
-            map.put("descripcion", p.getDescripcion());
-            map.put("imagen", p.getImagen());
-            map.put("codigoBarra", p.getCodigoBarra());
-            map.put("codigoInterno", p.getCodigoInterno());
-            map.put("tags", p.getTags());
-
-            // Ubicación detallada
-            String ubicacionEstante = p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "";
-            String ubicacionFila = p.getUbicacionFila() != null ? p.getUbicacionFila() : "";
-            String ubicacionColumna = p.getUbicacionColumna() != null ? p.getUbicacionColumna() : "";
-            map.put("ubicacion", ubicacionEstante + "-" + ubicacionFila);
-            map.put("ubicacionEstante", ubicacionEstante);
-            map.put("ubicacionFila", ubicacionFila);
-            map.put("ubicacionColumna", ubicacionColumna);
-
-            // Flags de estado
-            map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
-            map.put("stockBajo", p.getStockActual() != null && p.getStockMinimo() != null
-                    && p.getStockActual() <= p.getStockMinimo());
-
-            // Alerta de margen bajo (calculado en backend — no expone precioCompra)
-            BigDecimal precioVenta = p.getPrecioVenta();
-            BigDecimal precioCompra = p.getPrecioCompra();
-            if (precioVenta != null && precioCompra != null && precioVenta.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal margenActual = precioVenta.subtract(precioCompra)
-                        .divide(precioVenta, 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                        .setScale(1, RoundingMode.HALF_UP);
-                map.put("margenActual", margenActual);
-                // Precio mínimo = costoCompra / (1 - margenMinimo/100)
-                BigDecimal divisor = BigDecimal.ONE
-                        .subtract(margenMinConfig.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
-                if (divisor.compareTo(BigDecimal.ZERO) > 0) {
-                    map.put("precioMinimoRecomendado", precioCompra.divide(divisor, 2, RoundingMode.HALF_UP));
-                }
-                map.put("margenBajo", margenActual.compareTo(margenMinConfig) < 0);
-            } else {
-                map.put("margenBajo", false);
-            }
-            map.put("margenMinimoAlerta", margenMinConfig);
-
-            return map;
-        }).collect(Collectors.toList());
+        List<Producto> encontrados = productoBusquedaService.buscarPorCodigoExacto(codigo);
+        if (encontrados.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(mapearProductoParaVenta(encontrados.get(0), margenMinimoAlerta));
     }
 
     @GetMapping("/api/buscar-laminas")
@@ -651,17 +1038,11 @@ public class VentaController {
     @ResponseBody
     public ResponseEntity<?> obtenerProducto(@PathVariable Long id) {
         return productoRepository.findById(id).map(p -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("id", p.getId());
-            data.put("nombre", p.getNombre());
-            data.put("marca", p.getMarca());
-            data.put("precio", p.getPrecioVenta());
-            data.put("precioMinimo", p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA));
-            data.put("stock", p.getStockActual());
-            data.put("imagen", p.getImagen());
-            data.put("ubicacion", (p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "") + "-"
-                    + (p.getUbicacionFila() != null ? p.getUbicacionFila() : ""));
-            return ResponseEntity.ok(data);
+            BigDecimal margenMinimoAlerta = configuracionService.obtenerConfiguracion().getMargenMinimoAlerta();
+            if (margenMinimoAlerta == null) {
+                margenMinimoAlerta = new BigDecimal("15.00");
+            }
+            return ResponseEntity.ok(mapearProductoParaVenta(p, margenMinimoAlerta));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -895,6 +1276,80 @@ public class VentaController {
         return cotizacion;
     }
 
+    private Map<String, Object> mapearProductoParaVenta(Producto p, BigDecimal margenMinConfig) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", p.getId());
+
+        StringBuilder textBuilder = new StringBuilder();
+        if (p.getCodigoBarra() != null && !p.getCodigoBarra().isEmpty()) {
+            textBuilder.append(p.getCodigoBarra()).append(" - ");
+        } else if (p.getCodigoInterno() != null && !p.getCodigoInterno().isEmpty()) {
+            textBuilder.append(p.getCodigoInterno()).append(" - ");
+        }
+        textBuilder.append(p.getNombre());
+        if (p.getMarca() != null && !p.getMarca().isEmpty()) {
+            textBuilder.append(" [").append(p.getMarca()).append("]");
+        }
+        textBuilder.append(" (Stock: ").append(p.getStockActual()).append(")");
+
+        map.put("text", textBuilder.toString());
+        map.put("precio", p.getPrecioVenta());
+        map.put("precioMin", p.getPrecioVenta() != null
+                ? p.getPrecioVenta().multiply(Constants.DESCUENTO_MINIMO_VENTA)
+                : null);
+        map.put("precioMinimo", map.get("precioMin"));
+        map.put("stock", p.getStockActual());
+        map.put("stockMinimo", p.getStockMinimo());
+        map.put("nombre", p.getNombre());
+        map.put("marca", p.getMarca());
+        map.put("modelo", p.getModelo());
+        map.put("color", p.getColor());
+        map.put("generacion", p.getGeneracion());
+        map.put("categoria", p.getCategoria());
+        map.put("descripcion", p.getDescripcion());
+        map.put("imagen", p.getImagen());
+        map.put("codigoBarra", p.getCodigoBarra());
+        map.put("codigoInterno", p.getCodigoInterno());
+        map.put("tipo", p.getTipo());
+        map.put("tags", p.getTags());
+        map.put("temporadaActiva", Boolean.TRUE.equals(p.getTemporadaActiva()));
+        map.put("posRapido", Boolean.TRUE.equals(p.getPosRapido()));
+        map.put("posRapidoOrden", p.getPosRapidoOrden());
+
+        String ubicacionEstante = p.getUbicacionEstante() != null ? p.getUbicacionEstante() : "";
+        String ubicacionFila = p.getUbicacionFila() != null ? p.getUbicacionFila() : "";
+        String ubicacionColumna = p.getUbicacionColumna() != null ? p.getUbicacionColumna() : "";
+        map.put("ubicacion", ubicacionEstante + "-" + ubicacionFila);
+        map.put("ubicacionEstante", ubicacionEstante);
+        map.put("ubicacionFila", ubicacionFila);
+        map.put("ubicacionColumna", ubicacionColumna);
+
+        map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
+        map.put("stockBajo", p.getStockActual() != null && p.getStockMinimo() != null
+                && p.getStockActual() <= p.getStockMinimo());
+
+        BigDecimal precioVenta = p.getPrecioVenta();
+        BigDecimal precioCompra = p.getPrecioCompra();
+        if (precioVenta != null && precioCompra != null && precioVenta.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal margenActual = precioVenta.subtract(precioCompra)
+                    .divide(precioVenta, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(1, RoundingMode.HALF_UP);
+            map.put("margenActual", margenActual);
+            BigDecimal divisor = BigDecimal.ONE
+                    .subtract(margenMinConfig.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            if (divisor.compareTo(BigDecimal.ZERO) > 0) {
+                map.put("precioMinimoRecomendado", precioCompra.divide(divisor, 2, RoundingMode.HALF_UP));
+            }
+            map.put("margenBajo", margenActual.compareTo(margenMinConfig) < 0);
+        } else {
+            map.put("margenBajo", false);
+        }
+        map.put("margenMinimoAlerta", margenMinConfig);
+
+        return map;
+    }
+
     @PostMapping("/api/solicitar-stock")
     @ResponseBody
     public ResponseEntity<?> registrarSolicitud(@RequestParam String producto) {
@@ -976,5 +1431,44 @@ public class VentaController {
         // C-1: exponer config para que el modal use datos reales de la empresa
         model.addAttribute("config", configuracionService.obtenerConfiguracion());
         return "ventas/modal_detalle :: contenido";
+    }
+
+    private record VentaRecientePos(BigDecimal cantidad, LocalDate ultimaFecha) {
+    }
+
+    private record ContextoProductosRapidosPos(List<Producto> productos, List<CampanaPos> campanas) {
+    }
+
+    private record CampanaPos(String codigo, String nombre, List<String> tokens) {
+        public String getCodigo() { return codigo; }
+        public String getNombre() { return nombre; }
+        public List<String> getTokens() { return tokens; }
+    }
+
+    private record ProductoRapidoScore(Producto producto, double score, int ordenManual) {
+    }
+
+    private static class TendenciaTokenPos {
+        private final String token;
+        private double cantidad7;
+        private double cantidad30;
+        private int productos;
+
+        private TendenciaTokenPos(String token) {
+            this.token = token;
+        }
+
+        private void agregar(double cantidad7, double cantidad30) {
+            this.cantidad7 += cantidad7;
+            this.cantidad30 += Math.max(cantidad30, cantidad7);
+            this.productos++;
+        }
+
+        private double score() {
+            double intensidad = cantidad7 * 10.0d;
+            double concentracion = cantidad30 > 0 ? Math.min(cantidad7 / cantidad30, 1.0d) * 45.0d : 0.0d;
+            double cobertura = Math.min(productos, 5) * 4.0d;
+            return intensidad + concentracion + cobertura;
+        }
     }
 }

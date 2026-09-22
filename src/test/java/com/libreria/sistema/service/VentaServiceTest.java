@@ -1,6 +1,7 @@
 package com.libreria.sistema.service;
 
 import com.libreria.sistema.model.*;
+import com.libreria.sistema.model.dto.CosteoVentaSnapshotDTO;
 import com.libreria.sistema.model.dto.VentaDTO;
 import com.libreria.sistema.repository.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +77,15 @@ class VentaServiceTest {
     @Mock
     private ConfiguracionService configuracionService;
 
+    @Mock
+    private ClienteService clienteService;
+
+    @Mock
+    private CosteoEmpresarialService costeoEmpresarialService;
+
+    @Mock
+    private ReposicionPendienteService reposicionPendienteService;
+
     @InjectMocks
     private VentaService ventaService;
 
@@ -100,6 +110,7 @@ class VentaServiceTest {
         productoConStock.setId(1L);
         productoConStock.setNombre("Cuaderno A4");
         productoConStock.setCodigoInterno("CUAD-001");
+        productoConStock.setPrecioCompra(new BigDecimal("2.00"));
         productoConStock.setPrecioVenta(new BigDecimal("5.00"));
         productoConStock.setStockActual(100);
         productoConStock.setTipo("PRODUCTO");
@@ -111,6 +122,7 @@ class VentaServiceTest {
         productoSinStock.setId(2L);
         productoSinStock.setNombre("Lapicero Rojo");
         productoSinStock.setCodigoInterno("LAP-002");
+        productoSinStock.setPrecioCompra(new BigDecimal("0.60"));
         productoSinStock.setPrecioVenta(new BigDecimal("1.50"));
         productoSinStock.setStockActual(0); // SIN STOCK
         productoSinStock.setTipo("PRODUCTO");
@@ -122,6 +134,7 @@ class VentaServiceTest {
         productoServicio.setId(3L);
         productoServicio.setNombre("Impresion A4");
         productoServicio.setCodigoInterno("SERV-001");
+        productoServicio.setPrecioCompra(BigDecimal.ZERO);
         productoServicio.setPrecioVenta(new BigDecimal("0.50"));
         productoServicio.setStockActual(99999);
         productoServicio.setTipo("SERVICIO"); // Es servicio
@@ -216,6 +229,34 @@ class VentaServiceTest {
             v.setId(1L);
             return v;
         });
+
+        when(costeoEmpresarialService.snapshotParaVenta(any(Producto.class), any(BigDecimal.class), any(BigDecimal.class)))
+                .thenAnswer(invocation -> {
+                    Producto producto = invocation.getArgument(0);
+                    BigDecimal precio = invocation.getArgument(1);
+                    BigDecimal cantidad = invocation.getArgument(2);
+                    BigDecimal costoDirecto = producto.getPrecioCompra() != null ? producto.getPrecioCompra() : BigDecimal.ZERO;
+                    BigDecimal costoIndirecto = "SERVICIO".equalsIgnoreCase(producto.getTipo())
+                            ? BigDecimal.ZERO
+                            : new BigDecimal("0.10");
+                    BigDecimal costoTotal = costoDirecto.add(costoIndirecto);
+                    BigDecimal utilidadBrutaUnit = precio.subtract(costoDirecto);
+                    BigDecimal utilidadNetaUnit = precio.subtract(costoTotal);
+
+                    return CosteoVentaSnapshotDTO.builder()
+                            .costoDirectoUnitario(costoDirecto)
+                            .costoIndirectoUnitario(costoIndirecto)
+                            .costoTotalUnitario(costoTotal)
+                            .montoReposicionTotal(costoDirecto.multiply(cantidad))
+                            .utilidadBrutaUnitaria(utilidadBrutaUnit)
+                            .utilidadBrutaTotal(utilidadBrutaUnit.multiply(cantidad))
+                            .utilidadNetaUnitaria(utilidadNetaUnit)
+                            .utilidadNetaTotal(utilidadNetaUnit.multiply(cantidad))
+                            .margenBrutoPct(BigDecimal.ZERO)
+                            .margenNetoPct(BigDecimal.ZERO)
+                            .reglaResumen("test")
+                            .build();
+                });
     }
 
     // =====================================================
@@ -295,6 +336,68 @@ class VentaServiceTest {
 
             // Verificar que NO se actualizo el stock (es servicio)
             verify(productoRepository, never()).save(any(Producto.class));
+        }
+
+        @Test
+        @DisplayName("Debe permitir precio flexible en servicio variable de impresion")
+        void crearVenta_ConServicioVariable_DebePermitirPrecioFlexible() {
+            // ARRANGE
+            configurarMocksComunes();
+
+            VentaDTO.DetalleDTO detalle = crearDetalleDTO(3L, 4, new BigDecimal("0.60"));
+            detalle.setDescripcion("Impresion a color con poco color");
+            ventaDTO.setItems(List.of(detalle));
+
+            when(productoRepository.findByIdWithLock(3L))
+                    .thenReturn(Optional.of(productoServicio));
+
+            // ACT
+            Map<String, Object> resultado = ventaService.crearVenta(ventaDTO);
+
+            // ASSERT
+            assertNotNull(resultado, "El resultado no debe ser null");
+
+            ArgumentCaptor<Venta> ventaCaptor = ArgumentCaptor.forClass(Venta.class);
+            verify(ventaRepository).save(ventaCaptor.capture());
+            Venta ventaGuardada = ventaCaptor.getValue();
+
+            assertEquals(0, new BigDecimal("2.40").compareTo(ventaGuardada.getTotal()),
+                    "El total debe multiplicar cantidad por precio flexible");
+            assertEquals("Impresion a color con poco color",
+                    ventaGuardada.getItems().get(0).getDescripcion(),
+                    "Debe conservar el detalle escrito en el POS");
+            verify(kardexRepository, never()).save(any(Kardex.class));
+            verify(productoRepository, never()).save(any(Producto.class));
+        }
+
+        @Test
+        @DisplayName("Debe recortar descripciones largas enviadas desde el POS")
+        void crearVenta_ConDescripcionLarga_DebeRecortarDetalle() {
+            // ARRANGE
+            configurarMocksComunes();
+
+            String descripcionLarga = "Temperas de colores intensos. Pintura ligera a base de agua. "
+                    .repeat(6);
+            VentaDTO.DetalleDTO detalle = crearDetalleDTO(1L, 1, new BigDecimal("5.00"));
+            detalle.setDescripcion(descripcionLarga);
+            ventaDTO.setItems(List.of(detalle));
+
+            when(productoRepository.findByIdWithLock(1L))
+                    .thenReturn(Optional.of(productoConStock));
+
+            // ACT
+            Map<String, Object> resultado = ventaService.crearVenta(ventaDTO);
+
+            // ASSERT
+            assertNotNull(resultado, "El resultado no debe ser null");
+
+            ArgumentCaptor<Venta> ventaCaptor = ArgumentCaptor.forClass(Venta.class);
+            verify(ventaRepository).save(ventaCaptor.capture());
+
+            String descripcionGuardada = ventaCaptor.getValue().getItems().get(0).getDescripcion();
+            assertNotNull(descripcionGuardada, "La descripcion debe quedar registrada");
+            assertTrue(descripcionGuardada.length() <= 200,
+                    "La descripcion enviada a detalle_ventas no debe exceder 200 caracteres");
         }
 
         @Test

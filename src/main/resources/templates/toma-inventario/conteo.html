@@ -215,6 +215,7 @@
                                 <th style="width: 50px;">#</th>
                                 <th style="width: 120px;">Código</th>
                                 <th>Producto</th>
+                                <th class="text-center" style="width: 110px;">Zona</th>
                                 <th class="text-center" style="width: 100px;">Stock Sistema</th>
                                 <th class="text-center" style="width: 120px;">Stock Físico</th>
                                 <th class="text-center" style="width: 100px;">Diferencia</th>
@@ -236,6 +237,11 @@
                                     <strong th:text="${detalle.producto.nombre}">Producto X</strong>
                                     <br>
                                     <small class="text-muted" th:text="${detalle.producto.marca}">Marca</small>
+                                </td>
+
+                                <td class="text-center">
+                                    <span class="badge badge-info"
+                                          th:text="${detalle.zonaConteo ?: '-'}">-</span>
                                 </td>
 
                                 <td class="text-center">
@@ -279,7 +285,7 @@
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(detalles)}">
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     No se encontraron productos
                                 </td>
                             </tr>

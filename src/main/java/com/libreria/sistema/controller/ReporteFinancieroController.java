@@ -84,6 +84,19 @@ public class ReporteFinancieroController {
         }
     }
 
+    @GetMapping("/api/resumen-negocio")
+    @PreAuthorize("hasPermission(null, 'REPORTES_FINANCIEROS_VER')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getResumenNegocio() {
+        try {
+            return ResponseEntity.ok(reporteService.generarResumenNegocio());
+        } catch (Exception e) {
+            log.error("Error generando resumen del negocio: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     /**
      * Obtener datos de flujo de caja
      */

@@ -5,6 +5,128 @@
       th:with="active='productos'">
 <head>
     <title>Inventario - Productos</title>
+    <style>
+        .label-designer-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 1.05fr) minmax(420px, 1fr);
+            gap: 1rem;
+        }
+
+        .label-products-list {
+            max-height: 58vh;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .label-product-row {
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            padding: .75rem;
+        }
+
+        .label-product-row:last-child {
+            border-bottom: 0;
+        }
+
+        .label-option-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .75rem;
+        }
+
+        .label-toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .35rem .75rem;
+        }
+
+        .label-preview-card {
+            border: 1px dashed #d1d5db;
+            border-radius: 8px;
+            min-height: 154px;
+            max-width: 310px;
+            margin: 0 auto;
+            padding: .65rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: #fff;
+        }
+
+        .label-preview-barcode {
+            width: 78%;
+            height: 34px;
+            background: repeating-linear-gradient(
+                90deg,
+                #111827 0,
+                #111827 2px,
+                transparent 2px,
+                transparent 5px,
+                #111827 5px,
+                #111827 7px,
+                transparent 7px,
+                transparent 10px
+            );
+            margin: .35rem auto .2rem;
+        }
+
+        .label-color-input {
+            width: 100%;
+            min-height: 38px;
+            padding: .15rem;
+        }
+
+        .label-compact-help {
+            font-size: .78rem;
+            color: #6c757d;
+        }
+
+        .label-sheet-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .75rem;
+            margin-bottom: 1rem;
+        }
+
+        .label-sheet-summary .summary-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: .65rem .75rem;
+            background: #fff;
+        }
+
+        .label-sheet-summary small {
+            color: #6c757d;
+            display: block;
+            line-height: 1.1;
+        }
+
+        .label-sheet-summary strong {
+            font-size: 1.05rem;
+            color: #111827;
+        }
+
+        .label-add-panel {
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) auto auto;
+            gap: .5rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 991.98px) {
+            .label-designer-grid,
+            .label-option-grid,
+            .label-toggle-grid,
+            .label-sheet-summary,
+            .label-add-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -20,8 +142,14 @@
                     <a href="/productos/nuevo" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nuevo
                     </a>
+                    <a href="/productos/revision" class="btn btn-outline-primary ml-2">
+                        <i class="fas fa-clipboard-check"></i> Revision
+                    </a>
                     <a href="/laminas" class="btn btn-outline-info ml-2">
                         <i class="fas fa-layer-group"></i> Laminas
+                    </a>
+                    <a href="/productos/categorias-masivo" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-tags"></i> Categorias
                     </a>
                     <button type="button" class="btn btn-dark ml-2" id="btnImprimirEtiquetas" onclick="mostrarModalEtiquetas()" disabled>
                         <i class="fas fa-print"></i> Imprimir Etiquetas (<span id="contadorSeleccionados">0</span>)
@@ -107,6 +235,10 @@
                                     <input type="checkbox" class="producto-checkbox"
                                            th:value="${p.id}"
                                            th:data-nombre="${p.nombre}"
+                                           th:data-codigo-barra="${p.codigoBarra}"
+                                           th:data-codigo-interno="${p.codigoInterno}"
+                                           th:data-categoria="${p.categoria}"
+                                           th:data-precio-venta="${p.precioVenta}"
                                            onclick="actualizarContador()">
                                 </td>
                                 <td class="text-center">
@@ -138,6 +270,9 @@
                                 <td>
                                     <span th:text="${p.categoria}"></span>
                                     <span th:if="${p.clasificacion == 'INSUMO'}" class="badge badge-secondary ml-1">INSUMO</span>
+                                    <span th:if="${p.clasificacion == 'SERVICIO'}" class="badge badge-primary ml-1">SERVICIO</span>
+                                    <span th:if="${p.clasificacion == 'INACTIVO'}" class="badge badge-dark ml-1">INACTIVO</span>
+                                    <span th:if="${p.clasificacion == 'DESCONOCIDO'}" class="badge badge-warning ml-1">DESCONOCIDO</span>
                                     <span th:if="${p.esLamina}" class="badge badge-info ml-1">LAMINA</span>
                                 </td>
                                 <td th:text="${p.precioVenta != null ? 'S/ ' + p.precioVenta : '-'}"></td>
@@ -271,36 +406,247 @@
 
     <!-- Modal para Imprimir Etiquetas -->
     <div class="modal fade" id="modalEtiquetas" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
                     <h5 class="modal-title">
-                        <i class="fas fa-print mr-2"></i>Imprimir Etiquetas
+                        <i class="fas fa-tags mr-2"></i>Diseñar e imprimir etiquetas
                     </h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-info-circle mr-2"></i>
-                        <span id="infoProductosSeleccionados">0 productos seleccionados</span>
+                    <div class="alert alert-info mb-3 py-2">
+                        <i class="fas fa-info-circle mr-2"></i><span id="infoProductosSeleccionados">0 productos seleccionados</span>
+                        <span class="ml-2 text-muted">Los cambios de este modal solo afectan este PDF.</span>
                     </div>
 
-                    <div id="listaProductosEtiquetas" style="max-height: 200px; overflow-y: auto;" class="mb-3">
-                        <!-- Lista de productos seleccionados -->
+                    <div class="label-sheet-summary">
+                        <div class="summary-box">
+                            <small>Etiquetas a imprimir</small>
+                            <strong id="resumenTotalEtiquetas">0</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Capacidad A4</small>
+                            <strong id="resumenCapacidadA4">24</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Hojas estimadas</small>
+                            <strong id="resumenHojasA4">1</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Espacios libres</small>
+                            <strong id="resumenEspaciosLibres">23</strong>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="cantidadEtiquetas"><strong>Cantidad de etiquetas por producto:</strong></label>
-                        <input type="number" class="form-control" id="cantidadEtiquetas" value="1" min="1" max="100">
-                        <small class="text-muted">Máximo 100 etiquetas por producto</small>
+                    <div class="label-add-panel">
+                        <select id="selectorAgregarProductoEtiqueta" class="form-control">
+                            <option value="">Agregar otro producto a esta hoja...</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" onclick="agregarProductoEtiquetaDesdeSelector()">
+                            <i class="fas fa-plus"></i> Agregar
+                        </button>
+                        <button type="button" class="btn btn-outline-success" onclick="rellenarHojaA4Etiquetas()"
+                                title="Aumenta la cantidad del primer producto hasta completar la ultima hoja A4">
+                            <i class="fas fa-th"></i> Completar A4
+                        </button>
                     </div>
 
-                    <div class="alert alert-secondary">
-                        <i class="fas fa-cog mr-2"></i>
-                        El formato de impresión (A4 o Ticket) se configura en
-                        <a href="/configuracion/general" target="_blank">Configuración</a>.
+                    <div class="label-designer-grid">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>Productos de la tanda</strong>
+                                    <div class="label-compact-help">Puedes cambiar cantidad, nombre y precio por producto antes de imprimir.</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sincronizarCantidadEtiquetas()">
+                                    <i class="fas fa-sync-alt"></i> Aplicar cantidad
+                                </button>
+                            </div>
+                            <div id="listaProductosEtiquetas" class="label-products-list">
+                                <!-- Lista de productos seleccionados -->
+                            </div>
+                        </div>
+
+                        <div>
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" id="tab-etiqueta-formato" data-toggle="tab" href="#panel-etiqueta-formato" role="tab">Formato</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="tab-etiqueta-diseno" data-toggle="tab" href="#panel-etiqueta-diseno" role="tab">Diseno</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="tab-etiqueta-medidas" data-toggle="tab" href="#panel-etiqueta-medidas" role="tab">Medidas</a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content border-left border-right border-bottom p-3 mb-3">
+                                <div class="tab-pane fade show active" id="panel-etiqueta-formato" role="tabpanel">
+                                    <div class="label-option-grid">
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaPlantilla">Plantilla</label>
+                                            <select id="etiquetaPlantilla" class="form-control">
+                                                <option value="UTIL_CHICO">Util chico con precio</option>
+                                                <option value="JUGUETE_GRANDE">Juguete grande</option>
+                                                <option value="SIN_PRECIO">Sin precio</option>
+                                                <option value="SOLO_CODIGO">Solo codigo</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaFormato">Salida</label>
+                                            <select id="etiquetaFormato" class="form-control">
+                                                <option value="A4">A4 adhesivo</option>
+                                                <option value="TICKET">Ticket termico</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="cantidadEtiquetas">Cantidad global</label>
+                                            <input type="number" class="form-control" id="cantidadEtiquetas" value="1" min="1" max="100">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaSaltarA4">Casillas usadas A4</label>
+                                            <input type="number" class="form-control" id="etiquetaSaltarA4" value="0" min="0" max="23">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaAnchoTicket">Ticket mm</label>
+                                            <select id="etiquetaAnchoTicket" class="form-control">
+                                                <option value="80">80 mm</option>
+                                                <option value="58">58 mm</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="label-toggle-grid mt-2">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarNombre" checked>
+                                            <label class="custom-control-label" for="etiquetaMostrarNombre">Nombre</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarPrecio" checked>
+                                            <label class="custom-control-label" for="etiquetaMostrarPrecio">Precio</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarCodigoTexto" checked>
+                                            <label class="custom-control-label" for="etiquetaMostrarCodigoTexto">Texto codigo</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarCategoria">
+                                            <label class="custom-control-label" for="etiquetaMostrarCategoria">Categoria</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarCodigoInterno">
+                                            <label class="custom-control-label" for="etiquetaMostrarCodigoInterno">Codigo interno</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="etiquetaMostrarBorde" checked>
+                                            <label class="custom-control-label" for="etiquetaMostrarBorde">Borde guia</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="tab-pane fade" id="panel-etiqueta-diseno" role="tabpanel">
+                                    <div class="label-option-grid">
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaFuente">Fuente</label>
+                                            <select id="etiquetaFuente" class="form-control">
+                                                <option value="HELVETICA">Helvetica</option>
+                                                <option value="COURIER">Courier</option>
+                                                <option value="TIMES_ROMAN">Times</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaNombreFont">Nombre pt</label>
+                                            <input type="number" class="form-control" id="etiquetaNombreFont" value="7" min="4" max="18" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaPrecioFont">Precio pt</label>
+                                            <input type="number" class="form-control" id="etiquetaPrecioFont" value="12" min="5" max="26" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaCodigoFont">Codigo pt</label>
+                                            <input type="number" class="form-control" id="etiquetaCodigoFont" value="6" min="4" max="14" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaCategoriaFont">Categoria pt</label>
+                                            <input type="number" class="form-control" id="etiquetaCategoriaFont" value="5.5" min="4" max="12" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaColorTexto">Texto</label>
+                                            <input type="color" class="form-control label-color-input" id="etiquetaColorTexto" value="#111827">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaColorPrecio">Precio</label>
+                                            <input type="color" class="form-control label-color-input" id="etiquetaColorPrecio" value="#111827">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaColorCodigo">Codigo</label>
+                                            <input type="color" class="form-control label-color-input" id="etiquetaColorCodigo" value="#374151">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaColorBorde">Borde</label>
+                                            <input type="color" class="form-control label-color-input" id="etiquetaColorBorde" value="#d1d5db">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="tab-pane fade" id="panel-etiqueta-medidas" role="tabpanel">
+                                    <div class="label-option-grid">
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaCodigoAncho">Codigo ancho mm</label>
+                                            <input type="number" class="form-control" id="etiquetaCodigoAncho" value="50" min="20" max="80" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaCodigoAlto">Codigo alto mm</label>
+                                            <input type="number" class="form-control" id="etiquetaCodigoAlto" value="12" min="6" max="24" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaAncho">Etiqueta ancho mm</label>
+                                            <input type="number" class="form-control" id="etiquetaAncho" value="63.5" min="25" max="90" step="0.1">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaAlto">Etiqueta alto mm</label>
+                                            <input type="number" class="form-control" id="etiquetaAlto" value="33.9" min="18" max="70" step="0.1">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaColumnas">Columnas A4</label>
+                                            <input type="number" class="form-control" id="etiquetaColumnas" value="3" min="1" max="5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaFilas">Filas A4</label>
+                                            <input type="number" class="form-control" id="etiquetaFilas" value="8" min="1" max="12">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaMargenHorizontal">Margen H mm</label>
+                                            <input type="number" class="form-control" id="etiquetaMargenHorizontal" value="8" min="2" max="30" step="0.5">
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="etiquetaMargenVertical">Margen V mm</label>
+                                            <input type="number" class="form-control" id="etiquetaMargenVertical" value="8" min="2" max="30" step="0.5">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-light border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Vista previa aproximada</strong>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="restablecerDisenoEtiquetas()">
+                                        <i class="fas fa-undo"></i> Restablecer
+                                    </button>
+                                </div>
+                                <div id="labelPreviewCard" class="label-preview-card">
+                                    <div id="previewEtiquetaNombre" class="font-weight-bold">Producto</div>
+                                    <div id="previewEtiquetaCategoria" class="small text-muted d-none">Categoria</div>
+                                    <div id="previewEtiquetaBarcode" class="label-preview-barcode"></div>
+                                    <div id="previewEtiquetaCodigo" class="small">CODIGO</div>
+                                    <div id="previewEtiquetaInterno" class="small text-muted d-none">INT: PROD-0001</div>
+                                    <div id="previewEtiquetaPrecio" class="font-weight-bold mt-1">S/ 0.00</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -378,6 +724,37 @@
         }
 
         // ========== FUNCIONES PARA ETIQUETAS ==========
+        var productosEtiquetasActuales = [];
+        var plantillasEtiquetas = {
+            UTIL_CHICO: {
+                nombreFont: 7, precioFont: 12, codigoFont: 6, categoriaFont: 5.5,
+                codigoAncho: 50, codigoAlto: 12, etiquetaAncho: 63.5, etiquetaAlto: 33.9,
+                columnas: 3, filas: 8,
+                mostrarNombre: true, mostrarPrecio: true, mostrarCodigoTexto: true,
+                mostrarCategoria: false, mostrarCodigoInterno: false, mostrarBorde: true
+            },
+            JUGUETE_GRANDE: {
+                nombreFont: 8, precioFont: 14, codigoFont: 6, categoriaFont: 5.5,
+                codigoAncho: 54, codigoAlto: 13, etiquetaAncho: 63.5, etiquetaAlto: 38,
+                columnas: 3, filas: 7,
+                mostrarNombre: true, mostrarPrecio: true, mostrarCodigoTexto: true,
+                mostrarCategoria: false, mostrarCodigoInterno: false, mostrarBorde: true
+            },
+            SIN_PRECIO: {
+                nombreFont: 8, precioFont: 10, codigoFont: 6, categoriaFont: 5.5,
+                codigoAncho: 52, codigoAlto: 14, etiquetaAncho: 63.5, etiquetaAlto: 33.9,
+                columnas: 3, filas: 8,
+                mostrarNombre: true, mostrarPrecio: false, mostrarCodigoTexto: true,
+                mostrarCategoria: true, mostrarCodigoInterno: false, mostrarBorde: true
+            },
+            SOLO_CODIGO: {
+                nombreFont: 6, precioFont: 10, codigoFont: 7, categoriaFont: 5,
+                codigoAncho: 56, codigoAlto: 16, etiquetaAncho: 63.5, etiquetaAlto: 28,
+                columnas: 3, filas: 9,
+                mostrarNombre: false, mostrarPrecio: false, mostrarCodigoTexto: true,
+                mostrarCategoria: false, mostrarCodigoInterno: true, mostrarBorde: true
+            }
+        };
 
         // Seleccionar/deseleccionar todos los checkboxes
         function toggleSelectAll() {
@@ -404,68 +781,584 @@
             selectAll.indeterminate = seleccionados > 0 && seleccionados < total;
         }
 
-        // Mostrar modal de etiquetas
-        function mostrarModalEtiquetas() {
+        function escapeHtml(valor) {
+            return String(valor == null ? '' : valor)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function numeroSeguro(valor, defecto) {
+            var normalizado = parseFloat(String(valor == null ? '' : valor).replace(',', '.'));
+            return isNaN(normalizado) ? defecto : normalizado;
+        }
+
+        function checkboxDeProducto(productoId) {
+            var todos = Array.prototype.slice.call(document.querySelectorAll('.producto-checkbox'));
+            return todos.find(function(cb) { return String(cb.value) === String(productoId); });
+        }
+
+        function productoDesdeCheckbox(cb, productoIdForzado) {
+            var data = cb ? cb.dataset : {};
+            var id = cb ? cb.value : productoIdForzado;
+            return {
+                id: parseInt(id),
+                nombre: data.nombre || ('Producto #' + id),
+                codigoBarra: data.codigoBarra || '',
+                codigoInterno: data.codigoInterno || '',
+                categoria: data.categoria || '',
+                precioVenta: numeroSeguro(data.precioVenta, 0)
+            };
+        }
+
+        function todosProductosEtiquetaDisponibles() {
+            var checkboxes = document.querySelectorAll('.producto-checkbox');
+            return Array.prototype.map.call(checkboxes, function(cb) {
+                return productoDesdeCheckbox(cb);
+            }).filter(function(producto) {
+                return !isNaN(producto.id);
+            });
+        }
+
+        function productoYaEstaEnTanda(productoId) {
+            return productosEtiquetasActuales.some(function(producto) {
+                return String(producto.id) === String(productoId);
+            });
+        }
+
+        function obtenerProductosEtiquetaSeleccionados(productoIdsForzados) {
+            if (Array.isArray(productoIdsForzados) && productoIdsForzados.length > 0) {
+                return productoIdsForzados.map(function(id) {
+                    return productoDesdeCheckbox(checkboxDeProducto(id), id);
+                }).filter(function(producto) {
+                    return !isNaN(producto.id);
+                });
+            }
+
             var checkboxes = document.querySelectorAll('.producto-checkbox:checked');
-            if (checkboxes.length === 0) {
+            return Array.prototype.map.call(checkboxes, function(cb) {
+                return productoDesdeCheckbox(cb);
+            });
+        }
+
+        function actualizarSelectorAgregarProductos() {
+            var selector = document.getElementById('selectorAgregarProductoEtiqueta');
+            if (!selector) {
+                return;
+            }
+            var opciones = ['<option value="">Agregar otro producto a esta hoja...</option>'];
+            todosProductosEtiquetaDisponibles().forEach(function(producto) {
+                if (productoYaEstaEnTanda(producto.id)) {
+                    return;
+                }
+                var codigo = producto.codigoBarra || producto.codigoInterno || 'sin codigo';
+                opciones.push(
+                    '<option value="' + producto.id + '">' +
+                    escapeHtml(producto.nombre + ' - ' + codigo) +
+                    '</option>'
+                );
+            });
+            selector.innerHTML = opciones.join('');
+        }
+
+        function actualizarInfoProductosEtiquetas() {
+            var totalProductos = document.querySelectorAll('.label-product-row').length;
+            document.getElementById('infoProductosSeleccionados').textContent =
+                totalProductos + ' producto(s) en la tanda';
+            actualizarSelectorAgregarProductos();
+            actualizarResumenHojaEtiquetas();
+        }
+
+        function capacidadA4Actual() {
+            var columnas = Math.max(1, Math.min(5, parseInt(document.getElementById('etiquetaColumnas').value) || 3));
+            var filas = Math.max(1, Math.min(12, parseInt(document.getElementById('etiquetaFilas').value) || 8));
+            return columnas * filas;
+        }
+
+        function saltarA4Actual() {
+            var capacidad = capacidadA4Actual();
+            var input = document.getElementById('etiquetaSaltarA4');
+            var valor = Math.max(0, Math.min(capacidad - 1, parseInt(input.value) || 0));
+            input.max = Math.max(0, capacidad - 1);
+            input.value = valor;
+            return valor;
+        }
+
+        function calcularTotalEtiquetasActual() {
+            var total = 0;
+            document.querySelectorAll('.label-product-row .js-label-qty').forEach(function(input) {
+                total += Math.max(1, Math.min(100, parseInt(input.value) || 1));
+            });
+            return total;
+        }
+
+        function actualizarResumenHojaEtiquetas() {
+            var total = calcularTotalEtiquetasActual();
+            var formato = document.getElementById('etiquetaFormato').value || 'A4';
+            var capacidad = capacidadA4Actual();
+            var saltar = formato === 'A4' ? saltarA4Actual() : 0;
+            var ocupadas = total + saltar;
+            var hojas = ocupadas > 0 ? Math.ceil(ocupadas / capacidad) : 0;
+            var libres = ocupadas > 0 ? ((hojas * capacidad) - ocupadas) : capacidad;
+
+            document.getElementById('resumenTotalEtiquetas').textContent = total;
+            document.getElementById('resumenCapacidadA4').textContent = formato === 'A4' ? capacidad : 'Ticket';
+            document.getElementById('resumenHojasA4').textContent = formato === 'A4' ? hojas : 'Rollo';
+            document.getElementById('resumenEspaciosLibres').textContent = formato === 'A4' ? libres : '-';
+        }
+
+        function agregarProductoEtiquetaDesdeSelector() {
+            var selector = document.getElementById('selectorAgregarProductoEtiqueta');
+            var productoId = selector ? parseInt(selector.value) : NaN;
+            if (isNaN(productoId) || productoYaEstaEnTanda(productoId)) {
+                return;
+            }
+            var producto = productoDesdeCheckbox(checkboxDeProducto(productoId), productoId);
+            if (isNaN(producto.id)) {
+                return;
+            }
+
+            productosEtiquetasActuales.push(producto);
+            renderizarProductoEtiqueta(producto);
+            sincronizarChecksProductoConGlobal();
+            actualizarInfoProductosEtiquetas();
+            actualizarVistaPreviaEtiquetas();
+        }
+
+        function eliminarProductoEtiqueta(productoId) {
+            productosEtiquetasActuales = productosEtiquetasActuales.filter(function(producto) {
+                return String(producto.id) !== String(productoId);
+            });
+            var fila = document.querySelector('.label-product-row[data-producto-id="' + productoId + '"]');
+            if (fila) {
+                fila.remove();
+            }
+            actualizarInfoProductosEtiquetas();
+            actualizarVistaPreviaEtiquetas();
+        }
+
+        function plantillaOptions(valorActual) {
+            var opciones = [
+                ['GLOBAL', 'Usar global'],
+                ['UTIL_CHICO', 'Util chico'],
+                ['JUGUETE_GRANDE', 'Juguete grande'],
+                ['SIN_PRECIO', 'Sin precio'],
+                ['SOLO_CODIGO', 'Solo codigo']
+            ];
+            return opciones.map(function(opcion) {
+                var selected = opcion[0] === valorActual ? ' selected' : '';
+                return '<option value="' + opcion[0] + '"' + selected + '>' + opcion[1] + '</option>';
+            }).join('');
+        }
+
+        function renderizarProductoEtiqueta(producto) {
+            var lista = document.getElementById('listaProductosEtiquetas');
+            var cantidadGlobal = Math.max(1, Math.min(100, parseInt(document.getElementById('cantidadEtiquetas').value) || 1));
+            var colorTextoGlobal = document.getElementById('etiquetaColorTexto').value || '#111827';
+            var colorPrecioGlobal = document.getElementById('etiquetaColorPrecio').value || '#111827';
+            var colorCodigoGlobal = document.getElementById('etiquetaColorCodigo').value || '#374151';
+
+            var item = document.createElement('div');
+            item.className = 'label-product-row';
+            item.setAttribute('data-producto-id', producto.id);
+            item.setAttribute('data-codigo-barra', producto.codigoBarra || '');
+            item.setAttribute('data-codigo-interno', producto.codigoInterno || '');
+            item.setAttribute('data-categoria', producto.categoria || '');
+            item.innerHTML =
+                '<div class="d-flex justify-content-between align-items-start mb-2">' +
+                    '<div class="pr-2">' +
+                        '<strong>' + escapeHtml(producto.nombre) + '</strong>' +
+                        '<div class="label-compact-help">' + escapeHtml(producto.categoria || 'Sin categoria') + '</div>' +
+                    '</div>' +
+                    '<div class="d-flex align-items-center">' +
+                        '<span class="badge badge-light border mr-2">' + escapeHtml(producto.codigoBarra || producto.codigoInterno || 'sin codigo') + '</span>' +
+                        '<button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarProductoEtiqueta(' + producto.id + ')" title="Quitar de esta tanda">' +
+                            '<i class="fas fa-times"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="row">' +
+                    '<div class="col-md-5 form-group mb-2">' +
+                        '<label>Nombre impreso</label>' +
+                        '<input type="text" class="form-control form-control-sm js-label-name" value="' + escapeHtml(producto.nombre) + '">' +
+                    '</div>' +
+                    '<div class="col-md-2 form-group mb-2">' +
+                        '<label>Cant.</label>' +
+                        '<input type="number" class="form-control form-control-sm js-label-qty" value="' + cantidadGlobal + '" min="1" max="100">' +
+                    '</div>' +
+                    '<div class="col-md-2 form-group mb-2">' +
+                        '<label>Precio</label>' +
+                        '<input type="number" class="form-control form-control-sm js-label-price-value" value="' + numeroSeguro(producto.precioVenta, 0).toFixed(2) + '" min="0" step="0.01">' +
+                    '</div>' +
+                    '<div class="col-md-3 form-group mb-2">' +
+                        '<label>Plantilla</label>' +
+                        '<select class="form-control form-control-sm js-label-template">' + plantillaOptions('GLOBAL') + '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="d-flex flex-wrap">' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-show-name" id="labelName' + producto.id + '" checked>' +
+                        '<label class="custom-control-label" for="labelName' + producto.id + '">Nombre</label>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-show-price" id="labelPrice' + producto.id + '" checked>' +
+                        '<label class="custom-control-label" for="labelPrice' + producto.id + '">Precio</label>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-show-code-text" id="labelCodeText' + producto.id + '" checked>' +
+                        '<label class="custom-control-label" for="labelCodeText' + producto.id + '">Texto codigo</label>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-show-category" id="labelCategory' + producto.id + '">' +
+                        '<label class="custom-control-label" for="labelCategory' + producto.id + '">Categoria</label>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-show-internal" id="labelInternal' + producto.id + '">' +
+                        '<label class="custom-control-label" for="labelInternal' + producto.id + '">Interno</label>' +
+                    '</div>' +
+                    '<div class="custom-control custom-checkbox custom-control-inline">' +
+                        '<input type="checkbox" class="custom-control-input js-label-fine-enabled" id="labelFineEnabled' + producto.id + '">' +
+                        '<label class="custom-control-label" for="labelFineEnabled' + producto.id + '">Ajuste fino</label>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="collapse mt-2" id="labelFine' + producto.id + '">' +
+                    '<div class="row">' +
+                        '<div class="col-md-3 form-group mb-2">' +
+                            '<label>Fuente</label>' +
+                            '<select class="form-control form-control-sm js-label-font">' +
+                                '<option value="">Global</option>' +
+                                '<option value="HELVETICA">Helvetica</option>' +
+                                '<option value="COURIER">Courier</option>' +
+                                '<option value="TIMES_ROMAN">Times</option>' +
+                            '</select>' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Nombre pt</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-name-font" min="4" max="18" step="0.5" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Precio pt</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-price-font" min="5" max="26" step="0.5" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Codigo pt</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-code-font" min="4" max="14" step="0.5" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-3 form-group mb-2">' +
+                            '<label>Alto etiqueta mm</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-height" min="18" max="70" step="0.1" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-3 form-group mb-2">' +
+                            '<label>Codigo ancho mm</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-code-width" min="20" max="80" step="0.5" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-3 form-group mb-2">' +
+                            '<label>Codigo alto mm</label>' +
+                            '<input type="number" class="form-control form-control-sm js-label-code-height" min="6" max="24" step="0.5" placeholder="Global">' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Texto</label>' +
+                            '<input type="color" class="form-control label-color-input js-label-color-text" value="' + escapeHtml(colorTextoGlobal) + '">' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Precio</label>' +
+                            '<input type="color" class="form-control label-color-input js-label-color-price" value="' + escapeHtml(colorPrecioGlobal) + '">' +
+                        '</div>' +
+                        '<div class="col-md-2 form-group mb-2">' +
+                            '<label>Codigo</label>' +
+                            '<input type="color" class="form-control label-color-input js-label-color-code" value="' + escapeHtml(colorCodigoGlobal) + '">' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            lista.appendChild(item);
+        }
+
+        // Mostrar modal de etiquetas
+        function mostrarModalEtiquetas(productoIdsForzados) {
+            productosEtiquetasActuales = obtenerProductosEtiquetaSeleccionados(productoIdsForzados);
+            if (productosEtiquetasActuales.length === 0) {
                 alert('Seleccione al menos un producto');
                 return;
             }
 
             // Actualizar info
             document.getElementById('infoProductosSeleccionados').textContent =
-                checkboxes.length + ' producto(s) seleccionado(s)';
+                productosEtiquetasActuales.length + ' producto(s) seleccionado(s)';
 
             // Mostrar lista de productos seleccionados
             var lista = document.getElementById('listaProductosEtiquetas');
             lista.innerHTML = '';
-            checkboxes.forEach(function(cb) {
-                var nombre = cb.getAttribute('data-nombre') || 'Producto #' + cb.value;
-                var item = document.createElement('div');
-                item.className = 'small text-muted';
-                item.innerHTML = '<i class="fas fa-check text-success mr-1"></i>' + nombre;
-                lista.appendChild(item);
+
+            productosEtiquetasActuales.forEach(function(producto) {
+                renderizarProductoEtiqueta(producto);
             });
 
+            aplicarPlantillaEtiquetas();
+            actualizarInfoProductosEtiquetas();
             $('#modalEtiquetas').modal('show');
         }
 
-        // Imprimir etiqueta individual (un solo producto, usa el mismo endpoint PDF)
+        // Imprimir etiqueta individual usando el mismo modal avanzado
         function imprimirEtiquetaIndividual(productoId) {
-            fetch('/productos/etiquetas/imprimir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productoIds: [productoId], cantidad: 1 })
-            })
-            .then(function(response) {
-                if (!response.ok) throw new Error('Error al generar PDF');
-                return response.blob();
-            })
-            .then(function(blob) {
-                var url = window.URL.createObjectURL(blob);
-                window.open(url, '_blank');
-            })
-            .catch(function(error) {
-                alert('Error al generar etiqueta: ' + error.message);
+            mostrarModalEtiquetas([productoId]);
+        }
+
+        function setCheck(id, valor) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.checked = !!valor;
+            }
+        }
+
+        function setValue(id, valor) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.value = valor;
+            }
+        }
+
+        function aplicarPlantillaEtiquetas() {
+            var plantilla = document.getElementById('etiquetaPlantilla').value || 'UTIL_CHICO';
+            var config = plantillasEtiquetas[plantilla] || plantillasEtiquetas.UTIL_CHICO;
+
+            setValue('etiquetaNombreFont', config.nombreFont);
+            setValue('etiquetaPrecioFont', config.precioFont);
+            setValue('etiquetaCodigoFont', config.codigoFont);
+            setValue('etiquetaCategoriaFont', config.categoriaFont);
+            setValue('etiquetaCodigoAncho', config.codigoAncho);
+            setValue('etiquetaCodigoAlto', config.codigoAlto);
+            setValue('etiquetaAncho', config.etiquetaAncho);
+            setValue('etiquetaAlto', config.etiquetaAlto);
+            setValue('etiquetaColumnas', config.columnas);
+            setValue('etiquetaFilas', config.filas);
+            setCheck('etiquetaMostrarNombre', config.mostrarNombre);
+            setCheck('etiquetaMostrarPrecio', config.mostrarPrecio);
+            setCheck('etiquetaMostrarCodigoTexto', config.mostrarCodigoTexto);
+            setCheck('etiquetaMostrarCategoria', config.mostrarCategoria);
+            setCheck('etiquetaMostrarCodigoInterno', config.mostrarCodigoInterno);
+            setCheck('etiquetaMostrarBorde', config.mostrarBorde);
+
+            sincronizarChecksProductoConGlobal();
+            actualizarVistaPreviaEtiquetas();
+            actualizarResumenHojaEtiquetas();
+        }
+
+        function sincronizarChecksProductoConGlobal() {
+            var filas = document.querySelectorAll('.label-product-row');
+            filas.forEach(function(fila) {
+                fila.querySelector('.js-label-show-name').checked = document.getElementById('etiquetaMostrarNombre').checked;
+                fila.querySelector('.js-label-show-price').checked = document.getElementById('etiquetaMostrarPrecio').checked;
+                fila.querySelector('.js-label-show-code-text').checked = document.getElementById('etiquetaMostrarCodigoTexto').checked;
+                fila.querySelector('.js-label-show-category').checked = document.getElementById('etiquetaMostrarCategoria').checked;
+                fila.querySelector('.js-label-show-internal').checked = document.getElementById('etiquetaMostrarCodigoInterno').checked;
             });
+        }
+
+        function sincronizarCantidadEtiquetas() {
+            var cantidad = Math.max(1, Math.min(100, parseInt(document.getElementById('cantidadEtiquetas').value) || 1));
+            document.querySelectorAll('.js-label-qty').forEach(function(input) {
+                input.value = cantidad;
+            });
+            actualizarResumenHojaEtiquetas();
+        }
+
+        function rellenarHojaA4Etiquetas() {
+            if ((document.getElementById('etiquetaFormato').value || 'A4') !== 'A4') {
+                alert('Esta opcion solo aplica para hojas A4.');
+                return;
+            }
+            var primeraCantidad = document.querySelector('.label-product-row .js-label-qty');
+            if (!primeraCantidad) {
+                return;
+            }
+            var capacidad = capacidadA4Actual();
+            var total = calcularTotalEtiquetasActual() + saltarA4Actual();
+            if (total <= 0) {
+                primeraCantidad.value = capacidad;
+                actualizarResumenHojaEtiquetas();
+                return;
+            }
+            var libres = capacidad - (total % capacidad);
+            if (libres === capacidad) {
+                alert('La ultima hoja A4 ya esta completa.');
+                return;
+            }
+            var pendientes = libres;
+            document.querySelectorAll('.label-product-row .js-label-qty').forEach(function(input) {
+                if (pendientes <= 0) {
+                    return;
+                }
+                var actual = Math.max(1, Math.min(100, parseInt(input.value) || 1));
+                var disponible = Math.max(0, 100 - actual);
+                var agregar = Math.min(disponible, pendientes);
+                input.value = actual + agregar;
+                pendientes -= agregar;
+            });
+            if (pendientes > 0) {
+                alert('No se pudo completar toda la hoja porque las cantidades llegaron al limite por producto.');
+            }
+            actualizarResumenHojaEtiquetas();
+        }
+
+        function restablecerDisenoEtiquetas() {
+            setValue('etiquetaPlantilla', 'UTIL_CHICO');
+            setValue('etiquetaFormato', 'A4');
+            setValue('etiquetaAnchoTicket', '80');
+            setValue('etiquetaSaltarA4', '0');
+            setValue('etiquetaFuente', 'HELVETICA');
+            setValue('etiquetaColorTexto', '#111827');
+            setValue('etiquetaColorPrecio', '#111827');
+            setValue('etiquetaColorCodigo', '#374151');
+            setValue('etiquetaColorBorde', '#d1d5db');
+            setValue('etiquetaMargenHorizontal', '8');
+            setValue('etiquetaMargenVertical', '8');
+            aplicarPlantillaEtiquetas();
+            actualizarResumenHojaEtiquetas();
+        }
+
+        function actualizarVistaPreviaEtiquetas() {
+            var fila = document.querySelector('.label-product-row');
+            var nombre = fila ? fila.querySelector('.js-label-name').value : 'Producto';
+            var categoria = fila ? (fila.getAttribute('data-categoria') || 'Categoria') : 'Categoria';
+            var codigo = fila ? (fila.getAttribute('data-codigo-barra') || fila.getAttribute('data-codigo-interno') || 'CODIGO') : 'CODIGO';
+            var precio = fila ? numeroSeguro(fila.querySelector('.js-label-price-value').value, 0) : 0;
+
+            var ajusteFino = fila && fila.querySelector('.js-label-fine-enabled').checked;
+            var mostrarNombre = fila ? fila.querySelector('.js-label-show-name').checked : document.getElementById('etiquetaMostrarNombre').checked;
+            var mostrarPrecio = fila ? fila.querySelector('.js-label-show-price').checked : document.getElementById('etiquetaMostrarPrecio').checked;
+            var mostrarCodigoTexto = fila ? fila.querySelector('.js-label-show-code-text').checked : document.getElementById('etiquetaMostrarCodigoTexto').checked;
+            var mostrarCategoria = fila ? fila.querySelector('.js-label-show-category').checked : document.getElementById('etiquetaMostrarCategoria').checked;
+            var mostrarInterno = fila ? fila.querySelector('.js-label-show-internal').checked : document.getElementById('etiquetaMostrarCodigoInterno').checked;
+            var mostrarBorde = document.getElementById('etiquetaMostrarBorde').checked;
+            var colorTexto = ajusteFino ? fila.querySelector('.js-label-color-text').value : document.getElementById('etiquetaColorTexto').value;
+            var colorPrecio = ajusteFino ? fila.querySelector('.js-label-color-price').value : document.getElementById('etiquetaColorPrecio').value;
+            var colorCodigo = ajusteFino ? fila.querySelector('.js-label-color-code').value : document.getElementById('etiquetaColorCodigo').value;
+            var colorBorde = document.getElementById('etiquetaColorBorde').value;
+            var nombreFont = ajusteFino ? (numeroOpcionalDesdeFila(fila, '.js-label-name-font') || numeroSeguro(document.getElementById('etiquetaNombreFont').value, 7)) : numeroSeguro(document.getElementById('etiquetaNombreFont').value, 7);
+            var precioFont = ajusteFino ? (numeroOpcionalDesdeFila(fila, '.js-label-price-font') || numeroSeguro(document.getElementById('etiquetaPrecioFont').value, 12)) : numeroSeguro(document.getElementById('etiquetaPrecioFont').value, 12);
+            var codigoFont = ajusteFino ? (numeroOpcionalDesdeFila(fila, '.js-label-code-font') || numeroSeguro(document.getElementById('etiquetaCodigoFont').value, 6)) : numeroSeguro(document.getElementById('etiquetaCodigoFont').value, 6);
+            var codigoAncho = ajusteFino ? (numeroOpcionalDesdeFila(fila, '.js-label-code-width') || numeroSeguro(document.getElementById('etiquetaCodigoAncho').value, 50)) : numeroSeguro(document.getElementById('etiquetaCodigoAncho').value, 50);
+            var codigoAlto = ajusteFino ? (numeroOpcionalDesdeFila(fila, '.js-label-code-height') || numeroSeguro(document.getElementById('etiquetaCodigoAlto').value, 12)) : numeroSeguro(document.getElementById('etiquetaCodigoAlto').value, 12);
+            var fuentePreview = ajusteFino && fila.querySelector('.js-label-font').value ? fila.querySelector('.js-label-font').value : document.getElementById('etiquetaFuente').value;
+
+            $('#previewEtiquetaNombre').toggleClass('d-none', !mostrarNombre).text(nombre || 'Producto');
+            $('#previewEtiquetaCategoria').toggleClass('d-none', !mostrarCategoria).text(categoria || 'Sin categoria');
+            $('#previewEtiquetaCodigo').toggleClass('d-none', !mostrarCodigoTexto).text(codigo || 'CODIGO');
+            $('#previewEtiquetaInterno').toggleClass('d-none', !mostrarInterno);
+            $('#previewEtiquetaPrecio').toggleClass('d-none', !mostrarPrecio).text('S/ ' + precio.toFixed(2));
+
+            $('#previewEtiquetaNombre')
+                .css('font-size', nombreFont + 'pt')
+                .css('color', colorTexto);
+            $('#previewEtiquetaCategoria')
+                .css('font-size', numeroSeguro(document.getElementById('etiquetaCategoriaFont').value, 5.5) + 'pt')
+                .css('color', colorTexto);
+            $('#previewEtiquetaCodigo')
+                .css('font-size', codigoFont + 'pt')
+                .css('color', colorCodigo);
+            $('#previewEtiquetaPrecio')
+                .css('font-size', precioFont + 'pt')
+                .css('color', colorPrecio);
+            $('#previewEtiquetaBarcode')
+                .css('width', Math.min(95, Math.max(35, codigoAncho * 1.25)) + '%')
+                .css('height', Math.max(16, codigoAlto * 2) + 'px');
+            $('#labelPreviewCard')
+                .css('border-color', mostrarBorde ? colorBorde : 'transparent')
+                .css('font-family', fuentePreview === 'COURIER' ? 'Courier New, monospace' : 'Arial, sans-serif');
+        }
+
+        function numeroOpcionalDesdeFila(fila, selector) {
+            var input = fila.querySelector(selector);
+            if (!input || input.value === '') {
+                return null;
+            }
+            return numeroSeguro(input.value, null);
+        }
+
+        function recogerOpcionesEtiquetas() {
+            var filas = document.querySelectorAll('.label-product-row');
+            var productoIds = [];
+            var productos = [];
+            filas.forEach(function(fila) {
+                var productoId = parseInt(fila.getAttribute('data-producto-id'));
+                if (isNaN(productoId)) {
+                    return;
+                }
+                var ajusteFino = fila.querySelector('.js-label-fine-enabled').checked;
+                var producto = {
+                    productoId: productoId,
+                    cantidad: Math.max(1, Math.min(100, parseInt(fila.querySelector('.js-label-qty').value) || 1)),
+                    plantilla: fila.querySelector('.js-label-template').value,
+                    nombrePersonalizado: fila.querySelector('.js-label-name').value,
+                    precioPersonalizado: numeroSeguro(fila.querySelector('.js-label-price-value').value, 0),
+                    mostrarNombre: fila.querySelector('.js-label-show-name').checked,
+                    mostrarPrecio: fila.querySelector('.js-label-show-price').checked,
+                    mostrarCodigoTexto: fila.querySelector('.js-label-show-code-text').checked,
+                    mostrarCategoria: fila.querySelector('.js-label-show-category').checked,
+                    mostrarCodigoInterno: fila.querySelector('.js-label-show-internal').checked,
+                    mostrarBorde: document.getElementById('etiquetaMostrarBorde').checked
+                };
+
+                if (ajusteFino) {
+                    producto.fuente = fila.querySelector('.js-label-font').value || null;
+                    producto.nombreFontSize = numeroOpcionalDesdeFila(fila, '.js-label-name-font');
+                    producto.precioFontSize = numeroOpcionalDesdeFila(fila, '.js-label-price-font');
+                    producto.codigoFontSize = numeroOpcionalDesdeFila(fila, '.js-label-code-font');
+                    producto.codigoAnchoMm = numeroOpcionalDesdeFila(fila, '.js-label-code-width');
+                    producto.codigoAltoMm = numeroOpcionalDesdeFila(fila, '.js-label-code-height');
+                    producto.etiquetaAltoMm = numeroOpcionalDesdeFila(fila, '.js-label-height');
+                    producto.colorTexto = fila.querySelector('.js-label-color-text').value;
+                    producto.colorPrecio = fila.querySelector('.js-label-color-price').value;
+                    producto.colorCodigo = fila.querySelector('.js-label-color-code').value;
+                }
+
+                productoIds.push(productoId);
+                productos.push(producto);
+            });
+
+            return {
+                productoIds: productoIds,
+                productos: productos,
+                cantidad: Math.max(1, Math.min(100, parseInt(document.getElementById('cantidadEtiquetas').value) || 1)),
+                plantilla: document.getElementById('etiquetaPlantilla').value,
+                formato: document.getElementById('etiquetaFormato').value,
+                anchoTicketMm: parseInt(document.getElementById('etiquetaAnchoTicket').value) || 80,
+                mostrarNombre: document.getElementById('etiquetaMostrarNombre').checked,
+                mostrarPrecio: document.getElementById('etiquetaMostrarPrecio').checked,
+                mostrarCodigoTexto: document.getElementById('etiquetaMostrarCodigoTexto').checked,
+                mostrarCategoria: document.getElementById('etiquetaMostrarCategoria').checked,
+                mostrarCodigoInterno: document.getElementById('etiquetaMostrarCodigoInterno').checked,
+                mostrarBorde: document.getElementById('etiquetaMostrarBorde').checked,
+                fuente: document.getElementById('etiquetaFuente').value,
+                colorTexto: document.getElementById('etiquetaColorTexto').value,
+                colorPrecio: document.getElementById('etiquetaColorPrecio').value,
+                colorCodigo: document.getElementById('etiquetaColorCodigo').value,
+                colorBorde: document.getElementById('etiquetaColorBorde').value,
+                nombreFontSize: numeroSeguro(document.getElementById('etiquetaNombreFont').value, 7),
+                precioFontSize: numeroSeguro(document.getElementById('etiquetaPrecioFont').value, 12),
+                codigoFontSize: numeroSeguro(document.getElementById('etiquetaCodigoFont').value, 6),
+                categoriaFontSize: numeroSeguro(document.getElementById('etiquetaCategoriaFont').value, 5.5),
+                codigoAnchoMm: numeroSeguro(document.getElementById('etiquetaCodigoAncho').value, 50),
+                codigoAltoMm: numeroSeguro(document.getElementById('etiquetaCodigoAlto').value, 12),
+                etiquetaAnchoMm: numeroSeguro(document.getElementById('etiquetaAncho').value, 63.5),
+                etiquetaAltoMm: numeroSeguro(document.getElementById('etiquetaAlto').value, 33.9),
+                columnasA4: parseInt(document.getElementById('etiquetaColumnas').value) || 3,
+                filasA4: parseInt(document.getElementById('etiquetaFilas').value) || 8,
+                margenHorizontalMm: numeroSeguro(document.getElementById('etiquetaMargenHorizontal').value, 8),
+                margenVerticalMm: numeroSeguro(document.getElementById('etiquetaMargenVertical').value, 8),
+                saltarEtiquetasA4: saltarA4Actual()
+            };
         }
 
         // Generar PDF de etiquetas (masivo)
         function generarPdfEtiquetas() {
-            var checkboxes = document.querySelectorAll('.producto-checkbox:checked');
-            if (checkboxes.length === 0) {
-                alert('Seleccione al menos un producto');
+            var request = recogerOpcionesEtiquetas();
+            if (!request.productoIds || request.productoIds.length === 0) {
+                alert('No hay productos en la tanda');
                 return;
             }
-
-            var cantidad = parseInt(document.getElementById('cantidadEtiquetas').value) || 1;
-            if (cantidad < 1) cantidad = 1;
-            if (cantidad > 100) cantidad = 100;
-
-            var productoIds = [];
-            checkboxes.forEach(function(cb) {
-                productoIds.push(parseInt(cb.value));
-            });
 
             // Mostrar loading
             var btnGenerar = document.querySelector('#modalEtiquetas .btn-primary');
@@ -479,14 +1372,22 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    productoIds: productoIds,
-                    cantidad: cantidad
-                })
+                body: JSON.stringify(request)
             })
             .then(function(response) {
                 if (!response.ok) {
-                    throw new Error('Error al generar PDF');
+                    return response.text().then(function(texto) {
+                        var mensaje = 'Error al generar PDF';
+                        try {
+                            var data = JSON.parse(texto);
+                            mensaje = data.mensaje || data.error || mensaje;
+                        } catch (e) {
+                            if (texto) {
+                                mensaje = texto;
+                            }
+                        }
+                        throw new Error(mensaje);
+                    });
                 }
                 return response.blob();
             })
@@ -505,6 +1406,28 @@
                 btnGenerar.disabled = false;
             });
         }
+
+        $('#modalEtiquetas').on('input change', 'input, select', function(event) {
+            if (event.target && event.target.id === 'etiquetaPlantilla') {
+                return;
+            }
+            actualizarVistaPreviaEtiquetas();
+            actualizarResumenHojaEtiquetas();
+        });
+
+        $('#etiquetaPlantilla').on('change', aplicarPlantillaEtiquetas);
+        $('#etiquetaMostrarNombre, #etiquetaMostrarPrecio, #etiquetaMostrarCodigoTexto, #etiquetaMostrarCategoria, #etiquetaMostrarCodigoInterno').on('change', function() {
+            sincronizarChecksProductoConGlobal();
+            actualizarVistaPreviaEtiquetas();
+            actualizarResumenHojaEtiquetas();
+        });
+
+        $('#listaProductosEtiquetas').on('change', '.js-label-fine-enabled', function() {
+            var panel = $(this).closest('.label-product-row').find('.collapse');
+            panel.collapse(this.checked ? 'show' : 'hide');
+            actualizarVistaPreviaEtiquetas();
+            actualizarResumenHojaEtiquetas();
+        });
     </script>
 </th:block>
 

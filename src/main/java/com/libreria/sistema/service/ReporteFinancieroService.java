@@ -63,6 +63,9 @@ public class ReporteFinancieroService {
     @Autowired private DetalleDevolucionRepository detalleDevolucionRepository;
     @Autowired private ProductoRepository productoRepository;
     @Autowired private ConfiguracionService configuracionService;
+    @Autowired private CuentaFijaService cuentaFijaService;
+    @Autowired private SesionCajaRepository sesionCajaRepository;
+    @Autowired private OrdenServicioPagoRepository ordenServicioPagoRepository;
 
     private static class ResumenMovimiento {
         long cantidad;
@@ -94,6 +97,7 @@ public class ReporteFinancieroService {
 
         ResumenMovimiento ventas = resumenes.getOrDefault(CategoriaMovimiento.VENTA, new ResumenMovimiento());
         ResumenMovimiento cobranzas = resumenes.getOrDefault(CategoriaMovimiento.COBRANZA, new ResumenMovimiento());
+        ResumenMovimiento anticiposServicio = resumenes.getOrDefault(CategoriaMovimiento.ANTICIPO_SERVICIO, new ResumenMovimiento());
         ResumenMovimiento apertura = resumenes.getOrDefault(APERTURA_CAJA, new ResumenMovimiento());
         ResumenMovimiento aportes = resumenes.getOrDefault(CategoriaMovimiento.APORTE_DUENO, new ResumenMovimiento());
         ResumenMovimiento otrosIngresos = resumenes.getOrDefault(CategoriaMovimiento.OTRO_INGRESO, new ResumenMovimiento());
@@ -106,6 +110,7 @@ public class ReporteFinancieroService {
         List<Map<String, Object>> detalleIngresos = new ArrayList<>();
         detalleIngresos.add(crearFilaDetalle("Ventas cobradas", ventas));
         detalleIngresos.add(crearFilaDetalle("Cobros de credito", cobranzas));
+        detalleIngresos.add(crearFilaDetalle("Anticipos de servicio", anticiposServicio));
         detalleIngresos.add(crearFilaDetalle("Fondo inicial / apertura", apertura));
         detalleIngresos.add(crearFilaDetalle("Aportes del dueno", aportes));
         detalleIngresos.add(crearFilaDetalle("Otros ingresos", otrosIngresos));
@@ -130,6 +135,7 @@ public class ReporteFinancieroService {
         out.put("saldo", totalIngresos.subtract(totalEgresos));
         out.put("ventasCobradas", ventas.total);
         out.put("cobrosCredito", cobranzas.total);
+        out.put("anticiposServicio", anticiposServicio.total);
         out.put("fondoInicial", apertura.total);
         out.put("aportesDueno", aportes.total);
         out.put("otrosIngresos", otrosIngresos.total);
@@ -287,6 +293,7 @@ public class ReporteFinancieroService {
         BigDecimal retirosMes = resumenMes.getOrDefault(CategoriaMovimiento.RETIRO_DUENO, new ResumenMovimiento()).total;
         BigDecimal otrosEgresos = resumenMes.getOrDefault(CategoriaMovimiento.OTRO_EGRESO, new ResumenMovimiento()).total;
         BigDecimal cobrosCredito = resumenMes.getOrDefault(CategoriaMovimiento.COBRANZA, new ResumenMovimiento()).total;
+        BigDecimal anticiposServicio = resumenMes.getOrDefault(CategoriaMovimiento.ANTICIPO_SERVICIO, new ResumenMovimiento()).total;
         BigDecimal salidasMes = comprasMes.add(gastosOperativos).add(devolucionesMes).add(retirosMes).add(otrosEgresos);
 
         BigDecimal variacion = BigDecimal.ZERO;
@@ -332,6 +339,7 @@ public class ReporteFinancieroService {
         out.put("ticketPromedioMesActual", cantidadVentasMes > 0 ? ventasMesTotal.divide(BigDecimal.valueOf(cantidadVentasMes), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
         out.put("comprasMesActual", comprasMes);
         out.put("cobrosCreditoMesActual", cobrosCredito);
+        out.put("anticiposServicioMesActual", anticiposServicio);
         out.put("devolucionesMesActual", devolucionesMes);
         out.put("salidasMesActual", salidasMes);
         out.put("gastosMesActual", salidasMes);
@@ -343,6 +351,47 @@ public class ReporteFinancieroService {
         out.put("top5Clientes", construirTopClientes(ventasMes, totalesMes, 5));
         out.put("ventasPorVendedor", construirTopVendedores(ventasMes, totalesMes));
         out.put("ultimos12Meses", ultimos12Meses);
+        return out;
+    }
+
+    public Map<String, Object> generarResumenNegocio() {
+        LocalDate hoy = LocalDate.now();
+        LocalDate inicioMes = hoy.withDayOfMonth(1);
+        LocalDate finMes = hoy.withDayOfMonth(hoy.lengthOfMonth());
+
+        List<MovimientoCaja> movimientosHoy = movimientoCajaRepository.findByFechaBetween(
+                hoy.atStartOfDay(), hoy.atTime(23, 59, 59));
+        List<MovimientoCaja> movimientosMes = movimientoCajaRepository.findByFechaBetween(
+                inicioMes.atStartOfDay(), finMes.atTime(23, 59, 59));
+
+        Map<String, ResumenMovimiento> resumenHoy = resumirMovimientosCaja(movimientosHoy);
+        Map<String, ResumenMovimiento> resumenMes = resumirMovimientosCaja(movimientosMes);
+        Map<String, Object> dashboard = generarDashboardFinanciero();
+
+        BigDecimal cuentasFijasMes = cuentaFijaService.totalMensualActivo();
+        BigDecimal cajaActual = calcularCajaActual();
+        BigDecimal gananciaEstimada = valorSeguro((BigDecimal) dashboard.get("gananciaNeta"));
+        BigDecimal faltanteFijos = cuentasFijasMes.subtract(cajaActual).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal libreReinvertir = cajaActual.subtract(cuentasFijasMes).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("hoyEntro", sumaIngresos(resumenHoy));
+        out.put("hoySalio", sumaEgresos(resumenHoy));
+        out.put("hayEnCaja", cajaActual);
+        out.put("gananciaEstimadaMes", gananciaEstimada);
+        out.put("cuentasFijasMes", cuentasFijasMes);
+        out.put("teAlcanzaPagar", cajaActual.compareTo(cuentasFijasMes) >= 0);
+        out.put("faltanteParaFijos", faltanteFijos);
+        out.put("libreParaReinvertir", libreReinvertir);
+        out.put("ventasCobradas", resumenMes.getOrDefault(CategoriaMovimiento.VENTA, new ResumenMovimiento()).total);
+        out.put("cobrosCredito", resumenMes.getOrDefault(CategoriaMovimiento.COBRANZA, new ResumenMovimiento()).total);
+        out.put("anticiposServicio", resumenMes.getOrDefault(CategoriaMovimiento.ANTICIPO_SERVICIO, new ResumenMovimiento()).total);
+        out.put("compras", resumenMes.getOrDefault(CategoriaMovimiento.COMPRA_MERCADERIA, new ResumenMovimiento()).total);
+        out.put("gastosOperativos", resumenMes.getOrDefault(CategoriaMovimiento.GASTO_OPERATIVO, new ResumenMovimiento()).total);
+        out.put("retiros", resumenMes.getOrDefault(CategoriaMovimiento.RETIRO_DUENO, new ResumenMovimiento()).total);
+        out.put("cajaAbierta", sesionCajaRepository.findFirstByEstadoOrderByFechaInicioDesc("ABIERTA").isPresent());
+        out.put("cuentasFijas", cuentaFijaService.listarActivas());
+        out.put("totalAbonosServicioMes", ordenServicioPagoRepository.sumByPeriodo(inicioMes.atStartOfDay(), finMes.atTime(23, 59, 59)));
         return out;
     }
 
@@ -778,6 +827,41 @@ public class ReporteFinancieroService {
         Map<String, ResumenMovimiento> out = new HashMap<>();
         for (MovimientoCaja mov : movimientos) out.computeIfAbsent(categoriaFinanciera(mov), k -> new ResumenMovimiento()).add(mov.getMonto());
         return out;
+    }
+
+    private BigDecimal calcularCajaActual() {
+        return sesionCajaRepository.findFirstByEstadoOrderByFechaInicioDesc("ABIERTA")
+                .map(sesion -> valorSeguro(movimientoCajaRepository.sumarPorSesionYTipo(sesion, "INGRESO"))
+                        .subtract(valorSeguro(movimientoCajaRepository.sumarPorSesionYTipo(sesion, "EGRESO")))
+                        .setScale(2, RoundingMode.HALF_UP))
+                .orElse(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    private BigDecimal sumaIngresos(Map<String, ResumenMovimiento> resumenes) {
+        return resumenes.entrySet().stream()
+                .filter(entry -> !Arrays.asList(
+                        CategoriaMovimiento.COMPRA_MERCADERIA,
+                        CategoriaMovimiento.GASTO_OPERATIVO,
+                        CategoriaMovimiento.DEVOLUCION,
+                        CategoriaMovimiento.RETIRO_DUENO,
+                        CategoriaMovimiento.OTRO_EGRESO
+                ).contains(entry.getKey()))
+                .map(entry -> entry.getValue().total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal sumaEgresos(Map<String, ResumenMovimiento> resumenes) {
+        return Arrays.asList(
+                        CategoriaMovimiento.COMPRA_MERCADERIA,
+                        CategoriaMovimiento.GASTO_OPERATIVO,
+                        CategoriaMovimiento.DEVOLUCION,
+                        CategoriaMovimiento.RETIRO_DUENO,
+                        CategoriaMovimiento.OTRO_EGRESO
+                ).stream()
+                .map(key -> resumenes.getOrDefault(key, new ResumenMovimiento()).total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private String categoriaFinanciera(MovimientoCaja mov) {

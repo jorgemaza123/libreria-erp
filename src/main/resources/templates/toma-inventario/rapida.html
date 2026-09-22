@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}"
+      th:with="active='toma-inventario'">
+<head>
+    <title>Regularizacion Rapida</title>
+    <style>
+        .rapid-shell {
+            display: grid;
+            grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+            gap: 16px;
+        }
+        .rapid-panel {
+            background: #fff;
+            border: 1px solid #dfe5ec;
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        }
+        .rapid-panel-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid #e9eef4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .rapid-panel-body { padding: 18px; }
+        .rapid-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .rapid-header-actions .btn,
+        .rapid-tool-grid .btn {
+            font-weight: 700;
+        }
+        .rapid-search {
+            height: 54px;
+            font-size: 1.08rem;
+            font-weight: 600;
+            border: 2px solid #a9bed6;
+        }
+        .rapid-zones {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .rapid-zone-card {
+            border: 1px solid #d4dee9;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 118px;
+            gap: 8px;
+            align-items: center;
+        }
+        .rapid-zone {
+            border: 1px solid #cfd8e3;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: 700;
+            color: #344054;
+        }
+        .rapid-zone.active {
+            background: #123b63;
+            color: #fff;
+            border-color: #123b63;
+        }
+        .rapid-zone-state {
+            height: 36px;
+            font-size: .78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .rapid-zone-meta {
+            color: #667085;
+            font-size: .74rem;
+            font-weight: 700;
+            margin-top: 3px;
+        }
+        .rapid-switch-row {
+            border: 1px solid #dce6f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #f8fafc;
+        }
+        .rapid-stock-hidden .stock-visible-value {
+            filter: blur(5px);
+            opacity: .35;
+            user-select: none;
+        }
+        .rapid-stock-hidden .stock-hidden-label {
+            display: inline !important;
+        }
+        .stock-hidden-label {
+            display: none;
+        }
+        .rapid-tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .rapid-results {
+            display: grid;
+            gap: 8px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .rapid-result {
+            width: 100%;
+            text-align: left;
+            border: 1px solid #d8e1eb;
+            border-radius: 8px;
+            background: #fff;
+            padding: 12px;
+            transition: border-color .15s ease, background .15s ease;
+        }
+        .rapid-result:hover,
+        .rapid-result.active {
+            border-color: #0c7ea8;
+            background: #edf9fd;
+        }
+        .rapid-result-title {
+            font-weight: 800;
+            color: #102a43;
+            line-height: 1.2;
+        }
+        .rapid-result-meta {
+            color: #667085;
+            font-size: .86rem;
+            margin-top: 4px;
+        }
+        .rapid-product-main {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 230px;
+            gap: 18px;
+            align-items: stretch;
+        }
+        .rapid-product-name {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #0f263d;
+            margin-bottom: 8px;
+        }
+        .rapid-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .rapid-metric-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .rapid-metric {
+            background: #f8fafc;
+            border: 1px solid #e4eaf1;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .rapid-metric span {
+            display: block;
+            color: #667085;
+            font-size: .78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .rapid-metric strong {
+            display: block;
+            color: #0f263d;
+            font-size: 1.12rem;
+            margin-top: 4px;
+        }
+        .rapid-recount-box {
+            border: 1px solid #fecaca;
+            border-left: 4px solid #dc2626;
+            background: #fff7f7;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+        }
+        .rapid-recount-box span {
+            color: #7f1d1d;
+            display: block;
+            font-size: .76rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .rapid-recount-box strong {
+            color: #111827;
+            display: block;
+            margin-top: 2px;
+        }
+        .rapid-edit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .rapid-edit-grid label {
+            color: #667085;
+            font-size: .78rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .rapid-count-box {
+            background: #0f263d;
+            color: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .rapid-count-box label {
+            color: #dbeafe;
+            font-weight: 700;
+        }
+        .rapid-count-input {
+            height: 72px;
+            font-size: 2rem;
+            font-weight: 900;
+            text-align: center;
+            border: 0;
+            border-radius: 8px;
+        }
+        .rapid-save {
+            height: 52px;
+            font-weight: 800;
+        }
+        .rapid-empty {
+            border: 2px dashed #cfd8e3;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            color: #667085;
+            background: #fbfdff;
+        }
+        .rapid-history {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+        .rapid-history-item {
+            border: 1px solid #e4eaf1;
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+        }
+        .rapid-history-item strong {
+            display: block;
+            color: #0f263d;
+            line-height: 1.2;
+        }
+        .rapid-suspects {
+            display: grid;
+            gap: 8px;
+            max-height: 360px;
+            overflow-y: auto;
+        }
+        .rapid-suspect-item {
+            border: 1px solid #f0d5aa;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fffaf0;
+        }
+        .rapid-suspect-item strong {
+            color: #5f370e;
+            display: block;
+            line-height: 1.2;
+        }
+        .rapid-camera-box {
+            background: #0f172a;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rapid-camera-box video {
+            width: 100%;
+            max-height: 520px;
+            object-fit: cover;
+        }
+        .rapid-qr-reader {
+            width: 100%;
+            min-height: 320px;
+        }
+        .rapid-qr-reader video {
+            width: 100% !important;
+            max-height: 520px;
+            object-fit: cover;
+        }
+        .rapid-label-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .rapid-label-summary .summary-box {
+            border: 1px solid #dce6f0;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 12px;
+        }
+        .rapid-label-summary small {
+            display: block;
+            color: #667085;
+            font-size: .75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .rapid-label-summary strong {
+            display: block;
+            color: #0f263d;
+            font-size: 1.25rem;
+            margin-top: 2px;
+        }
+        .rapid-label-toolbar {
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .rapid-label-config {
+            border: 1px solid #dce6f0;
+            border-radius: 8px;
+            background: #fbfdff;
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+        .rapid-label-config-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .rapid-label-config label,
+        .rapid-label-row label {
+            color: #667085;
+            font-size: .72rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .rapid-label-list {
+            display: grid;
+            gap: 10px;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .rapid-label-row {
+            border: 1px solid #d8e1eb;
+            border-left: 4px solid #0c7ea8;
+            border-radius: 8px;
+            background: #fff;
+            padding: 12px;
+        }
+        .rapid-label-row-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .rapid-label-row-head strong {
+            color: #0f263d;
+            display: block;
+            line-height: 1.2;
+        }
+        .rapid-label-row-grid {
+            display: grid;
+            grid-template-columns: 92px minmax(180px, 1.3fr) 120px 150px;
+            gap: 10px;
+            align-items: end;
+        }
+        .rapid-label-fine-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #dce6f0;
+        }
+        @media (max-width: 1200px) {
+            .rapid-metric-grid,
+            .rapid-edit-grid,
+            .rapid-label-config-grid,
+            .rapid-label-fine-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .rapid-label-toolbar,
+            .rapid-label-row-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 992px) {
+            .rapid-shell,
+            .rapid-product-main {
+                grid-template-columns: 1fr;
+            }
+            .rapid-header-actions {
+                justify-content: flex-start;
+            }
+            .rapid-mobile-body .content-header .row {
+                gap: 8px;
+            }
+            .rapid-mobile-body .rapid-panel-body {
+                padding: 14px;
+            }
+            .rapid-mobile-body .rapid-search {
+                height: 60px;
+                font-size: 1.15rem;
+            }
+            .rapid-mobile-body .rapid-count-input {
+                height: 82px;
+            }
+            .rapid-label-summary,
+            .rapid-label-toolbar,
+            .rapid-label-row-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body th:classappend="${modoMovil} ? 'rapid-mobile-body' : ''">
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2 align-items-center">
+                <div class="col-lg-6">
+                    <h1><i class="fas fa-barcode"></i> Regularizacion Rapida</h1>
+                    <small class="text-muted">Conteo por busqueda, escaneo, zona, edicion rapida y variantes.</small>
+                </div>
+                <div class="col-lg-6">
+                    <div class="rapid-header-actions">
+                        <a href="/toma-inventario" class="btn btn-outline-secondary">
+                            <i class="fas fa-list"></i> Tomas
+                        </a>
+                        <a th:if="${hayTomaAbierta}" href="/toma-inventario/rapida/exportar/excel" class="btn btn-outline-success">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                        <a th:if="${hayTomaAbierta}" href="/toma-inventario/rapida/exportar/pdf" class="btn btn-outline-danger">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </a>
+                        <button th:if="${hayTomaAbierta}" type="button" id="btnAbrirEtiquetasRapidas"
+                                class="btn btn-outline-dark" data-auto-url="/toma-inventario/rapida/etiquetas">
+                            <i class="fas fa-barcode"></i> Armar etiquetas
+                        </button>
+                        <a th:if="${hayTomaAbierta && !modoMovil}" href="/toma-inventario/rapida/movil" class="btn btn-outline-info">
+                            <i class="fas fa-mobile-alt"></i> Movil
+                        </a>
+                        <a th:if="${hayTomaAbierta && modoMovil}" href="/toma-inventario/rapida" class="btn btn-outline-info">
+                            <i class="fas fa-desktop"></i> PC
+                        </a>
+                        <button th:if="${hayTomaAbierta}" type="button" id="btnDeshacerConteo" class="btn btn-outline-warning">
+                            <i class="fas fa-undo"></i> Deshacer
+                        </button>
+                        <button th:if="${hayTomaAbierta}" type="button" id="btnAplicarPrecios" class="btn btn-outline-primary">
+                            <i class="fas fa-tags"></i> Aplicar correcciones
+                        </button>
+                        <a th:if="${hayTomaAbierta}" th:href="@{/toma-inventario/resumen/{id}(id=${toma.id})}" class="btn btn-primary">
+                            <i class="fas fa-flag-checkered"></i> Finalizar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-check-circle mr-2"></i><span th:text="${success}"></span>
+            </div>
+
+            <div th:unless="${hayTomaAbierta}" class="rapid-panel">
+                <div class="rapid-panel-body">
+                    <div class="rapid-empty">
+                        <i class="fas fa-clipboard-check fa-3x mb-3 text-info"></i>
+                        <h4 class="font-weight-bold">No hay toma abierta</h4>
+                        <p class="mb-4">Inicia una toma para comenzar a contar por zonas. Si ya habia una toma abierta, esta pantalla la reutiliza.</p>
+                        <form method="post" action="/toma-inventario/rapida/iniciar" class="mx-auto" style="max-width: 520px;">
+                            <div class="form-group text-left">
+                                <label>Observacion</label>
+                                <input type="text" class="form-control" name="observaciones"
+                                       value="Regularizacion rapida de inventario">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-play"></i> Iniciar regularizacion
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${hayTomaAbierta}">
+                <div class="row">
+                    <div class="col-lg-3 col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-info"><i class="fas fa-boxes"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Productos</span>
+                                <span class="info-box-number" id="statTotal" th:text="${stats.totalProductos}">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Contados</span>
+                                <span class="info-box-number" id="statContados" th:text="${stats.productosContados}">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Faltantes</span>
+                                <span class="info-box-number" id="statFaltantes" th:text="${stats.totalFaltantes}">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-warning"><i class="fas fa-arrow-up"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Sobrantes</span>
+                                <span class="info-box-number" id="statSobrantes" th:text="${stats.totalSobrantes}">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rapid-shell">
+                    <aside class="rapid-panel">
+                        <div class="rapid-panel-header">
+                            <div>
+                                <strong>Buscar o escanear</strong>
+                                <small class="d-block text-muted" th:text="|Toma ${toma.codigo}|">Toma TI</small>
+                            </div>
+                            <span class="badge badge-info">Enter</span>
+                        </div>
+                        <div class="rapid-panel-body">
+                            <div class="form-group">
+                                <input type="text" id="buscarRapido" class="form-control rapid-search"
+                                       autocomplete="off"
+                                       placeholder="Codigo, nombre, categoria, marca o color">
+                            </div>
+                            <div class="rapid-switch-row mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="toggleConteoCiego">
+                                    <label class="custom-control-label font-weight-bold" for="toggleConteoCiego">Modo conteo ciego</label>
+                                </div>
+                                <small class="text-muted">Oculta el stock esperado para contar sin influencia.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="small text-muted text-uppercase">Zona actual</label>
+                                <div class="rapid-zones" id="zonasRapidas">
+                                    <button th:each="zona, iter : ${zonasRapidas}"
+                                            type="button"
+                                            class="rapid-zone"
+                                            th:classappend="${iter.index == 0} ? 'active' : ''"
+                                            th:attr="data-zona=${zona}"
+                                            th:text="${zona}">MOSTRADOR</button>
+                                </div>
+                            </div>
+                            <div class="rapid-tool-grid mb-3">
+                                <button type="button" id="btnAbrirCamara" class="btn btn-outline-info">
+                                    <i class="fas fa-camera"></i> Camara
+                                </button>
+                                <button type="button" id="btnConfigZonas" class="btn btn-outline-secondary">
+                                    <i class="fas fa-map-marker-alt"></i> Zonas
+                                </button>
+                            </div>
+                            <div id="resultadosRapidos" class="rapid-results">
+                                <div class="rapid-empty py-4">
+                                    <i class="fas fa-search mb-2"></i>
+                                    <div>Escribe para buscar. Enter selecciona el primer resultado.</div>
+                                </div>
+                            </div>
+                            <button type="button" id="btnCrearDesdeBusqueda" class="btn btn-outline-primary btn-block mt-3">
+                                <i class="fas fa-plus"></i> Crear producto con esta busqueda
+                            </button>
+                        </div>
+                    </aside>
+
+                    <main>
+                        <div class="rapid-panel mb-3">
+                            <div class="rapid-panel-header">
+                                <div>
+                                    <strong>Producto seleccionado</strong>
+                                    <small class="d-block text-muted">Cantidad real y Enter para guardar.</small>
+                                </div>
+                                <span id="estadoSeleccion" class="badge badge-secondary">Sin seleccionar</span>
+                            </div>
+                            <div class="rapid-panel-body">
+                                <div id="productoVacio" class="rapid-empty">
+                                    <i class="fas fa-keyboard fa-3x mb-3 text-info"></i>
+                                    <h4 class="font-weight-bold">Listo para contar</h4>
+                                    <p class="mb-0">Busca un producto, selecciona el resultado y escribe el stock fisico real.</p>
+                                </div>
+
+                                <div id="productoSeleccionado" class="d-none">
+                                    <div class="rapid-product-main">
+                                        <div>
+                                            <div class="rapid-product-name" id="selNombre">Producto</div>
+                                            <div class="rapid-badges">
+                                                <span class="badge badge-dark" id="selCodigo">COD</span>
+                                                <span class="badge badge-light border" id="selCategoria">Categoria</span>
+                                                <span class="badge badge-light border" id="selMarca">Marca</span>
+                                                <span class="badge badge-light border" id="selColor">Color</span>
+                                                <span class="badge badge-light border" id="selModelo">Modelo</span>
+                                                <span class="badge badge-info" id="selZona">MOSTRADOR</span>
+                                            </div>
+                                            <div class="rapid-metric-grid">
+                                                <div class="rapid-metric">
+                                                    <span>Sistema</span>
+                                                    <strong><span id="selStockSistema" class="stock-visible-value">0</span><span class="stock-hidden-label">Oculto</span></strong>
+                                                </div>
+                                                <div class="rapid-metric">
+                                                    <span>Fisico</span>
+                                                    <strong id="selStockFisico">-</strong>
+                                                </div>
+                                                <div class="rapid-metric">
+                                                    <span>Diferencia</span>
+                                                    <strong id="selDiferencia">-</strong>
+                                                </div>
+                                                <div class="rapid-metric">
+                                                    <span>Costo</span>
+                                                    <strong id="selCosto">S/ 0.00</strong>
+                                                </div>
+                                                <div class="rapid-metric">
+                                                    <span>Precio</span>
+                                                    <strong id="selPrecio">S/ 0.00</strong>
+                                                </div>
+                                            </div>
+                                            <div id="reconteoBox" class="rapid-recount-box d-none">
+                                                <div>
+                                                    <span>Conteo 1</span>
+                                                    <strong id="reconteoUno">-</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Conteo 2</span>
+                                                    <strong id="reconteoDos">Pendiente</strong>
+                                                </div>
+                                                <div>
+                                                    <span>Estado</span>
+                                                    <strong id="reconteoEstado">Sin reconteo</strong>
+                                                </div>
+                                            </div>
+
+                                            <div class="rapid-edit-grid mt-3">
+                                                <div class="form-group mb-0">
+                                                    <label>Nombre</label>
+                                                    <input type="text" id="editNombre" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Categoria</label>
+                                                    <input type="text" id="editCategoria" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Marca</label>
+                                                    <input type="text" id="editMarca" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Color</label>
+                                                    <input type="text" id="editColor" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Modelo / tamano</label>
+                                                    <input type="text" id="editModelo" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Clasificacion</label>
+                                                    <select id="editClasificacion" class="form-control">
+                                                        <option value="MERCADERIA">Mercaderia vendible</option>
+                                                        <option value="INSUMO">Insumo</option>
+                                                        <option value="SERVICIO">Servicio</option>
+                                                        <option value="INACTIVO">Inactivo</option>
+                                                        <option value="DESCONOCIDO">Desconocido</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Costo reposicion</label>
+                                                    <input type="number" min="0" step="0.01" id="editPrecioCompra" class="form-control">
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label>Precio venta</label>
+                                                    <input type="number" min="0" step="0.01" id="editPrecioVenta" class="form-control">
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap mt-3" style="gap: 8px;">
+                                                <button type="button" id="btnGuardarDatosProducto" class="btn btn-outline-primary">
+                                                    <i class="fas fa-save"></i> Guardar datos
+                                                </button>
+                                                <button type="button" id="btnCrearVariante" class="btn btn-outline-info">
+                                                    <i class="fas fa-clone"></i> Crear variante
+                                                </button>
+                                            </div>
+                                            <div class="form-group mt-3">
+                                                <label>Observacion opcional</label>
+                                                <input type="text" id="observacionRapida" class="form-control"
+                                                       placeholder="Ej: danado, otra ubicacion, paquete incompleto">
+                                            </div>
+                                        </div>
+                                        <div class="rapid-count-box">
+                                            <label for="cantidadRapida">Stock fisico real</label>
+                                            <input type="number" min="0" id="cantidadRapida" class="form-control rapid-count-input"
+                                                   placeholder="0">
+                                            <button type="button" id="btnGuardarRapido" class="btn btn-success rapid-save mt-3">
+                                                <i class="fas fa-save"></i> Guardar
+                                            </button>
+                                            <small class="mt-2 text-center text-white-50">Enter guarda y vuelve al buscador</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rapid-panel">
+                            <div class="rapid-panel-header">
+                                <strong>Ultimos contados</strong>
+                                <a th:href="@{/toma-inventario/conteo/{id}(id=${toma.id})}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-table"></i> Hoja completa
+                                </a>
+                            </div>
+                            <div class="rapid-panel-body">
+                                <div id="ultimosContados" class="rapid-history">
+                                    <div th:each="item : ${ultimosContados}" class="rapid-history-item">
+                                        <strong th:text="${item.nombre}">Producto</strong>
+                                        <small class="text-muted" th:text="${item.codigo}">COD</small>
+                                        <div class="mt-2">
+                                            <span class="badge badge-secondary">Sistema <span class="stock-visible-value" th:text="${item.stockSistema}">0</span><span class="stock-hidden-label">Oculto</span></span>
+                                            <span class="badge badge-success">Fisico <span th:text="${item.stockFisico}">0</span></span>
+                                            <span class="badge badge-info" th:text="${item.zonaConteo ?: 'SIN ZONA'}">ZONA</span>
+                                            <span class="badge badge-warning" th:if="${item.primerConteoFisico != null}" th:text="|C1 ${item.primerConteoFisico}|">C1</span>
+                                            <span class="badge badge-danger" th:if="${item.requiereSegundoConteo}">C2 pendiente</span>
+                                            <span class="badge badge-primary" th:if="${item.segundoConteoFisico != null}" th:text="|C2 ${item.segundoConteoFisico}|">C2</span>
+                                        </div>
+                                    </div>
+                                    <div th:if="${#lists.isEmpty(ultimosContados)}" class="rapid-empty py-4">
+                                        Aun no hay productos contados en esta toma.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rapid-panel mt-3">
+                            <div class="rapid-panel-header">
+                                <div>
+                                    <strong>Productos sospechosos</strong>
+                                    <small class="d-block text-muted">Sin costo, sin precio, sin categoria, margen malo o duplicados parecidos.</small>
+                                </div>
+                                <button type="button" id="btnRefrescarSospechosos" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-sync-alt"></i> Revisar
+                                </button>
+                            </div>
+                            <div class="rapid-panel-body">
+                                <div id="productosSospechosos" class="rapid-suspects">
+                                    <div th:each="item : ${productosSospechosos}" class="rapid-suspect-item"
+                                         th:attr="data-producto-id=${item.productoId}">
+                                        <strong th:text="${item.nombre}">Producto</strong>
+                                        <small class="text-muted">
+                                            <span th:text="${item.codigo}">COD</span>
+                                            <span> - </span>
+                                            <span th:text="${item.categoria ?: 'SIN CATEGORIA'}">Categoria</span>
+                                        </small>
+                                        <div class="mt-2">
+                                            <span th:each="alerta : ${item.alertas}" class="badge badge-warning mr-1" th:text="${alerta}">ALERTA</span>
+                                        </div>
+                                        <small th:if="${item.duplicadosParecidos != null and !#lists.isEmpty(item.duplicadosParecidos)}"
+                                               class="d-block mt-2 text-muted"
+                                               th:text="|Parecidos: ${#strings.listJoin(item.duplicadosParecidos, ' | ')}|">
+                                            Parecidos
+                                        </small>
+                                    </div>
+                                    <div th:if="${#lists.isEmpty(productosSospechosos)}" class="rapid-empty py-4">
+                                        No hay alertas fuertes en productos activos.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalProductoRapido" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalProductoTitulo"><i class="fas fa-plus-circle"></i> Crear producto encontrado</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="alertaSimilares" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Revisa los resultados parecidos antes de duplicar el producto.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label>Nombre *</label>
+                                <input type="text" id="nuevoNombre" class="form-control form-control-lg">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Codigo barra</label>
+                                <input type="text" id="nuevoCodigoBarra" class="form-control form-control-lg">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <input type="text" id="nuevoCategoria" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Marca</label>
+                                <input type="text" id="nuevoMarca" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Color / variante</label>
+                                <input type="text" id="nuevoColor" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Modelo / tamano</label>
+                                <input type="text" id="nuevoModelo" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Clasificacion</label>
+                                <select id="nuevoClasificacion" class="form-control">
+                                    <option value="MERCADERIA">Mercaderia vendible</option>
+                                    <option value="INSUMO">Insumo</option>
+                                    <option value="SERVICIO">Servicio</option>
+                                    <option value="INACTIVO">Inactivo</option>
+                                    <option value="DESCONOCIDO">Desconocido</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <input type="text" id="nuevoTipo" class="form-control" value="ESTANDAR">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Costo reposicion</label>
+                                <input type="number" min="0" step="0.01" id="nuevoPrecioCompra" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Precio venta</label>
+                                <input type="number" min="0" step="0.01" id="nuevoPrecioVenta" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Cantidad contada *</label>
+                                <input type="number" min="0" id="nuevoCantidad" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Variantes por lote</label>
+                                <textarea id="nuevoVariantesLote" class="form-control" rows="3"
+                                          placeholder="Una por linea: ROJO;5 o AZUL"></textarea>
+                                <small class="text-muted">En variante, cada linea crea una copia. Puedes escribir color o color;cantidad.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Se creara con el stock inicial que escribas y tambien quedara contado en la toma abierta.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btnGuardarNuevoProducto" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <span id="textoGuardarNuevoProducto">Crear y contar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalZonasRapidas" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-map-marker-alt"></i> Zonas de conteo</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Una zona por linea</label>
+                        <textarea id="zonasTexto" class="form-control" rows="9"></textarea>
+                    </div>
+                    <div class="alert alert-light border mb-0">
+                        Usa zonas reales del local: mostrador, vitrina, almacen, sublimacion, flores, utiles, juguetes o las que necesites.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btnGuardarZonas" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar zonas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEtiquetasRapidas" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-barcode mr-2"></i>Armar etiquetas A4 de regularizacion
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Junta productos de la toma, define cantidades y genera un solo PDF acomodado en hoja A4.
+                    </div>
+
+                    <div class="rapid-label-summary">
+                        <div class="summary-box">
+                            <small>Etiquetas</small>
+                            <strong id="rapidLabelTotal">0</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Capacidad A4</small>
+                            <strong id="rapidLabelCapacidad">24</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Hojas</small>
+                            <strong id="rapidLabelHojas">1</strong>
+                        </div>
+                        <div class="summary-box">
+                            <small>Libres</small>
+                            <strong id="rapidLabelLibres">24</strong>
+                        </div>
+                    </div>
+
+                    <div class="rapid-label-toolbar">
+                        <select id="rapidLabelProductoSelect" class="form-control">
+                            <option value="">Cargando productos de la toma...</option>
+                        </select>
+                        <button type="button" id="btnAgregarEtiquetaRapida" class="btn btn-outline-primary">
+                            <i class="fas fa-plus"></i> Agregar
+                        </button>
+                        <button type="button" id="btnEtiquetasSinCodigo" class="btn btn-outline-warning">
+                            <i class="fas fa-magic"></i> Sin codigo
+                        </button>
+                        <button type="button" id="btnEtiquetasContados" class="btn btn-outline-info">
+                            <i class="fas fa-check"></i> Contados
+                        </button>
+                        <button type="button" id="btnCompletarEtiquetasA4" class="btn btn-outline-success">
+                            <i class="fas fa-th"></i> Completar A4
+                        </button>
+                    </div>
+
+                    <div class="rapid-label-config">
+                        <div class="rapid-label-config-grid">
+                            <div>
+                                <label>Plantilla</label>
+                                <select id="rapidLabelPlantilla" class="form-control">
+                                    <option value="UTIL_CHICO">Util chico</option>
+                                    <option value="PRECIO_FUERTE">Precio fuerte</option>
+                                    <option value="CODIGO_GRANDE">Codigo grande</option>
+                                    <option value="MINI">Mini</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Casillas usadas</label>
+                                <input type="number" id="rapidLabelSaltar" class="form-control" value="0" min="0" max="23">
+                            </div>
+                            <div>
+                                <label>Columnas</label>
+                                <input type="number" id="rapidLabelColumnas" class="form-control" value="3" min="1" max="5">
+                            </div>
+                            <div>
+                                <label>Filas</label>
+                                <input type="number" id="rapidLabelFilas" class="form-control" value="8" min="1" max="12">
+                            </div>
+                            <div>
+                                <label>Ancho mm</label>
+                                <input type="number" id="rapidLabelAncho" class="form-control" value="63.5" min="25" max="90" step="0.1">
+                            </div>
+                            <div>
+                                <label>Alto mm</label>
+                                <input type="number" id="rapidLabelAlto" class="form-control" value="33.9" min="18" max="70" step="0.1">
+                            </div>
+                            <div>
+                                <label>Margen H mm</label>
+                                <input type="number" id="rapidLabelMargenH" class="form-control" value="8" min="2" max="30" step="0.5">
+                            </div>
+                            <div>
+                                <label>Margen V mm</label>
+                                <input type="number" id="rapidLabelMargenV" class="form-control" value="8" min="2" max="30" step="0.5">
+                            </div>
+                            <div>
+                                <label>Codigo ancho</label>
+                                <input type="number" id="rapidLabelCodigoAncho" class="form-control" value="50" min="20" max="80" step="0.5">
+                            </div>
+                            <div>
+                                <label>Codigo alto</label>
+                                <input type="number" id="rapidLabelCodigoAlto" class="form-control" value="12" min="6" max="24" step="0.5">
+                            </div>
+                            <div>
+                                <label>Nombre pt</label>
+                                <input type="number" id="rapidLabelNombreFont" class="form-control" value="7" min="4" max="18" step="0.5">
+                            </div>
+                            <div>
+                                <label>Precio pt</label>
+                                <input type="number" id="rapidLabelPrecioFont" class="form-control" value="12" min="5" max="26" step="0.5">
+                            </div>
+                            <div>
+                                <label>Codigo pt</label>
+                                <input type="number" id="rapidLabelCodigoFont" class="form-control" value="6" min="4" max="14" step="0.5">
+                            </div>
+                            <div>
+                                <label>Color texto</label>
+                                <input type="color" id="rapidLabelColorTexto" class="form-control" value="#111827">
+                            </div>
+                            <div>
+                                <label>Color precio</label>
+                                <input type="color" id="rapidLabelColorPrecio" class="form-control" value="#111827">
+                            </div>
+                            <div>
+                                <label>Color codigo</label>
+                                <input type="color" id="rapidLabelColorCodigo" class="form-control" value="#374151">
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap mt-3" style="gap: 14px;">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarNombre" checked>
+                                <label class="custom-control-label" for="rapidLabelMostrarNombre">Nombre</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarPrecio" checked>
+                                <label class="custom-control-label" for="rapidLabelMostrarPrecio">Precio</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarCodigoTexto" checked>
+                                <label class="custom-control-label" for="rapidLabelMostrarCodigoTexto">Texto codigo</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarCategoria">
+                                <label class="custom-control-label" for="rapidLabelMostrarCategoria">Categoria</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarInterno">
+                                <label class="custom-control-label" for="rapidLabelMostrarInterno">Codigo interno</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rapidLabelMostrarBorde" checked>
+                                <label class="custom-control-label" for="rapidLabelMostrarBorde">Borde guia</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="rapidLabelItems" class="rapid-label-list">
+                        <div class="rapid-empty py-4">
+                            Carga productos sin codigo, contados o agregalos uno por uno.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" id="btnLimpiarEtiquetasRapidas" class="btn btn-outline-secondary">
+                        <i class="fas fa-eraser"></i> Limpiar tanda
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" id="btnGenerarEtiquetasRapidas" class="btn btn-primary">
+                            <i class="fas fa-file-pdf"></i> Generar PDF A4
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCamara" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-camera"></i> Escanear con camara</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="rapid-camera-box">
+                        <div id="html5QrReader" class="rapid-qr-reader"></div>
+                        <video id="cameraPreview" class="d-none" playsinline autoplay muted></video>
+                    </div>
+                    <div class="mt-3 d-flex flex-wrap align-items-center" style="gap: 8px;">
+                        <label class="btn btn-outline-info mb-0">
+                            <i class="fas fa-image"></i> Escanear foto
+                            <input type="file" id="cameraFile" accept="image/*" capture="environment" class="d-none">
+                        </label>
+                        <small class="text-muted">En celular tambien puedes abrir la camara, tomar foto del codigo y leerlo desde aqui.</small>
+                    </div>
+                    <div id="cameraStatus" class="alert alert-info mt-3 mb-0">
+                        Acerca el codigo a la camara. En celular usa la URL segura HTTPS/8443 o Chrome/Edge actualizado para permitir permisos.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script th:inline="javascript">
+        const hayTomaAbierta = /*[[${hayTomaAbierta}]]*/ false;
+        const zonasIniciales = /*[[${zonasRapidas}]]*/ ['MOSTRADOR'];
+        let zonasEstadoIniciales = /*[[${zonasRapidasEstado}]]*/ [];
+        let productosSospechososIniciales = /*[[${productosSospechosos}]]*/ [];
+        const modoMovil = /*[[${modoMovil}]]*/ false;
+        let productoActual = null;
+        let resultadosActuales = [];
+        let busquedaTimer = null;
+        let zonaActual = localStorage.getItem('zonaConteoRapido') || (zonasIniciales[0] || 'MOSTRADOR');
+        let zonasConfiguradas = Array.isArray(zonasIniciales) && zonasIniciales.length ? zonasIniciales : ['MOSTRADOR'];
+        let zonasEstado = Array.isArray(zonasEstadoIniciales) ? zonasEstadoIniciales : [];
+        let productosSospechosos = Array.isArray(productosSospechososIniciales) ? productosSospechososIniciales : [];
+        let modoConteoCiego = localStorage.getItem('modoConteoCiegoInventario') === 'true';
+        let modoProductoRapido = 'nuevo';
+        let camaraStream = null;
+        let camaraTimer = null;
+        let detectorCodigos = null;
+        let html5QrCodeInventario = null;
+        let camaraUsandoHtml5 = false;
+        let camaraErrorLecturaMostrado = false;
+        let productosEtiquetasRapidas = [];
+        let productoIdsSugeridosEtiquetas = [];
+        let etiquetasRapidasCargadas = false;
+
+        function money(value) {
+            const n = Number(value || 0);
+            return 'S/ ' + n.toFixed(2);
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function badgeValue(value, fallback) {
+            const text = value == null || value === '' ? fallback : value;
+            return escapeHtml(text || '-');
+        }
+
+        function stockSistemaHtml(valor) {
+            return `<span class="stock-visible-value">${escapeHtml(valor ?? 0)}</span><span class="stock-hidden-label">Oculto</span>`;
+        }
+
+        function fechaCorta(valor) {
+            return valor == null || valor === '' ? '' : String(valor);
+        }
+
+        function aplicarModoConteoCiego() {
+            $('body').toggleClass('rapid-stock-hidden', modoConteoCiego);
+            $('#toggleConteoCiego').prop('checked', modoConteoCiego);
+            localStorage.setItem('modoConteoCiegoInventario', modoConteoCiego ? 'true' : 'false');
+        }
+
+        function normalizarZonaUi(value) {
+            const limpio = String(value == null ? '' : value).trim();
+            return limpio ? limpio.toUpperCase() : null;
+        }
+
+        function estadoZona(zona) {
+            return (zonasEstado || []).find(item => item && item.nombre === zona) || {
+                nombre: zona,
+                estado: 'PENDIENTE',
+                contados: 0,
+                diferencias: 0
+            };
+        }
+
+        function estadoZonaClass(estado) {
+            if (estado === 'REVISADA') return 'badge-success';
+            if (estado === 'TERMINADA') return 'badge-info';
+            return 'badge-warning';
+        }
+
+        function renderZonasConfiguradas() {
+            const unicas = [];
+            zonasConfiguradas.forEach(z => {
+                const limpia = normalizarZonaUi(z);
+                if (limpia && !unicas.includes(limpia)) {
+                    unicas.push(limpia);
+                }
+            });
+            zonasConfiguradas = unicas.length ? unicas : ['MOSTRADOR'];
+            if (!zonasConfiguradas.includes(zonaActual)) {
+                zonaActual = zonasConfiguradas[0];
+            }
+            $('#zonasRapidas').html(zonasConfiguradas.map(zona => {
+                const estado = estadoZona(zona);
+                return `
+                <div class="rapid-zone-card">
+                    <div>
+                        <button type="button" class="rapid-zone" data-zona="${escapeHtml(zona)}">${escapeHtml(zona)}</button>
+                        <div class="rapid-zone-meta">
+                            ${estado.contados || 0} contados - ${estado.diferencias || 0} con diferencia
+                            <span class="badge ${estadoZonaClass(estado.estado)} ml-1">${escapeHtml(estado.estado || 'PENDIENTE')}</span>
+                        </div>
+                    </div>
+                    <select class="form-control rapid-zone-state" data-zona="${escapeHtml(zona)}">
+                        <option value="PENDIENTE" ${estado.estado === 'PENDIENTE' ? 'selected' : ''}>Pendiente</option>
+                        <option value="TERMINADA" ${estado.estado === 'TERMINADA' ? 'selected' : ''}>Terminada</option>
+                        <option value="REVISADA" ${estado.estado === 'REVISADA' ? 'selected' : ''}>Revisada</option>
+                    </select>
+                </div>`;
+            }).join(''));
+            aplicarZona(zonaActual);
+        }
+
+        function aplicarZona(zona) {
+            zonaActual = normalizarZonaUi(zona) || 'MOSTRADOR';
+            localStorage.setItem('zonaConteoRapido', zonaActual);
+            $('#zonasRapidas .rapid-zone').removeClass('active');
+            $('#zonasRapidas .rapid-zone').filter(function() {
+                return this.dataset.zona === zonaActual;
+            }).addClass('active');
+            $('#selZona').text(zonaActual);
+        }
+
+        function buscarRapido() {
+            const termino = ($('#buscarRapido').val() || '').trim();
+            $('#resultadosRapidos').html('<div class="rapid-empty py-4"><i class="fas fa-spinner fa-spin"></i><div>Buscando...</div></div>');
+            fetch('/toma-inventario/rapida/api/buscar?termino=' + encodeURIComponent(termino))
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudo buscar.');
+                    resultadosActuales = body || [];
+                    renderResultados();
+                })
+                .catch(err => {
+                    $('#resultadosRapidos').html('<div class="rapid-empty py-4 text-danger">' + escapeHtml(err.message) + '</div>');
+                });
+        }
+
+        function renderResultados() {
+            if (!resultadosActuales.length) {
+                $('#resultadosRapidos').html('<div class="rapid-empty py-4">No aparece en la toma. Puedes crearlo desde esta misma pantalla.</div>');
+                return;
+            }
+            const html = resultadosActuales.map((p, index) => `
+                <button type="button" class="rapid-result ${index === 0 ? 'active' : ''}" data-index="${index}">
+                    <div class="rapid-result-title">${escapeHtml(p.nombre)}</div>
+                    <div class="rapid-result-meta">
+                        ${escapeHtml(p.codigo || 'SIN CODIGO')} - ${escapeHtml(p.categoria || 'SIN CATEGORIA')} - Stock sistema ${stockSistemaHtml(p.stockSistema)}
+                        ${p.color ? ' - ' + escapeHtml(p.color) : ''}
+                        ${p.modelo ? ' - ' + escapeHtml(p.modelo) : ''}
+                        ${p.requiereSegundoConteo ? ' - C2 PENDIENTE' : ''}
+                        ${p.contado ? ' - CONTADO' : ''}
+                        ${p.correccionPendiente ? ' - CORRECCION PENDIENTE' : ''}
+                    </div>
+                </button>
+            `).join('');
+            $('#resultadosRapidos').html(html);
+        }
+
+        function seleccionarProducto(p) {
+            productoActual = p;
+            $('#productoVacio').addClass('d-none');
+            $('#productoSeleccionado').removeClass('d-none');
+            const necesitaReconteo = p.requiereSegundoConteo || (p.segundoConteoRequerido && !p.segundoConteoConfirmado);
+            const estadoClase = necesitaReconteo ? 'badge-danger' : (p.correccionPendiente ? 'badge-info' : (p.contado ? 'badge-success' : 'badge-warning'));
+            const estadoTexto = necesitaReconteo ? 'Segundo conteo pendiente' : (p.correccionPendiente ? 'Correccion pendiente' : (p.contado ? 'Ya contado' : 'Pendiente'));
+            $('#estadoSeleccion').removeClass('badge-secondary badge-success badge-warning badge-info badge-danger').addClass(estadoClase).text(estadoTexto);
+            $('#selNombre').text(p.nombre || 'Producto');
+            $('#selCodigo').text(p.codigo || 'SIN CODIGO');
+            $('#selCategoria').text(p.categoria || 'SIN CATEGORIA');
+            $('#selMarca').text(p.marca || 'SIN MARCA');
+            $('#selColor').text(p.color || 'SIN COLOR');
+            $('#selModelo').text(p.modelo || 'SIN MODELO');
+            $('#selStockSistema').text(p.stockSistema ?? 0);
+            $('#selStockFisico').text(p.stockFisico ?? '-');
+            $('#selDiferencia').text(p.diferencia == null ? '-' : (p.diferencia > 0 ? '+' + p.diferencia : p.diferencia));
+            $('#selCosto').text(money(p.precioCompra));
+            $('#selPrecio').text(money(p.precioVenta));
+            $('#observacionRapida').val(p.observacion || '');
+            $('#cantidadRapida').val(necesitaReconteo ? '' : (p.stockFisico ?? ''));
+            $('#cantidadRapida').attr('placeholder', necesitaReconteo ? 'Conteo 2' : '0');
+            renderReconteoProducto(p);
+            rellenarEdicionProducto(p);
+            aplicarZona(p.zonaConteo || zonaActual);
+            setTimeout(() => $('#cantidadRapida').trigger('focus').select(), 80);
+        }
+
+        function renderReconteoProducto(p) {
+            const tieneConteo1 = p.primerConteoFisico != null;
+            const tieneConteo2 = p.segundoConteoFisico != null;
+            const requiere = p.segundoConteoRequerido || p.requiereSegundoConteo || tieneConteo1 || tieneConteo2;
+            if (!requiere) {
+                $('#reconteoBox').addClass('d-none');
+                return;
+            }
+            $('#reconteoBox').removeClass('d-none');
+            const c1Meta = [p.usuarioPrimerConteo, fechaCorta(p.fechaPrimerConteo)].filter(Boolean).join(' - ');
+            const c2Meta = [p.usuarioSegundoConteo, fechaCorta(p.fechaSegundoConteo)].filter(Boolean).join(' - ');
+            $('#reconteoUno').text(tieneConteo1 ? `${p.primerConteoFisico}${c1Meta ? ' | ' + c1Meta : ''}` : 'Pendiente');
+            $('#reconteoDos').text(tieneConteo2 ? `${p.segundoConteoFisico}${c2Meta ? ' | ' + c2Meta : ''}` : 'Pendiente');
+            $('#reconteoEstado').text(p.requiereSegundoConteo ? 'Falta confirmar con conteo 2' : (p.segundoConteoConfirmado ? 'Confirmado' : 'Sin confirmar'));
+        }
+
+        function rellenarEdicionProducto(p) {
+            $('#editNombre').val(p.nombre || '');
+            $('#editCategoria').val(p.categoria || '');
+            $('#editMarca').val(p.marca || '');
+            $('#editColor').val(p.color || '');
+            $('#editModelo').val(p.modelo || '');
+            $('#editClasificacion').val((p.clasificacion || 'MERCADERIA').toUpperCase());
+            $('#editPrecioCompra').val(Number(p.precioCompra || 0).toFixed(2));
+            $('#editPrecioVenta').val(Number(p.precioVenta || 0).toFixed(2));
+        }
+
+        function actualizarStats(stats) {
+            if (!stats) return;
+            $('#statTotal').text(stats.totalProductos || 0);
+            $('#statContados').text(stats.productosContados || 0);
+            $('#statFaltantes').text(stats.totalFaltantes || 0);
+            $('#statSobrantes').text(stats.totalSobrantes || 0);
+        }
+
+        function renderUltimos(items) {
+            if (!items || !items.length) {
+                $('#ultimosContados').html('<div class="rapid-empty py-4">Aun no hay productos contados en esta toma.</div>');
+                return;
+            }
+            $('#ultimosContados').html(items.map(item => `
+                <div class="rapid-history-item">
+                    <strong>${escapeHtml(item.nombre)}</strong>
+                    <small class="text-muted">${escapeHtml(item.codigo || '')}</small>
+                    <div class="mt-2">
+                        <span class="badge badge-secondary">Sistema ${stockSistemaHtml(item.stockSistema)}</span>
+                        <span class="badge badge-success">Fisico ${item.stockFisico ?? 0}</span>
+                        <span class="badge badge-info">${escapeHtml(item.zonaConteo || 'SIN ZONA')}</span>
+                        ${item.primerConteoFisico != null ? '<span class="badge badge-warning">C1 ' + escapeHtml(item.primerConteoFisico) + '</span>' : ''}
+                        ${item.requiereSegundoConteo ? '<span class="badge badge-danger">C2 pendiente</span>' : ''}
+                        ${item.segundoConteoFisico != null ? '<span class="badge badge-primary">C2 ' + escapeHtml(item.segundoConteoFisico) + '</span>' : ''}
+                    </div>
+                </div>
+            `).join(''));
+        }
+
+        function requiereConfirmarDiferencia(cantidad) {
+            if (!productoActual) return false;
+            const sistema = Number(productoActual.stockSistema || 0);
+            const diferencia = Math.abs(Number(cantidad || 0) - sistema);
+            if (diferencia >= 10) return true;
+            return sistema >= 5 && diferencia >= Math.ceil(Math.max(sistema, 1) * 0.5);
+        }
+
+        function guardarConteoRapido() {
+            if (!productoActual) {
+                Swal.fire('Selecciona producto', 'Busca y selecciona un producto antes de guardar.', 'warning');
+                return;
+            }
+            const cantidad = Number($('#cantidadRapida').val());
+            if (!Number.isFinite(cantidad) || cantidad < 0) {
+                Swal.fire('Cantidad invalida', 'Ingresa una cantidad fisica valida.', 'warning');
+                return;
+            }
+            const cantidadEntera = Math.floor(cantidad);
+            const reconteoPendiente = productoActual.requiereSegundoConteo
+                || (productoActual.segundoConteoRequerido && !productoActual.segundoConteoConfirmado);
+            if (!reconteoPendiente && requiereConfirmarDiferencia(cantidadEntera)) {
+                Swal.fire({
+                    title: 'Diferencia grande',
+                    html: 'Sistema: <b>' + escapeHtml(productoActual.stockSistema ?? 0) + '</b><br>Conteo 1: <b>' + escapeHtml(cantidadEntera) + '</b><br>Se guardara como primer conteo y el producto quedara pendiente para conteo 2.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Guardar conteo 1',
+                    cancelButtonText: 'Revisar'
+                }).then(result => {
+                    if (!result.isConfirmed) {
+                        $('#cantidadRapida').trigger('focus').select();
+                        return;
+                    }
+                    enviarConteoRapido(cantidadEntera);
+                });
+                return;
+            }
+            if (reconteoPendiente
+                    && productoActual.primerConteoFisico != null
+                    && Number(productoActual.primerConteoFisico) !== cantidadEntera) {
+                Swal.fire({
+                    title: 'El conteo 2 no coincide',
+                    html: 'Conteo 1: <b>' + escapeHtml(productoActual.primerConteoFisico) + '</b><br>Conteo 2: <b>' + escapeHtml(cantidadEntera) + '</b><br>Se guardara el conteo 2 como valor final para aplicar.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Guardar conteo 2',
+                    cancelButtonText: 'Revisar'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        enviarConteoRapido(cantidadEntera);
+                    } else {
+                        $('#cantidadRapida').trigger('focus').select();
+                    }
+                });
+                return;
+            }
+            enviarConteoRapido(cantidadEntera);
+        }
+
+        function enviarConteoRapido(cantidadEntera) {
+            $('#btnGuardarRapido').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando');
+            fetch('/toma-inventario/rapida/api/conteo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productoId: productoActual.productoId,
+                    cantidadFisica: cantidadEntera,
+                    zona: zonaActual,
+                    observacion: $('#observacionRapida').val()
+                })
+            })
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudo guardar.');
+                    productoActual = body.producto;
+                    actualizarStats(body.stats);
+                    if (body.zonasEstado) {
+                        zonasEstado = body.zonasEstado;
+                        renderZonasConfiguradas();
+                    }
+                    renderUltimos(body.ultimos);
+                    seleccionarProducto(productoActual);
+                    if (productoActual.requiereSegundoConteo) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'warning',
+                            title: 'Conteo 1 guardado: falta conteo 2',
+                            showConfirmButton: false,
+                            timer: 1800
+                        });
+                        $('#cantidadRapida').val('').attr('placeholder', 'Conteo 2').trigger('focus');
+                        return;
+                    }
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Conteo guardado',
+                        showConfirmButton: false,
+                        timer: 1200
+                    });
+                    limpiarParaSiguiente();
+                })
+                .catch(err => Swal.fire('No se guardo', err.message, 'error'))
+                .finally(() => $('#btnGuardarRapido').prop('disabled', false).html('<i class="fas fa-save"></i> Guardar'));
+        }
+
+        function guardarDatosProducto() {
+            if (!productoActual) {
+                Swal.fire('Selecciona producto', 'Primero selecciona un producto.', 'warning');
+                return;
+            }
+            const payload = {
+                nombre: $('#editNombre').val(),
+                categoria: $('#editCategoria').val(),
+                marca: $('#editMarca').val(),
+                color: $('#editColor').val(),
+                modelo: $('#editModelo').val(),
+                clasificacion: $('#editClasificacion').val(),
+                precioCompra: $('#editPrecioCompra').val() === '' ? null : Number($('#editPrecioCompra').val()),
+                precioVenta: $('#editPrecioVenta').val() === '' ? null : Number($('#editPrecioVenta').val())
+            };
+            if (!payload.nombre || (payload.precioCompra != null && payload.precioCompra < 0) || (payload.precioVenta != null && payload.precioVenta < 0)) {
+                Swal.fire('Datos invalidos', 'Nombre, costo y precio deben ser validos.', 'warning');
+                return;
+            }
+            $('#btnGuardarDatosProducto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Marcando');
+            fetch('/toma-inventario/rapida/api/producto/' + productoActual.productoId + '/datos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudo actualizar el producto.');
+                    productoActual = body.producto || productoActual;
+                    seleccionarProducto(productoActual);
+                    cargarSospechosos();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Datos aplicados al producto', showConfirmButton: false, timer: 1500 });
+                })
+                .catch(err => Swal.fire('No se guardo', err.message, 'error'))
+                .finally(() => $('#btnGuardarDatosProducto').prop('disabled', false).html('<i class="fas fa-save"></i> Guardar datos'));
+        }
+
+        function limpiarParaSiguiente() {
+            productoActual = null;
+            resultadosActuales = [];
+            $('#buscarRapido').val('').trigger('focus');
+            $('#resultadosRapidos').html('<div class="rapid-empty py-4"><i class="fas fa-search mb-2"></i><div>Escribe para buscar. Enter selecciona el primer resultado.</div></div>');
+            $('#productoSeleccionado').addClass('d-none');
+            $('#productoVacio').removeClass('d-none');
+            $('#estadoSeleccion').removeClass('badge-success badge-warning badge-info badge-danger').addClass('badge-secondary').text('Sin seleccionar');
+            $('#reconteoBox').addClass('d-none');
+            $('#cantidadRapida').attr('placeholder', '0');
+        }
+
+        function limpiarModalProducto() {
+            modoProductoRapido = 'nuevo';
+            $('#modalProductoTitulo').html('<i class="fas fa-plus-circle"></i> Crear producto encontrado');
+            $('#textoGuardarNuevoProducto').text('Crear y contar');
+            $('#nuevoNombre, #nuevoCodigoBarra, #nuevoCategoria, #nuevoMarca, #nuevoColor, #nuevoModelo').val('');
+            $('#nuevoTipo').val('ESTANDAR');
+            $('#nuevoClasificacion').val('MERCADERIA');
+            $('#nuevoPrecioCompra, #nuevoPrecioVenta, #nuevoCantidad, #nuevoVariantesLote').val('');
+            $('#alertaSimilares')
+                .toggleClass('d-none', !resultadosActuales.length)
+                .html('<i class="fas fa-exclamation-triangle"></i> Revisa los resultados parecidos antes de duplicar el producto.');
+            actualizarModalClasificacion();
+        }
+
+        function actualizarModalClasificacion() {
+            const clasificacion = ($('#nuevoClasificacion').val() || 'MERCADERIA');
+            const sinConteo = clasificacion === 'SERVICIO' || clasificacion === 'INACTIVO';
+            $('#nuevoCantidad').prop('disabled', sinConteo);
+            if (sinConteo) {
+                $('#nuevoCantidad').val('0');
+            }
+            if (clasificacion === 'SERVICIO') {
+                $('#nuevoTipo').val('SERVICIO');
+            } else if ($('#nuevoTipo').val() === 'SERVICIO') {
+                $('#nuevoTipo').val('ESTANDAR');
+            }
+        }
+
+        function abrirCrearProducto() {
+            const termino = ($('#buscarRapido').val() || '').trim();
+            limpiarModalProducto();
+            $('#nuevoNombre').val(termino);
+            $('#nuevoCodigoBarra').val(/^[0-9]{5,}$/.test(termino) ? termino : '');
+            $('#modalProductoRapido').modal('show');
+            setTimeout(() => $('#nuevoNombre').trigger('focus').select(), 250);
+        }
+
+        function abrirCrearVariante() {
+            if (!productoActual) {
+                Swal.fire('Selecciona producto', 'Primero selecciona el producto base para copiar sus datos.', 'warning');
+                return;
+            }
+            limpiarModalProducto();
+            modoProductoRapido = 'variante';
+            $('#modalProductoTitulo').html('<i class="fas fa-clone"></i> Crear variante del producto');
+            $('#textoGuardarNuevoProducto').text('Crear variante y contar');
+            $('#nuevoNombre').val(productoActual.nombre || '');
+            $('#nuevoCategoria').val(productoActual.categoria || '');
+            $('#nuevoMarca').val(productoActual.marca || '');
+            $('#nuevoColor').val('');
+            $('#nuevoModelo').val(productoActual.modelo || '');
+            $('#nuevoTipo').val(productoActual.tipo || 'ESTANDAR');
+            $('#nuevoClasificacion').val((productoActual.clasificacion || 'MERCADERIA').toUpperCase());
+            $('#nuevoPrecioCompra').val(Number(productoActual.precioCompra || 0).toFixed(2));
+            $('#nuevoPrecioVenta').val(Number(productoActual.precioVenta || 0).toFixed(2));
+            $('#nuevoCantidad').val('');
+            $('#nuevoVariantesLote').val('');
+            $('#alertaSimilares')
+                .removeClass('d-none')
+                .html('<i class="fas fa-clone"></i> Se copiaron datos del producto base. Cambia color, modelo o nombre para no duplicarlo.');
+            $('#modalProductoRapido').modal('show');
+            setTimeout(() => $('#nuevoColor').trigger('focus').select(), 250);
+        }
+
+        function crearProductoPayload(payload) {
+            return fetch('/toma-inventario/rapida/api/producto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json().then(body => ({ ok: r.ok, body })));
+        }
+
+        function payloadProductoRapido() {
+            return {
+                nombre: $('#nuevoNombre').val(),
+                codigoBarra: $('#nuevoCodigoBarra').val(),
+                categoria: $('#nuevoCategoria').val(),
+                marca: $('#nuevoMarca').val(),
+                color: $('#nuevoColor').val(),
+                modelo: $('#nuevoModelo').val(),
+                tipo: $('#nuevoTipo').val(),
+                clasificacion: $('#nuevoClasificacion').val(),
+                precioCompra: Number($('#nuevoPrecioCompra').val() || 0),
+                precioVenta: Number($('#nuevoPrecioVenta').val() || 0),
+                cantidadFisica: Math.floor(Number($('#nuevoCantidad').val() || 0)),
+                zona: zonaActual
+            };
+        }
+
+        function construirPayloadsVariantes(base) {
+            const lineas = ($('#nuevoVariantesLote').val() || '')
+                .split(/\n+/)
+                .map(linea => linea.trim())
+                .filter(Boolean);
+            if (modoProductoRapido !== 'variante' || !lineas.length) {
+                return [base];
+            }
+            return lineas.map(linea => {
+                const partes = linea.split(/[;|,]/).map(p => p.trim()).filter(Boolean);
+                const color = partes[0] || base.color;
+                const cantidad = partes.length > 1 && Number.isFinite(Number(partes[1]))
+                    ? Math.floor(Number(partes[1]))
+                    : base.cantidadFisica;
+                return {
+                    ...base,
+                    codigoBarra: '',
+                    color,
+                    cantidadFisica: Math.max(cantidad, 0)
+                };
+            });
+        }
+
+        function crearProductoRapido() {
+            const base = payloadProductoRapido();
+            if (base.clasificacion === 'SERVICIO' || base.clasificacion === 'INACTIVO') {
+                base.cantidadFisica = 0;
+            }
+            const payloads = construirPayloadsVariantes(base);
+            if (!base.nombre || payloads.some(p => p.cantidadFisica < 0)) {
+                Swal.fire('Datos incompletos', 'Nombre y cantidad son obligatorios.', 'warning');
+                return;
+            }
+            $('#btnGuardarNuevoProducto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creando');
+            let ultimoBody = null;
+            payloads.reduce((chain, payload) => chain.then(() => crearProductoPayload(payload)
+                .then(({ ok, body }) => {
+                    if (!ok) {
+                        throw new Error(body.message || 'No se pudo crear el producto.');
+                    }
+                    ultimoBody = body;
+                })), Promise.resolve())
+                .then(() => {
+                    $('#modalProductoRapido').modal('hide');
+                    if (ultimoBody) {
+                        actualizarStats(ultimoBody.stats);
+                        if (ultimoBody.zonasEstado) {
+                            zonasEstado = ultimoBody.zonasEstado;
+                            renderZonasConfiguradas();
+                        }
+                        renderUltimos(ultimoBody.ultimos);
+                    }
+                    cargarSospechosos();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: payloads.length > 1 ? payloads.length + ' variantes creadas' : (modoProductoRapido === 'variante' ? 'Variante creada y contada' : 'Producto creado y contado'),
+                        showConfirmButton: false,
+                        timer: 1400
+                    });
+                    limpiarParaSiguiente();
+                })
+                .catch(err => Swal.fire('No se creo', err.message, 'error'))
+                .finally(() => {
+                    $('#btnGuardarNuevoProducto').prop('disabled', false).html('<i class="fas fa-save"></i> <span id="textoGuardarNuevoProducto">' + (modoProductoRapido === 'variante' ? 'Crear variante y contar' : 'Crear y contar') + '</span>');
+                });
+        }
+
+        function abrirConfigZonas() {
+            $('#zonasTexto').val(zonasConfiguradas.join('\n'));
+            $('#modalZonasRapidas').modal('show');
+            setTimeout(() => $('#zonasTexto').trigger('focus'), 250);
+        }
+
+        function actualizarEstadoZona(zona, estado) {
+            fetch('/toma-inventario/rapida/api/zonas/estado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zona, estado })
+            })
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudo actualizar la zona.');
+                    zonasEstado = body.zonasEstado || zonasEstado;
+                    renderZonasConfiguradas();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Zona actualizada', showConfirmButton: false, timer: 1000 });
+                })
+                .catch(err => Swal.fire('No se guardo la zona', err.message, 'error'));
+        }
+
+        function renderSospechosos(items) {
+            productosSospechosos = Array.isArray(items) ? items : [];
+            if (!productosSospechosos.length) {
+                $('#productosSospechosos').html('<div class="rapid-empty py-4">No hay alertas fuertes en productos activos.</div>');
+                return;
+            }
+            $('#productosSospechosos').html(productosSospechosos.map(item => `
+                <button type="button" class="rapid-suspect-item text-left w-100" data-producto-id="${escapeHtml(item.productoId)}">
+                    <strong>${escapeHtml(item.nombre || 'Producto')}</strong>
+                    <small class="text-muted">${escapeHtml(item.codigo || '')} - ${escapeHtml(item.categoria || 'SIN CATEGORIA')} - Stock ${escapeHtml(item.stockActual ?? 0)}</small>
+                    <div class="mt-2">${(item.alertas || []).map(alerta => `<span class="badge badge-warning mr-1">${escapeHtml(alerta)}</span>`).join('')}</div>
+                    ${(item.duplicadosParecidos || []).length ? `<small class="d-block mt-2 text-muted">Parecidos: ${escapeHtml(item.duplicadosParecidos.slice(0, 3).join(' | '))}</small>` : ''}
+                </button>
+            `).join(''));
+        }
+
+        function cargarSospechosos() {
+            $('#btnRefrescarSospechosos').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+            fetch('/toma-inventario/rapida/api/sospechosos')
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudo revisar productos sospechosos.');
+                    renderSospechosos(body);
+                })
+                .catch(err => Swal.fire('No se pudo revisar', err.message, 'error'))
+                .finally(() => $('#btnRefrescarSospechosos').prop('disabled', false).html('<i class="fas fa-sync-alt"></i> Revisar'));
+        }
+
+        function guardarZonas() {
+            const zonas = ($('#zonasTexto').val() || '')
+                .split(/\n|,|;/)
+                .map(normalizarZonaUi)
+                .filter(Boolean);
+            if (!zonas.length) {
+                Swal.fire('Zonas vacias', 'Agrega al menos una zona.', 'warning');
+                return;
+            }
+            $('#btnGuardarZonas').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando');
+            fetch('/toma-inventario/rapida/api/zonas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zonas })
+            })
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudieron guardar las zonas.');
+                    zonasConfiguradas = body.zonas || zonas;
+                    zonasEstado = body.zonasEstado || zonasEstado;
+                    renderZonasConfiguradas();
+                    $('#modalZonasRapidas').modal('hide');
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Zonas actualizadas', showConfirmButton: false, timer: 1300 });
+                })
+                .catch(err => Swal.fire('No se guardo', err.message, 'error'))
+                .finally(() => $('#btnGuardarZonas').prop('disabled', false).html('<i class="fas fa-save"></i> Guardar zonas'));
+        }
+
+        function deshacerUltimoConteo() {
+            Swal.fire({
+                title: 'Deshacer ultimo conteo',
+                text: 'El ultimo producto contado volvera a quedar pendiente.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Si, deshacer',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                $('#btnDeshacerConteo').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deshaciendo');
+                fetch('/toma-inventario/rapida/api/deshacer', { method: 'POST' })
+                    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                    .then(({ ok, body }) => {
+                        if (!ok) throw new Error(body.message || 'No se pudo deshacer.');
+                        actualizarStats(body.stats);
+                        if (body.zonasEstado) {
+                            zonasEstado = body.zonasEstado;
+                            renderZonasConfiguradas();
+                        }
+                        renderUltimos(body.ultimos);
+                        if (body.producto) {
+                            seleccionarProducto(body.producto);
+                        }
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conteo deshecho', showConfirmButton: false, timer: 1300 });
+                    })
+                    .catch(err => Swal.fire('No se pudo deshacer', err.message, 'error'))
+                    .finally(() => $('#btnDeshacerConteo').prop('disabled', false).html('<i class="fas fa-undo"></i> Deshacer'));
+            });
+        }
+
+        function aplicarPreciosSugeridos() {
+            Swal.fire({
+                title: 'Aplicar correcciones y precios',
+                text: 'Se aplicaran primero las correcciones pendientes de datos, costos y precios. Luego se recalcularan los precios sugeridos de los productos contados.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar lote',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                $('#btnAplicarPrecios').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Aplicando');
+                fetch('/toma-inventario/rapida/api/aplicar-precios', { method: 'POST' })
+                    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudieron aplicar precios.');
+                        Swal.fire('Lote aplicado', `Correcciones aplicadas: ${body.correccionesAplicadas || 0}. Productos revisados: ${body.revisados || 0}. Precios actualizados: ${body.actualizados || 0}. Diferencia total: ${money(body.diferenciaTotal || 0)}.`, 'success');
+                        if (productoActual) {
+                            buscarRapido();
+                        }
+                        cargarSospechosos();
+                    })
+                    .catch(err => Swal.fire('No se aplico', err.message, 'error'))
+                    .finally(() => $('#btnAplicarPrecios').prop('disabled', false).html('<i class="fas fa-tags"></i> Aplicar correcciones'));
+            });
+        }
+
+        function abrirCamara() {
+            $('#cameraStatus').removeClass('alert-danger').addClass('alert-info').text('Solicitando permiso de camara...');
+            $('#modalCamara').modal('show');
+            iniciarCamara();
+        }
+
+        async function iniciarCamara() {
+            detenerCamara();
+            camaraErrorLecturaMostrado = false;
+            $('#html5QrReader').removeClass('d-none').empty();
+            $('#cameraPreview').addClass('d-none');
+            try {
+                if (window.Html5Qrcode && window.Html5QrcodeSupportedFormats) {
+                    await iniciarCamaraHtml5Qrcode();
+                    return;
+                }
+                await iniciarCamaraBarcodeDetector();
+            } catch (err) {
+                $('#cameraStatus').removeClass('alert-info').addClass('alert-danger').text(err.message);
+                detenerCamara();
+            }
+        }
+
+        async function iniciarCamaraHtml5Qrcode() {
+            html5QrCodeInventario = new Html5Qrcode('html5QrReader');
+            camaraUsandoHtml5 = true;
+            const config = {
+                fps: 12,
+                qrbox: { width: 260, height: 140 },
+                aspectRatio: 1.0,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+            try {
+                await html5QrCodeInventario.start(
+                    { facingMode: 'environment' },
+                    config,
+                    codigo => usarCodigoDetectado(codigo),
+                    () => {}
+                );
+            } catch (err) {
+                await html5QrCodeInventario.start(
+                    { facingMode: 'user' },
+                    config,
+                    codigo => usarCodigoDetectado(codigo),
+                    () => {}
+                );
+            }
+            $('#cameraStatus').removeClass('alert-danger').addClass('alert-info').text('Camara activa desde celular. Apunta el codigo dentro del recuadro.');
+        }
+
+        async function iniciarCamaraBarcodeDetector() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Este navegador no permite usar la camara desde esta pantalla. Abre la URL HTTPS/8443 o usa lector USB/foto.');
+            }
+            crearDetectorCodigos();
+            camaraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false
+            });
+            const video = document.getElementById('cameraPreview');
+            $('#html5QrReader').addClass('d-none').empty();
+            $('#cameraPreview').removeClass('d-none');
+            video.srcObject = camaraStream;
+            $('#cameraStatus').removeClass('alert-danger').addClass('alert-info').text('Camara activa. Acerca el codigo al centro.');
+            camaraTimer = setInterval(detectarCodigoCamara, 450);
+        }
+
+        function crearDetectorCodigos() {
+            if (!('BarcodeDetector' in window)) {
+                throw new Error('Tu navegador no tiene detector de codigos integrado. Usa Chrome/Edge actualizado en el celular, lector USB, foto o escribe el codigo.');
+            }
+            if (!detectorCodigos) {
+                detectorCodigos = new BarcodeDetector({
+                    formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code']
+                });
+            }
+            return detectorCodigos;
+        }
+
+        function usarCodigoDetectado(valor) {
+            if (!valor) return;
+            detenerCamara();
+            $('#modalCamara').modal('hide');
+            $('#buscarRapido').val(valor).trigger('focus');
+            buscarRapido();
+        }
+
+        async function detectarCodigoCamara() {
+            const video = document.getElementById('cameraPreview');
+            if (!detectorCodigos || !video || video.readyState < 2) return;
+            try {
+                const codigos = await detectorCodigos.detect(video);
+                if (codigos && codigos.length) {
+                    usarCodigoDetectado(codigos[0].rawValue);
+                }
+            } catch (err) {
+                if (!camaraErrorLecturaMostrado) {
+                    camaraErrorLecturaMostrado = true;
+                    $('#cameraStatus').removeClass('alert-info').addClass('alert-danger').text('No se pudo leer el codigo: ' + err.message);
+                }
+            }
+        }
+
+        async function leerArchivoCamara(file) {
+            if (!file) return;
+            try {
+                $('#cameraStatus').removeClass('alert-danger').addClass('alert-info').text('Leyendo codigo desde la foto...');
+                if (window.Html5Qrcode) {
+                    const lectorFoto = html5QrCodeInventario || new Html5Qrcode('html5QrReader');
+                    const codigo = await lectorFoto.scanFile(file, true);
+                    usarCodigoDetectado(codigo);
+                    return;
+                }
+                crearDetectorCodigos();
+                const bitmap = await createImageBitmap(file);
+                const codigos = await detectorCodigos.detect(bitmap);
+                if (codigos && codigos.length && codigos[0].rawValue) {
+                    usarCodigoDetectado(codigos[0].rawValue);
+                } else {
+                    $('#cameraStatus').removeClass('alert-info').addClass('alert-danger').text('No se encontro codigo en la foto. Toma otra mas cerca y con buena luz.');
+                }
+            } catch (err) {
+                $('#cameraStatus').removeClass('alert-info').addClass('alert-danger').text(err.message);
+            } finally {
+                $('#cameraFile').val('');
+            }
+        }
+
+        function detenerCamara() {
+            if (html5QrCodeInventario && camaraUsandoHtml5) {
+                const scanner = html5QrCodeInventario;
+                html5QrCodeInventario = null;
+                camaraUsandoHtml5 = false;
+                scanner.stop()
+                    .then(() => scanner.clear())
+                    .catch(() => {
+                        try { scanner.clear(); } catch (e) {}
+                    });
+            } else if (html5QrCodeInventario) {
+                try { html5QrCodeInventario.clear(); } catch (e) {}
+                html5QrCodeInventario = null;
+            }
+            if (camaraTimer) {
+                clearInterval(camaraTimer);
+                camaraTimer = null;
+            }
+            if (camaraStream) {
+                camaraStream.getTracks().forEach(track => track.stop());
+                camaraStream = null;
+            }
+            const video = document.getElementById('cameraPreview');
+            if (video) {
+                video.srcObject = null;
+            }
+            $('#html5QrReader').empty();
+            $('#cameraPreview').addClass('d-none');
+            $('#cameraFile').val('');
+        }
+
+        function numeroEtiqueta(valor, defecto, minimo, maximo) {
+            const n = Number(valor);
+            const base = Number.isFinite(n) ? n : defecto;
+            return Math.max(minimo, Math.min(maximo, base));
+        }
+
+        function numeroEtiquetaInput(id, defecto, minimo, maximo) {
+            return numeroEtiqueta($('#' + id).val(), defecto, minimo, maximo);
+        }
+
+        function capacidadEtiquetasRapidas() {
+            const columnas = Math.round(numeroEtiquetaInput('rapidLabelColumnas', 3, 1, 5));
+            const filas = Math.round(numeroEtiquetaInput('rapidLabelFilas', 8, 1, 12));
+            $('#rapidLabelColumnas').val(columnas);
+            $('#rapidLabelFilas').val(filas);
+            const capacidad = Math.max(1, columnas * filas);
+            const saltar = $('#rapidLabelSaltar');
+            saltar.attr('max', Math.max(0, capacidad - 1));
+            if (Number(saltar.val() || 0) >= capacidad) {
+                saltar.val(Math.max(0, capacidad - 1));
+            }
+            return capacidad;
+        }
+
+        function saltarEtiquetasRapidas() {
+            const capacidad = capacidadEtiquetasRapidas();
+            const saltar = Math.round(numeroEtiquetaInput('rapidLabelSaltar', 0, 0, Math.max(0, capacidad - 1)));
+            $('#rapidLabelSaltar').val(saltar);
+            return saltar;
+        }
+
+        function totalEtiquetasRapidas() {
+            let total = 0;
+            $('#rapidLabelItems .rapid-label-row').each(function() {
+                total += Math.round(numeroEtiqueta($(this).find('.js-rapid-label-qty').val(), 1, 1, 100));
+            });
+            return total;
+        }
+
+        function actualizarResumenEtiquetasRapidas() {
+            const capacidad = capacidadEtiquetasRapidas();
+            const total = totalEtiquetasRapidas();
+            const usados = total + saltarEtiquetasRapidas();
+            const hojas = usados > 0 ? Math.ceil(usados / capacidad) : 1;
+            const libres = usados > 0 ? (hojas * capacidad) - usados : capacidad;
+            $('#rapidLabelTotal').text(total);
+            $('#rapidLabelCapacidad').text(capacidad);
+            $('#rapidLabelHojas').text(hojas);
+            $('#rapidLabelLibres').text(libres);
+            if (total === 0) {
+                $('#rapidLabelItems').html('<div class="rapid-empty py-4">Carga productos sin codigo, contados o agregalos uno por uno.</div>');
+            }
+        }
+
+        function requiereCodigoEtiqueta(producto) {
+            return !producto.codigoBarra || !producto.codigoInterno;
+        }
+
+        function productoEtiquetaPorId(productoId) {
+            return productosEtiquetasRapidas.find(p => Number(p.productoId) === Number(productoId));
+        }
+
+        function productoYaEstaEnEtiquetas(productoId) {
+            return $('#rapidLabelItems .rapid-label-row[data-producto-id="' + productoId + '"]').length > 0;
+        }
+
+        function opcionesPlantillaEtiquetasRapidas(actual) {
+            const opciones = [
+                ['GLOBAL', 'Global'],
+                ['UTIL_CHICO', 'Util chico'],
+                ['PRECIO_FUERTE', 'Precio fuerte'],
+                ['CODIGO_GRANDE', 'Codigo grande'],
+                ['MINI', 'Mini']
+            ];
+            return opciones.map(([valor, texto]) =>
+                `<option value="${valor}" ${valor === actual ? 'selected' : ''}>${texto}</option>`
+            ).join('');
+        }
+
+        function renderSelectorEtiquetasRapidas() {
+            const disponibles = productosEtiquetasRapidas.filter(p => !productoYaEstaEnEtiquetas(p.productoId));
+            if (!disponibles.length) {
+                $('#rapidLabelProductoSelect').html('<option value="">No quedan productos por agregar</option>');
+                return;
+            }
+            const html = ['<option value="">Agregar producto de la toma...</option>'].concat(disponibles.map(p => {
+                const codigo = p.codigoBarra || p.codigoInterno || 'SIN CODIGO';
+                const alerta = requiereCodigoEtiqueta(p) ? ' - se generara codigo' : '';
+                const meta = [codigo, p.categoria || 'SIN CATEGORIA', p.color, p.modelo].filter(Boolean).join(' - ');
+                return `<option value="${p.productoId}">${escapeHtml(p.nombre || 'Producto')} | ${escapeHtml(meta + alerta)}</option>`;
+            })).join('');
+            $('#rapidLabelProductoSelect').html(html);
+        }
+
+        function renderProductoEtiquetaRapida(producto) {
+            const precio = Number(producto.precioVenta || 0);
+            const codigo = producto.codigoBarra || producto.codigoInterno || 'SIN CODIGO';
+            const mostrarNombre = $('#rapidLabelMostrarNombre').prop('checked') ? 'checked' : '';
+            const mostrarPrecio = $('#rapidLabelMostrarPrecio').prop('checked') ? 'checked' : '';
+            const mostrarCodigoTexto = $('#rapidLabelMostrarCodigoTexto').prop('checked') ? 'checked' : '';
+            const mostrarCategoria = $('#rapidLabelMostrarCategoria').prop('checked') ? 'checked' : '';
+            const mostrarInterno = $('#rapidLabelMostrarInterno').prop('checked') ? 'checked' : '';
+            const codigoBadge = requiereCodigoEtiqueta(producto)
+                ? '<span class="badge badge-warning ml-1">Generara codigo</span>'
+                : '<span class="badge badge-success ml-1">Con codigo</span>';
+            return `
+                <div class="rapid-label-row" data-producto-id="${producto.productoId}">
+                    <div class="rapid-label-row-head">
+                        <div>
+                            <strong>${escapeHtml(producto.nombre || 'Producto')}</strong>
+                            <small class="text-muted d-block">
+                                ${escapeHtml(codigo)} - ${escapeHtml(producto.categoria || 'SIN CATEGORIA')} - ${escapeHtml(producto.clasificacion || 'MERCADERIA')}
+                                ${producto.contado ? ' - CONTADO' : ''}
+                            </small>
+                            ${codigoBadge}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger js-rapid-label-remove">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="rapid-label-row-grid">
+                        <div>
+                            <label>Cantidad</label>
+                            <input type="number" class="form-control js-rapid-label-qty" value="1" min="1" max="100">
+                        </div>
+                        <div>
+                            <label>Nombre impreso</label>
+                            <input type="text" class="form-control js-rapid-label-name" value="${escapeHtml(producto.nombre || '')}">
+                        </div>
+                        <div>
+                            <label>Precio</label>
+                            <input type="number" class="form-control js-rapid-label-price" value="${precio.toFixed(2)}" min="0" step="0.01">
+                        </div>
+                        <div>
+                            <label>Plantilla</label>
+                            <select class="form-control js-rapid-label-template">${opcionesPlantillaEtiquetasRapidas('GLOBAL')}</select>
+                        </div>
+                    </div>
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input js-rapid-label-fine-enabled" id="rapidLabelFine${producto.productoId}">
+                        <label class="custom-control-label font-weight-bold" for="rapidLabelFine${producto.productoId}">Ajuste fino solo para este producto</label>
+                    </div>
+                    <div class="rapid-label-fine-grid d-none">
+                        <div class="custom-control custom-checkbox mt-4">
+                            <input type="checkbox" class="custom-control-input js-rapid-label-show-name" id="rapidLabelName${producto.productoId}" ${mostrarNombre}>
+                            <label class="custom-control-label" for="rapidLabelName${producto.productoId}">Nombre</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mt-4">
+                            <input type="checkbox" class="custom-control-input js-rapid-label-show-price" id="rapidLabelPrice${producto.productoId}" ${mostrarPrecio}>
+                            <label class="custom-control-label" for="rapidLabelPrice${producto.productoId}">Precio</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mt-4">
+                            <input type="checkbox" class="custom-control-input js-rapid-label-show-code-text" id="rapidLabelCode${producto.productoId}" ${mostrarCodigoTexto}>
+                            <label class="custom-control-label" for="rapidLabelCode${producto.productoId}">Texto codigo</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mt-4">
+                            <input type="checkbox" class="custom-control-input js-rapid-label-show-category" id="rapidLabelCat${producto.productoId}" ${mostrarCategoria}>
+                            <label class="custom-control-label" for="rapidLabelCat${producto.productoId}">Categoria</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mt-4">
+                            <input type="checkbox" class="custom-control-input js-rapid-label-show-internal" id="rapidLabelInternal${producto.productoId}" ${mostrarInterno}>
+                            <label class="custom-control-label" for="rapidLabelInternal${producto.productoId}">Interno</label>
+                        </div>
+                        <div>
+                            <label>Fuente</label>
+                            <select class="form-control js-rapid-label-font">
+                                <option value="">Global</option>
+                                <option value="HELVETICA">Helvetica</option>
+                                <option value="TIMES">Times</option>
+                                <option value="COURIER">Courier</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Nombre pt</label>
+                            <input type="number" class="form-control js-rapid-label-name-font" min="4" max="18" step="0.5">
+                        </div>
+                        <div>
+                            <label>Precio pt</label>
+                            <input type="number" class="form-control js-rapid-label-price-font" min="5" max="26" step="0.5">
+                        </div>
+                        <div>
+                            <label>Codigo pt</label>
+                            <input type="number" class="form-control js-rapid-label-code-font" min="4" max="14" step="0.5">
+                        </div>
+                        <div>
+                            <label>Codigo ancho</label>
+                            <input type="number" class="form-control js-rapid-label-code-width" min="20" max="80" step="0.5">
+                        </div>
+                        <div>
+                            <label>Codigo alto</label>
+                            <input type="number" class="form-control js-rapid-label-code-height" min="6" max="24" step="0.5">
+                        </div>
+                        <div>
+                            <label>Alto etiqueta</label>
+                            <input type="number" class="form-control js-rapid-label-height" min="18" max="70" step="0.1">
+                        </div>
+                        <div>
+                            <label>Color texto</label>
+                            <input type="color" class="form-control js-rapid-label-color-text" value="#111827">
+                        </div>
+                        <div>
+                            <label>Color precio</label>
+                            <input type="color" class="form-control js-rapid-label-color-price" value="#111827">
+                        </div>
+                        <div>
+                            <label>Color codigo</label>
+                            <input type="color" class="form-control js-rapid-label-color-code" value="#374151">
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function agregarProductoEtiquetaRapida(producto, cantidad = 1) {
+            if (!producto || !producto.productoId) return;
+            const existente = $('#rapidLabelItems .rapid-label-row[data-producto-id="' + producto.productoId + '"]');
+            if (existente.length) {
+                const input = existente.find('.js-rapid-label-qty');
+                const nuevaCantidad = Math.min(100, Math.round(numeroEtiqueta(input.val(), 1, 1, 100)) + cantidad);
+                input.val(nuevaCantidad);
+                actualizarResumenEtiquetasRapidas();
+                return;
+            }
+            if (!$('#rapidLabelItems .rapid-label-row').length) {
+                $('#rapidLabelItems').empty();
+            }
+            $('#rapidLabelItems').append(renderProductoEtiquetaRapida(producto));
+            actualizarResumenEtiquetasRapidas();
+            renderSelectorEtiquetasRapidas();
+        }
+
+        function agregarProductoSeleccionadoEtiquetaRapida() {
+            const producto = productoEtiquetaPorId($('#rapidLabelProductoSelect').val());
+            if (!producto) return;
+            agregarProductoEtiquetaRapida(producto, 1);
+        }
+
+        function agregarEtiquetasSinCodigoRapidas(silencioso = false) {
+            const ids = productoIdsSugeridosEtiquetas.length
+                ? productoIdsSugeridosEtiquetas
+                : productosEtiquetasRapidas.filter(requiereCodigoEtiqueta).map(p => p.productoId);
+            let agregados = 0;
+            ids.forEach(id => {
+                const producto = productoEtiquetaPorId(id);
+                if (producto && !productoYaEstaEnEtiquetas(producto.productoId)) {
+                    agregarProductoEtiquetaRapida(producto, 1);
+                    agregados++;
+                }
+            });
+            if (!agregados && !silencioso) {
+                Swal.fire('Sin pendientes', 'No hay productos sin codigo para agregar en esta toma.', 'info');
+            }
+        }
+
+        function agregarEtiquetasContadasRapidas() {
+            let agregados = 0;
+            productosEtiquetasRapidas
+                .filter(p => p.contado || p.stockFisico != null)
+                .forEach(producto => {
+                    if (!productoYaEstaEnEtiquetas(producto.productoId)) {
+                        agregarProductoEtiquetaRapida(producto, 1);
+                        agregados++;
+                    }
+                });
+            if (!agregados) {
+                Swal.fire('Sin contados', 'Aun no hay productos contados nuevos para agregar.', 'info');
+            }
+        }
+
+        function limpiarEtiquetasRapidas() {
+            $('#rapidLabelItems').html('<div class="rapid-empty py-4">Carga productos sin codigo, contados o agregalos uno por uno.</div>');
+            actualizarResumenEtiquetasRapidas();
+            renderSelectorEtiquetasRapidas();
+        }
+
+        function completarA4EtiquetasRapidas() {
+            if (!$('#rapidLabelItems .rapid-label-row').length) {
+                Swal.fire('Tanda vacia', 'Agrega al menos un producto antes de completar la hoja.', 'warning');
+                return;
+            }
+            const capacidad = capacidadEtiquetasRapidas();
+            const total = totalEtiquetasRapidas() + saltarEtiquetasRapidas();
+            const libres = capacidad - (total % capacidad);
+            if (libres === capacidad) {
+                Swal.fire('Hoja completa', 'La ultima hoja A4 ya esta completa.', 'info');
+                return;
+            }
+            let pendientes = libres;
+            $('#rapidLabelItems .rapid-label-row .js-rapid-label-qty').each(function() {
+                if (pendientes <= 0) return;
+                const actual = Math.round(numeroEtiqueta($(this).val(), 1, 1, 100));
+                const agregar = Math.min(100 - actual, pendientes);
+                $(this).val(actual + agregar);
+                pendientes -= agregar;
+            });
+            if (pendientes > 0) {
+                Swal.fire('Limite alcanzado', 'No se pudo completar todo porque las cantidades llegaron a 100 por producto.', 'warning');
+            }
+            actualizarResumenEtiquetasRapidas();
+        }
+
+        function valorOpcionalNumerico(row, selector) {
+            const valor = row.find(selector).val();
+            if (valor == null || valor === '') return null;
+            const n = Number(valor);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function recogerOpcionesEtiquetasRapidas() {
+            const productoIds = [];
+            const productos = [];
+            $('#rapidLabelItems .rapid-label-row').each(function() {
+                const row = $(this);
+                const productoId = Number(row.data('producto-id'));
+                const fine = row.find('.js-rapid-label-fine-enabled').prop('checked');
+                const item = {
+                    productoId,
+                    cantidad: Math.round(numeroEtiqueta(row.find('.js-rapid-label-qty').val(), 1, 1, 100)),
+                    plantilla: row.find('.js-rapid-label-template').val(),
+                    nombrePersonalizado: row.find('.js-rapid-label-name').val(),
+                    precioPersonalizado: numeroEtiqueta(row.find('.js-rapid-label-price').val(), 0, 0, 999999),
+                    mostrarNombre: $('#rapidLabelMostrarNombre').prop('checked'),
+                    mostrarPrecio: $('#rapidLabelMostrarPrecio').prop('checked'),
+                    mostrarCodigoTexto: $('#rapidLabelMostrarCodigoTexto').prop('checked'),
+                    mostrarCategoria: $('#rapidLabelMostrarCategoria').prop('checked'),
+                    mostrarCodigoInterno: $('#rapidLabelMostrarInterno').prop('checked'),
+                    mostrarBorde: $('#rapidLabelMostrarBorde').prop('checked')
+                };
+                if (fine) {
+                    item.mostrarNombre = row.find('.js-rapid-label-show-name').prop('checked');
+                    item.mostrarPrecio = row.find('.js-rapid-label-show-price').prop('checked');
+                    item.mostrarCodigoTexto = row.find('.js-rapid-label-show-code-text').prop('checked');
+                    item.mostrarCategoria = row.find('.js-rapid-label-show-category').prop('checked');
+                    item.mostrarCodigoInterno = row.find('.js-rapid-label-show-internal').prop('checked');
+                    item.fuente = row.find('.js-rapid-label-font').val() || null;
+                    item.nombreFontSize = valorOpcionalNumerico(row, '.js-rapid-label-name-font');
+                    item.precioFontSize = valorOpcionalNumerico(row, '.js-rapid-label-price-font');
+                    item.codigoFontSize = valorOpcionalNumerico(row, '.js-rapid-label-code-font');
+                    item.codigoAnchoMm = valorOpcionalNumerico(row, '.js-rapid-label-code-width');
+                    item.codigoAltoMm = valorOpcionalNumerico(row, '.js-rapid-label-code-height');
+                    item.etiquetaAltoMm = valorOpcionalNumerico(row, '.js-rapid-label-height');
+                    item.colorTexto = row.find('.js-rapid-label-color-text').val();
+                    item.colorPrecio = row.find('.js-rapid-label-color-price').val();
+                    item.colorCodigo = row.find('.js-rapid-label-color-code').val();
+                }
+                if (productoId) {
+                    productoIds.push(productoId);
+                    productos.push(item);
+                }
+            });
+
+            return {
+                productoIds,
+                productos,
+                cantidad: 1,
+                plantilla: $('#rapidLabelPlantilla').val(),
+                formato: 'A4',
+                anchoTicketMm: 80,
+                mostrarNombre: $('#rapidLabelMostrarNombre').prop('checked'),
+                mostrarPrecio: $('#rapidLabelMostrarPrecio').prop('checked'),
+                mostrarCodigoTexto: $('#rapidLabelMostrarCodigoTexto').prop('checked'),
+                mostrarCategoria: $('#rapidLabelMostrarCategoria').prop('checked'),
+                mostrarCodigoInterno: $('#rapidLabelMostrarInterno').prop('checked'),
+                mostrarBorde: $('#rapidLabelMostrarBorde').prop('checked'),
+                fuente: 'HELVETICA',
+                colorTexto: $('#rapidLabelColorTexto').val(),
+                colorPrecio: $('#rapidLabelColorPrecio').val(),
+                colorCodigo: $('#rapidLabelColorCodigo').val(),
+                colorBorde: '#D1D5DB',
+                nombreFontSize: numeroEtiquetaInput('rapidLabelNombreFont', 7, 4, 18),
+                precioFontSize: numeroEtiquetaInput('rapidLabelPrecioFont', 12, 5, 26),
+                codigoFontSize: numeroEtiquetaInput('rapidLabelCodigoFont', 6, 4, 14),
+                categoriaFontSize: 5.5,
+                codigoAnchoMm: numeroEtiquetaInput('rapidLabelCodigoAncho', 50, 20, 80),
+                codigoAltoMm: numeroEtiquetaInput('rapidLabelCodigoAlto', 12, 6, 24),
+                etiquetaAnchoMm: numeroEtiquetaInput('rapidLabelAncho', 63.5, 25, 90),
+                etiquetaAltoMm: numeroEtiquetaInput('rapidLabelAlto', 33.9, 18, 70),
+                margenHorizontalMm: numeroEtiquetaInput('rapidLabelMargenH', 8, 2, 30),
+                margenVerticalMm: numeroEtiquetaInput('rapidLabelMargenV', 8, 2, 30),
+                columnasA4: Math.round(numeroEtiquetaInput('rapidLabelColumnas', 3, 1, 5)),
+                filasA4: Math.round(numeroEtiquetaInput('rapidLabelFilas', 8, 1, 12)),
+                saltarEtiquetasA4: saltarEtiquetasRapidas()
+            };
+        }
+
+        function cargarProductosEtiquetasRapidas() {
+            $('#rapidLabelProductoSelect').html('<option value="">Cargando productos...</option>');
+            $('#rapidLabelItems').html('<div class="rapid-empty py-4"><i class="fas fa-spinner fa-spin"></i> Cargando productos de la toma...</div>');
+            fetch('/toma-inventario/rapida/api/etiquetas/productos')
+                .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                .then(({ ok, body }) => {
+                    if (!ok) throw new Error(body.message || 'No se pudieron cargar productos.');
+                    productosEtiquetasRapidas = Array.isArray(body.productos) ? body.productos : [];
+                    productoIdsSugeridosEtiquetas = Array.isArray(body.productoIdsSugeridos) ? body.productoIdsSugeridos : [];
+                    etiquetasRapidasCargadas = true;
+                    $('#rapidLabelItems').html('<div class="rapid-empty py-4">Carga productos sin codigo, contados o agregalos uno por uno.</div>');
+                    renderSelectorEtiquetasRapidas();
+                    agregarEtiquetasSinCodigoRapidas(true);
+                    actualizarResumenEtiquetasRapidas();
+                })
+                .catch(err => {
+                    $('#rapidLabelProductoSelect').html('<option value="">No se pudo cargar</option>');
+                    $('#rapidLabelItems').html('<div class="rapid-empty py-4 text-danger">' + escapeHtml(err.message) + '</div>');
+                });
+        }
+
+        function abrirEtiquetasRapidas() {
+            $('#modalEtiquetasRapidas').modal('show');
+            if (!etiquetasRapidasCargadas) {
+                cargarProductosEtiquetasRapidas();
+            } else {
+                renderSelectorEtiquetasRapidas();
+                actualizarResumenEtiquetasRapidas();
+            }
+        }
+
+        function generarPdfEtiquetasRapidas() {
+            const request = recogerOpcionesEtiquetasRapidas();
+            if (!request.productoIds.length) {
+                Swal.fire('Tanda vacia', 'Agrega al menos un producto para generar etiquetas.', 'warning');
+                return;
+            }
+            const boton = $('#btnGenerarEtiquetasRapidas');
+            boton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Generando');
+            fetch('/toma-inventario/rapida/etiquetas/imprimir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(texto => {
+                            let mensaje = 'No se pudo generar el PDF.';
+                            try {
+                                const data = JSON.parse(texto);
+                                mensaje = data.message || data.mensaje || mensaje;
+                            } catch (e) {
+                                mensaje = texto || mensaje;
+                            }
+                            throw new Error(mensaje);
+                        });
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    window.open(url, '_blank');
+                })
+                .catch(err => Swal.fire('Error al generar etiquetas', err.message, 'error'))
+                .finally(() => boton.prop('disabled', false).html('<i class="fas fa-file-pdf"></i> Generar PDF A4'));
+        }
+
+        $(document).ready(function() {
+            if (!hayTomaAbierta) return;
+            aplicarModoConteoCiego();
+            renderSospechosos(productosSospechosos);
+            renderZonasConfiguradas();
+            $('#buscarRapido').trigger('focus');
+
+            $('#zonasRapidas').on('click', '.rapid-zone', function() {
+                aplicarZona(this.dataset.zona);
+                $('#buscarRapido').trigger('focus');
+            });
+
+            $('#zonasRapidas').on('change', '.rapid-zone-state', function(e) {
+                e.stopPropagation();
+                actualizarEstadoZona(this.dataset.zona, this.value);
+            });
+
+            $('#toggleConteoCiego').on('change', function() {
+                modoConteoCiego = this.checked;
+                aplicarModoConteoCiego();
+                renderResultados();
+            });
+
+            $('#buscarRapido').on('input', function() {
+                clearTimeout(busquedaTimer);
+                busquedaTimer = setTimeout(buscarRapido, 220);
+            }).on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (resultadosActuales.length) {
+                        seleccionarProducto(resultadosActuales[0]);
+                    } else {
+                        buscarRapido();
+                    }
+                }
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    abrirCrearProducto();
+                }
+            });
+
+            $('#resultadosRapidos').on('click', '.rapid-result', function() {
+                const index = Number(this.dataset.index);
+                seleccionarProducto(resultadosActuales[index]);
+            });
+
+            $('#productosSospechosos').on('click', '.rapid-suspect-item', function() {
+                const id = Number(this.dataset.productoId);
+                const item = productosSospechosos.find(p => Number(p.productoId) === id);
+                if (!item) return;
+                $('#buscarRapido').val(item.codigo && !item.codigo.startsWith('ID-') ? item.codigo : item.nombre).trigger('focus');
+                buscarRapido();
+            });
+
+            $('#cantidadRapida').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    guardarConteoRapido();
+                }
+                if (e.key === 'Escape') {
+                    limpiarParaSiguiente();
+                }
+            });
+
+            $('#observacionRapida').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    guardarConteoRapido();
+                }
+            });
+
+            $('#btnAbrirEtiquetasRapidas').on('click', abrirEtiquetasRapidas);
+            $('#btnAgregarEtiquetaRapida').on('click', agregarProductoSeleccionadoEtiquetaRapida);
+            $('#btnEtiquetasSinCodigo').on('click', function() {
+                agregarEtiquetasSinCodigoRapidas(false);
+            });
+            $('#btnEtiquetasContados').on('click', agregarEtiquetasContadasRapidas);
+            $('#btnCompletarEtiquetasA4').on('click', completarA4EtiquetasRapidas);
+            $('#btnLimpiarEtiquetasRapidas').on('click', limpiarEtiquetasRapidas);
+            $('#btnGenerarEtiquetasRapidas').on('click', generarPdfEtiquetasRapidas);
+            $('#modalEtiquetasRapidas').on('input change', 'input, select', actualizarResumenEtiquetasRapidas);
+            $('#rapidLabelItems').on('click', '.js-rapid-label-remove', function() {
+                $(this).closest('.rapid-label-row').remove();
+                actualizarResumenEtiquetasRapidas();
+                renderSelectorEtiquetasRapidas();
+            });
+            $('#rapidLabelItems').on('change', '.js-rapid-label-fine-enabled', function() {
+                $(this).closest('.rapid-label-row')
+                    .find('.rapid-label-fine-grid')
+                    .toggleClass('d-none', !this.checked);
+            });
+
+            $('#modalProductoRapido').on('shown.bs.modal', function() {
+                $('#nuevoNombre').trigger('focus');
+            });
+            $('#modalCamara').on('hidden.bs.modal', detenerCamara);
+            $('#btnGuardarRapido').on('click', guardarConteoRapido);
+            $('#btnGuardarDatosProducto').on('click', guardarDatosProducto);
+            $('#btnCrearDesdeBusqueda').on('click', abrirCrearProducto);
+            $('#btnCrearVariante').on('click', abrirCrearVariante);
+            $('#btnGuardarNuevoProducto').on('click', crearProductoRapido);
+            $('#btnConfigZonas').on('click', abrirConfigZonas);
+            $('#btnGuardarZonas').on('click', guardarZonas);
+            $('#btnDeshacerConteo').on('click', deshacerUltimoConteo);
+            $('#btnAplicarPrecios').on('click', aplicarPreciosSugeridos);
+            $('#btnAbrirCamara').on('click', abrirCamara);
+            $('#cameraFile').on('change', function() {
+                leerArchivoCamara(this.files && this.files[0]);
+            });
+            $('#btnRefrescarSospechosos').on('click', cargarSospechosos);
+            $('#nuevoClasificacion').on('change', actualizarModalClasificacion);
+            $('#nuevoCantidad').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    crearProductoRapido();
+                }
+            });
+        });
+    </script>
+</th:block>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
@@ -115,10 +115,11 @@
                             <th class="text-right">Margen %</th>
                             <th class="text-right">Ganancia</th>
                             <th class="text-right">Total Vendido</th>
+                            <th class="text-center">Acción</th>
                         </tr>
                         </thead>
                         <tbody id="tbody">
-                        <tr><td colspan="9" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted">Genere el reporte para ver datos</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -164,7 +165,7 @@
             tbody.empty();
             const data = response.productos || [];
             if (!data.length) {
-                tbody.html('<tr><td colspan="9" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
+                tbody.html('<tr><td colspan="10" class="text-center text-muted">No se encontraron ventas en este rango</td></tr>');
                 $('#resumenCards').hide();
                 return;
             }
@@ -180,9 +181,11 @@
                 let margenClass = 'text-success';
                 if (margen < 10) margenClass = 'text-danger font-weight-bold';
                 else if (margen < 30) margenClass = 'text-warning font-weight-bold';
+                
+                const encodedName = encodeURIComponent(item.productoNombre || '');
                 tbody.append(`
                     <tr>
-                        <td>${item.productoNombre || '-'}</td>
+                        <td><span class="font-weight-bold text-dark">${item.productoNombre || '-'}</span></td>
                         <td>${item.productoCategoria || '-'}</td>
                         <td class="text-center">${formatearCantidad(item.cantidadVendida)}</td>
                         <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(item.precioCompra)}</td>
@@ -191,6 +194,11 @@
                         <td class="text-right ${margenClass}">${formatear(item.margenPorcentaje)}%</td>
                         <td class="text-right font-weight-bold text-success">${APP_CONFIG.formatoMoneda} ${formatear(item.gananciaTotal)}</td>
                         <td class="text-right font-weight-bold">${APP_CONFIG.formatoMoneda} ${formatear(item.totalVendido)}</td>
+                        <td class="text-center">
+                            <a href="/stock?buscar=${encodedName}" class="btn btn-outline-primary btn-xs" title="Gestionar / Ajustar en Control de Stock">
+                                <i class="fas fa-magic"></i>
+                            </a>
+                        </td>
                     </tr>
                 `);
             });
@@ -200,6 +208,7 @@
                     <td colspan="7" class="text-right">TOTAL FINAL</td>
                     <td class="text-right text-success">${APP_CONFIG.formatoMoneda} ${formatear(response.totalGanancia)}</td>
                     <td class="text-right">${APP_CONFIG.formatoMoneda} ${formatear(response.totalIngreso)}</td>
+                    <td></td>
                 </tr>
             `);
         }

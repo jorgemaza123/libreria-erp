@@ -3,6 +3,8 @@ package com.libreria.sistema.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import java.math.BigDecimal;
 
 @Entity
@@ -22,5 +24,7 @@ public class OrdenItem {
     @ManyToOne
     @JoinColumn(name = "orden_id")
     @JsonIgnore // Importante para evitar bucles infinitos al serializar a JSON
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private OrdenServicio orden;
 }

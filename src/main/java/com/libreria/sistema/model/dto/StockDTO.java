@@ -21,8 +21,14 @@ public class StockDTO {
     private Integer stockActual;
     private Integer stockMinimo;
     private Integer stockMaximo;
+    private Boolean temporadaActiva;
+    private Integer stockObjetivoTemporada;
+    private Boolean posRapido;
+    private Integer posRapidoOrden;
     private String estado;       // SIN_STOCK, CRITICO, BAJO, OK
     private String badgeClass;   // badge-dark, badge-danger, badge-warning, badge-success
+    private Boolean enLiquidacion;
+    private BigDecimal precioOriginal;
     private BigDecimal precioCompra;
     private BigDecimal valorStock; // stockActual * precioCompra
     private LocalDateTime fechaActualizacion;

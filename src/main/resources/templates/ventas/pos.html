@@ -602,14 +602,19 @@
         border: 1px solid var(--pos-border) !important;
         box-shadow: none !important;
         border-radius: var(--pos-radius-sm) !important;
-        padding: 8px 12px !important;
+        padding: 10px 12px !important;
         margin: 3px !important;
-        min-width: auto !important;
+        min-width: 150px !important;
+        min-height: 62px !important;
         height: auto !important;
-        font-size: 0.75rem !important;
+        font-size: 0.82rem !important;
         display: inline-flex !important;
         align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
         gap: 6px !important;
+        white-space: normal !important;
+        line-height: 1.15 !important;
     }
 
     #panelRapido .btn-app:hover {
@@ -617,12 +622,180 @@
         border-color: var(--pos-primary) !important;
     }
 
-    #panelRapido .btn-app i { font-size: 0.85rem; }
+    #panelRapido .quick-product-season {
+        background: #fffbeb !important;
+        border-color: #f59e0b !important;
+    }
+
+    #panelRapido .btn-app i { font-size: 1.05rem; }
+    #panelRapido .btn-app > span:not(.badge):not(.kbd) {
+        max-width: 105px;
+        overflow-wrap: anywhere;
+        font-weight: 700;
+    }
     #panelRapido .btn-app span.d-block { display: none !important; }
     #panelRapido .btn-app .badge {
         font-size: 0.65rem;
         padding: 2px 6px;
         background: var(--pos-success) !important;
+    }
+
+    #panelRapido .btn-app .quick-shortcut-badge {
+        background: var(--pos-primary) !important;
+        color: #ffffff !important;
+    }
+
+    #panelRapido .btn-app .quick-season-badge {
+        background: #f59e0b !important;
+        color: #78350f !important;
+    }
+
+    .impresion-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .impresion-fast-btn {
+        border: 1px solid #dbe4f0;
+        background: #ffffff;
+        color: #0f172a;
+        border-radius: var(--pos-radius-sm);
+        padding: 10px 12px;
+        min-width: 155px;
+        min-height: 62px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.15;
+        text-align: center;
+        white-space: normal;
+    }
+
+    .impresion-fast-btn:hover,
+    .impresion-fast-btn.active {
+        border-color: var(--pos-primary);
+        background: #eef6ff;
+    }
+
+    .impresion-fast-price {
+        color: #0f766e;
+        font-weight: 800;
+    }
+
+    .config-rapidos-list {
+        display: grid;
+        gap: 8px;
+        max-height: 330px;
+        overflow-y: auto;
+    }
+
+    .config-rapido-item {
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #ffffff;
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .config-rapido-index {
+        height: 30px;
+        min-width: 30px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 800;
+        font-size: 0.8rem;
+    }
+
+    .config-rapido-nombre {
+        font-weight: 800;
+        color: #0f172a;
+        overflow-wrap: anywhere;
+        line-height: 1.15;
+    }
+
+    .config-rapido-meta {
+        font-size: 0.72rem;
+        color: #64748b;
+    }
+
+    .config-impresion-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .config-impresion-card {
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f8fafc;
+    }
+
+    .impresion-flex-btn {
+        border-color: #0f766e !important;
+        color: #0f766e !important;
+        background: #ecfdf5 !important;
+    }
+
+    .impresion-modal .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .impresion-modal .impresion-preset {
+        border: 1px solid #dbe4f0;
+        background: #ffffff;
+        border-radius: 8px;
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 10px;
+        text-align: left;
+    }
+
+    .impresion-modal .impresion-preset.active {
+        border-color: #2563eb;
+        background: #eff6ff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .impresion-total-box {
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        background: #f0fdf4;
+        color: #14532d;
+        padding: 10px 12px;
+    }
+
+    .impresion-total-box .label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .impresion-total-box .amount {
+        display: block;
+        font-size: 1.55rem;
+        font-weight: 900;
+        line-height: 1.1;
     }
 
     /* === MENSAJE VACÍO === */
@@ -951,7 +1124,7 @@
         outline: none !important;
     }
 </style>
-<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+<body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
     <nav th:replace="~{fragments/layout :: navbar}"></nav>
     <aside th:replace="~{fragments/layout :: sidebar(active='pos')}"></aside>
@@ -1020,6 +1193,18 @@
                                         <span class="kbd kbd-primary">F4</span> Comprobante
                                     </small>
                                     <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-primary">F5</span> Impresion
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-danger">F6</span> Gasto
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-primary">F7</span> Laminas
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
+                                        <span class="kbd kbd-primary">ALT+1-0</span> Rapidos
+                                    </small>
+                                    <small class="d-flex align-items-center gap-1">
                                         <span class="kbd kbd-danger">F8</span> Limpiar
                                     </small>
                                     <small class="d-flex align-items-center gap-1">
@@ -1033,28 +1218,59 @@
 
                             <!-- PANEL DE PRODUCTOS RÁPIDOS (Quick Pick) -->
                             <div id="panelRapido">
-                                <h6><i class="fas fa-bolt text-warning"></i> Productos Rápidos</h6>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0"><i class="fas fa-bolt text-warning"></i> Productos Rápidos</h6>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm"
+                                            th:if="${puedeConfigurarRapidosPos}"
+                                            onclick="abrirModalConfigRapidosPos()"
+                                            title="Configurar productos rápidos">
+                                        <i class="fas fa-cog mr-1"></i> Configurar
+                                        <span class="kbd kbd-primary ml-1">Alt+R</span>
+                                    </button>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center mb-2" style="gap: 6px;"
+                                     th:if="${campanasPos != null and !#lists.isEmpty(campanasPos)}">
+                                    <span class="badge badge-info" th:each="campana : ${campanasPos}" th:text="${campana.nombre}">Campaña</span>
+                                    <small class="text-muted">Orden automatico por temporada, ventas 7/30 dias y campaña.</small>
+                                </div>
+                                <div class="impresion-strip" th:if="${impresionPresetsPos != null and !#lists.isEmpty(impresionPresetsPos)}">
+                                    <button type="button"
+                                            class="impresion-fast-btn js-impresion-directa"
+                                            th:each="preset : ${impresionPresetsPos}"
+                                            th:attr="data-tipo=${preset.tipo},title=${preset.descripcion}">
+                                        <i th:class="${preset.icono}"></i>
+                                        <span th:text="${#strings.abbreviate(preset.etiqueta, 24)}">Color</span>
+                                        <span class="impresion-fast-price" th:text="|S/ ${#numbers.formatDecimal(preset.precio, 1, 'COMMA', 2, 'POINT')}|">S/ 0.70</span>
+                                        <span class="kbd kbd-primary" th:text="${preset.atajo}">Alt+C</span>
+                                    </button>
+                                    <button type="button" class="btn btn-app impresion-flex-btn" onclick="abrirModalImpresionRapida()">
+                                        <i class="fas fa-sliders-h"></i> Flexible <span class="badge">F5</span>
+                                    </button>
+                                </div>
                                 <div class="d-flex flex-wrap">
-                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('FOTOCOPIA_BN')">
-                                        <i class="fas fa-copy"></i> Fotocopia <span class="badge">0.10</span>
-                                    </a>
-                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('IMPRESION_A4')">
-                                        <i class="fas fa-print"></i> Impresión <span class="badge">0.50</span>
-                                    </a>
-                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('ANILLADO')">
-                                        <i class="fas fa-ring"></i> Anillado <span class="badge">3.50</span>
-                                    </a>
-                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('BOLSA_PLASTICA')">
-                                        <i class="fas fa-shopping-bag"></i> Bolsa <span class="badge">0.10</span>
-                                    </a>
-                                    <a class="btn btn-app" href="javascript:void(0)" onclick="agregarRapido('LAPICERO_AZUL')">
-                                        <i class="fas fa-pen"></i> Lapicero <span class="badge">1.00</span>
-                                    </a>
+                                    <button type="button"
+                                            class="btn btn-app js-producto-rapido"
+                                            th:each="producto, iter : ${productosRapidosPos}"
+                                            th:classappend="${producto.temporadaActiva} ? ' quick-product-season' : ''"
+                                            th:attr="data-id=${producto.id},data-codigo=${producto.codigoInterno != null and !#strings.isEmpty(producto.codigoInterno) ? producto.codigoInterno : producto.codigoBarra},data-quick-index=${iter.count},title=${producto.nombre}">
+                                        <i th:class="${#strings.equalsIgnoreCase(producto.tipo, 'SERVICIO') ? 'fas fa-magic' : 'fas fa-box'}"></i>
+                                        <span th:text="${#strings.abbreviate(producto.nombre, 24)}">Producto</span>
+                                        <span class="badge" th:text="${producto.precioVenta != null ? #numbers.formatDecimal(producto.precioVenta, 1, 'COMMA', 2, 'POINT') : '0.00'}">0.00</span>
+                                        <span class="badge quick-shortcut-badge ml-1" th:if="${iter.count <= 10}" th:text="${iter.count == 10 ? 'ALT+0' : 'ALT+' + iter.count}">ALT+1</span>
+                                        <span class="badge quick-season-badge ml-1" th:if="${producto.temporadaActiva}">TEMP</span>
+                                    </button>
                                     <a class="btn btn-app" href="javascript:void(0)" onclick="window.abrirModalServicioRapido && window.abrirModalServicioRapido()">
                                         <i class="fas fa-magic"></i> Personalizado <span class="badge">F9</span>
                                     </a>
                                     <a class="btn btn-app" href="javascript:void(0)" onclick="abrirModalLaminas()">
-                                        <i class="fas fa-layer-group"></i> Laminas <span class="badge">BUSCAR</span>
+                                        <i class="fas fa-layer-group"></i> Laminas <span class="badge">F7</span>
+                                    </a>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="abrirModalGastoRapido()" style="background-color: #fef2f2 !important; border-color: #fecaca !important; color: #dc2626 !important;">
+                                        <i class="fas fa-minus-circle text-danger"></i> Gasto Rápido <span class="badge badge-danger">F6</span>
+                                    </a>
+                                    <a class="btn btn-app" href="javascript:void(0)" onclick="abrirModalSolicitarStock()" style="background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; color: #16a34a !important;">
+                                        <i class="fas fa-cart-plus text-success"></i> Pedir Stock <span class="badge badge-success">F10</span>
                                     </a>
                                 </div>
                             </div>
@@ -1070,6 +1286,18 @@
                                 <span class="shortcut-action">Cambiar Comprobante</span>
                             </span>
                             <span class="shortcut-item">
+                                <span class="kbd kbd-primary">F5</span>
+                                <span class="shortcut-action">Impresion flexible</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-danger">F6</span>
+                                <span class="shortcut-action">Gasto Rapido</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-primary">F7</span>
+                                <span class="shortcut-action">Laminas</span>
+                            </span>
+                            <span class="shortcut-item">
                                 <span class="kbd kbd-danger">F8</span>
                                 <span class="shortcut-action">Limpiar Venta</span>
                             </span>
@@ -1078,8 +1306,12 @@
                                 <span class="shortcut-action">Servicio rapido</span>
                             </span>
                             <span class="shortcut-item">
-                                <span class="kbd kbd-primary">LAM</span>
-                                <span class="shortcut-action">Boton Laminas</span>
+                                <span class="kbd kbd-success">F10</span>
+                                <span class="shortcut-action">Pedir Stock</span>
+                            </span>
+                            <span class="shortcut-item">
+                                <span class="kbd kbd-primary">ALT+1-0</span>
+                                <span class="shortcut-action">Productos rapidos</span>
                             </span>
                             <span class="shortcut-divider"></span>
                             <span class="shortcut-item">
@@ -1487,6 +1719,167 @@
     </div>
 </div>
 
+<div class="modal fade impresion-modal" id="modalImpresionRapida" tabindex="-1" role="dialog" aria-labelledby="modalImpresionRapidaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="modalImpresionRapidaLabel">
+                    <i class="fas fa-print mr-1 text-primary"></i> Impresion rapida
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="preset-grid mb-3" th:if="${impresionPresetsPos != null and !#lists.isEmpty(impresionPresetsPos)}">
+                    <button type="button"
+                            class="impresion-preset js-impresion-preset"
+                            th:each="preset : ${impresionPresetsPos}"
+                            th:attr="data-tipo=${preset.tipo}">
+                        <span>
+                            <i th:class="${preset.icono}"></i>
+                            <strong th:text="${preset.etiqueta}">Color</strong>
+                        </span>
+                        <span>
+                            <span class="badge badge-light" th:text="${preset.atajo}">Alt+C</span>
+                            <strong class="text-success ml-1" th:text="|S/ ${#numbers.formatDecimal(preset.precio, 1, 'COMMA', 2, 'POINT')}|">S/ 0.70</strong>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="row">
+                    <div class="col-5">
+                        <div class="form-group mb-2">
+                            <label for="impresionCantidad" class="font-weight-bold small mb-1">Cantidad</label>
+                            <input type="number" min="1" step="1" class="form-control form-control-lg text-center font-weight-bold"
+                                   id="impresionCantidad" value="1" inputmode="numeric" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-7">
+                        <div class="form-group mb-2">
+                            <label for="impresionPrecio" class="font-weight-bold small mb-1">Precio unitario</label>
+                            <div class="input-group input-group-lg">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text font-weight-bold">S/</span>
+                                </div>
+                                <input type="number" min="0.10" step="0.10" class="form-control text-center font-weight-bold"
+                                       id="impresionPrecio" value="0.70" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label for="impresionDescripcion" class="font-weight-bold small mb-1">Detalle</label>
+                    <input type="text" class="form-control" id="impresionDescripcion" maxlength="180"
+                           value="Impresion a color" autocomplete="off">
+                </div>
+
+                <div class="impresion-total-box mt-3">
+                    <span class="label">Total</span>
+                    <span class="amount" id="impresionTotal">S/ 0.70</span>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                <div>
+                    <button type="button" class="btn btn-outline-success" id="btnAgregarCobrarImpresion">
+                        <i class="fas fa-cash-register mr-1"></i>Agregar y cobrar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnAgregarImpresion">
+                        <i class="fas fa-plus mr-1"></i>Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfigRapidosPos" tabindex="-1" role="dialog" aria-labelledby="modalConfigRapidosPosLabel" aria-hidden="true"
+     th:if="${puedeConfigurarRapidosPos}">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="modalConfigRapidosPosLabel">
+                    <i class="fas fa-cog mr-1 text-primary"></i> Configuracion rapida del POS
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h6 class="font-weight-bold text-uppercase text-muted small mb-2">Impresiones</h6>
+                <div class="config-impresion-grid mb-4">
+                    <div class="config-impresion-card js-config-impresion"
+                         th:each="preset : ${impresionPresetsPos}"
+                         th:attr="data-tipo=${preset.tipo}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong th:text="${preset.atajo}">Alt+C</strong>
+                            <i th:class="${preset.icono}"></i>
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold mb-1">Nombre del boton</label>
+                            <input type="text" class="form-control form-control-sm js-config-impresion-nombre"
+                                   maxlength="80" th:value="${preset.etiqueta}" autocomplete="off">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold mb-1">Precio</label>
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                <input type="number" min="0.01" step="0.01"
+                                       class="form-control text-right js-config-impresion-precio"
+                                       th:value="${#numbers.formatDecimal(preset.precio, 1, 'COMMA', 2, 'POINT')}"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="font-weight-bold text-uppercase text-muted small mb-0">10 productos rapidos</h6>
+                    <span class="badge badge-primary" id="configRapidoContador">0/10</span>
+                </div>
+                <select id="configRapidoBuscador" class="form-control mb-3" style="width:100%;"></select>
+                <div class="config-rapidos-list" id="configRapidoLista">
+                    <div class="config-rapido-item"
+                         th:each="producto, iter : ${productosRapidosPos}"
+                         th:attr="data-id=${producto.id},data-nombre=${producto.nombre},data-precio=${producto.precioVenta != null ? producto.precioVenta : 0},data-codigo=${producto.codigoInterno != null and !#strings.isEmpty(producto.codigoInterno) ? producto.codigoInterno : producto.codigoBarra},data-tipo=${producto.tipo}">
+                        <span class="config-rapido-index" th:text="${iter.count == 10 ? '0' : iter.count}">1</span>
+                        <div>
+                            <div class="config-rapido-nombre" th:text="${producto.nombre}">Producto</div>
+                            <div class="config-rapido-meta">
+                                <span th:text="${producto.codigoInterno != null and !#strings.isEmpty(producto.codigoInterno) ? producto.codigoInterno : producto.codigoBarra}">SKU</span>
+                                <span> · S/ </span>
+                                <span th:text="${producto.precioVenta != null ? #numbers.formatDecimal(producto.precioVenta, 1, 'COMMA', 2, 'POINT') : '0.00'}">0.00</span>
+                            </div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary js-mover-config-rapido" data-dir="-1" title="Subir">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary js-mover-config-rapido" data-dir="1" title="Bajar">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger js-quitar-config-rapido" title="Quitar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small class="text-muted">Atajos: Alt+1 a Alt+9 y Alt+0 para el decimo.</small>
+                <div>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarConfigRapidosPos">
+                        <i class="fas fa-save mr-1"></i>Guardar configuracion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div th:replace="~{fragments/layout :: servicioRapidoWidget}"></div>
 <div th:replace="~{fragments/layout :: scripts}"></div>
 <script th:inline="javascript">
@@ -1508,6 +1901,9 @@
     // URL del servidor para conexión móvil
     const serverUrlPOS = /*[[${serverUrl}]]*/ 'https://localhost:8443';
     const puedeCrearLaminasPos = /*[[${#authorization.expression('hasPermission(null, ''INVENTARIO_CREAR'') or hasPermission(null, ''VENTAS_CREAR'')')}]]*/ false;
+    const servicioVariablePosId = /*[[${servicioVariablePosId}]]*/ null;
+    const impresionPresetsPos = /*[[${impresionPresetsPos}]]*/ [];
+    const puedeConfigurarRapidosPos = /*[[${puedeConfigurarRapidosPos}]]*/ false;
 
     const IMG_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tk88L3RleHQ+PC9zdmc+";
 
@@ -1542,6 +1938,9 @@
                 let stockClass = p.tieneStock ? 'text-success' : 'text-danger';
                 let stockIcon = p.tieneStock ? '✓' : '⚠';
                 let stockBadge = p.stockBajo ? 'bg-warning text-dark' : (p.tieneStock ? 'bg-success' : 'bg-danger');
+                let codigoProducto = p.codigoBarra || p.codigoInterno || '';
+                let especificaciones = [p.marca, p.modelo, p.color, p.generacion].filter(Boolean).join(' · ');
+                let precioProducto = parseFloat(p.precio || 0);
 
                 // Imagen del producto (40x40px)
                 let imgSrc = p.imagen ? '/uploads/' + p.imagen : IMG_PLACEHOLDER;
@@ -1551,13 +1950,13 @@
                     <div class="select2-producto-info">
                         <div class="font-weight-bold text-truncate">${p.nombre}</div>
                         <div class="small text-muted">
-                            ${p.marca ? '<span class="mr-2">' + p.marca + '</span>' : ''}
-                            ${p.codigoBarra ? '<code>' + p.codigoBarra + '</code>' : ''}
+                            ${especificaciones ? '<span class="mr-2">' + especificaciones + '</span>' : ''}
+                            ${codigoProducto ? '<code>' + codigoProducto + '</code>' : ''}
                         </div>
                     </div>
                     <div class="select2-producto-stats ml-2">
                         <span class="badge ${stockBadge}" title="Stock disponible">${stockIcon} Stock: ${p.stock}</span>
-                        <div class="text-primary font-weight-bold">S/ ${parseFloat(p.precio).toFixed(2)}</div>
+                        <div class="text-primary font-weight-bold">S/ ${precioProducto.toFixed(2)}</div>
                     </div>
                 </div>`;
                 return $(html);
@@ -1582,6 +1981,69 @@
             $('#busquedaAjax').val(null).trigger('change');
         });
 
+        $(document).on('click', '.js-producto-rapido', function () {
+            const productoId = $(this).data('id');
+            const codigo = $(this).data('codigo');
+            if (productoId) {
+                agregarRapidoPorId(productoId);
+            } else if (codigo) {
+                agregarRapido(codigo);
+            }
+        });
+
+        $(document).on('click', '.js-impresion-directa', function () {
+            const tipo = $(this).data('tipo');
+            agregarImpresionDirecta(tipo, this);
+        });
+
+        $(document).on('click', '.js-impresion-preset', function () {
+            aplicarPresetImpresion($(this).data('tipo'));
+            $('#impresionCantidad').trigger('focus').select();
+        });
+
+        $('#impresionCantidad, #impresionPrecio').on('input', actualizarTotalImpresionRapida);
+
+        $('#btnAgregarImpresion').on('click', function () {
+            agregarImpresionFlexible(false);
+        });
+
+        $('#btnAgregarCobrarImpresion').on('click', function () {
+            agregarImpresionFlexible(true);
+        });
+
+        $('#modalImpresionRapida').on('shown.bs.modal', function () {
+            actualizarTotalImpresionRapida();
+            $('#impresionCantidad').trigger('focus').select();
+        });
+
+        $('#modalImpresionRapida').on('hidden.bs.modal', function () {
+            abrirBuscadorConFoco();
+        });
+
+        $('#modalImpresionRapida').on('keydown', function(e) {
+            if (manejarAtajoImpresion(e)) {
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                agregarImpresionFlexible(e.ctrlKey);
+                return;
+            }
+
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                ajustarPrecioImpresion(0.10);
+                return;
+            }
+
+            if (e.key === '-') {
+                e.preventDefault();
+                ajustarPrecioImpresion(-0.10);
+            }
+        });
+
         // === AUTOFOCUS ENTERPRISE: Abrir Select2 Y enfocar campo de búsqueda ===
         // El operador debe poder escribir/escanear inmediatamente sin usar mouse
         abrirBuscadorConFoco();
@@ -1590,15 +2052,91 @@
         // ATAJOS DE TECLADO POS ENTERPRISE
         // Mapeo estándar para operación 100% sin mouse
         // =============================================
+        function obtenerNumeroAtajoRapido(e) {
+            if (/^[0-9]$/.test(e.key || '')) {
+                const numero = parseInt(e.key, 10);
+                return numero === 0 ? 10 : numero;
+            }
+
+            const match = (e.code || '').match(/^(Digit|Numpad)([0-9])$/);
+            if (!match) {
+                return null;
+            }
+
+            const numero = parseInt(match[2], 10);
+            return numero === 0 ? 10 : numero;
+        }
+
+        function manejarAtajoProductoRapido(e) {
+            if (!e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
+                return false;
+            }
+
+            const numero = obtenerNumeroAtajoRapido(e);
+            if (!numero) {
+                return false;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const $boton = $(`.js-producto-rapido[data-quick-index="${numero}"]`).first();
+            if (!$boton.length) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'info',
+                    title: 'No hay producto rapido en ALT+' + numero,
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+                abrirBuscadorConFoco();
+                return true;
+            }
+
+            $boton.addClass('active');
+            setTimeout(() => $boton.removeClass('active'), 120);
+
+            const productoId = $boton.data('id');
+            const codigo = $boton.data('codigo');
+            if (productoId) {
+                agregarRapidoPorId(productoId);
+            } else if (codigo) {
+                agregarRapido(codigo);
+            }
+            return true;
+        }
+
         $(document).keydown(function(e) {
             // Ignorar si está en un modal de SweetAlert activo
             if (document.querySelector('.swal2-container')) {
                 return;
             }
 
+            if (e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (e.key || '').toLowerCase() === 'r') {
+                e.preventDefault();
+                abrirModalConfigRapidosPos();
+                return;
+            }
+
             if (e.key === 'Escape' && $('#modalBuscarLaminas').hasClass('show')) {
                 e.preventDefault();
                 $('#modalBuscarLaminas').modal('hide');
+                return;
+            }
+
+            if ($('.modal.show').length > 0) {
+                if ($('#modalImpresionRapida').hasClass('show') && manejarAtajoImpresion(e)) {
+                    return;
+                }
+                return;
+            }
+
+            if (manejarAtajoImpresion(e)) {
+                return;
+            }
+
+            if (manejarAtajoProductoRapido(e)) {
                 return;
             }
 
@@ -1616,10 +2154,38 @@
                 return;
             }
 
+            // F5: Impresion rapida flexible
+            if (e.key === 'F5') {
+                e.preventDefault();
+                abrirModalImpresionRapida();
+                return;
+            }
+
+            // F6: Registrar gasto rapido sin salir del POS
+            if (e.key === 'F6') {
+                e.preventDefault();
+                abrirModalGastoRapido();
+                return;
+            }
+
+            // F7: Abrir buscador de laminas sin usar mouse
+            if (e.key === 'F7') {
+                e.preventDefault();
+                abrirModalLaminas();
+                return;
+            }
+
             // F8: Limpiar venta (SIEMPRE con confirmación)
             if (e.key === 'F8') {
                 e.preventDefault();
                 limpiarConConfirmacion();
+                return;
+            }
+
+            // F10: Pedir Stock
+            if (e.key === 'F10') {
+                e.preventDefault();
+                abrirModalSolicitarStock();
                 return;
             }
 
@@ -2082,7 +2648,8 @@
             stock: stock,
             marca: marca || '',
             ubicacion: ubicacion || '',
-            stockMinimo: 5
+            stockMinimo: 5,
+            esServicio: false
         };
         agregarAlCarrito(prod);
 
@@ -2130,6 +2697,37 @@
         });
     }
 
+    const MAX_DESCRIPCION_DETALLE_VENTA = 200;
+
+    function limitarTextoVenta(texto, max = MAX_DESCRIPCION_DETALLE_VENTA) {
+        const limpio = (texto || '').toString().trim();
+        if (limpio.length <= max) {
+            return limpio;
+        }
+        return limpio.substring(0, max).trim();
+    }
+
+    function itemEsServicioPos(item) {
+        return !!(item && (
+            item.esServicio ||
+            item.servicioVariable ||
+            String(item.tipo || '').toUpperCase() === 'SERVICIO'
+        ));
+    }
+
+    function descripcionProductoParaVenta(prod) {
+        const nombre = limitarTextoVenta(prod && prod.nombre ? prod.nombre : 'Producto');
+        const descripcion = limitarTextoVenta(prod && prod.descripcion ? prod.descripcion : '');
+        return itemEsServicioPos(prod) ? (descripcion || nombre) : nombre;
+    }
+
+    function textoLineaVenta(item) {
+        if (itemEsServicioPos(item)) {
+            return limitarTextoVenta(item.descripcion || item.nombre || 'Servicio');
+        }
+        return limitarTextoVenta(item.nombre || item.descripcion || 'Producto');
+    }
+
     function agregarDesdeVisor() {
         if(!productoActual) return;
         let cant = parseInt($("#inputCantidad").val());
@@ -2149,6 +2747,7 @@
             carrito.push({
                 id: productoActual.id,
                 nombre: productoActual.nombre,
+                descripcion: descripcionProductoParaVenta(productoActual),
                 precio: parseFloat(productoActual.precio),
                 precioMin: parseFloat(productoActual.precioMin) || 0,
                 cantidad: cant,
@@ -2159,7 +2758,8 @@
                 ubicacionEstante: productoActual.ubicacionEstante || '',
                 ubicacionFila: productoActual.ubicacionFila || '',
                 ubicacionColumna: productoActual.ubicacionColumna || '',
-                stockMinimo: parseInt(productoActual.stockMinimo) || 5
+                stockMinimo: parseInt(productoActual.stockMinimo) || 5,
+                esServicio: String(productoActual.tipo || '').toUpperCase() === 'SERVICIO'
             });
             dibujarCarrito(true, carrito.length - 1);
         }
@@ -2206,89 +2806,592 @@
     // =============================================
 
     /**
-     * Agrega un producto rápido al carrito sin pasar por el buscador.
-     * Estos productos son servicios que no requieren stock ni código de barras.
-     * @param {string} id - Identificador único del producto rápido
-     * @param {string} nombre - Nombre a mostrar en el carrito
-     * @param {number} precio - Precio unitario
+     * Agrega un producto rapido al carrito por codigo exacto.
+     * Evita tomar la primera sugerencia del buscador cuando el texto es ambiguo.
+     * @param {string} codigoBusqueda - Codigo interno o codigo de barras
      */
-    // =========================================================
-// REEMPLAZAR SOLO LA FUNCIÓN agregarRapido EN TU SCRIPT
-// =========================================================
+function agregarProductoRapidoAlCarrito(prodEncontrado) {
+    let precio = parseFloat(prodEncontrado.precio || 0);
+    let productoParaCarrito = {
+        id: prodEncontrado.id,
+        nombre: prodEncontrado.nombre,
+        descripcion: descripcionProductoParaVenta(prodEncontrado),
+        precio: precio,
+        precioMin: prodEncontrado.precioMin != null ? parseFloat(prodEncontrado.precioMin) : precio,
+        stock: prodEncontrado.stock,
+        stockMinimo: prodEncontrado.stockMinimo,
+        codigoBarra: prodEncontrado.codigoBarra,
+        codigoInterno: prodEncontrado.codigoInterno,
+        marca: prodEncontrado.marca || '',
+        modelo: prodEncontrado.modelo || '',
+        color: prodEncontrado.color || '',
+        generacion: prodEncontrado.generacion || '',
+        tipo: prodEncontrado.tipo || '',
+        esServicio: String(prodEncontrado.tipo || '').toUpperCase() === 'SERVICIO',
+        margenActual: prodEncontrado.margenActual != null ? parseFloat(prodEncontrado.margenActual) : null,
+        margenBajo: prodEncontrado.margenBajo || false
+    };
 
-function agregarRapido(codigoBusqueda) {
-    // 1. Usamos tu API existente para buscar el producto por su código interno (ej: 'FOTOCOPIA_BN')
+    agregarAlCarrito(productoParaCarrito);
+}
+
+function agregarRapidoPorId(productoId) {
     $.ajax({
-        url: '/ventas/api/buscar-productos',
-        data: { term: codigoBusqueda },
-        success: function(resultados) {
-            // 2. Buscamos coincidencia exacta o tomamos el primero que devuelva la API
-            // La API devuelve objetos con {id: 123, text: '...', ...}
-            let prodEncontrado = resultados.find(p => p.text.includes(codigoBusqueda)) || resultados[0];
-
-            if (prodEncontrado) {
-                // 3. ¡CRÍTICO! Aquí obtenemos el ID numérico real (ej: 45) en lugar del texto
-                // Esto soluciona el error "InvalidFormatException" en el backend
-                
-                // Creamos un objeto compatible con tu función agregarAlCarrito
-                let productoParaCarrito = {
-                    id: prodEncontrado.id, // ES UN NÚMERO (Long)
-                    nombre: prodEncontrado.nombre,
-                    precio: parseFloat(prodEncontrado.precio),
-                    precioMin: parseFloat(prodEncontrado.precioMin),
-                    stock: prodEncontrado.stock
-                };
-
-                // Llamamos a tu función existente
-                agregarAlCarrito(productoParaCarrito);
-
-                // === NOTIFICACIÓN CON STOCK CRÍTICO PROACTIVO ===
-                const stock = parseInt(prodEncontrado.stock) || 0;
-                const stockCritico = stock <= 5 && stock > 0;
-                const stockAgotado = stock <= 0;
-
-                if (stockAgotado) {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'warning',
-                        title: prodEncontrado.nombre + ' agregado',
-                        html: '<small class="d-block text-danger"><i class="fas fa-exclamation-circle"></i> Sin stock disponible</small>',
-                        showConfirmButton: false,
-                        timer: 2500
-                    });
-                } else if (stockCritico) {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'warning',
-                        title: prodEncontrado.nombre + ' agregado',
-                        html: '<small class="d-block"><i class="fas fa-exclamation-triangle"></i> Stock bajo: quedan ' + stock + ' unidades</small>',
-                        showConfirmButton: false,
-                        timer: 2500
-                    });
-                } else {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: prodEncontrado.nombre + ' agregado',
-                        showConfirmButton: false,
-                        timer: 800
-                    });
-                }
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Producto no encontrado',
-                    text: 'El código "' + codigoBusqueda + '" no está registrado en el inventario. Créalo con tipo "SERVICIO".'
-                });
-            }
-        },
+        url: '/ventas/api/producto/' + productoId,
+        success: agregarProductoRapidoAlCarrito,
         error: function() {
             Swal.fire('Error', 'No se pudo consultar el producto rápido', 'error');
         }
     });
+}
+
+function agregarRapido(codigoBusqueda) {
+    $.ajax({
+        url: '/ventas/api/producto-por-codigo',
+        data: { codigo: codigoBusqueda },
+        success: agregarProductoRapidoAlCarrito,
+        error: function(xhr) {
+            if (xhr.status === 404) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Producto rápido no encontrado',
+                    text: 'El código "' + codigoBusqueda + '" no existe activo como producto vendible.'
+                });
+                return;
+            }
+            Swal.fire('Error', 'No se pudo consultar el producto rápido', 'error');
+        }
+    });
+}
+
+let configRapidosPosItems = [];
+let configRapidosSelectInicializado = false;
+
+function atajoRapidoTexto(index) {
+    return index === 9 ? 'ALT+0' : 'ALT+' + (index + 1);
+}
+
+function abreviarTextoPos(texto, max) {
+    const limpio = (texto || '').toString().trim();
+    if (limpio.length <= max) {
+        return limpio;
+    }
+    return limpio.substring(0, Math.max(0, max - 1)).trim() + '…';
+}
+
+function formatearPrecioPos(valor) {
+    const numero = normalizarNumeroPos(valor);
+    return Number.isFinite(numero) ? numero.toFixed(2) : '0.00';
+}
+
+function leerConfigRapidosDesdeDom() {
+    configRapidosPosItems = $('#configRapidoLista .config-rapido-item').map(function() {
+        const $item = $(this);
+        return {
+            id: parseInt($item.attr('data-id'), 10),
+            nombre: $item.attr('data-nombre') || $item.find('.config-rapido-nombre').text() || '',
+            precio: parseFloat($item.attr('data-precio') || '0') || 0,
+            codigo: $item.attr('data-codigo') || '',
+            tipo: $item.attr('data-tipo') || ''
+        };
+    }).get().filter(item => item.id);
+}
+
+function renderConfigRapidosPos() {
+    const $lista = $('#configRapidoLista');
+    $('#configRapidoContador').text(configRapidosPosItems.length + '/10');
+
+    if (configRapidosPosItems.length === 0) {
+        $lista.html('<div class="text-center text-muted py-4 border rounded">Busca un producto y agregalo a esta lista.</div>');
+        return;
+    }
+
+    const html = configRapidosPosItems.map(function(item, index) {
+        return `
+            <div class="config-rapido-item"
+                 data-id="${item.id}"
+                 data-nombre="${escapeHtml(item.nombre)}"
+                 data-precio="${item.precio || 0}"
+                 data-codigo="${escapeHtml(item.codigo || '')}"
+                 data-tipo="${escapeHtml(item.tipo || '')}">
+                <span class="config-rapido-index">${index === 9 ? '0' : index + 1}</span>
+                <div>
+                    <div class="config-rapido-nombre">${escapeHtml(item.nombre)}</div>
+                    <div class="config-rapido-meta">${escapeHtml(item.codigo || 'SIN CODIGO')} · S/ ${formatearPrecioPos(item.precio)} · ${atajoRapidoTexto(index)}</div>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary js-mover-config-rapido" data-dir="-1" title="Subir" ${index === 0 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary js-mover-config-rapido" data-dir="1" title="Bajar" ${index === configRapidosPosItems.length - 1 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger js-quitar-config-rapido" title="Quitar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+
+    $lista.html(html);
+}
+
+function inicializarBuscadorConfigRapidosPos() {
+    if (configRapidosSelectInicializado || !$('#configRapidoBuscador').length) {
+        return;
+    }
+
+    $('#configRapidoBuscador').select2({
+        theme: 'bootstrap4',
+        dropdownParent: $('#modalConfigRapidosPos'),
+        placeholder: 'Buscar producto para agregar a los 10 rapidos',
+        allowClear: true,
+        minimumInputLength: 1,
+        ajax: {
+            url: '/ventas/api/buscar-productos',
+            dataType: 'json',
+            delay: 100,
+            data: function(params) { return { term: params.term }; },
+            processResults: function(data) {
+                return {
+                    results: data.map(function(p) {
+                        return {
+                            id: p.id,
+                            text: p.text,
+                            producto: p
+                        };
+                    })
+                };
+            }
+        },
+        templateSelection: function(data) {
+            return data.producto ? data.producto.nombre : data.text;
+        }
+    });
+
+    $('#configRapidoBuscador').on('select2:select', function(e) {
+        const producto = e.params.data.producto;
+        agregarProductoAConfigRapida(producto);
+        $('#configRapidoBuscador').val(null).trigger('change');
+        setTimeout(function() { $('#configRapidoBuscador').select2('open'); }, 100);
+    });
+
+    configRapidosSelectInicializado = true;
+}
+
+function agregarProductoAConfigRapida(producto) {
+    if (!producto || !producto.id) {
+        return;
+    }
+
+    if (configRapidosPosItems.some(item => parseInt(item.id, 10) === parseInt(producto.id, 10))) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'info',
+            title: 'Ese producto ya esta en rapidos',
+            showConfirmButton: false,
+            timer: 1200
+        });
+        return;
+    }
+
+    if (configRapidosPosItems.length >= 10) {
+        Swal.fire('Limite alcanzado', 'Solo puedes tener 10 productos rapidos en el POS.', 'warning');
+        return;
+    }
+
+    configRapidosPosItems.push({
+        id: producto.id,
+        nombre: producto.nombre || producto.text || 'Producto',
+        precio: parseFloat(producto.precio || 0) || 0,
+        codigo: producto.codigoInterno || producto.codigoBarra || '',
+        tipo: producto.tipo || ''
+    });
+    renderConfigRapidosPos();
+}
+
+function abrirModalConfigRapidosPos() {
+    if (!puedeConfigurarRapidosPos || !$('#modalConfigRapidosPos').length) {
+        Swal.fire('Acceso denegado', 'Necesitas permiso de stock para configurar los rapidos del POS.', 'warning');
+        return;
+    }
+
+    leerConfigRapidosDesdeDom();
+    renderConfigRapidosPos();
+    inicializarBuscadorConfigRapidosPos();
+    $('#modalConfigRapidosPos').modal('show');
+}
+
+function guardarConfigRapidosPos() {
+    const impresiones = $('.js-config-impresion').map(function() {
+        const $card = $(this);
+        return {
+            tipo: $card.attr('data-tipo'),
+            etiqueta: $card.find('.js-config-impresion-nombre').val(),
+            precio: normalizarNumeroPos($card.find('.js-config-impresion-precio').val())
+        };
+    }).get();
+
+    if (impresiones.some(item => !item.etiqueta || !Number.isFinite(item.precio) || item.precio <= 0)) {
+        Swal.fire('Datos incompletos', 'Cada impresion debe tener nombre y precio mayor a cero.', 'warning');
+        return;
+    }
+
+    $('#btnGuardarConfigRapidosPos').prop('disabled', true)
+        .html('<i class="fas fa-spinner fa-spin mr-1"></i>Guardando');
+
+    $.ajax({
+        url: '/ventas/api/configuracion-rapida-pos',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            productoIds: configRapidosPosItems.map(item => item.id),
+            impresiones: impresiones
+        }),
+        success: function(resp) {
+            actualizarPanelRapidosPos(resp.productosRapidosPos || [], resp.impresionPresetsPos || []);
+            $('#modalConfigRapidosPos').modal('hide');
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Rapidos actualizados',
+                showConfirmButton: false,
+                timer: 1400
+            });
+            abrirBuscadorConFoco();
+        },
+        error: function(xhr) {
+            let mensaje = 'No se pudo guardar la configuracion rapida.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                mensaje = xhr.responseJSON.message;
+            }
+            Swal.fire('Error', mensaje, 'error');
+        },
+        complete: function() {
+            $('#btnGuardarConfigRapidosPos').prop('disabled', false)
+                .html('<i class="fas fa-save mr-1"></i>Guardar configuracion');
+        }
+    });
+}
+
+function actualizarPanelRapidosPos(productos, presets) {
+    if (Array.isArray(presets) && presets.length) {
+        impresionPresetsPos.splice(0, impresionPresetsPos.length, ...presets);
+        actualizarImpresionesRapidasVisuales(presets);
+    }
+
+    const $contenedor = $('#panelRapido .d-flex.flex-wrap').last();
+    $contenedor.find('.js-producto-rapido').remove();
+
+    const botones = productos.slice(0, 10).map(function(p, index) {
+        const codigo = p.codigoInterno || p.codigoBarra || '';
+        const icono = String(p.tipo || '').toUpperCase() === 'SERVICIO' ? 'fas fa-magic' : 'fas fa-box';
+        const temporada = p.temporadaActiva ? '<span class="badge quick-season-badge ml-1">TEMP</span>' : '';
+        return `
+            <button type="button"
+                    class="btn btn-app js-producto-rapido${p.temporadaActiva ? ' quick-product-season' : ''}"
+                    data-id="${p.id}"
+                    data-codigo="${escapeHtml(codigo)}"
+                    data-quick-index="${index + 1}"
+                    title="${escapeHtml(p.nombre || '')}">
+                <i class="${icono}"></i>
+                <span>${escapeHtml(abreviarTextoPos(p.nombre || 'Producto', 24))}</span>
+                <span class="badge">${formatearPrecioPos(p.precio)}</span>
+                <span class="badge quick-shortcut-badge ml-1">${atajoRapidoTexto(index)}</span>
+                ${temporada}
+            </button>`;
+    }).join('');
+
+    $contenedor.prepend(botones);
+    leerConfigRapidosDesdeDom();
+}
+
+function actualizarImpresionesRapidasVisuales(presets) {
+    presets.forEach(function(preset) {
+        const $botonDirecto = $('.js-impresion-directa[data-tipo="' + preset.tipo + '"]');
+        $botonDirecto.attr('title', preset.descripcion || preset.etiqueta || '');
+        $botonDirecto.find('span').not('.impresion-fast-price, .kbd').first()
+            .text(abreviarTextoPos(preset.etiqueta || preset.descripcion || 'Impresion', 24));
+        $botonDirecto.find('.impresion-fast-price').text('S/ ' + formatearPrecioPos(preset.precio));
+
+        const $botonModal = $('.js-impresion-preset[data-tipo="' + preset.tipo + '"]');
+        $botonModal.find('strong').first().text(abreviarTextoPos(preset.etiqueta || 'Impresion', 18));
+        $botonModal.find('strong.text-success').text('S/ ' + formatearPrecioPos(preset.precio));
+    });
+}
+
+$(document).on('click', '.js-quitar-config-rapido', function() {
+    const id = parseInt($(this).closest('.config-rapido-item').attr('data-id'), 10);
+    configRapidosPosItems = configRapidosPosItems.filter(item => parseInt(item.id, 10) !== id);
+    renderConfigRapidosPos();
+});
+
+$(document).on('click', '.js-mover-config-rapido', function() {
+    const $item = $(this).closest('.config-rapido-item');
+    const id = parseInt($item.attr('data-id'), 10);
+    const dir = parseInt($(this).attr('data-dir'), 10);
+    const index = configRapidosPosItems.findIndex(item => parseInt(item.id, 10) === id);
+    const nuevoIndex = index + dir;
+
+    if (index < 0 || nuevoIndex < 0 || nuevoIndex >= configRapidosPosItems.length) {
+        return;
+    }
+
+    const [movido] = configRapidosPosItems.splice(index, 1);
+    configRapidosPosItems.splice(nuevoIndex, 0, movido);
+    renderConfigRapidosPos();
+});
+
+$(document).on('click', '#btnGuardarConfigRapidosPos', guardarConfigRapidosPos);
+
+$('#modalConfigRapidosPos').on('shown.bs.modal', function() {
+    setTimeout(function() { $('#configRapidoBuscador').select2('open'); }, 150);
+});
+
+$('#modalConfigRapidosPos').on('hidden.bs.modal', function() {
+    abrirBuscadorConFoco();
+});
+
+let impresionTipoActual = 'color';
+
+function normalizarNumeroPos(valor) {
+    if (valor === null || valor === undefined) {
+        return NaN;
+    }
+    const limpio = valor.toString().trim().replace(/\s+/g, '').replace(',', '.');
+    if (!limpio) {
+        return NaN;
+    }
+    return parseFloat(limpio);
+}
+
+function obtenerPresetImpresion(tipo) {
+    const presets = Array.isArray(impresionPresetsPos) ? impresionPresetsPos : [];
+    return presets.find(p => String(p.tipo || '').toLowerCase() === String(tipo || '').toLowerCase())
+        || presets.find(p => String(p.tipo || '').toLowerCase() === 'color')
+        || presets[0]
+        || null;
+}
+
+function obtenerPresetImpresionPorAtajo(e) {
+    if (!e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
+        return null;
+    }
+
+    const tecla = (e.key || '').toLowerCase();
+    if (tecla === 'b') return 'bn';
+    if (tecla === 'c') return 'color';
+    if (tecla === 'f') return 'foto';
+    if (tecla === 'h') return 'hoja';
+    return null;
+}
+
+function precioPresetImpresion(preset) {
+    return normalizarNumeroPos(preset && preset.precio) || 0;
+}
+
+function descripcionPresetImpresion(preset) {
+    return (preset && (preset.descripcion || preset.etiqueta) ? String(preset.descripcion || preset.etiqueta) : 'Impresion').trim();
+}
+
+function actualizarBotonesPresetImpresion() {
+    $('.js-impresion-preset').removeClass('active');
+    $('.js-impresion-preset[data-tipo="' + impresionTipoActual + '"]').addClass('active');
+}
+
+function aplicarPresetImpresion(tipo) {
+    const preset = obtenerPresetImpresion(tipo);
+    if (!preset) {
+        return;
+    }
+
+    impresionTipoActual = preset.tipo || 'color';
+    $('#impresionDescripcion').val(descripcionPresetImpresion(preset));
+    $('#impresionPrecio').val(precioPresetImpresion(preset).toFixed(2));
+    actualizarBotonesPresetImpresion();
+    actualizarTotalImpresionRapida();
+}
+
+function abrirModalImpresionRapida(tipo) {
+    const preset = obtenerPresetImpresion(tipo || impresionTipoActual);
+    const tieneProductoFijo = preset && preset.productoId !== null && preset.productoId !== undefined && preset.productoId !== '';
+    if (!servicioVariablePosId && !tieneProductoFijo) {
+        mostrarServicioBaseImpresionFaltante();
+        return;
+    }
+
+    aplicarPresetImpresion(tipo || impresionTipoActual || 'color');
+    $('#impresionCantidad').val('1');
+    $('#modalImpresionRapida').modal('show');
+}
+
+function actualizarTotalImpresionRapida() {
+    const cantidad = Math.max(1, parseInt($('#impresionCantidad').val() || '1', 10));
+    const precio = Math.max(0, normalizarNumeroPos($('#impresionPrecio').val()) || 0);
+    $('#impresionTotal').text('S/ ' + (cantidad * precio).toFixed(2));
+}
+
+function ajustarPrecioImpresion(delta) {
+    const actual = normalizarNumeroPos($('#impresionPrecio').val()) || 0;
+    const nuevo = Math.max(0.10, actual + delta);
+    $('#impresionPrecio').val(nuevo.toFixed(2));
+    actualizarTotalImpresionRapida();
+    $('#impresionPrecio').trigger('focus').select();
+}
+
+function agregarImpresionDirecta(tipo, boton) {
+    const preset = obtenerPresetImpresion(tipo);
+    if (!preset) {
+        Swal.fire('Aviso', 'No hay presets de impresion configurados.', 'warning');
+        return false;
+    }
+
+    if (boton) {
+        $(boton).addClass('active');
+        setTimeout(() => $(boton).removeClass('active'), 120);
+    }
+
+    return agregarItemImpresionAlCarrito({
+        preset: preset,
+        cantidad: 1,
+        precio: precioPresetImpresion(preset),
+        descripcion: descripcionPresetImpresion(preset),
+        cobrar: false
+    });
+}
+
+function agregarImpresionFlexible(cobrar) {
+    const preset = obtenerPresetImpresion(impresionTipoActual);
+    if (!preset) {
+        Swal.fire('Aviso', 'No hay presets de impresion configurados.', 'warning');
+        return false;
+    }
+
+    const cantidad = Math.max(1, parseInt($('#impresionCantidad').val() || '1', 10));
+    const precio = normalizarNumeroPos($('#impresionPrecio').val());
+    const descripcion = ($('#impresionDescripcion').val() || '').trim() || descripcionPresetImpresion(preset);
+
+    if (!Number.isFinite(precio) || precio <= 0) {
+        Swal.fire('Precio invalido', 'Ingrese un precio mayor a cero.', 'warning');
+        $('#impresionPrecio').trigger('focus').select();
+        return false;
+    }
+
+    return agregarItemImpresionAlCarrito({
+        preset: preset,
+        cantidad: cantidad,
+        precio: precio,
+        descripcion: descripcion,
+        cobrar: cobrar
+    });
+}
+
+function agregarItemImpresionAlCarrito(opciones) {
+    const preset = opciones.preset;
+    const cantidad = Math.max(1, parseInt(opciones.cantidad || 1, 10));
+    const precio = parseFloat(opciones.precio || 0);
+    const descripcion = (opciones.descripcion || descripcionPresetImpresion(preset)).trim();
+
+    if (!Number.isFinite(precio) || precio <= 0) {
+        Swal.fire('Precio invalido', 'Ingrese un precio mayor a cero.', 'warning');
+        return false;
+    }
+
+    const precioBase = precioPresetImpresion(preset);
+    const descripcionBase = descripcionPresetImpresion(preset);
+    const productoFijoDisponible = preset.productoId !== null && preset.productoId !== undefined && preset.productoId !== '';
+    const usaPrecioBase = Math.abs(precio - precioBase) < 0.005;
+    const usaDescripcionBase = descripcion.toLowerCase() === descripcionBase.toLowerCase();
+    const usarProductoFijo = productoFijoDisponible && usaPrecioBase && usaDescripcionBase;
+    const productoId = usarProductoFijo ? preset.productoId : servicioVariablePosId;
+
+    if (!productoId) {
+        mostrarServicioBaseImpresionFaltante();
+        return false;
+    }
+
+    const nombre = usarProductoFijo ? descripcionBase : 'Impresion flexible';
+    const descripcionFinal = limitarTextoVenta(usarProductoFijo ? descripcionBase : descripcion);
+    const lineKey = usarProductoFijo
+        ? 'prod:' + productoId
+        : 'impresion:' + productoId + ':' + descripcionFinal.toLowerCase() + ':' + precio.toFixed(2);
+
+    const index = carrito.findIndex(i => (i.lineKey || ('prod:' + i.id)) === lineKey);
+    if (index !== -1) {
+        carrito[index].cantidad = parseInt(carrito[index].cantidad || 0, 10) + cantidad;
+        dibujarCarrito(true, index);
+    } else {
+            carrito.push({
+                id: productoId,
+                lineKey: lineKey,
+                nombre: nombre,
+            descripcion: descripcionFinal,
+            precio: precio,
+            precioMin: 0,
+            cantidad: cantidad,
+            stock: 999999,
+            stockMinimo: 0,
+            esServicio: true,
+            servicioVariable: !usarProductoFijo,
+            marca: '',
+            ubicacion: '',
+            ubicacionEstante: '',
+            ubicacionFila: '',
+            ubicacionColumna: '',
+            margenActual: null,
+            margenBajo: false,
+            precioMinimoRecomendado: null
+        });
+        dibujarCarrito(true, carrito.length - 1);
+    }
+
+    if ($('#modalImpresionRapida').hasClass('show')) {
+        $('#modalImpresionRapida').modal('hide');
+    }
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: descripcion + ' agregado',
+        text: cantidad + ' x S/ ' + precio.toFixed(2),
+        showConfirmButton: false,
+        timer: 950
+    });
+
+    if (opciones.cobrar) {
+        setTimeout(confirmarYVender, 220);
+    }
+    return true;
+}
+
+function mostrarServicioBaseImpresionFaltante() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Servicio base faltante',
+        text: 'No se encontro el servicio variable SERV-001 para registrar impresiones flexibles.'
+    });
+}
+
+function manejarAtajoImpresion(e) {
+    const tipo = obtenerPresetImpresionPorAtajo(e);
+    if (!tipo) {
+        return false;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if ($('#modalImpresionRapida').hasClass('show')) {
+        aplicarPresetImpresion(tipo);
+        $('#impresionCantidad').trigger('focus').select();
+        return true;
+    }
+
+    agregarImpresionDirecta(tipo, document.querySelector('.js-impresion-directa[data-tipo="' + tipo + '"]'));
+    return true;
 }
 
     // =============================================
@@ -2316,10 +3419,11 @@ function agregarRapido(codigoBusqueda) {
         // Construir lista de productos del carrito
         let filas = carrito.map(function(item) {
             let subtotal = (parseFloat(item.precio) * parseFloat(item.cantidad)).toFixed(2);
+            let textoItem = textoLineaVenta(item);
             return '<tr>' +
-                '<td style="text-align:left;padding:4px 8px;">' + item.nombre + '</td>' +
-                '<td style="text-align:center;padding:4px 8px;">' + item.cantidad + '</td>' +
-                '<td style="text-align:right;padding:4px 8px;">S/ ' + subtotal + '</td>' +
+                '<td style="text-align:left;padding:5px 8px;word-break:break-word;">' + escapeHtml(textoItem) + '</td>' +
+                '<td style="text-align:center;padding:5px 6px;width:48px;white-space:nowrap;">' + item.cantidad + '</td>' +
+                '<td style="text-align:right;padding:5px 6px;width:82px;white-space:nowrap;">S/ ' + subtotal + '</td>' +
                 '</tr>';
         }).join('');
 
@@ -2328,11 +3432,11 @@ function agregarRapido(codigoBusqueda) {
         }, 0).toFixed(2);
 
         let htmlTabla = '<div style="max-height:260px;overflow-y:auto;margin-bottom:8px;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:0.86em;table-layout:fixed;">' +
             '<thead><tr style="background:#f4f6f9;">' +
             '<th style="text-align:left;padding:4px 8px;">Producto</th>' +
-            '<th style="text-align:center;padding:4px 8px;">Cant.</th>' +
-            '<th style="text-align:right;padding:4px 8px;">Subtotal</th>' +
+            '<th style="text-align:center;padding:4px 6px;width:48px;">Cant.</th>' +
+            '<th style="text-align:right;padding:4px 6px;width:82px;">Subtotal</th>' +
             '</tr></thead>' +
             '<tbody>' + filas + '</tbody>' +
             '<tfoot><tr style="font-weight:bold;border-top:2px solid #dee2e6;">' +
@@ -2341,16 +3445,78 @@ function agregarRapido(codigoBusqueda) {
             '</tr></tfoot>' +
             '</table></div>';
 
+        let metodoPago = $("#metodoPago").val();
+        let usaCalculadoraVuelto = metodoPago === 'EFECTIVO' || metodoPago === 'MIXTO';
+        let swalContentHtml = htmlTabla;
+
+        // Si hay efectivo de por medio, mostramos calculadora opcional de vuelto.
+        if (usaCalculadoraVuelto) {
+            swalContentHtml += `
+            <div class="mt-3 p-3 bg-light border rounded text-left" style="color: #333; font-size: 0.9em;">
+                <label class="font-weight-bold text-dark mb-1" style="display: block; font-size: 0.95rem;">
+                    <i class="fas fa-money-bill-wave text-success mr-1"></i> Vuelto opcional
+                </label>
+                <div class="row align-items-center">
+                    <div class="col-6">
+                        <small class="text-muted d-block font-weight-bold mb-1" style="font-size:0.75rem;">Monto recibido</small>
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend"><span class="input-group-text font-weight-bold">S/</span></div>
+                            <input type="number" step="0.10" min="0.00" id="swalMontoRecibido" class="form-control font-weight-bold text-center text-success" style="font-size: 1.25rem; height: auto;" placeholder="0.00" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size:0.68rem;">Puede dejarlo vacio y confirmar.</small>
+                    </div>
+                    <div class="col-6 text-center">
+                        <small class="text-muted d-block font-weight-bold" style="font-size:0.75rem;">Vuelto a entregar:</small>
+                        <div class="h4 font-weight-bold text-primary mb-0 mt-1" id="swalVueltoDisplay">S/ 0.00</div>
+                    </div>
+                </div>
+
+                <!-- Botones de pago rápido -->
+                <div class="d-flex justify-content-start flex-wrap mt-2" id="swalQuickCashBtns" style="gap: 5px;"></div>
+
+                <!-- Desglose visual de monedas/billetes -->
+                <div class="mt-3 p-2 bg-white rounded border d-none" id="swalBreakdownContainer">
+                    <small class="text-muted d-block font-weight-bold mb-2" style="font-size:0.7rem;">Cambio sugerido:</small>
+                    <div class="d-flex flex-wrap justify-content-start" id="swalBreakdownContent" style="gap: 6px;"></div>
+                </div>
+            </div>`;
+        }
+
         Swal.fire({
             title: '¿Confirmar venta?',
-            html: htmlTabla,
+            html: swalContentHtml,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: '<i class="fas fa-check"></i> Aceptar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d',
-            focusConfirm: true
+            focusConfirm: true,
+            didOpen: () => {
+                if (usaCalculadoraVuelto) {
+                    const inputMonto = document.getElementById('swalMontoRecibido');
+                    if (inputMonto) {
+                        inputMonto.focus();
+                        inputMonto.addEventListener('input', calcularVueltoAsistente);
+                        inputMonto.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.stopPropagation();
+
+                                const valor = inputMonto.value.trim();
+                                const recibido = parseFloat(valor);
+                                if (!valor || Number.isNaN(recibido) || recibido >= parseFloat(total)) {
+                                    Swal.clickConfirm();
+                                    return;
+                                }
+
+                                calcularVueltoAsistente();
+                            }
+                        });
+                    }
+                    generarBotonesEfectivoRapido(parseFloat(total));
+                }
+            }
         }).then(function(result) {
             if (result.isConfirmed) {
                 procesarVenta();
@@ -2451,6 +3617,7 @@ function agregarRapido(codigoBusqueda) {
             carrito.push({
                 id: prod.id,
                 nombre: prod.nombre,
+                descripcion: descripcionProductoParaVenta(prod),
                 precio: parseFloat(prod.precio) || 0,
                 precioMin: parseFloat(prod.precioMin) || 0,
                 cantidad: 1,
@@ -2462,6 +3629,8 @@ function agregarRapido(codigoBusqueda) {
                 ubicacionFila: prod.ubicacionFila || '',
                 ubicacionColumna: prod.ubicacionColumna || '',
                 stockMinimo: parseInt(prod.stockMinimo) || 5,
+                tipo: prod.tipo || '',
+                esServicio: prod.esServicio || String(prod.tipo || '').toUpperCase() === 'SERVICIO',
                 // Margen bajo (calculado en backend)
                 margenActual: prod.margenActual != null ? parseFloat(prod.margenActual) : null,
                 margenBajo: prod.margenBajo || false,
@@ -2518,10 +3687,17 @@ function agregarRapido(codigoBusqueda) {
             }
 
             let metaInfo = [];
-            if (item.marca) metaInfo.push(`Marca: ${escapeHtml(item.marca)}`);
-            metaInfo.push(`Stock: <span class="${stockClass}">${item.stock}</span>`);
-            if (item.margenBajo && item.margenActual != null) {
-                metaInfo.push(`<span class="text-danger font-weight-bold">Margen: ${item.margenActual.toFixed(1)}%</span>`);
+            if (item.esServicio || item.servicioVariable) {
+                metaInfo.push('Servicio');
+                if (item.descripcion && item.descripcion !== item.nombre) {
+                    metaInfo.push(escapeHtml(item.descripcion));
+                }
+            } else {
+                if (item.marca) metaInfo.push(`Marca: ${escapeHtml(item.marca)}`);
+                metaInfo.push(`Stock: <span class="${stockClass}">${item.stock}</span>`);
+                if (item.margenBajo && item.margenActual != null) {
+                    metaInfo.push(`<span class="text-danger font-weight-bold">Margen: ${item.margenActual.toFixed(1)}%</span>`);
+                }
             }
 
             // Badge de ubicación visible
@@ -2537,7 +3713,7 @@ function agregarRapido(codigoBusqueda) {
                            (ubicBadge ? `<span class="d-block mt-1">${ubicBadge}</span>` : '');
 
             // === VALIDACIÓN DE CANTIDAD ===
-            let cantidadExcedeStock = item.cantidad > item.stock;
+            let cantidadExcedeStock = !(item.esServicio || item.servicioVariable) && item.cantidad > item.stock;
             let inputQtyClass = 'input-qty';
             let stockTooltip = '';
 
@@ -2545,7 +3721,7 @@ function agregarRapido(codigoBusqueda) {
                 inputQtyClass += ' is-invalid';
                 stockTooltip = `<span class="stock-tooltip">Máx: ${item.stock}</span>`;
                 cobrarBloqueado = true; // Bloquear cobro
-            } else if (item.stock <= 0 && item.cantidad > 0) {
+            } else if (!(item.esServicio || item.servicioVariable) && item.stock <= 0 && item.cantidad > 0) {
                 inputQtyClass += ' is-warning';
                 stockTooltip = `<span class="stock-tooltip" style="background:#ffc107;color:#333;">Sin stock</span>`;
             }
@@ -2617,7 +3793,10 @@ function agregarRapido(codigoBusqueda) {
         // Eliminar tooltip anterior si existe
         $td.find('.stock-tooltip').remove();
 
-        if (cantidad > stock && stock > 0) {
+        const item = carrito[index];
+        const esServicio = item && (item.esServicio || item.servicioVariable);
+
+        if (!esServicio && cantidad > stock && stock > 0) {
             // Cantidad excede stock disponible
             $input.addClass('is-invalid').removeClass('is-warning');
 
@@ -2627,7 +3806,7 @@ function agregarRapido(codigoBusqueda) {
 
             cobrarBloqueado = true;
             actualizarBotonCobrar();
-        } else if (stock <= 0 && cantidad > 0) {
+        } else if (!esServicio && stock <= 0 && cantidad > 0) {
             // Sin stock (advertencia para servicios)
             $input.addClass('is-warning').removeClass('is-invalid');
             cobrarBloqueado = false; // Permitir para servicios
@@ -2640,7 +3819,7 @@ function agregarRapido(codigoBusqueda) {
         }
 
         // Actualizar subtotal en tiempo real
-        let precio = carrito[index].precio;
+        let precio = item.precio;
         let subtotal = cantidad * precio;
         $input.closest('tr').find('td:eq(4)').text('S/ ' + subtotal.toFixed(2));
 
@@ -2684,7 +3863,7 @@ function agregarRapido(codigoBusqueda) {
         // Verificar si algún item excede el stock
         let hayErrorStock = false;
         carrito.forEach(item => {
-            if (item.cantidad > item.stock && item.stock > 0) {
+            if (!(item.esServicio || item.servicioVariable) && item.cantidad > item.stock && item.stock > 0) {
                 hayErrorStock = true;
             }
         });
@@ -2733,15 +3912,15 @@ function agregarRapido(codigoBusqueda) {
     function handleCantidadKey(e, index) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            
+
             // ENTER = SUMAR 1
             let input = document.getElementById(`cant_${index}`);
             let val = parseFloat(input.value) || 0;
-            
+
             carrito[index].cantidad = val + 1;
             dibujarCarrito(true, index);
         }
-        
+
         if (e.key === 'Tab') {
             e.preventDefault();
             // TAB = VOLVER AL BUSCADOR CON AUTOFOCUS ENTERPRISE
@@ -2760,7 +3939,7 @@ function agregarRapido(codigoBusqueda) {
 
         // Verificar si excede stock y actualizar botón cobrar
         let item = carrito[index];
-        if (cant > item.stock && item.stock > 0) {
+        if (!(item.esServicio || item.servicioVariable) && cant > item.stock && item.stock > 0) {
             cobrarBloqueado = true;
         } else {
             // Verificar todos los items
@@ -2877,7 +4056,7 @@ function agregarRapido(codigoBusqueda) {
             observaciones: 'Cotizacion generada desde el POS sin registrar venta.',
             items: carrito.map(i => ({
                 productoId: i.id,
-                descripcion: i.nombre,
+                descripcion: textoLineaVenta(i),
                 cantidad: parseFloat(i.cantidad),
                 precioVenta: parseFloat(i.precio)
             }))
@@ -2998,7 +4177,7 @@ function agregarRapido(codigoBusqueda) {
         }
 
         // Validación 4: Stock excedido (productos con stock > 0)
-        let stockExcedido = carrito.filter(i => i.cantidad > i.stock && i.stock > 0);
+        let stockExcedido = carrito.filter(i => !(i.esServicio || i.servicioVariable) && i.cantidad > i.stock && i.stock > 0);
         if (stockExcedido.length > 0) {
             let detalles = stockExcedido.map(i =>
                 `• ${i.nombre}: pides ${i.cantidad}, disponible ${i.stock}`
@@ -3104,7 +4283,12 @@ function agregarRapido(codigoBusqueda) {
             montoInicial: montoInicial,
             diasCredito: parseInt($("#diasCredito").val()) || 7,
             entregaAlFinal: entregaAlFinal,
-            items: carrito.map(i => ({ productoId: i.id, cantidad: i.cantidad, precioVenta: i.precio }))
+            items: carrito.map(i => ({
+                productoId: i.id,
+                descripcion: textoLineaVenta(i),
+                cantidad: i.cantidad,
+                precioVenta: i.precio
+            }))
         };
 
         // === ACTIVAR PROTECCIÓN DOBLE ENTER ===
@@ -3123,7 +4307,7 @@ function agregarRapido(codigoBusqueda) {
         const datosVentaWhatsApp = {
             cliente: dto.clienteNombre,
             total: totalVenta,
-            items: carrito.map(i => `${i.cantidad}x ${i.nombre}`).join('\n'),
+            items: carrito.map(i => `${i.cantidad}x ${textoLineaVenta(i)}`).join('\n'),
             tipoComprobante: dto.tipoComprobante
         };
 
@@ -3470,6 +4654,31 @@ function agregarRapido(codigoBusqueda) {
             cancelButtonText: 'Cerrar',
             focusConfirm: false,
             allowOutsideClick: false,
+            didOpen: () => {
+                const inputWhatsApp = document.getElementById('inputWhatsAppCelular');
+                if (inputWhatsApp) {
+                    inputWhatsApp.focus();
+                    inputWhatsApp.select();
+                }
+
+                const popup = Swal.getPopup();
+                if (popup) {
+                    popup.addEventListener('keydown', function(e) {
+                        if (e.key !== 'Enter') {
+                            return;
+                        }
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const celular = inputWhatsApp ? inputWhatsApp.value.trim() : '';
+                        if (celular) {
+                            Swal.clickConfirm();
+                        } else {
+                            Swal.clickDeny();
+                        }
+                    });
+                }
+            },
             customClass: {
                 confirmButton: 'btn btn-success btn-lg mr-2',
                 denyButton: 'btn btn-secondary btn-lg mr-2',
@@ -3812,6 +5021,314 @@ function agregarRapido(codigoBusqueda) {
             }
         });
     }
+
+    // =============================================
+    // GASTO RÁPIDO (RETIRO DE CAJA SIN SALIR DEL POS)
+    // =============================================
+    function abrirModalGastoRapido() {
+        $('#modalGastoRapido').modal('show');
+        setTimeout(() => $('#gastoMonto').focus(), 500);
+    }
+
+    function toggleConceptoGasto() {
+        if ($('#gastoPreset').val() === 'OTRO') {
+            $('#divConceptoOtro').slideDown();
+            setTimeout(() => $('#gastoConcepto').focus(), 300);
+        } else {
+            $('#divConceptoOtro').slideUp();
+        }
+    }
+
+    function registrarGastoRapido() {
+        const monto = parseFloat($('#gastoMonto').val()) || 0;
+        let concepto = $('#gastoConcepto').val() || '';
+        const preset = $('#gastoPreset').val();
+
+        if (monto <= 0) {
+            Swal.fire('Error', 'Ingrese un monto mayor a cero.', 'error');
+            return;
+        }
+
+        if (preset !== 'OTRO') {
+            concepto = preset;
+        }
+
+        if (!concepto || concepto.trim() === '') {
+            Swal.fire('Error', 'Debe indicar el concepto del gasto.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Registrando gasto...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: '/caja/movimiento',
+            type: 'POST',
+            data: {
+                tipo: 'EGRESO',
+                concepto: concepto.trim().toUpperCase(),
+                monto: monto,
+                categoria: preset === 'OTRO' ? 'OTRO_EGRESO' : preset
+            },
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Gasto registrado',
+                    text: 'El egreso se descontó correctamente de tu caja chica.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                $('#modalGastoRapido').modal('hide');
+                // Resetear campos
+                $('#gastoMonto').val('');
+                $('#gastoConcepto').val('');
+                $('#gastoPreset').val('ALMUERZO/REFRIGERIO');
+                $('#divConceptoOtro').hide();
+            },
+            error: function(err) {
+                Swal.fire('Error', 'No se pudo registrar el gasto en caja: ' + (err.responseText || 'Error desconocido'), 'error');
+            }
+        });
+    }
+
+    // =============================================
+    // PEDIR STOCK (REGISTRO RÁPIDO DE FALTANTE EN POS)
+    // =============================================
+    function abrirModalSolicitarStock() {
+        $('#modalSolicitarStock').modal('show');
+        setTimeout(() => $('#solicitudProductoNombre').focus(), 500);
+    }
+
+    function registrarSolicitudStockRapida() {
+        const producto = $('#solicitudProductoNombre').val() || '';
+
+        if (!producto || producto.trim().length < 2) {
+            Swal.fire('Error', 'Ingrese el nombre del producto solicitado (mínimo 2 letras).', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Registrando pedido...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: '/ventas/api/solicitar-stock',
+            type: 'POST',
+            data: {
+                producto: producto.trim()
+            },
+            success: function(resp) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pedido registrado',
+                    text: resp,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                $('#modalSolicitarStock').modal('hide');
+                $('#solicitudProductoNombre').val('');
+            },
+            error: function(err) {
+                Swal.fire('Error', 'No se pudo registrar la solicitud: ' + (err.responseText || 'Error desconocido'), 'error');
+            }
+        });
+    }
+
+    // =============================================
+    // ASISTENTE DE VUELTO (COIN/BILL BREAKDOWN)
+    // =============================================
+    function calcularVueltoAsistente() {
+        const total = parseFloat(carrito.reduce((acc, item) => acc + parseFloat(item.precio) * parseFloat(item.cantidad), 0).toFixed(2));
+        const montoTexto = ($('#swalMontoRecibido').val() || '').trim();
+        const displayVuelto = $('#swalVueltoDisplay');
+        const container = $('#swalBreakdownContainer');
+        const content = $('#swalBreakdownContent');
+
+        if (!montoTexto) {
+            displayVuelto.html('S/ 0.00');
+            container.addClass('d-none');
+            content.empty();
+            return;
+        }
+
+        const recibido = parseFloat(montoTexto) || 0;
+
+        if (recibido < total) {
+            displayVuelto.html('<span class="text-danger">Falta S/ ' + (total - recibido).toFixed(2) + '</span>');
+            container.addClass('d-none');
+            content.empty();
+            return;
+        }
+
+        const vuelto = parseFloat((recibido - total).toFixed(2));
+        displayVuelto.html('<span class="text-success">S/ ' + vuelto.toFixed(2) + '</span>');
+
+        if (vuelto === 0) {
+            container.addClass('d-none');
+            content.empty();
+            return;
+        }
+
+        // Greedy algorithm for breakdown
+        let centavos = Math.round(vuelto * 100);
+        const denominaciones = [
+            { valor: 20000, nombre: 'S/ 200', tipo: 'billete', color: '#b5a642' },
+            { valor: 10000, nombre: 'S/ 100', tipo: 'billete', color: '#2563eb' },
+            { valor: 5000, nombre: 'S/ 50', tipo: 'billete', color: '#d97706' },
+            { valor: 2000, nombre: 'S/ 20', tipo: 'billete', color: '#92400e' },
+            { valor: 1000, nombre: 'S/ 10', tipo: 'billete', color: '#16a34a' },
+            { valor: 500, nombre: 'S/ 5', tipo: 'moneda', color: '#6b7280' },
+            { valor: 200, nombre: 'S/ 2', tipo: 'moneda', color: '#6b7280' },
+            { valor: 100, nombre: 'S/ 1', tipo: 'moneda', color: '#6b7280' },
+            { valor: 50, nombre: '50 cént.', tipo: 'centimo', color: '#94a3b8' },
+            { valor: 20, nombre: '20 cént.', tipo: 'centimo', color: '#94a3b8' },
+            { valor: 10, nombre: '10 cént.', tipo: 'centimo', color: '#94a3b8' }
+        ];
+
+        let html = '';
+        for (let d of denominaciones) {
+            if (centavos >= d.valor) {
+                let cantidad = Math.floor(centavos / d.valor);
+                centavos = centavos % d.valor;
+
+                let badgeStyle = '';
+                if (d.tipo === 'billete') {
+                    badgeStyle = `background: ${d.color}; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; box-shadow: 1px 1px 3px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.1);`;
+                } else if (d.tipo === 'moneda') {
+                    badgeStyle = `background: #f1f5f9; color: #1e293b; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-size: 0.75rem; display: inline-flex; align-items: center; justify-content: center; border: 2px solid ${d.color}; box-shadow: 1px 1px 2px rgba(0,0,0,0.1);`;
+                } else {
+                    badgeStyle = `background: #f8fafc; color: #475569; padding: 2px 6px; border-radius: 50%; font-weight: bold; font-size: 0.7rem; border: 1.5px solid ${d.color}; display: inline-flex; align-items: center; justify-content: center;`;
+                }
+
+                html += `
+                <div style="display:inline-flex; align-items:center; margin-right:8px; margin-bottom:8px; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <span style="${badgeStyle}">${d.nombre}</span>
+                    <strong style="font-size:0.9rem; margin-left:6px; color:#1e293b;">x ${cantidad}</strong>
+                </div>`;
+            }
+        }
+
+        content.html(html);
+        container.removeClass('d-none');
+    }
+
+    function generarBotonesEfectivoRapido(total) {
+        const btnsContainer = $('#swalQuickCashBtns');
+        if (!btnsContainer.length) return;
+
+        btnsContainer.empty();
+
+        // Exact cash button
+        btnsContainer.append(`<button type="button" class="btn btn-sm btn-outline-success font-weight-bold" onclick="$('#swalMontoRecibido').val('${total.toFixed(2)}').trigger('input')">Exacto (S/ ${total.toFixed(2)})</button>`);
+
+        // Standard bill options
+        const opciones = [10, 20, 50, 100, 200];
+        let count = 0;
+        for (let op of opciones) {
+            if (op >= total) {
+                btnsContainer.append(`<button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold" onclick="$('#swalMontoRecibido').val('${op}.00').trigger('input')">S/ ${op}</button>`);
+                count++;
+            }
+            if (count >= 4) break;
+        }
+    }
 </script>
+
+<!-- Modal Gasto Rápido -->
+<div class="modal fade text-dark" id="modalGastoRapido" tabindex="-1" role="dialog" aria-labelledby="modalGastoRapidoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalGastoRapidoLabel">
+                    <i class="fas fa-minus-circle mr-2"></i>Registrar Gasto Rápido (Egreso de Caja)
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border small text-center mb-3">
+                    Use este asistente para registrar retiros de caja chica rápidos (agua, pasajes, comida, etc.) sin salir del POS.
+                </div>
+
+                <div class="form-group">
+                    <label class="font-weight-bold">1. Monto a retirar:</label>
+                    <div class="input-group input-group-lg">
+                        <div class="input-group-prepend"><span class="input-group-text font-weight-bold">S/</span></div>
+                        <input type="number" step="0.10" min="0.10" class="form-control text-center font-weight-bold" id="gastoMonto" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="font-weight-bold">2. Concepto o Categoría:</label>
+                    <select class="form-control" id="gastoPreset" onchange="toggleConceptoGasto()">
+                        <option value="ALMUERZO/REFRIGERIO">ALMUERZO / REFRIGERIO</option>
+                        <option value="LIMPIEZA">ARTÍCULOS DE LIMPIEZA</option>
+                        <option value="MOVILIDAD/PASAJES">MOVILIDAD / PASAJES</option>
+                        <option value="UTILES/PAPELERIA">ÚTILES / PAPELERÍA</option>
+                        <option value="OTRO">OTRO CONCEPTO (Escribir manual)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="divConceptoOtro" style="display: none;">
+                    <label class="font-weight-bold">Describa el concepto:</label>
+                    <input type="text" class="form-control" id="gastoConcepto" placeholder="Ej: Compra de focos para local">
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger font-weight-bold" onclick="registrarGastoRapido()">
+                    <i class="fas fa-check-circle"></i> REGISTRAR EGRESO
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pedir Stock (Solicitar Producto) -->
+<div class="modal fade text-dark" id="modalSolicitarStock" tabindex="-1" role="dialog" aria-labelledby="modalSolicitarStockLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalSolicitarStockLabel">
+                    <i class="fas fa-cart-plus mr-2"></i>Registrar Pedido de Cliente (Faltante)
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border small text-center mb-3">
+                    Use este asistente para registrar productos o libros que los clientes solicitaron y no tenemos en stock.
+                </div>
+
+                <div class="form-group">
+                    <label class="font-weight-bold">Nombre del Producto / Descripción:</label>
+                    <input type="text" class="form-control form-control-lg font-weight-bold text-uppercase" id="solicitudProductoNombre" placeholder="Ej: CARTULINA FLUORESCENTE A4" required autocomplete="off">
+                </div>
+
+                <div class="alert alert-info small mb-0">
+                    <i class="fas fa-info-circle mr-1"></i> Si el producto ya ha sido pedido por otros clientes, el sistema incrementará el contador automáticamente para priorizar su compra.
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success font-weight-bold" onclick="registrarSolicitudStockRapida()">
+                    <i class="fas fa-check-circle"></i> REGISTRAR PEDIDO
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

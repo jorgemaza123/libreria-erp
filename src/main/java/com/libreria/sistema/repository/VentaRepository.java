@@ -26,11 +26,17 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      * Lista ventas con items y productos pre-cargados (evita N+1).
      * Usar para listados donde se necesita acceder a los detalles.
      */
-    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
+    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity", "usuario"})
     @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
            "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
            "ORDER BY v.fechaEmision DESC")
     List<Venta> findByFechaEmisionBetweenWithDetalles(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
+
+    @EntityGraph(attributePaths = {"usuario"})
+    @Query("SELECT v FROM Venta v WHERE v.fechaEmision BETWEEN :inicio AND :fin " +
+           "AND (v.entregaPendiente = false OR v.entregaPendiente IS NULL) " +
+           "ORDER BY v.fechaEmision DESC")
+    List<Venta> findByFechaEmisionBetweenWithUsuario(@Param("inicio") LocalDate inicio, @Param("fin") LocalDate fin);
 
     /**
      * Lista ventas con items y productos para reportes paginados (evita N+1).
@@ -109,6 +115,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Listado paginado de todas las ventas (para UI de listados)
      */
+    @EntityGraph(attributePaths = {"clienteEntity"})
+    Page<Venta> findAllBy(Pageable pageable);
+
     @Query("SELECT v FROM Venta v ORDER BY v.fechaEmision DESC, v.id DESC")
     Page<Venta> findAllPaginated(Pageable pageable);
 
@@ -127,6 +136,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Búsqueda general paginada por término (serie-numero, cliente, documento)
      */
+    @EntityGraph(attributePaths = {"clienteEntity"})
     @Query("SELECT v FROM Venta v WHERE " +
            "CONCAT(v.serie, '-', CAST(v.numero AS string)) LIKE %:termino% " +
            "OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%')) " +
@@ -162,13 +172,15 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Deudas pendientes por DNI del cliente
      */
+    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
     @Query("SELECT v FROM Venta v WHERE v.clienteNumeroDocumento = :dni AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
     List<Venta> findDeudasPorDni(@Param("dni") String dni);
 
     /**
      * U-5: Buscar deudas por documento O nombre del cliente (búsqueda flexible)
      */
-    @Query("SELECT v FROM Venta v WHERE (v.clienteNumeroDocumento LIKE %:termino% OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%'))) AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
+    @EntityGraph(attributePaths = {"items", "items.producto", "clienteEntity"})
+    @Query("SELECT DISTINCT v FROM Venta v WHERE (v.clienteNumeroDocumento LIKE %:termino% OR LOWER(v.clienteDenominacion) LIKE LOWER(CONCAT('%', :termino, '%'))) AND v.saldoPendiente > 0 AND v.estado != 'ANULADO'")
     List<Venta> findDeudasPorTermino(@Param("termino") String termino);
 
     /**

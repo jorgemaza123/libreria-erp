@@ -478,7 +478,7 @@ public class ReporteService {
         crearFilaCabecera(sheet, headerStyle, "USUARIO", "NOMBRE", "CANT. VENTAS", "TOTAL VENTAS", "PROMEDIO");
 
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
-        List<Venta> lista = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> lista = ventaRepository.findByFechaEmisionBetweenWithUsuario(inicio, fin);
 
         // Agrupar por usuario
         var ventasPorUsuario = lista.stream()
@@ -516,7 +516,7 @@ public class ReporteService {
         crearFilaCabecera(sheet, headerStyle, "CODIGO", "PRODUCTO", "CANT. VENDIDA", "TOTAL VENTAS", "% DEL TOTAL");
 
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
 
         // Extraer todos los detalles y agrupar por producto
         var productosVendidos = ventas.stream()
@@ -660,7 +660,7 @@ public class ReporteService {
         agregarCabeceraPdf(table, config, "USUARIO", "NOMBRE", "VENTAS", "TOTAL", "PROMEDIO");
 
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
-        List<Venta> lista = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> lista = ventaRepository.findByFechaEmisionBetweenWithUsuario(inicio, fin);
 
         var ventasPorUsuario = lista.stream()
                 .filter(v -> v.getUsuario() != null)
@@ -700,7 +700,7 @@ public class ReporteService {
         agregarCabeceraPdf(table, config, "CODIGO", "PRODUCTO", "CANTIDAD", "TOTAL", "%");
 
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() + " " : "S/ ";
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
 
         var productosVendidos = ventas.stream()
                 .flatMap(v -> v.getItems().stream())

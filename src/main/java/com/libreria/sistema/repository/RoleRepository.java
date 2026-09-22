@@ -19,6 +19,9 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     boolean existsByNombre(String nombre);
 
+    @Query("SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.permissions ORDER BY r.nombre ASC")
+    List<Role> findAllWithPermissions();
+
     @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.id = :id")
     Optional<Role> findByIdWithPermissions(Long id);
 

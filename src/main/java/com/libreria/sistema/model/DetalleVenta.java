@@ -48,6 +48,36 @@ public class DetalleVenta {
     @Column(precision = 10, scale = 2)
     private BigDecimal utilidadTotal; // utilidadUnitaria * cantidad
 
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoIndirectoUnitario; // gastos fijos/depreciacion asignados al vender
+
+    @Column(precision = 12, scale = 4)
+    private BigDecimal costoTotalUnitario; // costoUnitario + costoIndirectoUnitario
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioMinimoSnapshot; // precio minimo calculado al vender
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal precioSugeridoSnapshot; // precio sugerido calculado al vender
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal montoReposicionTotal; // dinero que conviene separar para reponer lo vendido
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal utilidadNetaUnitaria; // precioUnitario - costoTotalUnitario
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal utilidadNetaTotal; // utilidadNetaUnitaria * cantidad
+
+    @Column(precision = 6, scale = 2)
+    private BigDecimal margenBrutoPct;
+
+    @Column(precision = 6, scale = 2)
+    private BigDecimal margenNetoPct;
+
+    @Column(length = 500)
+    private String reglaCosteoSnapshot;
+
     // Tipo de item y categoría (propagados desde cotización para rentabilidad)
     private String tipoItem; // PRODUCTO o SERVICIO
 

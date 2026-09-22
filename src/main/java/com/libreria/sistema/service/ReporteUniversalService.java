@@ -166,17 +166,20 @@ public class ReporteUniversalService {
 
         crearFilaCabecera(sheet, headerStyle, "RANKING", "CÓDIGO", "PRODUCTO", "CANT. VENDIDA", "TOTAL VENTAS", "% DEL TOTAL");
 
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
 
         // Agrupar por producto
         Map<Long, BigDecimal[]> productosVendidos = new LinkedHashMap<>();
+        Map<Long, Producto> productosPorId = new HashMap<>();
         BigDecimal totalGeneral = BigDecimal.ZERO;
 
         for (Venta v : ventas) {
             if (v.getItems() != null) {
                 for (var item : v.getItems()) {
+                    if (item.getProducto() == null) continue;
                     Long prodId = item.getProducto().getId();
+                    productosPorId.putIfAbsent(prodId, item.getProducto());
                     BigDecimal[] datos = productosVendidos.getOrDefault(prodId, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                     datos[0] = datos[0].add(item.getCantidad());
                     datos[1] = datos[1].add(item.getSubtotal());
@@ -193,7 +196,7 @@ public class ReporteUniversalService {
         int rowIdx = 1;
         int ranking = 1;
         for (Map.Entry<Long, BigDecimal[]> entry : sortedList) {
-            Producto prod = productoRepository.findById(entry.getKey()).orElse(null);
+            Producto prod = productosPorId.get(entry.getKey());
             if (prod == null) continue;
 
             BigDecimal cantidad = entry.getValue()[0];
@@ -278,7 +281,7 @@ public class ReporteUniversalService {
         CellStyle dataStyle = crearEstiloDatos(workbook);
         CellStyle moneyStyle = crearEstiloMoneda(workbook);
 
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithUsuario(inicio, fin);
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
 
         // Filtrar por usuario si se especifica
@@ -407,7 +410,7 @@ public class ReporteUniversalService {
 
         crearFilaCabecera(sheet, headerStyle, "FECHA", "COMPROBANTE", "PRODUCTO", "CANT", "P.COMPRA", "P.VENTA", "COSTO", "INGRESO", "GANANCIA", "% MARGEN");
 
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -611,14 +614,17 @@ public class ReporteUniversalService {
 
         agregarCabeceraTablaPdf(table, config, "#", "CÓDIGO", "PRODUCTO", "CANT. VENDIDA", "TOTAL");
 
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
 
         Map<Long, BigDecimal[]> productosVendidos = new LinkedHashMap<>();
+        Map<Long, Producto> productosPorId = new HashMap<>();
         for (Venta v : ventas) {
             if (v.getItems() != null) {
                 for (var item : v.getItems()) {
+                    if (item.getProducto() == null) continue;
                     Long prodId = item.getProducto().getId();
+                    productosPorId.putIfAbsent(prodId, item.getProducto());
                     BigDecimal[] datos = productosVendidos.getOrDefault(prodId, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                     datos[0] = datos[0].add(item.getCantidad());
                     datos[1] = datos[1].add(item.getSubtotal());
@@ -633,7 +639,7 @@ public class ReporteUniversalService {
         int ranking = 1;
         for (Map.Entry<Long, BigDecimal[]> entry : sortedList) {
             if (ranking > 20) break; // Top 20
-            Producto prod = productoRepository.findById(entry.getKey()).orElse(null);
+            Producto prod = productosPorId.get(entry.getKey());
             if (prod == null) continue;
 
             table.addCell(crearCeldaPdfCenter(String.valueOf(ranking++)));
@@ -665,7 +671,7 @@ public class ReporteUniversalService {
 
         agregarCabeceraTablaPdf(table, config, "FECHA", "DOC", "PRODUCTO", "CANT", "COSTO", "VENTA", "GANANCIA", "MARGEN");
 
-        List<Venta> ventas = ventaRepository.findByFechaEmisionBetween(inicio, fin);
+        List<Venta> ventas = ventaRepository.findByFechaEmisionBetweenWithDetalles(inicio, fin);
         String moneda = config.getFormatoMoneda() != null ? config.getFormatoMoneda() : "S/";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 

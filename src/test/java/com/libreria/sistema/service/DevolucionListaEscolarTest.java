@@ -114,6 +114,8 @@ class DevolucionListaEscolarTest {
 
         when(productoRepository.findById(10L)).thenReturn(Optional.of(producto1));
         when(productoRepository.findById(20L)).thenReturn(Optional.of(producto2));
+        when(productoRepository.findByIdWithLock(10L)).thenReturn(Optional.of(producto1));
+        when(productoRepository.findByIdWithLock(20L)).thenReturn(Optional.of(producto2));
         when(productoRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
 
         // Kardex
@@ -128,6 +130,24 @@ class DevolucionListaEscolarTest {
         ventaOriginal.setFormaPago("CONTADO");
         ventaOriginal.setSerie("B001");
         ventaOriginal.setNumero(55);
+
+        // Agregar DetalleVenta con producto1 y producto2 para que validarDevolucion los encuentre
+        DetalleVenta detalleVenta1 = new DetalleVenta();
+        detalleVenta1.setId(201L);
+        detalleVenta1.setProducto(producto1);
+        detalleVenta1.setCantidad(BigDecimal.ONE);
+        detalleVenta1.setPrecioUnitario(new BigDecimal("8.00"));
+        detalleVenta1.setSubtotal(new BigDecimal("8.00"));
+
+        DetalleVenta detalleVenta2 = new DetalleVenta();
+        detalleVenta2.setId(202L);
+        detalleVenta2.setProducto(producto2);
+        detalleVenta2.setCantidad(BigDecimal.ONE);
+        detalleVenta2.setPrecioUnitario(new BigDecimal("7.00"));
+        detalleVenta2.setSubtotal(new BigDecimal("7.00"));
+
+        ventaOriginal.getItems().add(detalleVenta1);
+        ventaOriginal.getItems().add(detalleVenta2);
 
         when(ventaRepository.findById(100L)).thenReturn(Optional.of(ventaOriginal));
         doNothing().when(ventaRepository).actualizarEstado(anyLong(), anyString());

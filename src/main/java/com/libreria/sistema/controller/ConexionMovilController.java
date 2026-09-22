@@ -1,6 +1,8 @@
 package com.libreria.sistema.controller;
 
 import com.libreria.sistema.service.ConexionMovilService;
+import com.libreria.sistema.service.ConexionMovilAccessTracker;
+import com.libreria.sistema.config.SslConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.CacheControl;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/conexion-movil")
@@ -22,6 +25,8 @@ import java.util.Map;
 public class ConexionMovilController {
 
     private final ConexionMovilService conexionMovilService;
+    private final ConexionMovilAccessTracker accessTracker;
+    private final SslConfigService sslConfigService;
 
     /**
      * Vista principal — muestra la IP guardada en BD (no recalcula).
@@ -30,11 +35,37 @@ public class ConexionMovilController {
     public String vistaConexionMovil(Model model) {
         String ip = conexionMovilService.obtenerIpConfigurada();
         String serverUrl = conexionMovilService.generarServerUrl();
+        String accesoMovilUrl = conexionMovilService.generarAccesoMovilUrl();
+        String pingUrl = conexionMovilService.generarPingUrl();
+        String pingTextoUrl = conexionMovilService.generarPingTextoUrl();
+        Map<String, Object> diagnostico = conexionMovilService.obtenerDiagnosticoConexion();
 
         model.addAttribute("serverUrl", serverUrl);
+        model.addAttribute("accesoMovilUrl", accesoMovilUrl);
+        model.addAttribute("pingUrl", pingUrl);
+        model.addAttribute("pingTextoUrl", pingTextoUrl);
+        model.addAttribute("qrCacheKey", System.currentTimeMillis());
+        model.addAttribute("httpDiagnosticoEnabled", diagnostico.get("httpDiagnosticoEnabled"));
+        model.addAttribute("httpDiagnosticoPort", diagnostico.get("httpDiagnosticoPort"));
+        model.addAttribute("httpDiagnosticoPingUrl", diagnostico.get("httpDiagnosticoPingUrl"));
+        model.addAttribute("httpDiagnosticoAccesoUrl", diagnostico.get("httpDiagnosticoAccesoUrl"));
         model.addAttribute("serverIp", ip);
+        model.addAttribute("ipGuardada", diagnostico.get("ipGuardada"));
         model.addAttribute("serverPort", conexionMovilService.getServerPort());
         model.addAttribute("sslEnabled", conexionMovilService.isSslEnabled());
+        model.addAttribute("networkDiagnostic", diagnostico);
+        model.addAttribute("ipMovilValida", diagnostico.get("ipEfectivaValida"));
+        model.addAttribute("ipGuardadaInternaDocker", diagnostico.get("ipGuardadaInternaDocker"));
+        model.addAttribute("dockerDetected", diagnostico.get("docker"));
+        model.addAttribute("hostIpEnv", diagnostico.get("hostIpEnv"));
+        model.addAttribute("mensajeDiagnostico", diagnostico.get("mensaje"));
+        model.addAttribute("mensajePuerto", diagnostico.get("mensajePuerto"));
+        model.addAttribute("comandoPruebaPuerto", diagnostico.get("comandoPruebaPuerto"));
+        model.addAttribute("comandoPruebaPuertoHttp", diagnostico.get("comandoPruebaPuertoHttp"));
+        model.addAttribute("comandoVerFirewallWindows", diagnostico.get("comandoVerFirewallWindows"));
+        model.addAttribute("comandoFirewallWindows", diagnostico.get("comandoFirewallWindows"));
+        model.addAttribute("comandoDockerPuertos", diagnostico.get("comandoDockerPuertos"));
+        model.addAttribute("comandoDockerRecrear", diagnostico.get("comandoDockerRecrear"));
 
         return "configuracion/red";
     }
@@ -45,7 +76,7 @@ public class ConexionMovilController {
     @GetMapping("/qr.png")
     @ResponseBody
     public ResponseEntity<byte[]> generarQrImage() {
-        String url = conexionMovilService.generarServerUrl();
+        String url = conexionMovilService.generarAccesoMovilUrl();
         byte[] qrBytes = conexionMovilService.generarQrCode(url, 300);
 
         if (qrBytes.length == 0) {
@@ -54,7 +85,39 @@ public class ConexionMovilController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
-                .cacheControl(CacheControl.noCache())
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .body(qrBytes);
+    }
+
+    @GetMapping("/qr-ping.png")
+    @ResponseBody
+    public ResponseEntity<byte[]> generarQrPingImage() {
+        String url = conexionMovilService.generarPingUrl();
+        byte[] qrBytes = conexionMovilService.generarQrCode(url, 260);
+
+        if (qrBytes.length == 0) {
+            return ResponseEntity.internalServerError().build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .body(qrBytes);
+    }
+
+    @GetMapping("/qr-http-ping.png")
+    @ResponseBody
+    public ResponseEntity<byte[]> generarQrHttpPingImage() {
+        String url = conexionMovilService.generarHttpDiagnosticoAccesoUrl();
+        byte[] qrBytes = conexionMovilService.generarQrCode(url, 260);
+
+        if (qrBytes.length == 0) {
+            return ResponseEntity.internalServerError().build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .cacheControl(CacheControl.noStore().mustRevalidate())
                 .body(qrBytes);
     }
 
@@ -67,12 +130,18 @@ public class ConexionMovilController {
     public ResponseEntity<Map<String, Object>> recalcularIp() {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
+            String ipAnterior = conexionMovilService.obtenerIpConfigurada();
             String nuevaIp = conexionMovilService.recalcularIp();
+            agregarAvisoCertificado(result, ipAnterior, nuevaIp);
             result.put("success", true);
             result.put("ip", nuevaIp);
             result.put("url", conexionMovilService.generarServerUrl());
             result.put("message", "IP detectada y guardada: " + nuevaIp);
             return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
         } catch (Exception e) {
             log.error("Error al recalcular IP", e);
             result.put("success", false);
@@ -90,20 +159,20 @@ public class ConexionMovilController {
     public ResponseEntity<Map<String, Object>> guardarIpManual(@RequestParam String ip) {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        // Validación básica de formato IPv4
-        if (ip == null || !ip.trim().matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
-            result.put("success", false);
-            result.put("error", "Formato de IP inválido. Use el formato: 192.168.1.100");
-            return ResponseEntity.badRequest().body(result);
-        }
-
         try {
+            String ipAnterior = conexionMovilService.obtenerIpConfigurada();
             conexionMovilService.guardarIpManual(ip);
+            String nuevaIp = ip.trim();
+            agregarAvisoCertificado(result, ipAnterior, nuevaIp);
             result.put("success", true);
-            result.put("ip", ip.trim());
+            result.put("ip", nuevaIp);
             result.put("url", conexionMovilService.generarServerUrl());
-            result.put("message", "IP guardada correctamente: " + ip.trim());
+            result.put("message", "IP guardada correctamente: " + nuevaIp);
             return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(result);
         } catch (Exception e) {
             log.error("Error al guardar IP manual", e);
             result.put("success", false);
@@ -122,9 +191,11 @@ public class ConexionMovilController {
             Map<String, Object> info = new LinkedHashMap<>();
             info.put("success", true);
             info.put("url", conexionMovilService.generarServerUrl());
+            info.put("accesoMovilUrl", conexionMovilService.generarAccesoMovilUrl());
             info.put("ip", conexionMovilService.obtenerIpConfigurada());
             info.put("port", conexionMovilService.getServerPort());
             info.put("sslEnabled", conexionMovilService.isSslEnabled());
+            info.put("diagnostico", conexionMovilService.obtenerDiagnosticoConexion());
             return ResponseEntity.ok(info);
         } catch (Exception e) {
             log.error("Error al obtener info de conexión", e);
@@ -142,7 +213,7 @@ public class ConexionMovilController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> apiQrBase64() {
         try {
-            String url = conexionMovilService.generarServerUrl();
+            String url = conexionMovilService.generarAccesoMovilUrl();
             String qrBase64 = conexionMovilService.generarQrCodeBase64(url, 300);
 
             Map<String, Object> result = new LinkedHashMap<>();
@@ -156,6 +227,24 @@ public class ConexionMovilController {
             error.put("success", false);
             error.put("error", e.getMessage());
             return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    @GetMapping("/api/ultimo-acceso")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> apiUltimoAcceso() {
+        return ResponseEntity.ok(accessTracker.obtenerResumen());
+    }
+
+    private void agregarAvisoCertificado(Map<String, Object> result, String ipAnterior, String nuevaIp) {
+        boolean cambioIp = !Objects.equals(ipAnterior, nuevaIp);
+        boolean requiereReinicio = cambioIp && conexionMovilService.isSslEnabled();
+        boolean certificadoPreparado = requiereReinicio && sslConfigService.prepararCertificadoParaIp(nuevaIp);
+        result.put("ipAnterior", ipAnterior);
+        result.put("requiereReinicioHttps", requiereReinicio);
+        result.put("certificadoPreparado", certificadoPreparado);
+        if (requiereReinicio) {
+            result.put("restartHint", "La IP cambió. Reinicie Docker para que HTTPS cargue el certificado nuevo.");
         }
     }
 }

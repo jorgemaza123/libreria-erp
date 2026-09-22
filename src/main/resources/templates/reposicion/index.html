@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='reposicion_ventas'">
+
+<head>
+    <title>Reposición y Ganancia</title>
+    <style>
+        .repo-kpi {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px 16px;
+            min-height: 96px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, .04);
+        }
+        .repo-kpi .label {
+            color: #6b7280;
+            font-size: .78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+        .repo-kpi .value {
+            font-weight: 900;
+            color: #111827;
+            font-size: 1.32rem;
+            line-height: 1.2;
+        }
+        .repo-kpi.repo-main { border-left: 4px solid #0f766e; }
+        .repo-kpi.repo-warn { border-left: 4px solid #b45309; }
+        .repo-kpi.repo-good { border-left: 4px solid #15803d; }
+        .repo-kpi.repo-risk { border-left: 4px solid #b91c1c; }
+        .repo-table th { white-space: nowrap; font-size: .78rem; }
+        .repo-table td { vertical-align: middle; font-size: .84rem; }
+        .repo-priority {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: .74rem;
+            font-weight: 800;
+        }
+        .repo-priority.urgente { background: #fee2e2; color: #991b1b; }
+        .repo-priority.alta { background: #fef3c7; color: #92400e; }
+        .repo-priority.media { background: #dbeafe; color: #1e40af; }
+        .repo-priority.baja { background: #e5e7eb; color: #374151; }
+        .repo-buy-block {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: .72rem;
+            font-weight: 800;
+        }
+        .repo-buy-block.urgent { background: #fee2e2; color: #991b1b; }
+        .repo-buy-block.cash { background: #ecfdf5; color: #166534; }
+        .repo-selection-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fffbeb;
+        }
+        .repo-filter {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        @media (max-width: 767.98px) {
+            .repo-kpi .value { font-size: 1.05rem; }
+            .repo-filter .btn { width: 100%; margin-top: 6px; }
+        }
+    </style>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2 align-items-center">
+                <div class="col-sm-7">
+                    <h1 class="mb-0"><i class="fas fa-box-open text-warning mr-2"></i>Reposición y Ganancia</h1>
+                    <small class="text-muted">Del <span th:text="${inicioFmt}">01/01/2026</span> al <span th:text="${finFmt}">31/01/2026</span></small>
+                </div>
+                <div class="col-sm-5">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Reposición</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="repo-filter mb-3">
+                <form class="row align-items-end" method="get">
+                    <div class="col-md-3">
+                        <label class="small font-weight-bold text-muted mb-1">Desde</label>
+                        <input type="date" name="inicio" class="form-control" th:value="${inicio}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small font-weight-bold text-muted mb-1">Hasta</label>
+                        <input type="date" name="fin" class="form-control" th:value="${fin}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small font-weight-bold text-muted mb-1">Buscar pendiente</label>
+                        <input id="filtroPendientes" class="form-control" placeholder="Producto, código, categoría">
+                    </div>
+                    <div class="col-md-3 text-right">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-calendar-check mr-1"></i>Aplicar</button>
+                        <a href="/reposicion/exportar/excel" class="btn btn-success"><i class="fas fa-file-excel mr-1"></i>Excel agrupado</a>
+                        <a href="/reposicion/exportar/pdf" class="btn btn-outline-danger"><i class="fas fa-file-pdf mr-1"></i>PDF</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-main">
+                        <div class="label">Vendido</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.ventaTotal, 1, 2)}">0.00</span></div>
+                        <small class="text-muted"><span th:text="${resumen.ventas}">0</span> ventas</small>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-warn">
+                        <div class="label">Separar reposición</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.reposicionVendida, 1, 2)}">0.00</span></div>
+                        <small class="text-muted">Costo de lo vendido</small>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-good">
+                        <div class="label">Ganancia bruta</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.gananciaBruta, 1, 2)}">0.00</span></div>
+                        <small class="text-muted">Antes de fijos</small>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-risk">
+                        <div class="label">Indirectos asignados</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.costosIndirectos, 1, 2)}">0.00</span></div>
+                        <small class="text-muted">Fijos/depreciación</small>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-good">
+                        <div class="label">Ganancia neta est.</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.gananciaNetaEstimada, 1, 2)}">0.00</span></div>
+                        <small class="text-muted">Después de indirectos</small>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-3">
+                    <div class="repo-kpi repo-warn">
+                        <div class="label">Pendiente vivo</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.montoPendienteReposicion, 1, 2)}">0.00</span></div>
+                        <small class="text-muted"><span th:text="${#numbers.formatDecimal(resumen.cantidadPendiente, 1, 2)}">0</span> uds</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-outline card-warning">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-shopping-basket mr-1"></i>Tabla viva para comprar</h3>
+                    <div class="card-tools">
+                        <button type="button" id="btnCompraSeleccionada" class="btn btn-primary btn-sm" disabled>
+                            <i class="fas fa-cart-plus mr-1"></i>Crear compra (<span id="repoSeleccionadosCount">0</span>)
+                        </button>
+                        <a href="/compras/nueva" class="btn btn-warning btn-sm"><i class="fas fa-plus mr-1"></i>Registrar compra</a>
+                    </div>
+                </div>
+                <div class="repo-selection-bar">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="repoCheckAll">
+                        <label class="custom-control-label font-weight-bold" for="repoCheckAll">Seleccionar pendientes visibles</label>
+                    </div>
+                    <small class="text-muted">La compra se abre prellenada; eliges proveedor, revisas costos y recien guardas.</small>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover table-sm repo-table mb-0" id="tablaPendientes">
+                        <thead class="thead-light">
+                        <tr>
+                            <th width="44"></th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-right">Pendiente</th>
+                            <th class="text-right">Sug. compra</th>
+                            <th>Presentación</th>
+                            <th>Compra</th>
+                            <th class="text-right">Separar S/</th>
+                            <th class="text-right">Venta acum.</th>
+                            <th class="text-right">G. bruta</th>
+                            <th class="text-right">G. neta est.</th>
+                            <th>Prioridad</th>
+                            <th>Última venta</th>
+                            <th>Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(pendientes)}">
+                            <td colspan="15" class="text-center text-muted py-4">No hay productos pendientes de reponer.</td>
+                        </tr>
+                        <tr th:each="p : ${pendientes}"
+                            th:data-texto="${(p.codigoInterno ?: '') + ' ' + p.nombre + ' ' + (p.categoria ?: '')}"
+                            th:data-id="${p.id}"
+                            th:data-cantidad="${p.cantidadPendiente}"
+                            th:data-monto="${p.montoReposicionPendiente}"
+                            th:data-prioridad="${p.prioridad}"
+                            th:data-sugerida="${p.cantidadSugeridaCompra}"
+                            th:data-presentacion="${p.presentacionRecomendada}"
+                            th:data-bloque="${p.bloqueCompra}"
+                            th:data-notas="${p.notas}">
+                            <td class="text-center">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input repo-check"
+                                           th:id="${'repoCheck' + p.id}"
+                                           th:value="${p.id}">
+                                    <label class="custom-control-label" th:for="${'repoCheck' + p.id}"></label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="font-weight-bold" th:text="${p.nombre}">Producto</div>
+                                <small class="text-muted" th:text="${p.codigoInterno ?: 'Sin código'}">SKU</small>
+                                <div class="small text-muted">
+                                    Proveedor: <span th:text="${p.proveedorSugerido ?: 'Sin proveedor reciente'}">Sin proveedor reciente</span>
+                                </div>
+                            </td>
+                            <td th:text="${p.categoria ?: '-'}">-</td>
+                            <td class="text-center">
+                                <span th:class="${p.stockActual <= p.stockMinimo ? 'badge badge-warning' : 'badge badge-light'}"
+                                      th:text="${p.stockActual}">0</span>
+                            </td>
+                            <td class="text-right font-weight-bold" th:text="${#numbers.formatDecimal(p.cantidadPendiente, 1, 2)}">0</td>
+                            <td class="text-right">
+                                <strong th:text="${#numbers.formatDecimal(p.cantidadSugeridaCompra, 1, 0)}">0</strong>
+                                <div class="small text-muted">
+                                    7d <span th:text="${#numbers.formatDecimal(p.venta7Dias, 1, 1)}">0</span> ·
+                                    30d <span th:text="${#numbers.formatDecimal(p.venta30Dias, 1, 1)}">0</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-info" th:text="${p.presentacionRecomendada ?: 'UNIDAD'}">UNIDAD</span>
+                            </td>
+                            <td>
+                                <span th:class="${p.bloqueCompra == 'REPONER_URGENTE' ? 'repo-buy-block urgent' : 'repo-buy-block cash'}"
+                                      th:text="${p.bloqueCompra == 'REPONER_URGENTE' ? 'Urgente' : 'Cuando haya caja'}">Urgente</span>
+                            </td>
+                            <td class="text-right text-warning font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(p.montoReposicionPendiente, 1, 2)}">0.00</span></td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(p.montoVentaAcumulado, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-success">S/ <span th:text="${#numbers.formatDecimal(p.utilidadBrutaAcumulada, 1, 2)}">0.00</span></td>
+                            <td class="text-right font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(p.utilidadNetaEstimadaAcumulada, 1, 2)}">0.00</span></td>
+                            <td>
+                                <span th:class="${p.prioridad == 'URGENTE' ? 'repo-priority urgente' : (p.prioridad == 'ALTA' ? 'repo-priority alta' : (p.prioridad == 'BAJA' ? 'repo-priority baja' : 'repo-priority media'))}"
+                                      th:text="${p.prioridad}">MEDIA</span>
+                            </td>
+                            <td>
+                                <span th:if="${p.ultimaVenta != null}" th:text="${#temporals.format(p.ultimaVenta, 'dd/MM HH:mm')}">-</span>
+                                <span th:unless="${p.ultimaVenta != null}" class="text-muted">-</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-xs js-editar-repo"><i class="fas fa-pen"></i></button>
+                                <button class="btn btn-success btn-xs js-marcar-repuesto"><i class="fas fa-check"></i></button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i>Qué se vendió en el periodo</h3>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-sm table-hover repo-table mb-0">
+                        <thead class="thead-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-right">Cantidad</th>
+                            <th class="text-right">Venta</th>
+                            <th class="text-right">Reposición</th>
+                            <th class="text-right">G. bruta</th>
+                            <th class="text-right">Indirectos</th>
+                            <th class="text-right">G. neta</th>
+                            <th class="text-right">Margen neto</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(ventasProducto)}">
+                            <td colspan="9" class="text-center text-muted py-4">No hay ventas en este periodo.</td>
+                        </tr>
+                        <tr th:each="v : ${ventasProducto}">
+                            <td>
+                                <div class="font-weight-bold" th:text="${v.nombre}">Producto</div>
+                                <small class="text-muted" th:text="${v.codigoInterno ?: 'Sin código'}">SKU</small>
+                            </td>
+                            <td th:text="${v.categoria ?: '-'}">-</td>
+                            <td class="text-right" th:text="${#numbers.formatDecimal(v.cantidad, 1, 2)}">0</td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(v.venta, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-warning">S/ <span th:text="${#numbers.formatDecimal(v.reposicion, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-success">S/ <span th:text="${#numbers.formatDecimal(v.gananciaBruta, 1, 2)}">0.00</span></td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(v.costosIndirectos, 1, 2)}">0.00</span></td>
+                            <td class="text-right font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(v.gananciaNeta, 1, 2)}">0.00</span></td>
+                            <td class="text-right" th:text="${#numbers.formatDecimal(v.margenNetoPct, 1, 1)} + '%'">0%</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalRepo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-pen mr-1"></i>Editar reposición</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="repoId">
+                    <div class="form-group">
+                        <label>Cantidad pendiente</label>
+                        <input type="number" min="0" step="0.001" id="repoCantidad" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Monto a separar</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                            <input type="number" min="0" step="0.01" id="repoMonto" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Prioridad</label>
+                        <select id="repoPrioridad" class="form-control">
+                            <option value="URGENTE">Urgente</option>
+                            <option value="ALTA">Alta</option>
+                            <option value="MEDIA">Media</option>
+                            <option value="BAJA">Baja</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas</label>
+                        <textarea id="repoNotas" rows="2" class="form-control" placeholder="Ej: comprar por docena, esperar proveedor, revisar color"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="btnGuardarRepo"><i class="fas fa-save mr-1"></i>Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        function repoIdsSeleccionados() {
+            return $('.repo-check:checked').map(function () {
+                return $(this).val();
+            }).get();
+        }
+
+        function repoActualizarSeleccion() {
+            const ids = repoIdsSeleccionados();
+            $('#repoSeleccionadosCount').text(ids.length);
+            $('#btnCompraSeleccionada').prop('disabled', ids.length === 0);
+            const visibles = $('.repo-check').filter(function () {
+                return $(this).closest('tr').is(':visible');
+            });
+            const visiblesMarcados = visibles.filter(':checked');
+            $('#repoCheckAll').prop('checked', visibles.length > 0 && visibles.length === visiblesMarcados.length);
+        }
+
+        $('#filtroPendientes').on('input', function () {
+            const q = ($(this).val() || '').toLowerCase();
+            $('#tablaPendientes tbody tr').each(function () {
+                const texto = ($(this).data('texto') || '').toString().toLowerCase();
+                $(this).toggle(!q || texto.includes(q));
+            });
+            repoActualizarSeleccion();
+        });
+
+        $('#repoCheckAll').on('change', function () {
+            const marcado = this.checked;
+            $('.repo-check').each(function () {
+                if ($(this).closest('tr').is(':visible')) {
+                    $(this).prop('checked', marcado);
+                }
+            });
+            repoActualizarSeleccion();
+        });
+
+        $('#tablaPendientes').on('change', '.repo-check', repoActualizarSeleccion);
+
+        $('#btnCompraSeleccionada').on('click', function () {
+            const ids = repoIdsSeleccionados();
+            if (!ids.length) {
+                Swal.fire('Selecciona productos', 'Marca al menos un pendiente para crear la compra.', 'warning');
+                return;
+            }
+            const params = ids.map(id => 'reposicionIds=' + encodeURIComponent(id)).join('&');
+            window.location.href = '/compras/nueva?' + params;
+        });
+
+        $('.js-editar-repo').on('click', function () {
+            const row = $(this).closest('tr');
+            $('#repoId').val(row.data('id'));
+            $('#repoCantidad').val(row.data('cantidad'));
+            $('#repoMonto').val(row.data('monto'));
+            $('#repoPrioridad').val(row.data('prioridad') || 'MEDIA');
+            $('#repoNotas').val(row.data('notas') || '');
+            $('#modalRepo').modal('show');
+        });
+
+        $('#btnGuardarRepo').on('click', function () {
+            const id = $('#repoId').val();
+            const payload = {
+                cantidadPendiente: $('#repoCantidad').val(),
+                montoReposicionPendiente: $('#repoMonto').val(),
+                prioridad: $('#repoPrioridad').val(),
+                notas: $('#repoNotas').val()
+            };
+            $.ajax({
+                url: '/reposicion/api/' + id + '/actualizar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload)
+            }).done(function () {
+                Swal.fire('Actualizado', 'La reposición quedó ajustada.', 'success')
+                    .then(() => window.location.reload());
+            }).fail(function (xhr) {
+                Swal.fire('No se pudo guardar', (xhr.responseJSON && xhr.responseJSON.error) || 'Revisa los datos.', 'error');
+            });
+        });
+
+        $('.js-marcar-repuesto').on('click', function () {
+            const id = $(this).closest('tr').data('id');
+            Swal.fire({
+                title: 'Marcar como repuesto',
+                text: 'Esto quita el producto de la tabla viva. Si registras una compra del producto también se descuenta automáticamente.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Marcar',
+                cancelButtonText: 'Cancelar'
+            }).then(function (res) {
+                if (!res.isConfirmed) return;
+                $.post('/reposicion/api/' + id + '/marcar-repuesto')
+                    .done(function () {
+                        Swal.fire('Listo', 'Producto marcado como repuesto.', 'success')
+                            .then(() => window.location.reload());
+                    })
+                    .fail(function (xhr) {
+                        Swal.fire('No se pudo marcar', (xhr.responseJSON && xhr.responseJSON.error) || 'Intenta nuevamente.', 'error');
+                    });
+            });
+        });
+
+        repoActualizarSeleccion();
+    </script>
+</th:block>
+</body>
+</html>

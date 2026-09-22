@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}" th:with="active='costeo'">
+
+<head>
+    <title>Costeo y Precios</title>
+    <style>
+        .costeo-toolbar {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .metric-soft {
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #0f766e;
+            background: #fff;
+            border-radius: 8px;
+            padding: 14px 16px;
+            min-height: 92px;
+        }
+        .metric-soft .label {
+            color: #6b7280;
+            font-size: .78rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+        .metric-soft .value {
+            color: #111827;
+            font-size: 1.35rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        .costeo-table th {
+            white-space: nowrap;
+            font-size: .78rem;
+        }
+        .costeo-table td {
+            vertical-align: middle;
+            font-size: .84rem;
+        }
+        .rule-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            padding: 4px 9px;
+            font-size: .75rem;
+            font-weight: 700;
+        }
+        .decision-cell {
+            min-width: 170px;
+        }
+        .sticky-actions {
+            position: sticky;
+            right: 0;
+            background: #fff;
+            box-shadow: -8px 0 12px rgba(255,255,255,.88);
+        }
+        .costeo-selection-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #f8fafc;
+        }
+        .history-metric {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fff;
+            min-height: 78px;
+        }
+        .history-metric .label {
+            color: #6b7280;
+            font-size: .72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+        .history-metric .value {
+            color: #111827;
+            font-weight: 900;
+            font-size: 1.05rem;
+        }
+        .history-chart-wrap {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+            height: 230px;
+        }
+        #historialCostosCanvas {
+            width: 100%;
+            height: 200px;
+        }
+        @media (max-width: 767.98px) {
+            .metric-soft .value { font-size: 1.05rem; }
+            .costeo-toolbar .btn { margin-top: 6px; width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2 align-items-center">
+                <div class="col-sm-7">
+                    <h1 class="mb-0"><i class="fas fa-balance-scale text-teal mr-2"></i>Costeo y Precios</h1>
+                    <small class="text-muted">Reglas de costos indirectos, precio sugerido y diferencias para revisar con contador.</small>
+                </div>
+                <div class="col-sm-5">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                        <li class="breadcrumb-item active">Costeo</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="metric-soft">
+                        <div class="label">Costos fijos en precio</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.totalMensualCosteo, 1, 2)}">0.00</span></div>
+                        <small class="text-muted"><span th:text="${resumen.cuentasCosteo}">0</span> reglas activas</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="metric-soft" style="border-left-color:#b45309">
+                        <div class="label">Precios a revisar</div>
+                        <div class="value" th:text="${resumen.productosBajoPrecio}">0</div>
+                        <small class="text-muted">Debajo de mínimo o sugerido</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="metric-soft" style="border-left-color:#991b1b">
+                        <div class="label">Productos sin costo</div>
+                        <div class="value" th:text="${resumen.productosSinCosto}">0</div>
+                        <small class="text-muted">Necesitan regularización</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="metric-soft" style="border-left-color:#1d4ed8">
+                        <div class="label">Brecha de precios</div>
+                        <div class="value">S/ <span th:text="${#numbers.formatDecimal(resumen.diferenciaNecesaria, 1, 2)}">0.00</span></div>
+                        <small class="text-muted">Suma referencial a corregir</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="costeo-toolbar mb-3">
+                <div class="row align-items-end">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="small font-weight-bold text-muted mb-1">Buscar producto</label>
+                        <input id="filtroCosteo" class="form-control" placeholder="Nombre, código, categoría">
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="small font-weight-bold text-muted mb-1">Categoría</label>
+                        <select id="filtroCategoriaCosteo" class="form-control">
+                            <option value="">Todas</option>
+                            <option th:each="cat : ${categorias}" th:value="${cat}" th:text="${cat}"></option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="small font-weight-bold text-muted mb-1">Estado precio</label>
+                        <select id="filtroEstadoCosteo" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="PERDIDA">Pierde</option>
+                            <option value="BAJO">Bajo mínimo</option>
+                            <option value="SUBIR">Conviene subir</option>
+                            <option value="SIN_PRECIO">Sin precio</option>
+                            <option value="OK">Saludable</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6 text-right">
+                        <a href="/costeo/exportar/excel" class="btn btn-success">
+                            <i class="fas fa-file-excel mr-1"></i>Excel contador
+                        </a>
+                        <a href="/costeo/exportar/pdf" class="btn btn-outline-danger">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-outline card-danger mb-3">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-exclamation-triangle mr-1"></i>Productos vendidos debajo del minimo</h3>
+                    <div class="card-tools">
+                        <span class="badge badge-light">Mes actual</span>
+                    </div>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="thead-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoria</th>
+                            <th class="text-right">Cant.</th>
+                            <th class="text-right">Ingreso</th>
+                            <th class="text-right">Utilidad neta</th>
+                            <th class="text-right">P. vendido</th>
+                            <th class="text-right">P. minimo</th>
+                            <th class="text-right">Veces</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(ventasDebajoMinimo)}">
+                            <td colspan="8" class="text-center text-muted py-3">No hay ventas debajo del minimo en el mes actual.</td>
+                        </tr>
+                        <tr th:each="v : ${ventasDebajoMinimo}">
+                            <td>
+                                <div class="font-weight-bold" th:text="${v.nombre}">Producto</div>
+                                <small class="text-muted" th:text="${v.codigoInterno ?: 'Sin codigo'}">SKU</small>
+                            </td>
+                            <td th:text="${v.categoria ?: '-'}">-</td>
+                            <td class="text-right" th:text="${#numbers.formatDecimal(v.cantidad, 1, 2)}">0</td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(v.ingreso, 1, 2)}">0.00</span></td>
+                            <td class="text-right font-weight-bold" th:classappend="${v.utilidadNeta < 0 ? ' text-danger' : ' text-warning'}">S/ <span th:text="${#numbers.formatDecimal(v.utilidadNeta, 1, 2)}">0.00</span></td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(v.precioVendidoMin, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-danger">S/ <span th:text="${#numbers.formatDecimal(v.precioMinimo, 1, 2)}">0.00</span></td>
+                            <td class="text-right" th:text="${v.veces}">0</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer small text-muted">
+                    Vista de productos que me hacen perder plata o dejan margen por debajo del minimo configurado.
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-xl-4 mb-3">
+                    <div class="card card-outline card-teal h-100">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-sliders-h mr-1"></i>Regla de costo</h3>
+                        </div>
+                        <div class="card-body">
+                            <input type="hidden" id="cuentaId">
+                            <div class="form-group">
+                                <label>Nombre</label>
+                                <input id="cuentaNombre" class="form-control" placeholder="Ej: Alquiler local, luz, IA, depreciación impresora">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Monto mensual</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">S/</span></div>
+                                            <input type="number" min="0" step="0.01" id="cuentaMonto" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>% al precio</label>
+                                        <div class="input-group">
+                                            <input type="number" min="0" max="100" step="0.01" id="cuentaPorcentaje" class="form-control" value="100">
+                                            <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Tipo</label>
+                                        <select id="cuentaTipo" class="form-control">
+                                            <option value="FIJO">Fijo</option>
+                                            <option value="DEPRECIACION">Depreciación</option>
+                                            <option value="PERSONAL">Sueldo / personal</option>
+                                            <option value="SERVICIO">Servicio</option>
+                                            <option value="FINANCIERO">Banco / financiero</option>
+                                            <option value="VARIABLE">Variable</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Reparto</label>
+                                        <select id="cuentaRegla" class="form-control">
+                                            <option value="UNIDADES">Por unidad vendida</option>
+                                            <option value="VENTAS_ESPERADAS">Por meta de ventas</option>
+                                            <option value="COSTO_COMPRA">Según costo de compra</option>
+                                            <option value="CATEGORIA">Solo categoría</option>
+                                            <option value="TIEMPO">Por tiempo de trabajo</option>
+                                            <option value="IMPRESION">Por impresión</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Categoría destino</label>
+                                <input id="cuentaCategoriaObjetivo" class="form-control" placeholder="Vacío = todos. Ej: IMPRESIONES, FLORES, SUBLIMACION">
+                            </div>
+                            <div class="form-group">
+                                <label>Base mensual</label>
+                                <input type="number" min="0" step="0.01" id="cuentaBase" class="form-control" placeholder="Unidades, soles, minutos o impresiones según regla">
+                                <small class="text-muted">Si lo dejas en cero, el sistema usa ventas del mes o una base prudente.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Notas</label>
+                                <textarea id="cuentaNotas" rows="2" class="form-control" placeholder="Ej: impresora S/ 1200 a 24 meses, o pago mensual de IA"></textarea>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="cuentaIncluirCosteo" checked>
+                                    <label class="custom-control-label" for="cuentaIncluirCosteo">Entra al precio</label>
+                                </div>
+                                <button class="btn btn-primary" id="btnGuardarCuenta"><i class="fas fa-save mr-1"></i>Guardar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-8 mb-3">
+                    <div class="card card-outline card-secondary h-100">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-list mr-1"></i>Reglas configuradas</h3>
+                        </div>
+                        <div class="card-body p-0 table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Reparto</th>
+                                    <th>Destino</th>
+                                    <th class="text-right">Mensual</th>
+                                    <th class="text-right">% precio</th>
+                                    <th class="text-center">Estado</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:if="${#lists.isEmpty(cuentas)}">
+                                    <td colspan="7" class="text-center text-muted py-4">Aún no hay reglas. Empieza con alquiler, luz, internet, IA, sueldo y depreciación.</td>
+                                </tr>
+                                <tr th:each="c : ${cuentas}"
+                                    class="js-cuenta"
+                                    th:data-id="${c.id}"
+                                    th:data-nombre="${c.nombre}"
+                                    th:data-monto="${c.montoMensual}"
+                                    th:data-categoria="${c.categoria}"
+                                    th:data-tipo="${c.tipoCosto ?: 'FIJO'}"
+                                    th:data-regla="${c.reglaReparto ?: 'UNIDADES'}"
+                                    th:data-destino="${c.categoriaObjetivo}"
+                                    th:data-base="${c.baseMensual ?: 0}"
+                                    th:data-porcentaje="${c.porcentajeUsoCosteo ?: 100}"
+                                    th:data-incluir="${c.incluirEnCosteo == null ? true : c.incluirEnCosteo}"
+                                    th:data-notas="${c.notas}">
+                                    <td>
+                                        <button class="btn btn-link btn-sm p-0 js-editar-cuenta" th:text="${c.nombre}">Cuenta</button>
+                                        <div class="text-muted small" th:text="${c.categoria ?: '-'}">-</div>
+                                    </td>
+                                    <td><span class="badge badge-light" th:text="${c.tipoCosto ?: 'FIJO'}">FIJO</span></td>
+                                    <td><span class="rule-pill"><i class="fas fa-random"></i><span th:text="${c.reglaReparto ?: 'UNIDADES'}">UNIDADES</span></span></td>
+                                    <td th:text="${c.categoriaObjetivo ?: 'Todos'}">Todos</td>
+                                    <td class="text-right font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(c.montoMensual, 1, 2)}">0.00</span></td>
+                                    <td class="text-right" th:text="${#numbers.formatDecimal(c.porcentajeUsoCosteo ?: 100, 1, 2)} + '%'">100%</td>
+                                    <td class="text-center">
+                                        <span th:if="${c.activa and (c.incluirEnCosteo == null or c.incluirEnCosteo)}" class="badge badge-success">ACTIVA</span>
+                                        <span th:if="${c.activa and c.incluirEnCosteo != null and not c.incluirEnCosteo}" class="badge badge-warning">NO COSTEA</span>
+                                        <span th:unless="${c.activa}" class="badge badge-secondary">INACTIVA</span>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-tags mr-1"></i>Decisión de precios por producto</h3>
+                    <div class="card-tools">
+                        <button type="button" id="btnAplicarCosteoSeleccionados" class="btn btn-success btn-sm" disabled>
+                            <i class="fas fa-check-double mr-1"></i>Aplicar seleccionados (<span id="costeoSeleccionadosCount">0</span>)
+                        </button>
+                    </div>
+                </div>
+                <div class="costeo-selection-bar">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="costeoCheckAll">
+                        <label class="custom-control-label font-weight-bold" for="costeoCheckAll">Seleccionar productos visibles</label>
+                    </div>
+                    <small class="text-muted">Aplica el precio sugerido solo despues de confirmar. Usa filtros para armar el lote.</small>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover table-sm costeo-table mb-0" id="tablaCosteo">
+                        <thead class="thead-light">
+                        <tr>
+                            <th width="44"></th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-right">Costo compra</th>
+                            <th class="text-right">Indirecto</th>
+                            <th class="text-right">Costo total</th>
+                            <th class="text-right">Mínimo</th>
+                            <th class="text-right">Sugerido</th>
+                            <th class="text-right">Actual</th>
+                            <th>Estado</th>
+                            <th>Guía</th>
+                            <th class="sticky-actions">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="p : ${productos}"
+                            th:data-producto-id="${p.productoId}"
+                            th:data-texto="${(p.codigoInterno ?: '') + ' ' + p.nombre + ' ' + (p.categoria ?: '')}"
+                            th:data-categoria="${p.categoria}"
+                            th:data-estado="${p.estadoPrecio}">
+                            <td class="text-center">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input costeo-check"
+                                           th:id="${'costeoCheck' + p.productoId}"
+                                           th:value="${p.productoId}">
+                                    <label class="custom-control-label" th:for="${'costeoCheck' + p.productoId}"></label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="font-weight-bold" th:text="${p.nombre}">Producto</div>
+                                <small class="text-muted">
+                                    <span th:text="${p.codigoInterno ?: 'Sin código'}">SKU</span>
+                                    · Stock <span th:text="${p.stockActual ?: 0}">0</span>
+                                </small>
+                                <div th:if="${!#strings.isEmpty(p.datosFaltantes)}" class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i> <span th:text="${p.datosFaltantes}">faltante</span>
+                                </div>
+                            </td>
+                            <td th:text="${p.categoria ?: '-'}">-</td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(p.costoDirectoUnitario, 1, 2)}">0.00</span></td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(p.costoIndirectoUnitario, 1, 2)}">0.00</span></td>
+                            <td class="text-right font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(p.costoTotalUnitario, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-warning">S/ <span th:text="${#numbers.formatDecimal(p.precioMinimo, 1, 2)}">0.00</span></td>
+                            <td class="text-right text-success font-weight-bold">S/ <span th:text="${#numbers.formatDecimal(p.precioSugerido, 1, 2)}">0.00</span></td>
+                            <td class="text-right">S/ <span th:text="${#numbers.formatDecimal(p.precioVentaActual, 1, 2)}">0.00</span></td>
+                            <td>
+                                <span th:class="${p.estadoPrecio == 'OK' ? 'badge badge-success' : (p.estadoPrecio == 'PERDIDA' ? 'badge badge-danger' : 'badge badge-warning')}"
+                                      th:text="${p.estadoPrecio}">OK</span>
+                                <div class="small text-muted" th:text="${#numbers.formatDecimal(p.margenActualPct, 1, 1)} + '% margen'">0%</div>
+                            </td>
+                            <td class="decision-cell">
+                                <div th:text="${p.recomendacion}">Precio saludable</div>
+                                <small class="text-muted" th:text="${p.reglaResumen}">Reglas</small>
+                            </td>
+                            <td class="sticky-actions">
+                                <button class="btn btn-outline-primary btn-xs js-datos-producto"
+                                        th:data-id="${p.productoId}"
+                                        th:data-nombre="${p.nombre}"
+                                        th:data-regla="${p.reglaCosteo}"
+                                        th:data-unidades="${p.unidadesEstimadasMes}"
+                                        th:data-minutos="${p.minutosTrabajoUnidad}"
+                                        th:data-impresiones="${p.impresionesEquivalentesUnidad}"
+                                        th:data-margen-min="${p.gananciaMinimaPct}"
+                                        th:data-margen-obj="${p.gananciaObjetivoPct}"
+                                        th:data-usar="${p.usarReglaManualPrecio}">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="btn btn-outline-info btn-xs js-historial-costos"
+                                        th:data-id="${p.productoId}"
+                                        th:data-nombre="${p.nombre}">
+                                    <i class="fas fa-history"></i> Historial
+                                </button>
+                                <button class="btn btn-success btn-xs js-aplicar-precio"
+                                        th:data-id="${p.productoId}"
+                                        th:data-nombre="${p.nombre}"
+                                        th:data-precio="${p.precioSugerido}">
+                                    <i class="fas fa-check"></i> Aplicar
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade" id="modalProductoCosteo" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-pen mr-1"></i>Datos de costeo del producto</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="productoCosteoId">
+                    <h5 id="productoCosteoNombre" class="mb-3"></h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label>Regla del producto</label>
+                            <select id="productoReglaCosteo" class="form-control">
+                                <option value="AUTO">Automático</option>
+                                <option value="UNIDADES">Mercadería por unidad</option>
+                                <option value="TIEMPO">Trabajo por tiempo</option>
+                                <option value="IMPRESION">Impresión</option>
+                                <option value="COSTO_COMPRA">Según costo compra</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label>Unidades estimadas/mes</label>
+                            <input type="number" min="0" step="0.01" id="productoUnidadesMes" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Usar margen propio</label>
+                            <div class="custom-control custom-switch mt-2">
+                                <input type="checkbox" class="custom-control-input" id="productoUsarMargen">
+                                <label class="custom-control-label" for="productoUsarMargen">Activar</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <label>Minutos por unidad</label>
+                            <input type="number" min="0" step="0.01" id="productoMinutos" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Impresiones equiv.</label>
+                            <input type="number" min="0" step="0.001" id="productoImpresiones" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Ganancia mínima %</label>
+                            <input type="number" min="0" step="0.01" id="productoMargenMin" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Ganancia objetivo %</label>
+                            <input type="number" min="0" step="0.01" id="productoMargenObj" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarProductoCosteo">
+                        <i class="fas fa-save mr-1"></i>Guardar datos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalHistorialCostos" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-history mr-1"></i>Historial de costos</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 id="histProductoNombre" class="mb-1">Producto</h5>
+                            <small id="histProductoMeta" class="text-muted">-</small>
+                        </div>
+                        <span id="histEstado" class="badge badge-secondary">-</span>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Costo actual</div>
+                                <div class="value" id="histCostoActual">S/ 0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Precio actual</div>
+                                <div class="value" id="histPrecioActual">S/ 0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Mínimo</div>
+                                <div class="value" id="histPrecioMinimo">S/ 0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Sugerido</div>
+                                <div class="value text-success" id="histPrecioSugerido">S/ 0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Proveedor último</div>
+                                <div class="value" id="histProveedorUltimo">-</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-6 mb-2">
+                            <div class="history-metric">
+                                <div class="label">Compras</div>
+                                <div class="value" id="histComprasCount">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-light border mb-3">
+                        <strong>Decisión guiada:</strong> <span id="histDecisionPrincipal">-</span>
+                        <div class="small text-muted mt-1" id="histNota"></div>
+                    </div>
+                    <div class="history-chart-wrap mb-3">
+                        <canvas id="historialCostosCanvas" width="900" height="200"></canvas>
+                    </div>
+                    <h6 class="font-weight-bold mb-2"><i class="fas fa-shopping-basket mr-1"></i>Ultimas compras</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Proveedor</th>
+                                <th>Documento</th>
+                                <th class="text-right">Cant.</th>
+                                <th>Presentación</th>
+                                <th class="text-right">Costo ant.</th>
+                                <th class="text-right">Costo nuevo</th>
+                                <th class="text-right">Var.</th>
+                                <th class="text-right">Sugerido</th>
+                                <th>Decisión</th>
+                            </tr>
+                            </thead>
+                            <tbody id="historialCostosRows">
+                            <tr><td colspan="10" class="text-center text-muted py-3">Selecciona un producto para ver su historial.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h6 class="font-weight-bold mt-4 mb-2"><i class="fas fa-tag mr-1"></i>Historial de cambios de precio</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Origen</th>
+                                <th class="text-right">Precio ant.</th>
+                                <th class="text-right">Precio nuevo</th>
+                                <th class="text-right">Costo ant.</th>
+                                <th class="text-right">Costo nuevo</th>
+                                <th class="text-right">Minimo</th>
+                                <th class="text-right">Sugerido</th>
+                                <th>Motivo</th>
+                            </tr>
+                            </thead>
+                            <tbody id="historialPreciosRows">
+                            <tr><td colspan="9" class="text-center text-muted py-3">Selecciona un producto para ver cambios de precio.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <small class="text-muted">El historial se alimenta de compras, regularizacion y cambios aplicados desde costeo.</small>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        function costeoMoneda(valor) {
+            const n = parseFloat(valor || 0);
+            return 'S/ ' + (isNaN(n) ? 0 : n).toFixed(2);
+        }
+
+        function costeoNumero(valor, decimales) {
+            const n = parseFloat(valor || 0);
+            return (isNaN(n) ? 0 : n).toFixed(decimales);
+        }
+
+        function costeoEscape(texto) {
+            return $('<div>').text(texto == null ? '' : texto).html();
+        }
+
+        function costeoIdsSeleccionados() {
+            return $('.costeo-check:checked').map(function () {
+                return $(this).val();
+            }).get();
+        }
+
+        function actualizarSeleccionCosteo() {
+            const ids = costeoIdsSeleccionados();
+            $('#costeoSeleccionadosCount').text(ids.length);
+            $('#btnAplicarCosteoSeleccionados').prop('disabled', ids.length === 0);
+            const visibles = $('.costeo-check').filter(function () {
+                return $(this).closest('tr').is(':visible');
+            });
+            const visiblesMarcados = visibles.filter(':checked');
+            $('#costeoCheckAll').prop('checked', visibles.length > 0 && visibles.length === visiblesMarcados.length);
+        }
+
+        function filtrarCosteo() {
+            const q = ($('#filtroCosteo').val() || '').toLowerCase();
+            const cat = $('#filtroCategoriaCosteo').val();
+            const estado = $('#filtroEstadoCosteo').val();
+            $('#tablaCosteo tbody tr').each(function () {
+                const texto = ($(this).data('texto') || '').toString().toLowerCase();
+                const rowCat = ($(this).data('categoria') || '').toString();
+                const rowEstado = ($(this).data('estado') || '').toString();
+                const visible = (!q || texto.includes(q)) && (!cat || rowCat === cat) && (!estado || rowEstado === estado);
+                $(this).toggle(visible);
+            });
+            actualizarSeleccionCosteo();
+        }
+
+        function limpiarCuentaForm() {
+            $('#cuentaId').val('');
+            $('#cuentaNombre').val('');
+            $('#cuentaMonto').val('');
+            $('#cuentaCategoriaObjetivo').val('');
+            $('#cuentaBase').val('');
+            $('#cuentaPorcentaje').val('100');
+            $('#cuentaNotas').val('');
+            $('#cuentaIncluirCosteo').prop('checked', true);
+            $('#cuentaTipo').val('FIJO');
+            $('#cuentaRegla').val('UNIDADES');
+        }
+
+        $('#filtroCosteo, #filtroCategoriaCosteo, #filtroEstadoCosteo').on('input change', filtrarCosteo);
+
+        $('#costeoCheckAll').on('change', function () {
+            const marcado = this.checked;
+            $('.costeo-check').each(function () {
+                if ($(this).closest('tr').is(':visible')) {
+                    $(this).prop('checked', marcado);
+                }
+            });
+            actualizarSeleccionCosteo();
+        });
+
+        $('#tablaCosteo').on('change', '.costeo-check', actualizarSeleccionCosteo);
+
+        $('.js-editar-cuenta').on('click', function () {
+            const row = $(this).closest('.js-cuenta');
+            $('#cuentaId').val(row.data('id') || '');
+            $('#cuentaNombre').val(row.data('nombre') || '');
+            $('#cuentaMonto').val(row.data('monto') || '');
+            $('#cuentaTipo').val(row.data('tipo') || 'FIJO');
+            $('#cuentaRegla').val(row.data('regla') || 'UNIDADES');
+            $('#cuentaCategoriaObjetivo').val(row.data('destino') || '');
+            $('#cuentaBase').val(row.data('base') || '');
+            $('#cuentaPorcentaje').val(row.data('porcentaje') || '100');
+            $('#cuentaIncluirCosteo').prop('checked', row.data('incluir') !== false);
+            $('#cuentaNotas').val(row.data('notas') || '');
+            $('#cuentaNombre').focus();
+        });
+
+        $('#btnGuardarCuenta').on('click', function () {
+            const payload = {
+                id: $('#cuentaId').val() || null,
+                nombre: $('#cuentaNombre').val(),
+                montoMensual: $('#cuentaMonto').val() || 0,
+                categoria: $('#cuentaTipo').val(),
+                tipoCosto: $('#cuentaTipo').val(),
+                reglaReparto: $('#cuentaRegla').val(),
+                categoriaObjetivo: $('#cuentaCategoriaObjetivo').val(),
+                baseMensual: $('#cuentaBase').val() || 0,
+                porcentajeUsoCosteo: $('#cuentaPorcentaje').val() || 100,
+                incluirEnCosteo: $('#cuentaIncluirCosteo').is(':checked'),
+                activa: true,
+                notas: $('#cuentaNotas').val(),
+                orden: 0
+            };
+            if (!payload.nombre || parseFloat(payload.montoMensual) <= 0) {
+                Swal.fire('Falta información', 'Ingresa nombre y monto mensual mayor a cero.', 'warning');
+                return;
+            }
+            $.ajax({
+                url: '/costeo/cuentas/guardar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload)
+            }).done(function () {
+                Swal.fire('Guardado', 'La regla de costo quedó registrada.', 'success')
+                    .then(() => window.location.reload());
+            }).fail(function (xhr) {
+                Swal.fire('No se pudo guardar', (xhr.responseJSON && xhr.responseJSON.error) || 'Revisa los datos.', 'error');
+            });
+        });
+
+        $('.js-datos-producto').on('click', function () {
+            const btn = $(this);
+            $('#productoCosteoId').val(btn.data('id'));
+            $('#productoCosteoNombre').text(btn.data('nombre'));
+            $('#productoReglaCosteo').val(btn.data('regla') || 'AUTO');
+            $('#productoUnidadesMes').val(btn.data('unidades') || '');
+            $('#productoMinutos').val(btn.data('minutos') || '');
+            $('#productoImpresiones').val(btn.data('impresiones') || '');
+            $('#productoMargenMin').val(btn.data('margen-min') || '');
+            $('#productoMargenObj').val(btn.data('margen-obj') || '');
+            $('#productoUsarMargen').prop('checked', btn.data('usar') === true || btn.data('usar') === 'true');
+            $('#modalProductoCosteo').modal('show');
+        });
+
+        $('#btnGuardarProductoCosteo').on('click', function () {
+            const id = $('#productoCosteoId').val();
+            const payload = {
+                reglaCosteo: $('#productoReglaCosteo').val(),
+                unidadesEstimadasMes: $('#productoUnidadesMes').val(),
+                minutosTrabajoUnidad: $('#productoMinutos').val(),
+                impresionesEquivalentesUnidad: $('#productoImpresiones').val(),
+                usarReglaManualPrecio: $('#productoUsarMargen').is(':checked'),
+                gananciaMinimaPct: $('#productoMargenMin').val(),
+                gananciaObjetivoPct: $('#productoMargenObj').val()
+            };
+            $.ajax({
+                url: '/costeo/productos/' + id + '/datos',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload)
+            }).done(function () {
+                Swal.fire('Actualizado', 'El producto quedó listo para recalcular precio.', 'success')
+                    .then(() => window.location.reload());
+            }).fail(function (xhr) {
+                Swal.fire('No se pudo guardar', (xhr.responseJSON && xhr.responseJSON.error) || 'Revisa los datos.', 'error');
+            });
+        });
+
+        $('.js-aplicar-precio').on('click', function () {
+            const id = $(this).data('id');
+            const nombre = $(this).data('nombre');
+            const precio = parseFloat($(this).data('precio') || 0).toFixed(2);
+            Swal.fire({
+                title: 'Aplicar precio sugerido',
+                html: '<strong>' + nombre + '</strong><br>Nuevo precio: S/ ' + precio,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar',
+                cancelButtonText: 'Cancelar'
+            }).then(function (res) {
+                if (!res.isConfirmed) return;
+                $.post('/costeo/productos/' + id + '/aplicar-precio')
+                    .done(function () {
+                        Swal.fire('Precio actualizado', 'El producto ya usa el precio sugerido.', 'success')
+                            .then(() => window.location.reload());
+                    })
+                    .fail(function (xhr) {
+                        Swal.fire('No se pudo aplicar', (xhr.responseJSON && xhr.responseJSON.error) || 'Intenta nuevamente.', 'error');
+                    });
+            });
+        });
+
+        $('#btnAplicarCosteoSeleccionados').on('click', function () {
+            const ids = costeoIdsSeleccionados();
+            if (!ids.length) {
+                Swal.fire('Selecciona productos', 'Marca al menos un producto para aplicar precio sugerido.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: 'Aplicar precios por lote',
+                text: 'Se actualizara el precio de venta de ' + ids.length + ' producto(s) al precio sugerido actual.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar lote',
+                cancelButtonText: 'Cancelar'
+            }).then(function (res) {
+                if (!res.isConfirmed) return;
+                $.ajax({
+                    url: '/costeo/productos/aplicar-precios-lote',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({productoIds: ids})
+                }).done(function (data) {
+                    Swal.fire('Lote actualizado', 'Productos actualizados: ' + (data.actualizados || 0), 'success')
+                        .then(() => window.location.reload());
+                }).fail(function (xhr) {
+                    Swal.fire('No se pudo aplicar', (xhr.responseJSON && xhr.responseJSON.error) || 'Intenta nuevamente.', 'error');
+                });
+            });
+        });
+
+        $('.js-historial-costos').on('click', function () {
+            const id = $(this).data('id');
+            $('#histProductoNombre').text($(this).data('nombre') || 'Producto');
+            $('#histProductoMeta').text('Cargando historial...');
+            $('#historialCostosRows').html('<tr><td colspan="10" class="text-center text-muted py-3">Cargando compras...</td></tr>');
+            $('#historialPreciosRows').html('<tr><td colspan="9" class="text-center text-muted py-3">Cargando cambios de precio...</td></tr>');
+            $('#histEstado').attr('class', 'badge badge-secondary').text('-');
+            $('#modalHistorialCostos').modal('show');
+            $.get('/costeo/productos/' + id + '/historial')
+                .done(renderHistorialCostos)
+                .fail(function (xhr) {
+                    $('#historialCostosRows').html('<tr><td colspan="10" class="text-center text-danger py-3">No se pudo cargar el historial.</td></tr>');
+                    $('#histProductoMeta').text((xhr.responseJSON && xhr.responseJSON.error) || 'Error al cargar');
+                });
+        });
+
+        function renderHistorialCostos(data) {
+            const p = data.producto || {};
+            $('#histProductoNombre').text(p.nombre || 'Producto');
+            $('#histProductoMeta').text((p.codigoInterno || 'Sin codigo') + ' · ' + (p.categoria || 'Sin categoria') + ' · Stock ' + (p.stockActual || 0));
+            const estado = p.estadoPrecio || '-';
+            const estadoClass = estado === 'OK' ? 'badge badge-success' : (estado === 'PERDIDA' ? 'badge badge-danger' : 'badge badge-warning');
+            $('#histEstado').attr('class', estadoClass).text(estado);
+            $('#histCostoActual').text(costeoMoneda(p.costoActual));
+            $('#histPrecioActual').text(costeoMoneda(p.precioActual));
+            $('#histPrecioMinimo').text(costeoMoneda(p.precioMinimo));
+            $('#histPrecioSugerido').text(costeoMoneda(p.precioSugerido));
+            $('#histProveedorUltimo').text(p.proveedorUltimo || '-');
+            $('#histComprasCount').text(p.comprasRegistradas || 0);
+            $('#histDecisionPrincipal').text(p.decisionPrincipal || '-');
+            $('#histNota').text(data.nota || '');
+
+            const compras = data.compras || [];
+            if (!compras.length) {
+                $('#historialCostosRows').html('<tr><td colspan="10" class="text-center text-muted py-3">Aun no hay compras registradas para este producto.</td></tr>');
+            } else {
+                $('#historialCostosRows').html(compras.map(function (c) {
+                    const claseVar = parseFloat(c.variacionSoles || 0) > 0 ? 'text-danger' : (parseFloat(c.variacionSoles || 0) < 0 ? 'text-success' : 'text-muted');
+                    return '<tr>' +
+                        '<td>' + costeoEscape(c.fecha) + '</td>' +
+                        '<td>' + costeoEscape(c.proveedor) + '</td>' +
+                        '<td>' + costeoEscape(c.documento) + '</td>' +
+                        '<td class="text-right">' + costeoNumero(c.cantidad, 0) + '</td>' +
+                        '<td>' + costeoEscape(c.presentacion) + '</td>' +
+                        '<td class="text-right">' + costeoMoneda(c.costoAnterior) + '</td>' +
+                        '<td class="text-right font-weight-bold">' + costeoMoneda(c.costoNuevo) + '</td>' +
+                        '<td class="text-right ' + claseVar + '">' + costeoMoneda(c.variacionSoles) + ' · ' + costeoNumero(c.variacionPct, 1) + '%</td>' +
+                        '<td class="text-right text-success">' + costeoMoneda(c.precioSugerido) + '</td>' +
+                        '<td>' + costeoEscape(c.decision) + '</td>' +
+                        '</tr>';
+                }).join(''));
+            }
+            const cambiosPrecio = data.cambiosPrecio || [];
+            if (!cambiosPrecio.length) {
+                $('#historialPreciosRows').html('<tr><td colspan="9" class="text-center text-muted py-3">Aun no hay cambios de precio registrados para este producto.</td></tr>');
+            } else {
+                $('#historialPreciosRows').html(cambiosPrecio.map(function (c) {
+                    const clasePrecio = parseFloat(c.precioNuevo || 0) >= parseFloat(c.precioAnterior || 0) ? 'text-success' : 'text-warning';
+                    return '<tr>' +
+                        '<td>' + costeoEscape(c.fecha) + '</td>' +
+                        '<td><span class="badge badge-light">' + costeoEscape(c.origen) + '</span></td>' +
+                        '<td class="text-right">' + costeoMoneda(c.precioAnterior) + '</td>' +
+                        '<td class="text-right font-weight-bold ' + clasePrecio + '">' + costeoMoneda(c.precioNuevo) + '</td>' +
+                        '<td class="text-right">' + costeoMoneda(c.costoAnterior) + '</td>' +
+                        '<td class="text-right">' + costeoMoneda(c.costoNuevo) + '</td>' +
+                        '<td class="text-right text-warning">' + costeoMoneda(c.precioMinimo) + '</td>' +
+                        '<td class="text-right text-success">' + costeoMoneda(c.precioSugerido) + '</td>' +
+                        '<td>' + costeoEscape(c.motivo) + '</td>' +
+                        '</tr>';
+                }).join(''));
+            }
+            dibujarHistorialCostos(data.grafico || {});
+        }
+
+        function dibujarHistorialCostos(grafico) {
+            const canvas = document.getElementById('historialCostosCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const labels = grafico.labels || [];
+            const costos = (grafico.costos || []).map(v => parseFloat(v || 0));
+            const sugeridos = (grafico.sugeridos || []).map(v => parseFloat(v || 0));
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Arial';
+            if (!costos.length) {
+                ctx.fillText('Sin compras para graficar', 24, 32);
+                return;
+            }
+            const padding = {left: 48, right: 18, top: 18, bottom: 36};
+            const valores = costos.concat(sugeridos).filter(v => !isNaN(v) && v > 0);
+            const max = Math.max.apply(null, valores.concat([1])) * 1.12;
+            const min = 0;
+            const ancho = canvas.width - padding.left - padding.right;
+            const alto = canvas.height - padding.top - padding.bottom;
+            function x(i) {
+                return padding.left + (costos.length === 1 ? ancho / 2 : (ancho * i / (costos.length - 1)));
+            }
+            function y(v) {
+                return padding.top + alto - ((v - min) / (max - min)) * alto;
+            }
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top);
+            ctx.lineTo(padding.left, padding.top + alto);
+            ctx.lineTo(padding.left + ancho, padding.top + alto);
+            ctx.stroke();
+            ctx.fillText('S/ ' + max.toFixed(2), 6, padding.top + 4);
+            ctx.fillText('S/ 0.00', 10, padding.top + alto);
+            function drawLine(data, color) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                data.forEach(function (v, i) {
+                    if (i === 0) ctx.moveTo(x(i), y(v));
+                    else ctx.lineTo(x(i), y(v));
+                });
+                ctx.stroke();
+                ctx.fillStyle = color;
+                data.forEach(function (v, i) {
+                    ctx.beginPath();
+                    ctx.arc(x(i), y(v), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            drawLine(costos, '#0f766e');
+            if (sugeridos.some(v => v > 0)) {
+                drawLine(sugeridos, '#2563eb');
+            }
+            ctx.fillStyle = '#64748b';
+            labels.forEach(function (label, i) {
+                ctx.fillText(label || '', x(i) - 12, padding.top + alto + 20);
+            });
+            ctx.fillStyle = '#0f766e';
+            ctx.fillText('Costo', padding.left, 14);
+            ctx.fillStyle = '#2563eb';
+            ctx.fillText('Sugerido', padding.left + 58, 14);
+        }
+
+        actualizarSeleccionCosteo();
+    </script>
+</th:block>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{fragments/layout}"
@@ -166,10 +166,11 @@
                                 <tr>
                                     <th>Producto</th>
                                     <th class="text-center">Stock Actual</th>
+                                    <th class="text-right pr-3">Acción</th>
                                 </tr>
                                 </thead>
                                 <tbody id="tbodySin">
-                                <tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -313,14 +314,20 @@
             const tbody = $('#tbodySin');
             tbody.empty();
             if (!productos || !productos.length) {
-                tbody.html('<tr><td colspan="2" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tuvieron rotacion reciente</td></tr>');
+                tbody.html('<tr><td colspan="3" class="text-center text-success"><i class="fas fa-check-circle"></i> Todos los productos tuvieron rotacion reciente</td></tr>');
                 return;
             }
             productos.slice(0, 20).forEach(p => {
+                const encodedName = encodeURIComponent(p.productoNombre || '');
                 tbody.append(`
                     <tr>
-                        <td><i class="fas fa-box-open text-muted"></i> ${p.productoNombre || '-'}</td>
+                        <td><i class="fas fa-box-open text-muted"></i> <span class="font-weight-bold text-dark">${p.productoNombre || '-'}</span></td>
                         <td class="text-center"><span class="badge badge-danger">${p.stockActual || 0}</span></td>
+                        <td class="text-right pr-2">
+                            <a href="/stock?buscar=${encodedName}" class="btn btn-outline-primary btn-xs" title="Gestionar / Liquidar en Control de Stock">
+                                <i class="fas fa-magic mr-1"></i>Gestionar
+                            </a>
+                        </td>
                     </tr>
                 `);
             });

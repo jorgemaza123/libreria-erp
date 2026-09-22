@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -57,6 +58,25 @@ public class StockController {
             @RequestParam(name = "order[0][column]", defaultValue = "1") String orderColumn,
             @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDir) {
         return stockService.buscarStock(draw, start, length, termino, categoria, estado, orderColumn, orderDir);
+    }
+
+    @GetMapping("/api/reposicion")
+    @ResponseBody
+    public Map<String, Object> obtenerReposicionSugerida() {
+        var items = stockService.obtenerReposicionSugerida();
+        BigDecimal costoTotal = items.stream()
+                .map(i -> i.getCostoReposicion() != null ? i.getCostoReposicion() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int unidades = items.stream()
+                .mapToInt(i -> i.getCantidadSugerida() != null ? i.getCantidadSugerida() : 0)
+                .sum();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("items", items);
+        response.put("totalItems", items.size());
+        response.put("unidadesSugeridas", unidades);
+        response.put("costoTotal", costoTotal);
+        return response;
     }
 
     @GetMapping("/producto/{id}")
@@ -118,6 +138,96 @@ public class StockController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error al ajustar stock", e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/api/reposicion-config")
+    @PreAuthorize("hasPermission(null, 'STOCK_AJUSTAR')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> actualizarConfiguracionReposicion(
+            @RequestParam Long productoId,
+            @RequestParam(required = false) Integer stockMinimo,
+            @RequestParam(required = false) Integer stockMaximo,
+            @RequestParam(defaultValue = "false") Boolean temporadaActiva,
+            @RequestParam(required = false) Integer stockObjetivoTemporada,
+            @RequestParam(defaultValue = "false") Boolean posRapido,
+            @RequestParam(required = false) Integer posRapidoOrden,
+            Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            stockService.actualizarConfiguracionReposicion(
+                    productoId,
+                    stockMinimo,
+                    stockMaximo,
+                    temporadaActiva,
+                    stockObjetivoTemporada,
+                    posRapido,
+                    posRapidoOrden,
+                    auth.getName());
+            response.put("success", true);
+            response.put("message", "Configuración de reposición actualizada");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error al actualizar configuración de reposición", e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @GetMapping("/api/liquidacion/{id}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> obtenerDatosLiquidacion(@PathVariable Long id) {
+        try {
+            Map<String, Object> data = stockService.obtenerDatosLiquidacion(id);
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            log.error("Error al obtener datos de liquidación para producto ID: {}", id, e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/api/actualizar-precio")
+    @PreAuthorize("hasPermission(null, 'STOCK_AJUSTAR')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> actualizarPrecio(
+            @RequestParam Long productoId,
+            @RequestParam BigDecimal nuevoPrecio,
+            Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            stockService.actualizarPrecio(productoId, nuevoPrecio, auth.getName());
+            response.put("success", true);
+            response.put("message", "Precio de liquidación aplicado correctamente");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error al actualizar precio", e);
+            response.put("success", false);
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/api/quitar-liquidacion")
+    @PreAuthorize("hasPermission(null, 'STOCK_AJUSTAR')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> quitarDeLiquidacion(
+            @RequestParam Long productoId,
+            Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            stockService.quitarDeLiquidacion(productoId, auth.getName());
+            response.put("success", true);
+            response.put("message", "Producto retirado de liquidación");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error al retirar de liquidación", e);
             response.put("success", false);
             response.put("message", "Error: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);

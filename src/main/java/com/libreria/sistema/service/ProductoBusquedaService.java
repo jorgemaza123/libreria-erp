@@ -49,8 +49,15 @@ public class ProductoBusquedaService {
     // Búsqueda difusa (fuzzy / pg_trgm similarity)
     // similarity() solo se ejecuta si el término tiene al menos MIN_CHARS_FUZZY caracteres
     // (términos cortos producen falsos positivos con umbral bajo)
-    private static final int MIN_CHARS_FUZZY = 3;
-    private static final double FUZZY_THRESHOLD = 0.15; // 0=todo, 1=exacto; 0.15 tolera typos razonables
+    private static final int MIN_CHARS_FUZZY = 4;
+    private static final double FUZZY_THRESHOLD = 0.35; // 0=todo, 1=exacto; POS necesita evitar sugerencias ambiguas
+
+    public List<Producto> buscarPorCodigoExacto(String codigo) {
+        if (codigo == null || codigo.trim().isBlank()) {
+            return Collections.emptyList();
+        }
+        return busquedaRepository.buscarPorCodigoExacto(codigo.trim());
+    }
 
     /**
      * Búsqueda principal del Omnibuscador.
@@ -71,22 +78,31 @@ public class ProductoBusquedaService {
      * Cascada automática (sin intervención manual):
      *  1. Código exacto (escáner)     → bypass total, máxima prioridad
      *  2. Numérico puro               → ILIKE legacy (protege barcodes cortos)
-     *  3. FTS español                 → plurales, stemming, acentos nativos
-     *  4. Fuzzy pg_trgm               → typos/errores ortográficos (solo si term >= 3 chars)
-     *  5. ILIKE tokenizado            → fallback garantizado sin extensiones
+     *  3. ILIKE tokenizado            → coincidencia literal y predecible para POS
+     *  4. FTS español                 → plurales, stemming, acentos nativos si no hubo literal
+     *  5. Fuzzy pg_trgm               → typos/errores ortográficos solo como último recurso
      *
-     * Fuzzy (paso 4) se ejecuta SOLO si FTS retorna 0 resultados (FASE C).
-     * similarity() no se ejecuta para términos < MIN_CHARS_FUZZY caracteres (FASE C).
+     * Fuzzy se ejecuta SOLO si no hay resultados literales ni FTS.
+     * similarity() no se ejecuta para términos cortos para evitar falsos positivos.
      */
     public List<Producto> buscar(String termino, int limite) {
         if (termino == null || termino.trim().length() < MIN_CARACTERES_BUSQUEDA) {
             return Collections.emptyList();
         }
 
+        int limiteFinal = normalizarLimite(limite);
+        int limiteCandidatos = limiteCandidatos(limiteFinal);
+
+        List<Producto> porCodigoDirecto = buscarPorCodigoExacto(termino);
+        if (!porCodigoDirecto.isEmpty()) {
+            log.debug("Encontrado por código exacto: {}", porCodigoDirecto.get(0).getNombre());
+            return porCodigoDirecto;
+        }
+
         String terminoLimpio = normalizarTexto(termino);
         log.debug("Omnibuscador: '{}' -> normalizado: '{}'", termino, terminoLimpio);
 
-        // 1. Código exacto (escáner de barras) — sin cambios, máxima prioridad
+        // 1. Código exacto normalizado (escáner/SKU) — máxima prioridad
         if (pareceCodigoBarras(terminoLimpio)) {
             List<Producto> porCodigo = busquedaRepository.buscarPorCodigoExacto(terminoLimpio);
             if (!porCodigo.isEmpty()) {
@@ -97,10 +113,18 @@ public class ProductoBusquedaService {
 
         // 2. Numérico puro → ILIKE legacy (NO pasar por FTS ni fuzzy, protege barcodes cortos)
         if (terminoLimpio.matches("^\\d+$")) {
-            return buscarLegacy(terminoLimpio, limite);
+            return ordenarPorRelevancia(terminoLimpio, buscarLegacy(terminoLimpio, limiteCandidatos), limiteFinal, false);
         }
 
-        // 3. Guardias independientes para FTS y Fuzzy:
+        // 3. Búsqueda literal primero. En caja importa más la precisión que "adivinar".
+        List<Producto> legacyResults = buscarLegacy(terminoLimpio, limiteCandidatos);
+        List<Producto> resultadosConfiables = ordenarPorRelevancia(terminoLimpio, legacyResults, limiteFinal, false);
+        if (!resultadosConfiables.isEmpty()) {
+            log.debug("ILIKE literal rankeado: {} resultados para '{}'", resultadosConfiables.size(), termino);
+            return resultadosConfiables;
+        }
+
+        // 4. Guardias independientes para FTS y Fuzzy:
         //
         //    aptoParaFts:   term >= 4 chars Y todos los tokens >= 2 chars.
         //                   FTS ignora tokens de 1 char → "cuadernos f" daría 0 resultados.
@@ -113,21 +137,22 @@ public class ProductoBusquedaService {
         boolean aptoParaFts   = terminoLimpio.length() >= 4 && todoTokensCompletos(terminoLimpio);
         boolean aptoParaFuzzy = terminoLimpio.length() >= MIN_CHARS_FUZZY;
 
-        // 4. FTS en español: plurales y stemming automáticos.
+        // 5. FTS en español: plurales y stemming automáticos.
         //    Solo corre si el término está completo (aptoParaFts).
         //    El helper aísla la transacción (REQUIRES_NEW) para no envenenar el fallback.
         if (aptoParaFts) {
             List<Producto> ftsResults = busquedaAvanzadaHelper.buscarFullText(
-                    termino.trim().toLowerCase(), limite);
-            if (!ftsResults.isEmpty()) {
-                log.debug("FTS: {} resultados para '{}'", ftsResults.size(), termino);
-                return ftsResults;
+                    termino.trim().toLowerCase(), limiteCandidatos);
+            resultadosConfiables = ordenarPorRelevancia(terminoLimpio, ftsResults, limiteFinal, false);
+            if (!resultadosConfiables.isEmpty()) {
+                log.debug("FTS rankeado: {} resultados para '{}'", resultadosConfiables.size(), termino);
+                return resultadosConfiables;
             }
             log.debug("FTS sin resultados para '{}', intentando fuzzy", termino);
         }
 
-        // 5. Fuzzy token-aware (pg_trgm): corrige typos en tokens individuales.
-        //    Corre si term >= 3 chars, independientemente de si FTS era apto o no.
+        // 6. Fuzzy token-aware (pg_trgm): corrige typos solo como último recurso.
+        //    Corre si term >= 4 chars, independientemente de si FTS era apto o no.
         //    "lapisz 2"   → ft1="lapisz" (typo), ft2="2" → encuentra "lapiz 2b".
         //    "cuadeno"    → ft1="cuadeno" → encuentra "cuaderno 100 hojas".
         //    "fabre cas"  → ft1="fabre", ft2="cas" → encuentra "faber castell".
@@ -138,17 +163,16 @@ public class ProductoBusquedaService {
             String ft3 = ft.length > 2 ? ft[2] : "";
 
             List<Producto> fuzzyResults = busquedaAvanzadaHelper.buscarFuzzyTokenizado(
-                    ft1, ft2, ft3, FUZZY_THRESHOLD, limite);
-            if (!fuzzyResults.isEmpty()) {
-                log.debug("Fuzzy tokenizado: {} resultados para '{}'", fuzzyResults.size(), termino);
-                return fuzzyResults;
+                    ft1, ft2, ft3, FUZZY_THRESHOLD, limiteCandidatos);
+            resultadosConfiables = ordenarPorRelevancia(terminoLimpio, fuzzyResults, limiteFinal, true);
+            if (!resultadosConfiables.isEmpty()) {
+                log.debug("Fuzzy tokenizado rankeado: {} resultados para '{}'", resultadosConfiables.size(), termino);
+                return resultadosConfiables;
             }
             log.debug("Fuzzy tokenizado sin resultados para '{}'", termino);
         }
 
-        // 6. ILIKE tokenizado — fallback garantizado y comportamiento por defecto
-        //    mientras el usuario está escribiendo (términos parciales)
-        return buscarLegacy(terminoLimpio, limite);
+        return Collections.emptyList();
     }
 
     /**
@@ -185,6 +209,252 @@ public class ProductoBusquedaService {
         } else {
             return busquedaRepository.omnibuscarSimple(terminoLimpio, limite);
         }
+    }
+
+    private List<Producto> ordenarPorRelevancia(String terminoLimpio, List<Producto> candidatos, int limite, boolean permiteFuzzy) {
+        if (candidatos == null || candidatos.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String[] tokens = tokenizar(terminoLimpio);
+        Set<Long> ids = new HashSet<>();
+        List<ResultadoRelevancia> rankeados = new ArrayList<>();
+
+        for (Producto producto : candidatos) {
+            if (producto == null) {
+                continue;
+            }
+            if (producto.getId() != null && !ids.add(producto.getId())) {
+                continue;
+            }
+            int score = calcularRelevancia(producto, terminoLimpio, tokens, permiteFuzzy);
+            if (score > 0) {
+                rankeados.add(new ResultadoRelevancia(producto, score));
+            }
+        }
+
+        return rankeados.stream()
+                .sorted(Comparator
+                        .comparingInt(ResultadoRelevancia::score).reversed()
+                        .thenComparing(r -> tieneStock(r.producto()) ? 0 : 1)
+                        .thenComparing(r -> normalizarTexto(r.producto().getNombre())))
+                .limit(limite)
+                .map(ResultadoRelevancia::producto)
+                .collect(Collectors.toList());
+    }
+
+    private int calcularRelevancia(Producto p, String terminoLimpio, String[] tokens, boolean permiteFuzzy) {
+        String nombre = normalizarTexto(p.getNombre());
+        String codigoBarra = normalizarTexto(p.getCodigoBarra());
+        String codigoInterno = normalizarTexto(p.getCodigoInterno());
+        String marca = normalizarTexto(p.getMarca());
+        String categoria = normalizarTexto(p.getCategoria());
+        String descripcion = normalizarTexto(p.getDescripcion());
+        String tags = normalizarTexto(p.getTags());
+        String modelo = normalizarTexto(p.getModelo());
+        String color = normalizarTexto(p.getColor());
+        String generacion = normalizarTexto(p.getGeneracion());
+        String searchable = unirCampos(nombre, codigoBarra, codigoInterno, marca, categoria, descripcion, tags, modelo, color, generacion);
+
+        if (terminoLimpio.isBlank()) {
+            return 0;
+        }
+
+        if (igual(codigoBarra, terminoLimpio) || igual(codigoInterno, terminoLimpio)) {
+            return conBonos(p, 10000);
+        }
+        if (empieza(codigoBarra, terminoLimpio) || empieza(codigoInterno, terminoLimpio)) {
+            return conBonos(p, 9200);
+        }
+
+        boolean terminoCorto = terminoLimpio.length() <= 2;
+        if (terminoCorto) {
+            if (empieza(nombre, terminoLimpio)) return conBonos(p, 7600);
+            if (algunaPalabraEmpiezaCon(nombre, terminoLimpio)) return conBonos(p, 7100);
+            if (empieza(marca, terminoLimpio)) return conBonos(p, 4300);
+            if (empieza(modelo, terminoLimpio) || empieza(color, terminoLimpio)) return conBonos(p, 4000);
+            return 0;
+        }
+
+        int score = 0;
+        if (igual(nombre, terminoLimpio)) {
+            score = 8600;
+        } else if (empieza(nombre, terminoLimpio)) {
+            score = 7800;
+        } else if (algunaPalabraEmpiezaCon(nombre, terminoLimpio)) {
+            score = 7300;
+        } else if (contiene(nombre, terminoLimpio)) {
+            score = 6900;
+        } else if (todosLosTokensEn(nombre, tokens)) {
+            score = 6400;
+        } else if (tokens.length > 0 && todosLosTokensEn(searchable, tokens)) {
+            score = 5300;
+        } else if (igual(marca, terminoLimpio) || igual(modelo, terminoLimpio) || igual(color, terminoLimpio)) {
+            score = 5100;
+        } else if (empieza(marca, terminoLimpio) || empieza(modelo, terminoLimpio) || empieza(color, terminoLimpio)) {
+            score = 4700;
+        } else if (contiene(tags, terminoLimpio)) {
+            score = 3900;
+        } else if (igual(categoria, terminoLimpio) || empieza(categoria, terminoLimpio)) {
+            score = 3600;
+        } else if (contiene(searchable, terminoLimpio)) {
+            score = 3000;
+        } else if (permiteFuzzy) {
+            double similitud = mejorSimilitud(terminoLimpio, tokens, nombre, marca, categoria, tags, modelo, color, generacion);
+            if (similitud >= 0.78) {
+                score = 2600 + (int) Math.round(similitud * 1000);
+            }
+        }
+
+        if (score == 0) {
+            return 0;
+        }
+
+        int tokensCoincidentes = contarTokensCoincidentes(searchable, tokens);
+        boolean matchFuerte = contiene(nombre, terminoLimpio)
+                || empieza(codigoBarra, terminoLimpio)
+                || empieza(codigoInterno, terminoLimpio)
+                || todosLosTokensEn(nombre, tokens);
+        if (!permiteFuzzy && tokens.length > 1 && tokensCoincidentes < tokens.length && !matchFuerte) {
+            return 0;
+        }
+
+        return conBonos(p, score);
+    }
+
+    private int conBonos(Producto producto, int score) {
+        int bono = 0;
+        if (tieneStock(producto)) {
+            bono += 120;
+        }
+        if (Boolean.TRUE.equals(producto.getTemporadaActiva())) {
+            bono += 30;
+        }
+        if (Boolean.TRUE.equals(producto.getPosRapido())) {
+            bono += 20;
+        }
+        return score + bono;
+    }
+
+    private boolean tieneStock(Producto producto) {
+        return producto.getStockActual() != null && producto.getStockActual() > 0;
+    }
+
+    private boolean igual(String campo, String termino) {
+        return campo != null && campo.equals(termino);
+    }
+
+    private boolean contiene(String campo, String termino) {
+        return campo != null && !campo.isBlank() && campo.contains(termino);
+    }
+
+    private boolean empieza(String campo, String termino) {
+        return campo != null && !campo.isBlank() && campo.startsWith(termino);
+    }
+
+    private boolean todosLosTokensEn(String campo, String[] tokens) {
+        if (campo == null || campo.isBlank() || tokens == null || tokens.length == 0) {
+            return false;
+        }
+        for (String token : tokens) {
+            if (!campo.contains(token)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int contarTokensCoincidentes(String campo, String[] tokens) {
+        if (campo == null || campo.isBlank() || tokens == null || tokens.length == 0) {
+            return 0;
+        }
+        int total = 0;
+        for (String token : tokens) {
+            if (campo.contains(token)) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    private boolean algunaPalabraEmpiezaCon(String campo, String termino) {
+        if (campo == null || campo.isBlank() || termino == null || termino.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(campo.split("\\s+")).anyMatch(p -> p.startsWith(termino));
+    }
+
+    private String unirCampos(String... campos) {
+        return Arrays.stream(campos)
+                .filter(Objects::nonNull)
+                .filter(c -> !c.isBlank())
+                .collect(Collectors.joining(" "));
+    }
+
+    private double mejorSimilitud(String terminoLimpio, String[] tokens, String... campos) {
+        double mejor = 0.0;
+        String[] tokensBusqueda = tokens != null && tokens.length > 0 ? tokens : new String[]{terminoLimpio};
+        for (String campo : campos) {
+            if (campo == null || campo.isBlank()) {
+                continue;
+            }
+            for (String tokenBusqueda : tokensBusqueda) {
+                for (String tokenCampo : campo.split("\\s+")) {
+                    mejor = Math.max(mejor, similitud(tokenBusqueda, tokenCampo));
+                }
+            }
+        }
+        return mejor;
+    }
+
+    private double similitud(String a, String b) {
+        if (a == null || b == null || a.isBlank() || b.isBlank()) {
+            return 0.0;
+        }
+        if (a.equals(b)) {
+            return 1.0;
+        }
+        if (a.length() < 4 || b.length() < 4) {
+            return 0.0;
+        }
+        int max = Math.max(a.length(), b.length());
+        return 1.0 - ((double) distanciaLevenshtein(a, b) / max);
+    }
+
+    private int distanciaLevenshtein(String a, String b) {
+        int[] anterior = new int[b.length() + 1];
+        int[] actual = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            anterior[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            actual[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int costo = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                actual[j] = Math.min(Math.min(
+                        actual[j - 1] + 1,
+                        anterior[j] + 1),
+                        anterior[j - 1] + costo);
+            }
+            int[] temp = anterior;
+            anterior = actual;
+            actual = temp;
+        }
+        return anterior[b.length()];
+    }
+
+    private int normalizarLimite(int limite) {
+        if (limite <= 0) {
+            return LIMITE_AUTOCOMPLETE;
+        }
+        return Math.min(limite, LIMITE_BUSQUEDA);
+    }
+
+    private int limiteCandidatos(int limite) {
+        return Math.min(Math.max(limite * 4, 40), 100);
+    }
+
+    private record ResultadoRelevancia(Producto producto, int score) {
     }
 
     // =====================================================
@@ -452,6 +722,8 @@ public class ProductoBusquedaService {
         StringBuilder text = new StringBuilder();
         if (p.getCodigoBarra() != null && !p.getCodigoBarra().isEmpty()) {
             text.append(p.getCodigoBarra()).append(" - ");
+        } else if (p.getCodigoInterno() != null && !p.getCodigoInterno().isEmpty()) {
+            text.append(p.getCodigoInterno()).append(" - ");
         }
         text.append(p.getNombre());
         if (p.getMarca() != null && !p.getMarca().isEmpty()) {
@@ -462,12 +734,18 @@ public class ProductoBusquedaService {
         map.put("text", text.toString());
         map.put("nombre", p.getNombre());
         map.put("marca", p.getMarca());
+        map.put("modelo", p.getModelo());
+        map.put("color", p.getColor());
+        map.put("generacion", p.getGeneracion());
         map.put("categoria", p.getCategoria());
         map.put("codigoBarra", p.getCodigoBarra());
+        map.put("codigoInterno", p.getCodigoInterno());
         map.put("precio", p.getPrecioVenta());
         map.put("stock", p.getStockActual());
         map.put("imagen", p.getImagen());
         map.put("tieneStock", p.getStockActual() != null && p.getStockActual() > 0);
+        map.put("temporadaActiva", Boolean.TRUE.equals(p.getTemporadaActiva()));
+        map.put("posRapido", Boolean.TRUE.equals(p.getPosRapido()));
 
         // Ubicación: campos separados + campo combinado para compatibilidad
         map.put("ubicacionEstante", p.getUbicacionEstante());

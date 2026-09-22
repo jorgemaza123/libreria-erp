@@ -189,7 +189,25 @@ public class RolePermissionService {
      * Obtener todos los roles
      */
     public List<Role> obtenerTodosLosRoles() {
-        return roleRepository.findAll();
+        return roleRepository.findAllWithPermissions();
+    }
+
+    public Map<Long, Long> contarUsuariosPorRoles(List<Role> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> ids = roles.stream()
+                .map(Role::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Long> conteos = new HashMap<>();
+        for (Object[] row : usuarioRepository.countUsuariosByRoleIds(ids)) {
+            conteos.put((Long) row[0], ((Number) row[1]).longValue());
+        }
+        return conteos;
     }
 
     /**

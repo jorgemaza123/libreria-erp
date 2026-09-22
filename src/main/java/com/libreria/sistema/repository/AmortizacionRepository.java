@@ -15,6 +15,11 @@ public interface AmortizacionRepository extends JpaRepository<Amortizacion, Long
 
     List<Amortizacion> findByVentaOrderByFechaPagoDesc(Venta venta);
 
+    @Query("SELECT a FROM Amortizacion a JOIN FETCH a.venta v " +
+           "WHERE v.id IN :ventaIds " +
+           "ORDER BY v.id ASC, a.fechaPago DESC, a.id DESC")
+    List<Amortizacion> findByVentaIdInOrderByVentaIdAscFechaPagoDesc(@Param("ventaIds") List<Long> ventaIds);
+
     /**
      * Suma amortizaciones en un periodo
      */

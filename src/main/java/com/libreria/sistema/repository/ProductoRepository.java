@@ -1,18 +1,22 @@
 package com.libreria.sistema.repository;
 
 import com.libreria.sistema.model.Producto;
+import com.libreria.sistema.model.Proveedor;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface ProductoRepository extends JpaRepository<Producto, Long> {
+public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSpecificationExecutor<Producto> {
 
        // =====================================================
        // MÉTODOS CON LOCK PESIMISTA PARA STOCK (CONCURRENCIA)
@@ -163,10 +167,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
         */
        @Query(value = "SELECT * FROM productos p WHERE p.id NOT IN " +
                      "(SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id " +
-                     "WHERE v.fecha_emision >= CURRENT_DATE - INTERVAL '30 days') " +
+                     "WHERE v.fecha_emision >= :fechaSinMovimiento) " +
                      "AND p.stock_actual > 0 AND p.activo = true " +
                      "AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO'", nativeQuery = true)
-       List<Producto> obtenerProductosSinMovimiento();
+       List<Producto> obtenerProductosSinMovimiento(@Param("fechaSinMovimiento") LocalDate fechaSinMovimiento);
 
        /**
         * Stock Crítico (productos activos con stock bajo)
@@ -205,6 +209,57 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                      "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' ORDER BY p.categoria")
        List<String> findDistinctCategorias();
 
+       @Query("SELECT DISTINCT p.categoria FROM Producto p WHERE p.categoria IS NOT NULL AND TRIM(p.categoria) <> '' " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' ORDER BY p.categoria")
+       List<String> findDistinctCategoriasCatalogo();
+
+       @Query("SELECT DISTINCT p.tipo FROM Producto p WHERE p.tipo IS NOT NULL AND TRIM(p.tipo) <> '' " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' ORDER BY p.tipo")
+       List<String> findDistinctTiposCatalogo();
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                     "AND COALESCE(p.esLamina, false) = false " +
+                     "AND (p.categoria IS NULL OR TRIM(p.categoria) = '') ORDER BY p.nombre ASC")
+       List<Producto> findSinCategoriaOrdenados();
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                     "AND COALESCE(p.esLamina, false) = false ORDER BY p.nombre ASC")
+       List<Producto> findProductosParaCategorizacion();
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                     "AND COALESCE(p.clasificacion, 'MERCADERIA') NOT IN ('INSUMO', 'INACTIVO', 'DESCONOCIDO') " +
+                     "AND COALESCE(p.esLamina, false) = false " +
+                     "AND COALESCE(p.posRapido, false) = true " +
+                     "ORDER BY COALESCE(p.posRapidoOrden, 999), p.nombre ASC")
+       List<Producto> findProductosRapidosPos();
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                     "AND COALESCE(p.clasificacion, 'MERCADERIA') NOT IN ('INSUMO', 'INACTIVO', 'DESCONOCIDO') " +
+                     "AND COALESCE(p.esLamina, false) = false " +
+                     "AND COALESCE(p.posRapido, false) = true " +
+                     "ORDER BY COALESCE(p.posRapidoOrden, 999), p.nombre ASC")
+       List<Producto> findProductosRapidosPos(Pageable pageable);
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.origenCatalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                     "AND COALESCE(p.clasificacion, 'MERCADERIA') NOT IN ('INSUMO', 'INACTIVO', 'DESCONOCIDO') " +
+                     "AND COALESCE(p.esLamina, false) = false " +
+                     "AND COALESCE(p.posRapido, false) = true " +
+                     "AND (p.codigoInterno IS NULL OR p.codigoInterno NOT IN :codigosReservados) " +
+                     "ORDER BY COALESCE(p.posRapidoOrden, 999), p.nombre ASC")
+       List<Producto> findProductosRapidosPosManuales(@Param("codigosReservados") Collection<String> codigosReservados,
+                     Pageable pageable);
+
+       @Query("SELECT p FROM Producto p WHERE p.activo = true " +
+                     "AND COALESCE(p.clasificacion, 'MERCADERIA') NOT IN ('INSUMO', 'INACTIVO', 'DESCONOCIDO') " +
+                     "AND COALESCE(p.posRapido, false) = true " +
+                     "AND (p.codigoInterno IS NULL OR p.codigoInterno NOT IN :codigosReservados)")
+       List<Producto> findProductosRapidosNoReservados(@Param("codigosReservados") Collection<String> codigosReservados);
+
        /**
         * Obtener el último código interno (SKU) con formato SKU-XXXXX
         */
@@ -225,6 +280,28 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                      "AND COALESCE(p.esLamina, false) = false")
        java.math.BigDecimal calcularValorInventario();
 
+       @Query(value = "SELECT COUNT(*) FROM productos p WHERE p.id NOT IN " +
+                      "(SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id " +
+                      "WHERE v.fecha_emision >= :fechaSinMovimiento) " +
+                      "AND p.stock_actual > 0 AND p.activo = true " +
+                      "AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                      "AND COALESCE(p.es_lamina, false) = false", nativeQuery = true)
+       long countProductosSinMovimiento(@Param("fechaSinMovimiento") LocalDate fechaSinMovimiento);
+
+       @Query(value = "SELECT COALESCE(SUM(p.stock_actual * p.precio_compra), 0) FROM productos p WHERE p.id NOT IN " +
+                      "(SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id " +
+                      "WHERE v.fecha_emision >= :fechaSinMovimiento) " +
+                      "AND p.stock_actual > 0 AND p.activo = true " +
+                      "AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO' " +
+                      "AND COALESCE(p.es_lamina, false) = false", nativeQuery = true)
+       java.math.BigDecimal calcularCapitalEstancado(@Param("fechaSinMovimiento") LocalDate fechaSinMovimiento);
+
+       @Query("SELECT c.proveedor FROM DetalleCompra dc JOIN dc.compra c WHERE dc.producto.id = :productoId ORDER BY c.fecha DESC")
+       List<Proveedor> findLastProveedorByProductoId(@Param("productoId") Long productoId, Pageable pageable);
+
+       @Query(value = "SELECT DISTINCT d.producto_id FROM detalle_ventas d JOIN ventas v ON d.venta_id = v.id WHERE v.fecha_emision >= :fechaSinMovimiento", nativeQuery = true)
+       List<Long> findProductoIdsConVentasDesde(@Param("fechaSinMovimiento") LocalDate fechaSinMovimiento);
+
        @Query(value = "SELECT * FROM productos p WHERE p.activo = true " +
                      "AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO' " +
                      "AND COALESCE(p.es_lamina, false) = false " +
@@ -236,9 +313,14 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                      "AND (:estado IS NULL " +
                      "    OR (:estado = 'SIN_STOCK' AND p.stock_actual = 0) " +
                      "    OR (:estado = 'CRITICO' AND p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo) " +
-                     "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) "
-                     +
-                     "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ", countQuery = "SELECT COUNT(*) FROM productos p WHERE p.activo = true "
+                     "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) " +
+                     "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5) " +
+                     "    OR (:estado = 'LIQUIDACION' AND p.en_liquidacion = true) " +
+                     "    OR (:estado = 'TEMPORADA' AND COALESCE(p.temporada_activa, false) = true) " +
+                     "    OR (:estado = 'SIN_MOVIMIENTO' AND p.stock_actual > 0 AND p.id NOT IN ( " +
+                     "        SELECT DISTINCT dv.producto_id FROM detalle_ventas dv JOIN ventas vt ON dv.venta_id = vt.id " +
+                     "        WHERE vt.fecha_emision >= :fechaSinMovimiento " +
+                     "    ))) ", countQuery = "SELECT COUNT(*) FROM productos p WHERE p.activo = true "
                                    +
                                    "AND COALESCE(p.origen_catalogo, 'GENERAL') <> 'PERSONALIZADO' "
                                    +
@@ -255,9 +337,16 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
                                    +
                                    "    OR (:estado = 'BAJO' AND p.stock_actual > p.stock_minimo AND p.stock_actual <= p.stock_minimo * 1.5) "
                                    +
-                                   "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5)) ", nativeQuery = true)
+                                   "    OR (:estado = 'OK' AND p.stock_actual > p.stock_minimo * 1.5) " +
+                                   "    OR (:estado = 'LIQUIDACION' AND p.en_liquidacion = true) " +
+                                   "    OR (:estado = 'TEMPORADA' AND COALESCE(p.temporada_activa, false) = true) " +
+                                   "    OR (:estado = 'SIN_MOVIMIENTO' AND p.stock_actual > 0 AND p.id NOT IN ( " +
+                                   "        SELECT DISTINCT dv.producto_id FROM detalle_ventas dv JOIN ventas vt ON dv.venta_id = vt.id " +
+                                   "        WHERE vt.fecha_emision >= :fechaSinMovimiento " +
+                                   "    ))) ", nativeQuery = true)
        Page<Producto> buscarStockFiltrado(@Param("termino") String termino,
                      @Param("categoria") String categoria,
                      @Param("estado") String estado,
+                     @Param("fechaSinMovimiento") LocalDate fechaSinMovimiento,
                      Pageable pageable);
 }

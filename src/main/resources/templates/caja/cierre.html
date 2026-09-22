@@ -39,9 +39,16 @@
             <form id="formCierreCaja" action="/caja/cerrar" method="post">
                 <div class="form-group">
                     <label class="text-danger">Dinero Real en Caja (Físico):</label>
-                    <input type="number" step="0.10" name="montoReal" id="montoReal"
-                           class="form-control form-control-lg text-center font-weight-bold"
-                           placeholder="¿Cuánto hay realmente?" required>
+                    <div class="input-group">
+                        <input type="number" step="0.10" name="montoReal" id="montoReal"
+                               class="form-control form-control-lg text-center font-weight-bold"
+                               placeholder="¿Cuánto hay realmente?" required>
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-danger" type="button" data-toggle="modal" data-target="#modalAsistenteConteo" title="Asistente de Conteo">
+                                <i class="fas fa-calculator"></i> Desglose
+                            </button>
+                        </div>
+                    </div>
                     <small class="form-text text-muted">Cuente los billetes y monedas.</small>
                 </div>
                 <button type="submit" class="btn btn-danger btn-block btn-lg">
@@ -60,12 +67,322 @@
     </div>
 </div>
 
+<!-- Modal Asistente de Conteo -->
+<div class="modal fade text-dark" id="modalAsistenteConteo" tabindex="-1" role="dialog" aria-labelledby="modalAsistenteConteoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalAsistenteConteoLabel">
+                    <i class="fas fa-calculator mr-2"></i>Asistente de Conteo de Efectivo
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <div class="alert alert-light text-center border mb-3">
+                    Ingrese la cantidad de billetes y monedas que tiene en físico.
+                </div>
+                
+                <div class="denomination-list">
+                    <!-- Billetes -->
+                    <h6 class="text-secondary border-bottom pb-1 mb-2 font-weight-bold">Billetes</h6>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-primary p-2 w-100" style="font-size: 1rem; background-color: #2c3e50; color:#fff;">S/ 200.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_200', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_200" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_200', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_200">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-primary p-2 w-100" style="font-size: 1rem; background-color: #2e4053; color:#fff;">S/ 100.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_100', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_100" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_100', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_100">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-primary p-2 w-100" style="font-size: 1rem; background-color: #34495e; color:#fff;">S/ 50.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_50', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_50" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_50', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_50">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-primary p-2 w-100" style="font-size: 1rem; background-color: #5d6d7e; color:#fff;">S/ 20.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_20', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_20" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_20', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_20">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-4">
+                        <div class="col-4">
+                            <span class="badge badge-primary p-2 w-100" style="font-size: 1rem; background-color: #85929e; color:#fff;">S/ 10.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_10', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_10" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_10', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_10">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Monedas -->
+                    <h6 class="text-secondary border-bottom pb-1 mb-2 font-weight-bold">Monedas</h6>
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-warning p-2 w-100" style="font-size: 1rem; background-color: #d4ac0d; color: #fff;">S/ 5.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_5', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_5" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_5', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_5">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-warning p-2 w-100" style="font-size: 1rem; background-color: #f1c40f; color: #fff;">S/ 2.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_2', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_2" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_2', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_2">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-warning p-2 w-100" style="font-size: 1rem; background-color: #f5b041; color: #fff;">S/ 1.00</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_1', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_1" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_1', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_1">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-light border p-2 w-100" style="font-size: 1rem; background-color: #eaecee;">S/ 0.50</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_050', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_050" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_050', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_050">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-light border p-2 w-100" style="font-size: 1rem; background-color: #f2f3f4;">S/ 0.20</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_020', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_020" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_020', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_020">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center mb-2">
+                        <div class="col-4">
+                            <span class="badge badge-light border p-2 w-100" style="font-size: 1rem; background-color: #f8f9f9;">S/ 0.10</span>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <button class="btn btn-outline-secondary btn-minus" type="button" onclick="cambiarDenom('denom_010', -1)">-</button>
+                                </div>
+                                <input type="number" min="0" class="form-control text-center denom-input" id="denom_010" value="0" oninput="calcularTotalDesglose()">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-plus" type="button" onclick="cambiarDenom('denom_010', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 text-right">
+                            <span class="font-weight-bold text-muted" id="sub_010">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light justify-content-between">
+                <div>
+                    <span class="text-dark font-weight-bold" style="font-size: 1.15rem;">Total: <span id="lblTotalDesglose" class="text-success">S/ 0.00</span></span>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-danger font-weight-bold" id="btnAplicarDesglose">Aplicar Monto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SweetAlert2 -->
+
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
+function cambiarDenom(id, delta) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    let val = parseInt(input.value) || 0;
+    val = Math.max(0, val + delta);
+    input.value = val;
+    calcularTotalDesglose();
+}
+
+function calcularTotalDesglose() {
+    const denoms = [
+        { id: 'denom_200', value: 200.00, subId: 'sub_200' },
+        { id: 'denom_100', value: 100.00, subId: 'sub_100' },
+        { id: 'denom_50', value: 50.00, subId: 'sub_50' },
+        { id: 'denom_20', value: 20.00, subId: 'sub_20' },
+        { id: 'denom_10', value: 10.00, subId: 'sub_10' },
+        { id: 'denom_5', value: 5.00, subId: 'sub_5' },
+        { id: 'denom_2', value: 2.00, subId: 'sub_2' },
+        { id: 'denom_1', value: 1.00, subId: 'sub_1' },
+        { id: 'denom_050', value: 0.50, subId: 'sub_050' },
+        { id: 'denom_020', value: 0.20, subId: 'sub_020' },
+        { id: 'denom_010', value: 0.10, subId: 'sub_010' }
+    ];
+
+    let total = 0;
+    denoms.forEach(function(d) {
+        const qty = parseInt(document.getElementById(d.id).value) || 0;
+        const sub = qty * d.value;
+        total += sub;
+        document.getElementById(d.subId).textContent = 'S/ ' + sub.toFixed(2);
+    });
+
+    document.getElementById('lblTotalDesglose').textContent = 'S/ ' + total.toFixed(2);
+    return total;
+}
+
 $(document).ready(function() {
+    $('#btnAplicarDesglose').on('click', function() {
+        const total = calcularTotalDesglose();
+        const mainInput = document.getElementById('montoReal');
+        if (mainInput) {
+            mainInput.value = total.toFixed(2);
+            $(mainInput).trigger('change');
+        }
+        $('#modalAsistenteConteo').modal('hide');
+    });
+    
+    // Resetear inputs al abrir el modal
+    $('#modalAsistenteConteo').on('show.bs.modal', function () {
+        $('.denom-input').val(0);
+        calcularTotalDesglose();
+    });
+
     // Variables para almacenar datos de créditos pendientes
     let creditosPendientes = { cantidad: 0, montoTotal: 0 };
 

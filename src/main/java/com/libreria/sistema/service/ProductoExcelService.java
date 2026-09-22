@@ -46,7 +46,7 @@ public class ProductoExcelService {
         "UBICACION_FILA",     // 13 - Opcional
         "UBICACION_COLUMNA",  // 14 - Opcional
         "UBICACION_ESTANTE",  // 15 - Opcional
-        "CLASIFICACION",      // 16 - Opcional (MERCADERIA/INSUMO)
+        "CLASIFICACION",      // 16 - Opcional (MERCADERIA/INSUMO/SERVICIO/INACTIVO/DESCONOCIDO)
         "ES_LAMINA",          // 17 - Opcional (SI/NO)
         "LAMINA_NUMERO",      // 18 - Opcional
         "LAMINA_TITULO",      // 19 - Opcional
@@ -127,7 +127,7 @@ public class ProductoExcelService {
                 "Opcional",           // UBICACION_FILA
                 "Opcional",           // UBICACION_COLUMNA
                 "Opcional",           // UBICACION_ESTANTE
-                "MERCADERIA/INSUMO",  // CLASIFICACION
+                "MERCADERIA/INSUMO/SERVICIO/INACTIVO/DESCONOCIDO",  // CLASIFICACION
                 "SI/NO",              // ES_LAMINA
                 "Ej: 1083",           // LAMINA_NUMERO
                 "Ej: CELULA ANIMAL",  // LAMINA_TITULO
@@ -431,9 +431,7 @@ public class ProductoExcelService {
         p.setUbicacionEstante(getCellStringValue(row.getCell(15)));
 
         String clasificacion = getCellStringValue(row.getCell(16));
-        p.setClasificacion(clasificacion != null && !clasificacion.isEmpty()
-                ? clasificacion.toUpperCase()
-                : Producto.CLASIFICACION_MERCADERIA);
+        p.setClasificacion(Producto.normalizarClasificacionInventario(clasificacion));
 
         p.setEsLamina(parseBooleanValue(row.getCell(17)));
         p.setLaminaNumero(normalizarTexto(getCellStringValue(row.getCell(18))));
@@ -444,7 +442,14 @@ public class ProductoExcelService {
         p.setLaminaContenedor(normalizarTexto(getCellStringValue(row.getCell(23))));
         p.setLaminaPosicion(normalizarTexto(getCellStringValue(row.getCell(24))));
 
-        if (p.esInsumo()) {
+        if (p.esServicioInventario()) {
+            p.setClasificacion(Producto.CLASIFICACION_SERVICIO);
+            p.setTipo("SERVICIO");
+            p.setStockMinimo(0);
+            p.setUbicacionFila(null);
+            p.setUbicacionColumna(null);
+            p.setUbicacionEstante(null);
+        } else if (p.esInsumo()) {
             if (p.getPrecioVenta() == null) {
                 p.setPrecioVenta(BigDecimal.ZERO);
             }
@@ -456,6 +461,10 @@ public class ProductoExcelService {
             p.setUbicacionColumna(null);
             p.setUbicacionEstante(null);
             p.setTipo("ESTANDAR");
+        } else if (p.esInactivoInventario()) {
+            p.setActivo(false);
+            p.setPosRapido(false);
+            p.setTemporadaActiva(false);
         }
 
         if (!p.esLamina()) {

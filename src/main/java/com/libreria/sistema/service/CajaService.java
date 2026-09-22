@@ -71,6 +71,11 @@ public class CajaService {
      */
     @Transactional
     public void registrarMovimiento(String tipo, String concepto, BigDecimal monto, String categoria) {
+        registrarMovimientoDetallado(tipo, concepto, monto, categoria, null);
+    }
+
+    @Transactional
+    public MovimientoCaja registrarMovimientoDetallado(String tipo, String concepto, BigDecimal monto, String categoria, Long referenciaId) {
         if (tipo == null || tipo.isBlank()) {
             throw new IllegalArgumentException("El tipo de movimiento es obligatorio.");
         }
@@ -92,8 +97,9 @@ public class CajaService {
         mov.setUsuario(getUsuarioActual());
         mov.setSesion(sesion);
         mov.setCategoriaMovimiento(categoria != null && !categoria.isBlank() ? categoria.trim().toUpperCase() : null);
+        mov.setReferenciaId(referenciaId);
 
-        movimientoRepo.save(mov);
+        return movimientoRepo.save(mov);
     }
 
     /**

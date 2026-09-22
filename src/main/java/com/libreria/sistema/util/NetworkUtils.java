@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Utilidad para detectar la dirección IP real de la máquina en la red local (LAN).
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
  *
  * Algoritmo de detección (ejecutado bajo demanda):
  *   1. Variable de entorno HOST_IP (override para Docker / casos especiales)
- *   2. Si corre en Docker → resolver host.docker.internal
+ *   2. Si corre en Docker → usar solo IPs publicables en LAN, no gateways internos de Docker Desktop
  *   3. Gateway del SO (route print / ip route)
  *   4. Enumeración de interfaces de red
  *   5. Fallback a localhost
@@ -52,32 +53,39 @@ public final class NetworkUtils {
     public static String detectarIpLan() {
         try {
             // 1. Override explícito via variable de entorno
-            String envIp = System.getenv("HOST_IP");
-            if (envIp != null && !envIp.isBlank() && isPrivateIp(envIp.trim())) {
-                log.info("IP obtenida de variable de entorno HOST_IP: {}", envIp.trim());
-                return envIp.trim();
+            Optional<String> envIp = obtenerHostIpOverride();
+            if (envIp.isPresent()) {
+                log.info("IP obtenida de variable de entorno HOST_IP: {}", envIp.get());
+                return envIp.get();
             }
 
             // 2. Si estamos dentro de Docker, resolver la IP del host
             if (isRunningInDocker()) {
                 String hostIp = resolverHostDockerInternal();
-                if (hostIp != null && isLanIp(hostIp)) {
+                if (hostIp != null && esIpAccesibleDesdeMovil(hostIp)) {
                     log.info("IP del host detectada via Docker: {}", hostIp);
                     return hostIp;
                 }
-                log.warn("Dentro de Docker pero no se pudo resolver IP del host — continuando con otros métodos");
+                if (hostIp != null) {
+                    log.warn("Docker devolvió una IP interna no válida para celular: {}. Configure HOST_IP con la IP LAN de Windows.", hostIp);
+                } else {
+                    log.warn("Dentro de Docker pero no se pudo resolver IP LAN del host. Configure HOST_IP con la IP de Windows.");
+                }
             }
 
             // 3. Intentar detectar via gateway del SO
             String gatewayIp = detectarIpViaGateway();
-            if (gatewayIp != null) {
+            if (gatewayIp != null && esIpAccesibleDesdeMovil(gatewayIp)) {
                 log.info("IP detectada via gateway del SO: {}", gatewayIp);
                 return gatewayIp;
+            }
+            if (gatewayIp != null) {
+                log.warn("IP detectada por gateway no apta para celular: {}", gatewayIp);
             }
 
             // 4. Fallback — enumerar interfaces activas
             String interfaceIp = detectarIpViaInterfaces();
-            if (interfaceIp != null) {
+            if (interfaceIp != null && esIpAccesibleDesdeMovil(interfaceIp)) {
                 log.info("IP detectada via interfaces de red: {}", interfaceIp);
                 return interfaceIp;
             }
@@ -94,7 +102,7 @@ public final class NetworkUtils {
     //  DETECCIÓN DOCKER
     // =======================================================================
 
-    static boolean isRunningInDocker() {
+    public static boolean isRunningInDocker() {
         try {
             if (new java.io.File("/.dockerenv").exists()) return true;
         } catch (Exception ignored) {}
@@ -218,18 +226,18 @@ public final class NetworkUtils {
     private static String detectarIpViaGatewayLinux() throws Exception {
         // ip route get 1.1.1.1 → buscar "src X.X.X.X"
         String ip = ejecutarYBuscarSrc("ip", "route", "get", "1.1.1.1");
-        if (ip != null && isLanIp(ip)) return ip;
+        if (ip != null && esIpAccesibleDesdeMovil(ip)) return ip;
 
         ip = ejecutarYBuscarSrc("ip", "route", "show", "default");
-        if (ip != null && isLanIp(ip)) return ip;
+        if (ip != null && esIpAccesibleDesdeMovil(ip)) return ip;
 
         // Si la IP es 172.x (Docker), buscar mejor alternativa
         if (ip != null && isDockerLikeIp(ip)) {
             String lanIp = detectarIpViaInterfaces();
-            if (lanIp != null) return lanIp;
+            if (lanIp != null && esIpAccesibleDesdeMovil(lanIp)) return lanIp;
         }
 
-        return ip;
+        return null;
     }
 
     private static String ejecutarYBuscarSrc(String... command) {
@@ -265,7 +273,7 @@ public final class NetworkUtils {
     private static String detectarIpViaInterfaces() {
         List<String> candidates = listarIpsCandidatas();
         for (String ip : candidates) {
-            if (isLanIp(ip)) return ip;
+            if (esIpAccesibleDesdeMovil(ip)) return ip;
         }
         return candidates.isEmpty() ? null : candidates.get(0);
     }
@@ -287,7 +295,7 @@ public final class NetworkUtils {
                     if (!(addr instanceof Inet4Address)) continue;
                     String ip = addr.getHostAddress();
                     if (ip.startsWith("127.")) continue;
-                    if (isPrivateIp(ip) && !candidates.contains(ip)) {
+                    if (isPrivateIp(ip) && !esIpInternaDocker(ip) && !candidates.contains(ip)) {
                         candidates.add(ip);
                     }
                 }
@@ -330,8 +338,8 @@ public final class NetworkUtils {
         return false;
     }
 
-    static boolean isPrivateIp(String ip) {
-        if (ip == null) return false;
+    public static boolean isPrivateIp(String ip) {
+        if (!esIpv4Valida(ip)) return false;
         if (ip.startsWith("10.")) return true;
         if (ip.startsWith("192.168.")) return true;
         if (ip.startsWith("172.")) {
@@ -343,12 +351,12 @@ public final class NetworkUtils {
         return false;
     }
 
-    static boolean isLanIp(String ip) {
+    public static boolean isLanIp(String ip) {
         if (ip == null) return false;
-        return ip.startsWith("192.168.") || ip.startsWith("10.");
+        return (ip.startsWith("192.168.") || ip.startsWith("10.")) && !esIpInternaDocker(ip);
     }
 
-    static boolean isDockerLikeIp(String ip) {
+    public static boolean isDockerLikeIp(String ip) {
         if (ip == null) return false;
         if (ip.startsWith("172.")) {
             try {
@@ -357,6 +365,49 @@ public final class NetworkUtils {
             } catch (Exception e) { return false; }
         }
         return false;
+    }
+
+    public static boolean esIpInternaDocker(String ip) {
+        if (!esIpv4Valida(ip)) return false;
+        return isDockerLikeIp(ip)
+                || ip.startsWith("192.168.65.")
+                || ip.startsWith("192.168.64.")
+                || ip.startsWith("192.168.49.")
+                || ip.startsWith("192.168.99.")
+                || ip.startsWith("10.0.75.");
+    }
+
+    public static boolean esIpAccesibleDesdeMovil(String ip) {
+        return isPrivateIp(ip)
+                && isLanIp(ip)
+                && !esIpInternaDocker(ip)
+                && !"0.0.0.0".equals(ip)
+                && !"127.0.0.1".equals(ip);
+    }
+
+    public static boolean esIpv4Valida(String ip) {
+        if (ip == null || ip.isBlank()) return false;
+        String[] partes = ip.trim().split("\\.");
+        if (partes.length != 4) return false;
+        for (String parte : partes) {
+            try {
+                int valor = Integer.parseInt(parte);
+                if (valor < 0 || valor > 255) return false;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static Optional<String> obtenerHostIpOverride() {
+        return Stream.of("HOST_IP", "WINDOWS_HOST_IP")
+                .map(System::getenv)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(ip -> !ip.isBlank())
+                .filter(NetworkUtils::esIpAccesibleDesdeMovil)
+                .findFirst();
     }
 
     private static int getIpPriority(String ip) {

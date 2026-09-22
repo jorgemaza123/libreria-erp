@@ -95,9 +95,12 @@ public class InventarioController {
 
     @GetMapping("/ajuste")
     public String vistaAjuste(Model model) {
-        // Solo productos activos ordenados por nombre
-        model.addAttribute("productos", productoRepository.findByActivoTrueOrderByNombreAsc());
-        return "inventario/ajuste";
+        return "redirect:/stock";
+    }
+
+    @GetMapping("/ajustar")
+    public String redirigirAjusteAntiguo() {
+        return "redirect:/stock";
     }
 
     // FIX ERROR-6: @Transactional garantiza que kardex y producto se confirmen
@@ -120,7 +123,7 @@ public class InventarioController {
 
             if (diferencia == 0) {
                 attr.addFlashAttribute("info", "El stock real es igual al del sistema. No se hicieron cambios.");
-                return "redirect:/inventario/ajuste";
+                return "redirect:/stock";
             }
 
             // FIX ERROR-4: tipo unificado a "AJUSTE"; el detalle (sobrante/faltante) queda
@@ -148,6 +151,6 @@ public class InventarioController {
         } catch (Exception e) {
             attr.addFlashAttribute("error", "Error al ajustar: " + e.getMessage());
         }
-        return "redirect:/inventario/ajuste";
+        return "redirect:/stock";
     }
 }

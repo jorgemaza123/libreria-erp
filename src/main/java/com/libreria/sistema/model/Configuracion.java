@@ -105,6 +105,27 @@ public class Configuracion {
     // true = Precio incluye IGV (B2C), false = Se suma IGV al final (B2B)
     private Boolean preciosIncluyenImpuesto;
 
+    // ========== COSTEO INTELIGENTE ==========
+    private Boolean costeoInteligenteActivo;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal gananciaObjetivoGlobalPct;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal gananciaMinimaGlobalPct;
+
+    @Column(length = 30)
+    private String redondeoPrecioModo;
+
+    @Column(precision = 6, scale = 2)
+    private BigDecimal redondeoPrecioPaso;
+
+    private Boolean costeoSugerenciaComprasActiva;
+    private Integer cantidadComprasBaseSugerencia;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal umbralAlertaCambioCostoPct;
+
     // ========== FACTURACIÓN ELECTRÓNICA ==========
     // URL del API de facturación (Nubefact, Facturador SUNAT, etc.)
     @Column(columnDefinition = "TEXT")
@@ -235,6 +256,14 @@ public class Configuracion {
         this.porcentajeDescuentoMaximo = new BigDecimal("10.00");
         this.margenMinimoAlerta = new BigDecimal("15.00");
         this.preciosIncluyenImpuesto = true;
+        this.costeoInteligenteActivo = true;
+        this.gananciaObjetivoGlobalPct = new BigDecimal("60.00");
+        this.gananciaMinimaGlobalPct = new BigDecimal("30.00");
+        this.redondeoPrecioModo = "MULTIPLO";
+        this.redondeoPrecioPaso = new BigDecimal("0.10");
+        this.costeoSugerenciaComprasActiva = true;
+        this.cantidadComprasBaseSugerencia = 20;
+        this.umbralAlertaCambioCostoPct = new BigDecimal("10.00");
 
         // Facturación electrónica
         this.facturacionEndpoint = "";
